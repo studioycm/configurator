@@ -1,0 +1,47 @@
+created:
+    - database/factories/CatalogGroupFactory.php
+    - database/factories/ProductProfileFactory.php
+    - database/factories/ProductConfigurationFactory.php
+    - database/factories/ConfigProfileFactory.php
+    - database/factories/ConfigAttributeFactory.php
+    - database/factories/ConfigOptionFactory.php
+    - database/factories/OptionRuleFactory.php
+    - database/factories/FileAttachmentFactory.php
+    - database/factories/PartFactory.php
+    - database/factories/ConfigurationPartFactory.php
+    - database/factories/ConfigurationSpecificationFactory.php
+    - database/migrations/2025_12_04_113203_create_catalog_groups_table.php
+    - database/migrations/2025_12_04_113204_create_product_profiles_table.php
+    - database/migrations/2025_12_04_113205_create_product_configurations_table.php
+    - database/migrations/2025_12_04_113206_create_config_profiles_table.php
+    - database/migrations/2025_12_04_113207_create_config_attributes_table.php
+    - database/migrations/2025_12_04_113208_create_config_options_table.php
+    - database/migrations/2025_12_04_113209_create_option_rules_table.php
+    - database/migrations/2025_12_04_113210_create_file_attachments_table.php
+    - database/migrations/2025_12_04_113211_create_parts_table.php
+    - database/migrations/2025_12_04_113212_create_configuration_parts_table.php
+    - database/migrations/2025_12_04_113213_create_configuration_specifications_table.php
+    - app/Models/CatalogGroup.php
+    - app/Models/ProductProfile.php
+    - app/Models/ProductConfiguration.php
+    - app/Models/ConfigProfile.php
+    - app/Models/ConfigAttribute.php
+    - app/Models/ConfigOption.php
+    - app/Models/OptionRule.php
+    - app/Models/FileAttachment.php
+    - app/Models/Part.php
+    - app/Models/ConfigurationPart.php
+    - app/Models/ConfigurationSpecification.php
+models:
+    User: { name: string, email: string, email_verified_at: 'datetime nullable', password: string, remember_token: 'string nullable', two_factor_secret: 'text nullable', two_factor_recovery_codes: 'text nullable', two_factor_confirmed_at: 'datetime nullable' }
+    CatalogGroup: { name: string, slug: 'string unique', description: 'text nullable', parent_id: 'id foreign:catalog_groups nullable', is_active: 'boolean default:true', sort_order: 'integer nullable', path: 'string nullable', relationships: { hasMany: 'ProductProfile, FileAttachment' } }
+    ProductProfile: { catalog_group_id: 'id foreign:catalog_groups', name: string, product_code: 'string index', slug: 'string unique nullable', short_label: 'string nullable', is_active: 'boolean default:true', sort_order: 'integer nullable', relationships: { belongsTo: CatalogGroup, hasMany: 'ProductConfiguration, ConfigProfile, FileAttachment' } }
+    ProductConfiguration: { product_profile_id: 'id foreign:product_profiles', configuration_code: 'string index', name: 'string nullable', is_active: 'boolean default:true', drawing_image_path: 'string nullable', config_data: 'json nullable', relationships: { belongsTo: ProductProfile, hasMany: 'ConfigurationPart, ConfigurationSpecification, FileAttachment' } }
+    ConfigProfile: { product_profile_id: 'id foreign:product_profiles', name: string, slug: 'string unique', description: 'text nullable', scope: 'string nullable', is_active: 'boolean default:true', extra_rules_json: 'json nullable', relationships: { belongsTo: ProductProfile, hasMany: 'ConfigAttribute, OptionRule' } }
+    ConfigAttribute: { config_profile_id: 'id foreign:config_profiles', name: string, label: 'string nullable', slug: 'string nullable', input_type: 'string default:toggle', sort_order: 'integer index', is_required: 'boolean default:true', segment_index: 'integer nullable', relationships: { belongsTo: ConfigProfile, hasMany: ConfigOption } }
+    ConfigOption: { config_attribute_id: 'id foreign:config_attributes', label: string, code: 'string:4 index', sort_order: 'integer nullable', is_default: 'boolean default:false', is_active: 'boolean default:true', relationships: { belongsTo: ConfigAttribute, hasMany: OptionRule } }
+    OptionRule: { config_profile_id: 'id foreign:config_profiles', config_option_id: 'id foreign:config_options', target_attribute_id: 'id foreign:config_attributes', allowed_option_ids: 'json nullable', relationships: { belongsTo: 'ConfigProfile, ConfigOption' } }
+    FileAttachment: { catalog_group_id: 'id foreign:catalog_groups nullable', product_profile_id: 'id foreign:product_profiles nullable', product_configuration_id: 'id foreign:product_configurations nullable', title: string, file_path: string, file_type: 'string nullable', mime_type: 'string nullable', sort_order: 'integer nullable', is_primary: 'boolean default:false', relationships: { belongsTo: 'CatalogGroup, ProductProfile, ProductConfiguration' } }
+    Part: { name: string, code: 'string nullable', description: 'text nullable', default_material: 'string nullable', is_active: 'boolean default:true', relationships: { hasMany: ConfigurationPart } }
+    ConfigurationPart: { product_configuration_id: 'id foreign:product_configurations', part_id: 'id foreign:parts nullable', part_number: integer, label: 'string nullable', material: 'string nullable', quantity: 'decimal:8,3 nullable', unit: 'string nullable', segment_index: 'integer nullable', notes: 'text nullable', sort_order: 'integer nullable', relationships: { belongsTo: 'ProductConfiguration, Part' } }
+    ConfigurationSpecification: { product_configuration_id: 'id foreign:product_configurations', spec_group: 'string nullable', key: string, value: string, unit: 'string nullable', sort_order: 'integer nullable', relationships: { belongsTo: ProductConfiguration } }

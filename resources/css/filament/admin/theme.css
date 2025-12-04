@@ -1,0 +1,7 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+@source './vendor/lara-zeus/bolt/resources/views/filament/**/*.blade.php';
+@source './vendor/lara-zeus/accordion/resources/views/**/*.blade.php';
+@source './vendor/lara-zeus/bolt-pro/resources/views/filament/**/*.blade.php';

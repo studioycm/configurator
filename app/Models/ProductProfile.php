@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class ProductProfile extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'catalog_group_id',
+        'name',
+        'product_code',
+        'slug',
+        'short_label',
+        'is_active',
+        'sort_order',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'id' => 'integer',
+            'catalog_group_id' => 'integer',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    public function catalogGroup(): BelongsTo
+    {
+        return $this->belongsTo(CatalogGroup::class);
+    }
+
+    public function productConfigurations(): HasMany
+    {
+        return $this->hasMany(ProductConfiguration::class);
+    }
+
+    public function configProfiles(): HasMany
+    {
+        return $this->hasMany(ConfigProfile::class);
+    }
+
+    public function fileAttachments(): HasMany
+    {
+        return $this->hasMany(FileAttachment::class);
+    }
+}

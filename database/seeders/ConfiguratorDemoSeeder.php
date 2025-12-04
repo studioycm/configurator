@@ -1,0 +1,804 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\CatalogGroup;
+use App\Models\ConfigAttribute;
+use App\Models\ConfigOption;
+use App\Models\ConfigProfile;
+use App\Models\OptionRule;
+use App\Models\ProductProfile;
+use Illuminate\Database\Seeder;
+
+class ConfiguratorDemoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // 1) Catalog group (general category, not the "D-060 Series" header)
+        $group = CatalogGroup::firstOrCreate(
+            ['slug' => 'combination-air-valves'],
+            [
+                'name' => 'Combination Air Valves',
+                'description' => 'Combination air valves product family',
+                'is_active' => true,
+            ],
+        );
+
+        // 2) Product profile: D60S
+        $profile = ProductProfile::firstOrCreate(
+            ['product_code' => 'D60S-P16-03'],
+            [
+                'catalog_group_id' => $group->id,
+                'name' => 'Combination Air Valve, D-060 Series',
+                'short_label' => 'D60S',
+                'is_active' => true,
+            ],
+        );
+
+        // 3) Config profile (configurator) for this product profile
+        $configProfile = ConfigProfile::firstOrCreate(
+            [
+                'product_profile_id' => $profile->id,
+                'slug' => 'd60s-p16-03-configurator',
+            ],
+            [
+                'name' => 'D60S Configuration',
+                'description' => 'Configurator for D60S-P16-03',
+                'scope' => 'configuration_selection',
+                'is_active' => true,
+            ],
+        );
+
+        // Helper to keep sort & segment indexes aligned
+        $order = 0;
+        $nextOrder = function () use (&$order) {
+            $order++;
+
+            return $order;
+        };
+
+        // 4) Attributes (stages) – in exact order
+
+        // 1. Flange Standard
+        $flange = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'flange-standard',
+            ],
+            [
+                'name' => 'flange_standard',
+                'label' => 'Flange Standard',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 2. Kinetic Valve Body Material
+        $kvBody = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'kinetic-valve-body-material',
+            ],
+            [
+                'name' => 'kinetic_valve_body_material',
+                'label' => 'Kinetic Valve Body Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 3. Kinetic Valve Seal Material
+        $kvSeal = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'kinetic-valve-seal-material',
+            ],
+            [
+                'name' => 'kinetic_valve_seal_material',
+                'label' => 'Kinetic Valve Seal Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 4. Kinetic Valve Seat Material
+        $kvSeat = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'kinetic-valve-seat-material',
+            ],
+            [
+                'name' => 'kinetic_valve_seat_material',
+                'label' => 'Kinetic Valve Seat Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 5. Kinetic Valve Bolt Set Material
+        $kvBolt = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'kinetic-valve-bolt-set-material',
+            ],
+            [
+                'name' => 'kinetic_valve_bolt_set_material',
+                'label' => 'Kinetic Valve Bolt Set Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 6. Kinetic Valve Float Material
+        $kvFloat = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'kinetic-valve-float-material',
+            ],
+            [
+                'name' => 'kinetic_valve_float_material',
+                'label' => 'Kinetic Valve Float Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 7. Automatic Valve Body Material
+        $avBody = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'automatic-valve-body-material',
+            ],
+            [
+                'name' => 'automatic_valve_body_material',
+                'label' => 'Automatic Valve Body Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 8. Automatic Valve Seal Material
+        $avSeal = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'automatic-valve-seal-material',
+            ],
+            [
+                'name' => 'automatic_valve_seal_material',
+                'label' => 'Automatic Valve Seal Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 9. Automatic Valve Float Material
+        $avFloat = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'automatic-valve-float-material',
+            ],
+            [
+                'name' => 'automatic_valve_float_material',
+                'label' => 'Automatic Valve Float Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 10. O-ring Material
+        $oring = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'o-ring-material',
+            ],
+            [
+                'name' => 'o_ring_material',
+                'label' => 'O-ring Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 11. Air Release Outlet
+        $airRelease = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'air-release-outlet',
+            ],
+            [
+                'name' => 'air_release_outlet',
+                'label' => 'Air Release Outlet',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 12. Pressure Release Outlet
+        $pressureRelease = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'pressure-release-outlet',
+            ],
+            [
+                'name' => 'pressure_release_outlet',
+                'label' => 'Pressure Release Outlet',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 13. Screen Cover Material
+        $screenCover = ConfigAttribute::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'slug' => 'screen-cover-material',
+            ],
+            [
+                'name' => 'screen_cover_material',
+                'label' => 'Screen Cover Material',
+                'input_type' => 'toggle',
+                'sort_order' => $nextOrder(),
+                'segment_index' => $order,
+                'is_required' => true,
+            ],
+        );
+
+        // 5) Options with codes & defaults
+        // We match this default code:
+        // A1-CS-VT-BR-S5-DX-S7-V2-PP-B2-PN-BV-P2
+
+        // Flange Standard
+        $flangeAsa150 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $flange->id,
+                'code' => 'A1',
+            ],
+            [
+                'label' => 'ASA 150',
+                'sort_order' => 1,
+                'is_default' => true,
+                'is_active' => true,
+            ],
+        );
+
+        $flangeDin16 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $flange->id,
+                'code' => 'D6',
+            ],
+            [
+                'label' => 'DIN 16',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Kinetic Valve Body Material
+        $kvBodyDi = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvBody->id,
+                'code' => 'DI',
+            ],
+            [
+                'label' => 'Ductile Iron',
+                'sort_order' => 1,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvBodyCs = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvBody->id,
+                'code' => 'CS',
+            ],
+            [
+                'label' => 'Cast Steel A216',
+                'sort_order' => 2,
+                'is_default' => true,  // default = CS
+                'is_active' => true,
+            ],
+        );
+
+        $kvBodyS6 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvBody->id,
+                'code' => 'S6',
+            ],
+            [
+                'label' => 'St.St. 316',
+                'sort_order' => 3,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvBodyDx = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvBody->id,
+                'code' => 'DX',
+            ],
+            [
+                'label' => 'Duplex 5A',
+                'sort_order' => 4,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Kinetic Valve Seal Material
+        $kvSealEp = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeal->id,
+                'code' => 'EP',
+            ],
+            [
+                'label' => 'EPDM',
+                'sort_order' => 1,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvSealVt = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeal->id,
+                'code' => 'VT',
+            ],
+            [
+                'label' => 'Viton',
+                'sort_order' => 2,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        $kvSealBn = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeal->id,
+                'code' => 'BN',
+            ],
+            [
+                'label' => 'Buna-N',
+                'sort_order' => 3,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Kinetic Valve Seat Material
+        $kvSeatBr = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeat->id,
+                'code' => 'BR',
+            ],
+            [
+                'label' => 'Bronze',
+                'sort_order' => 1,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        $kvSeatS3 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeat->id,
+                'code' => 'S3',
+            ],
+            [
+                'label' => 'St.St. 316',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvSeatD5 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeat->id,
+                'code' => 'D5',
+            ],
+            [
+                'label' => 'Duplex 5A',
+                'sort_order' => 3,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvSeatAb = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvSeat->id,
+                'code' => 'AB',
+            ],
+            [
+                'label' => 'Aluminum Bronze',
+                'sort_order' => 4,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Kinetic Valve Bolt Set Material
+        $kvBoltS5 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvBolt->id,
+                'code' => 'S5',
+            ],
+            [
+                'label' => 'Steel',
+                'sort_order' => 1,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        $kvBoltS6 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvBolt->id,
+                'code' => 'S6',
+            ],
+            [
+                'label' => 'St.St. 316',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Kinetic Valve Float Material
+        $kvFloatPc = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvFloat->id,
+                'code' => 'PC',
+            ],
+            [
+                'label' => 'Polycarbonate',
+                'sort_order' => 1,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvFloatS7 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvFloat->id,
+                'code' => 'S7',
+            ],
+            [
+                'label' => 'St.St. 316',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $kvFloatDx = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $kvFloat->id,
+                'code' => 'DX',
+            ],
+            [
+                'label' => 'Duplex',
+                'sort_order' => 3,
+                'is_default' => true, // default DX
+                'is_active' => true,
+            ],
+        );
+
+        // Automatic Valve Body Material
+        $avBodyS7 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $avBody->id,
+                'code' => 'S7',
+            ],
+            [
+                'label' => 'St.St. 316',
+                'sort_order' => 1,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        $avBodyD5 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $avBody->id,
+                'code' => 'D5',
+            ],
+            [
+                'label' => 'Duplex 5A',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Automatic Valve Seal Material
+        $avSealEp = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $avSeal->id,
+                'code' => 'EP',
+            ],
+            [
+                'label' => 'EPDM',
+                'sort_order' => 1,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $avSealV2 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $avSeal->id,
+                'code' => 'V2',
+            ],
+            [
+                'label' => 'Viton',
+                'sort_order' => 2,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        // Automatic Valve Float Material
+        $avFloatPp = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $avFloat->id,
+                'code' => 'PP',
+            ],
+            [
+                'label' => 'Polypropylene',
+                'sort_order' => 1,
+                'is_default' => true, // only option, default
+                'is_active' => true,
+            ],
+        );
+
+        // O-ring Material
+        $oringB2 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $oring->id,
+                'code' => 'B2',
+            ],
+            [
+                'label' => 'Buna-N',
+                'sort_order' => 1,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        $oringE2 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $oring->id,
+                'code' => 'E2',
+            ],
+            [
+                'label' => 'EPDM',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $oringV3 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $oring->id,
+                'code' => 'V3',
+            ],
+            [
+                'label' => 'Viton',
+                'sort_order' => 3,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // Air Release Outlet
+        $airPb = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $airRelease->id,
+                'code' => 'PB',
+            ],
+            [
+                'label' => 'Polypropylene, BSPT',
+                'sort_order' => 1,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $airPn = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $airRelease->id,
+                'code' => 'PN',
+            ],
+            [
+                'label' => 'Polypropylene, NPT',
+                'sort_order' => 2,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        // Pressure Release Outlet
+        $prWithout = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $pressureRelease->id,
+                'code' => 'W0',
+            ],
+            [
+                'label' => 'Without',
+                'sort_order' => 1,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $prSsPlug = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $pressureRelease->id,
+                'code' => 'SP',
+            ],
+            [
+                'label' => 'St.St. Plug',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $prBrassPlug = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $pressureRelease->id,
+                'code' => 'BP',
+            ],
+            [
+                'label' => 'Brass Plug',
+                'sort_order' => 3,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $prSsBall = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $pressureRelease->id,
+                'code' => 'SV',
+            ],
+            [
+                'label' => 'St.St. Ball Valve',
+                'sort_order' => 4,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        $prBrassBall = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $pressureRelease->id,
+                'code' => 'BV',
+            ],
+            [
+                'label' => 'Brass Ball Valve',
+                'sort_order' => 5,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        // Screen Cover Material
+        $screenP2 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $screenCover->id,
+                'code' => 'P2',
+            ],
+            [
+                'label' => 'Polypropylene',
+                'sort_order' => 1,
+                'is_default' => true, // default
+                'is_active' => true,
+            ],
+        );
+
+        $screenDi2 = ConfigOption::updateOrCreate(
+            [
+                'config_attribute_id' => $screenCover->id,
+                'code' => 'D2',
+            ],
+            [
+                'label' => 'Ductile Iron',
+                'sort_order' => 2,
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        );
+
+        // 6) Example dependency (for demo only)
+        // Forward-only: Pressure Release Outlet (stage 12) -> Screen Cover Material (stage 13)
+
+        // If Pressure Release = Without => Screen Cover: {Polypropylene}
+        OptionRule::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'config_option_id' => $prWithout->id,
+                'target_attribute_id' => $screenCover->id,
+            ],
+            [
+                'allowed_option_ids' => [$screenP2->id],
+            ],
+        );
+
+        // If Pressure Release = Brass Ball Valve => Screen Cover: {Polypropylene, Ductile Iron}
+        OptionRule::updateOrCreate(
+            [
+                'config_profile_id' => $configProfile->id,
+                'config_option_id' => $prBrassBall->id,
+                'target_attribute_id' => $screenCover->id,
+            ],
+            [
+                'allowed_option_ids' => [$screenP2->id, $screenDi2->id],
+            ],
+        );
+
+        OptionRule::updateOrCreate(
+            [
+                'config_profile_id'   => $configProfile->id,
+                'config_option_id'    => $flangeDin16->id,
+                'target_attribute_id' => $kvBody->id,
+            ],
+            [
+                'allowed_option_ids' => [$kvBodyS6->id, $kvBodyDx->id],
+            ],
+        );
+
+        // Example: if Flange = DIN 16 → only Stainless 316 & Duplex allowed for Kinetic Body
+        OptionRule::updateOrCreate(
+            [
+                'config_profile_id'   => $configProfile->id,
+                'config_option_id'    => $flangeDin16->id,
+                'target_attribute_id' => $kvBody->id,
+            ],
+            [
+                'allowed_option_ids' => [$kvBodyS6->id, $kvBodyDx->id],
+            ],
+        );
+
+        // Example: if Kinetic Body = Duplex 5A → only Viton allowed for Kinetic Seal
+        OptionRule::updateOrCreate(
+            [
+                'config_profile_id'   => $configProfile->id,
+                'config_option_id'    => $kvBodyDx->id,
+                'target_attribute_id' => $kvSeal->id,
+            ],
+            [
+                'allowed_option_ids' => [$kvSealVt->id],
+            ],
+        );
+    }
+}

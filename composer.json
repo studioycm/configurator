@@ -8,6 +8,10 @@
     "require": {
         "php": "^8.2",
         "filament/filament": "^4.2",
+        "lara-zeus/bolt": "^4.0",
+        "lara-zeus/bolt-pro": "^4.0",
+        "lara-zeus/matrix-choice": "^4.0",
+        "lara-zeus/spatie-translatable": "^1.0",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
@@ -16,6 +20,9 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "jasonmccreary/laravel-test-assertions": "^2.8",
+        "laravel-shift/blueprint": "^2.13",
+        "laravel/boost": "^1.8",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
         "laravel/sail": "^1.41",
@@ -87,6 +94,12 @@
             "php-http/discovery": true
         }
     },
+    "repositories": [
+            {
+                "type": "composer",
+                "url": "https://composer.larazeus.com"
+            }
+        ],
     "minimum-stability": "stable",
     "prefer-stable": true
 }
