@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductConfiguration extends Model
@@ -55,8 +56,8 @@ class ProductConfiguration extends Model
         return $this->hasMany(ConfigurationSpecification::class);
     }
 
-    public function fileAttachments(): HasMany
+    public function fileAttachments(): MorphMany
     {
-        return $this->hasMany(FileAttachment::class);
+        return $this->morphMany(FileAttachment::class, 'attachable');
     }
 }

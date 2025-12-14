@@ -15,9 +15,7 @@ return new class extends Migration
 
         Schema::create('file_attachments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('catalog_group_id')->nullable()->constrained();
-            $table->foreignId('product_profile_id')->nullable()->constrained();
-            $table->foreignId('product_configuration_id')->nullable()->constrained();
+            $table->morphs('attachable');
             $table->string('title');
             $table->string('file_path');
             $table->string('file_type')->nullable();

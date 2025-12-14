@@ -15,7 +15,7 @@ return new class extends Migration
 
         Schema::create('product_configurations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_profile_id')->constrained();
+            $table->foreignId('product_profile_id')->constrained()->cascadeOnDelete();
             $table->string('configuration_code')->index();
             $table->string('name')->nullable();
             $table->boolean('is_active')->default(true);

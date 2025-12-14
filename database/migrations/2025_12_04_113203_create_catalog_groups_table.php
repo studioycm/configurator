@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
-            $table->foreignId('parent_id')->nullable()->constrained('catalog_groups');
+            $table->foreignId('parent_id')->nullable()->constrained('catalog_groups')->cascadeOnDelete();
             $table->boolean('is_active')->default(true);
             $table->integer('sort_order')->nullable();
             $table->string('path')->nullable();

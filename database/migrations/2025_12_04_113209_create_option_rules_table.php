@@ -15,9 +15,9 @@ return new class extends Migration
 
         Schema::create('option_rules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('config_profile_id')->constrained();
-            $table->foreignId('config_option_id')->constrained();
-            $table->foreignId('target_attribute_id')->constrained('config_attributes');
+            $table->foreignId('config_profile_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('config_option_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('target_attribute_id')->constrained('config_attributes')->cascadeOnDelete();
             $table->json('allowed_option_ids')->nullable();
             $table->timestamps();
         });

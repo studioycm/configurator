@@ -16,7 +16,7 @@ class CatalogGroupFactory extends Factory
             'name' => fake()->name(),
             'slug' => fake()->slug(),
             'description' => fake()->text(),
-            'parent_id' => CatalogGroup::factory(),
+            'parent_id' => null,
             'is_active' => fake()->boolean(),
             'sort_order' => fake()->numberBetween(-10000, 10000),
             'path' => fake()->word(),

@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -18,7 +19,6 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use LaraZeus\Bolt\BoltPlugin;
 use LaraZeus\SpatieTranslatable\SpatieTranslatablePlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -32,6 +32,10 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('images/favicon-aquestia.png'))
             ->brandName('Aquestia')
             ->brandLogo(asset('images/logo-ari.png'))
+            ->darkModeBrandLogo(asset('images/logo-ari.png'))
+            ->maxContentWidth(Width::Full)
+            ->databaseNotifications()
+            ->sidebarFullyCollapsibleOnDesktop(true)
             ->login()
             ->colors([
                 'primary' => '#09c3aa',
@@ -63,8 +67,6 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 SpatieTranslatablePlugin::make()
                     ->defaultLocales([config('app.locale')]),
-                BoltPlugin::make()
-                    ->navigationGroupLabel('Webforms'),
             ]);
     }
 }

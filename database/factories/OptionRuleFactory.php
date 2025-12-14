@@ -18,7 +18,7 @@ class OptionRuleFactory extends Factory
             'config_profile_id' => ConfigProfile::factory(),
             'config_option_id' => ConfigOption::factory(),
             'target_attribute_id' => ConfigAttribute::factory(),
-            'allowed_option_ids' => '{}',
+            'allowed_option_ids' => [],
         ];
     }
 }

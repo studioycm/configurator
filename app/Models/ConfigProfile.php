@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Casts\JsonRuleCast;
+use App\ConfigProfileScope;
 use App\Models\ConfigAttribute;
 use App\Models\OptionRule;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -38,8 +40,9 @@ class ConfigProfile extends Model
         return [
             'id' => 'integer',
             'product_profile_id' => 'integer',
+            'scope' => ConfigProfileScope::class,
             'is_active' => 'boolean',
-            'extra_rules_json' => 'array',
+            'extra_rules_json' => JsonRuleCast::class,
         ];
     }
 

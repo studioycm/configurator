@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\NormalizedIntArrayCast;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,7 +35,7 @@ class OptionRule extends Model
             'config_profile_id' => 'integer',
             'config_option_id' => 'integer',
             'target_attribute_id' => 'integer',
-            'allowed_option_ids' => 'array',
+            'allowed_option_ids' => NormalizedIntArrayCast::class,
         ];
     }
 

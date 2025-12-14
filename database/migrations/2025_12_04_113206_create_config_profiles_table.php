@@ -15,7 +15,7 @@ return new class extends Migration
 
         Schema::create('config_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_profile_id')->constrained();
+            $table->foreignId('product_profile_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();

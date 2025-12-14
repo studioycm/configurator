@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\FileAttachmentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class FileAttachment extends Model
 {
@@ -16,9 +17,8 @@ class FileAttachment extends Model
      * @var array
      */
     protected $fillable = [
-        'catalog_group_id',
-        'product_profile_id',
-        'product_configuration_id',
+        'attachable_id',
+        'attachable_type',
         'title',
         'file_path',
         'file_type',
@@ -36,25 +36,14 @@ class FileAttachment extends Model
     {
         return [
             'id' => 'integer',
-            'catalog_group_id' => 'integer',
-            'product_profile_id' => 'integer',
-            'product_configuration_id' => 'integer',
+            'attachable_id' => 'integer',
+            'file_type' => FileAttachmentType::class,
             'is_primary' => 'boolean',
         ];
     }
 
-    public function catalogGroup(): BelongsTo
+    public function attachable(): MorphTo
     {
-        return $this->belongsTo(CatalogGroup::class);
-    }
-
-    public function productProfile(): BelongsTo
-    {
-        return $this->belongsTo(ProductProfile::class);
-    }
-
-    public function productConfiguration(): BelongsTo
-    {
-        return $this->belongsTo(ProductConfiguration::class);
+        return $this->morphTo();
     }
 }

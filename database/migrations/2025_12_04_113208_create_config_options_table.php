@@ -15,7 +15,7 @@ return new class extends Migration
 
         Schema::create('config_options', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('config_attribute_id')->constrained();
+            $table->foreignId('config_attribute_id')->constrained()->cascadeOnDelete();
             $table->string('label');
             $table->string('code', 4)->index();
             $table->integer('sort_order')->nullable();

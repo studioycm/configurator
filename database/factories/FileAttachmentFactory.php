@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\FileAttachmentType;
 use App\Models\CatalogGroup;
 use App\Models\ProductConfiguration;
 use App\Models\ProductProfile;
@@ -15,15 +16,38 @@ class FileAttachmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'catalog_group_id' => CatalogGroup::factory(),
-            'product_profile_id' => ProductProfile::factory(),
-            'product_configuration_id' => ProductConfiguration::factory(),
+            'attachable_id' => CatalogGroup::factory(),
+            'attachable_type' => CatalogGroup::class,
             'title' => fake()->sentence(4),
             'file_path' => fake()->word(),
-            'file_type' => fake()->word(),
+            'file_type' => fake()->randomElement(FileAttachmentType::cases()),
             'mime_type' => fake()->word(),
             'sort_order' => fake()->numberBetween(-10000, 10000),
             'is_primary' => fake()->boolean(),
         ];
+    }
+
+    public function forCatalogGroup(): static
+    {
+        return $this->state(fn () => [
+            'attachable_id' => CatalogGroup::factory(),
+            'attachable_type' => CatalogGroup::class,
+        ]);
+    }
+
+    public function forProductProfile(): static
+    {
+        return $this->state(fn () => [
+            'attachable_id' => ProductProfile::factory(),
+            'attachable_type' => ProductProfile::class,
+        ]);
+    }
+
+    public function forProductConfiguration(): static
+    {
+        return $this->state(fn () => [
+            'attachable_id' => ProductConfiguration::factory(),
+            'attachable_type' => ProductConfiguration::class,
+        ]);
     }
 }

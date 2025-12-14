@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\ConfigProfileScope;
 use App\Models\ProductProfile;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -17,9 +18,9 @@ class ConfigProfileFactory extends Factory
             'name' => fake()->name(),
             'slug' => fake()->slug(),
             'description' => fake()->text(),
-            'scope' => fake()->word(),
+            'scope' => fake()->randomElement(ConfigProfileScope::cases()),
             'is_active' => fake()->boolean(),
-            'extra_rules_json' => '{}',
+            'extra_rules_json' => [],
         ];
     }
 }

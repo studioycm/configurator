@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\ConfigInputType;
 use App\Models\ConfigProfile;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -17,7 +18,7 @@ class ConfigAttributeFactory extends Factory
             'name' => fake()->name(),
             'label' => fake()->word(),
             'slug' => fake()->slug(),
-            'input_type' => fake()->word(),
+            'input_type' => fake()->randomElement(ConfigInputType::cases()),
             'sort_order' => fake()->numberBetween(-10000, 10000),
             'is_required' => fake()->boolean(),
             'segment_index' => fake()->numberBetween(-10000, 10000),

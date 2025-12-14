@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\ConfigInputType;
 use App\Models\ConfigOption;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +39,7 @@ class ConfigAttribute extends Model
         return [
             'id' => 'integer',
             'config_profile_id' => 'integer',
+            'input_type' => ConfigInputType::class,
             'is_required' => 'boolean',
         ];
     }

@@ -6,7 +6,7 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "filament/filament": "^4.2",
         "lara-zeus/bolt": "^4.0",
         "lara-zeus/bolt-pro": "^4.0",
@@ -82,7 +82,9 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "rupadana/filament-api-service"
+            ]
         }
     },
     "config": {

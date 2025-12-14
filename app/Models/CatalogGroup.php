@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CatalogGroup extends Model
@@ -45,9 +46,9 @@ class CatalogGroup extends Model
         return $this->hasMany(ProductProfile::class);
     }
 
-    public function fileAttachments(): HasMany
+    public function fileAttachments(): MorphMany
     {
-        return $this->hasMany(FileAttachment::class);
+        return $this->morphMany(FileAttachment::class, 'attachable');
     }
 
     public function parent(): BelongsTo

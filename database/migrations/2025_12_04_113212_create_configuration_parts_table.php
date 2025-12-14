@@ -15,8 +15,8 @@ return new class extends Migration
 
         Schema::create('configuration_parts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_configuration_id')->constrained();
-            $table->foreignId('part_id')->nullable()->constrained();
+            $table->foreignId('product_configuration_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('part_id')->nullable()->constrained()->nullOnDelete();
             $table->integer('part_number');
             $table->string('label')->nullable();
             $table->string('material')->nullable();
