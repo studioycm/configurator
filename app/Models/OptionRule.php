@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use App\Casts\NormalizedIntArrayCast;
+use App\Models\ConfigOption;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class OptionRule extends Model
 {
@@ -52,5 +56,43 @@ class OptionRule extends Model
     public function targetAttribute(): BelongsTo
     {
         return $this->belongsTo(ConfigAttribute::class);
+    }
+
+    public function targetAttributeOptions(): HasMany
+    {
+        return $this->hasMany(ConfigOption::class, 'config_attribute_id', 'target_attribute_id');
+    }
+
+
+
+    public function allowedOptionLabels(): array
+    {
+        $allowedIds = $this->allowed_option_ids ?? [];
+
+        if ($allowedIds === []) {
+            return [];
+        }
+
+        $options = null;
+
+        if ($this->relationLoaded('targetAttribute') && $this->targetAttribute?->relationLoaded('options')) {
+            $options = $this->targetAttribute->options;
+        }
+
+        if ($options === null) {
+            $options = $this->targetAttribute()
+                ->with('options')
+                ->first()?->options;
+        }
+
+        if ($options === null) {
+            return [];
+        }
+
+        return $options
+            ->whereIn('id', $allowedIds)
+            ->pluck('label')
+            ->values()
+            ->all();
     }
 }

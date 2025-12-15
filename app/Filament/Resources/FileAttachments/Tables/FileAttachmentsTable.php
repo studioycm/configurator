@@ -15,15 +15,13 @@ class FileAttachmentsTable
     {
         return $table
             ->columns([
-                TextColumn::make('catalog_group_id')
-                    ->numeric()
+                TextColumn::make('attachable_type')
+                    ->label('Attached To')
+                    ->formatStateUsing(fn ($state, $record) => class_basename($record->attachable_type))
                     ->sortable(),
-                TextColumn::make('product_profile_id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('product_configuration_id')
-                    ->numeric()
-                    ->sortable(),
+                TextColumn::make('attachable.name')
+                    ->label('Name')
+                    ->searchable(),
                 TextColumn::make('title')
                     ->searchable(),
                 TextColumn::make('file_path')

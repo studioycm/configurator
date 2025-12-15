@@ -3,6 +3,10 @@
 namespace App\Filament\Resources\FileAttachments\Schemas;
 
 use App\FileAttachmentType;
+use App\Models\CatalogGroup;
+use App\Models\ProductConfiguration;
+use App\Models\ProductProfile;
+use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -14,12 +18,18 @@ class FileAttachmentForm
     {
         return $schema
             ->components([
-                TextInput::make('catalog_group_id')
-                    ->numeric(),
-                TextInput::make('product_profile_id')
-                    ->numeric(),
-                TextInput::make('product_configuration_id')
-                    ->numeric(),
+                MorphToSelect::make('attachable')
+                    ->types([
+                        MorphToSelect\Type::make(CatalogGroup::class)
+                            ->titleAttribute('name'),
+                        MorphToSelect\Type::make(ProductProfile::class)
+                            ->titleAttribute('name'),
+                        MorphToSelect\Type::make(ProductConfiguration::class)
+                            ->titleAttribute('name'),
+                    ])
+                    ->searchable()
+                    ->preload()
+                    ->required(),
                 TextInput::make('title')
                     ->required(),
                 TextInput::make('file_path')

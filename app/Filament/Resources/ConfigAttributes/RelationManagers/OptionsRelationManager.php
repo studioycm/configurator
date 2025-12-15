@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources\ConfigAttributes\RelationManagers;
 
+use App\Filament\Resources\ConfigOptions\ConfigOptionResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -20,6 +23,11 @@ class OptionsRelationManager extends RelationManager
     {
         return $schema
             ->components([
+                Select::make('config_attribute_id')
+                    ->label('Attribute')
+                    ->relationship('attribute', 'label')
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('label')
                     ->required()
                     ->maxLength(255),
@@ -43,10 +51,14 @@ class OptionsRelationManager extends RelationManager
                 IconColumn::make('is_active')->boolean(),
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->url(fn () => ConfigOptionResource::getUrl('create')),
             ])
             ->recordActions([
-                EditAction::make(),
+                ViewAction::make()
+                    ->url(fn ($record) => ConfigOptionResource::getUrl('edit', ['record' => $record])),
+                EditAction::make()
+                    ->url(fn ($record) => ConfigOptionResource::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),
             ]);
     }
