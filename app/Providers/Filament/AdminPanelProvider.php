@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->sidebarFullyCollapsibleOnDesktop(true)
             ->login()
+            ->passwordReset()
             ->colors([
                 'primary' => '#09c3aa',
             ])
