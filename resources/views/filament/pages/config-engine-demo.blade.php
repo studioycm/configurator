@@ -107,7 +107,7 @@
             </div>
 
         <div x-show="tab === 'configurator'" x-cloak class="space-y-4">
-            <div class="flex gap-4 flex-row-reverse sm:flex-col lg:items-start">
+            <div class="flex gap-4 flex-row-reverse lg:items-start">
                 <div class="w-full lg:w-1/4 shrink-0 space-y-4">
                     <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Group Image</div>
@@ -348,7 +348,7 @@
                     <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Documents</div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             <div class="space-y-2">
                                 <div class="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">GROUP</div>
                                 <div class="space-y-2 text-xs">
@@ -372,6 +372,25 @@
                                 <div class="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">PRODUCT</div>
                                 <div class="space-y-2 text-xs">
                                     @forelse ($this->productFiles as $file)
+                                        <a
+                                            href="{{ asset($file->file_path) }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-3 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
+                                        >
+                                            <span class="text-gray-700 dark:text-gray-200">{{ $file->title }}</span>
+                                            <span class="text-primary-600 dark:text-primary-400">Open</span>
+                                        </a>
+                                    @empty
+                                        <div class="text-gray-500 dark:text-gray-400">No files.</div>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">CONFIGURATION</div>
+                                <div class="space-y-2 text-xs">
+                                    @forelse ($this->configurationFiles as $file)
                                         <a
                                             href="{{ asset($file->file_path) }}"
                                             target="_blank"

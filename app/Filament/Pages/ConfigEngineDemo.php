@@ -271,6 +271,22 @@ class ConfigEngineDemo extends Page
         return $this->nonImageFiles($product->fileAttachments);
     }
 
+    /**
+     * @return Collection<int, FileAttachment>
+     */
+    public function getConfigurationFilesProperty(): Collection
+    {
+        $configuration = $this->demoConfiguration;
+
+        if ($configuration === null) {
+            return collect();
+        }
+
+        $configuration->loadMissing('fileAttachments');
+
+        return $this->nonImageFiles($configuration->fileAttachments);
+    }
+
     public function selectOption(int $attributeId, int $optionId): void
     {
         $this->selection[$attributeId] = $optionId;
