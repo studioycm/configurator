@@ -84,13 +84,13 @@ $files = [
     ],
 ];
 
-$publicPath = __DIR__ . '/../public';
+$publicPath = __DIR__.'/../public';
 
 foreach ($files as $file) {
-    $fullPath = $publicPath . '/' . $file['path'];
+    $fullPath = $publicPath.'/'.$file['path'];
     $dir = dirname($fullPath);
 
-    if (!is_dir($dir)) {
+    if (! is_dir($dir)) {
         mkdir($dir, 0755, true);
         echo "Created directory: $dir\n";
     }
@@ -116,7 +116,7 @@ foreach ($files as $file) {
         $x = ($width - $textWidth) / 2;
         $y = ($height - $fontHeight) / 2;
 
-        imagestring($img, $fontSize, (int)$x, (int)$y, $text, $textColor);
+        imagestring($img, $fontSize, (int) $x, (int) $y, $text, $textColor);
 
         $ext = pathinfo($fullPath, PATHINFO_EXTENSION);
         if (strtolower($ext) === 'png') {
