@@ -55,11 +55,11 @@ class ConfigEngineDemo extends Page
     {
         return [
             'Global' => 'Global',
-            'USA' => 'USA',
-            'Germany' => 'Germany',
-            'Europe' => 'Europe',
-            'Russia' => 'Russia',
-            'Australia' => 'Australia',
+            'USA' => '🇺🇸 USA',
+            'Germany' => '🇩🇪 Germany',
+            'Europe' => '🇪🇺 Europe',
+            'Russia' => '🇷🇺 Russia',
+            'Australia' => '🇦🇺 Australia',
         ];
     }
 
@@ -160,21 +160,33 @@ class ConfigEngineDemo extends Page
             ->label('Change')
             ->modalHeading('Territory & Application')
             ->modalSubmitActionLabel('Apply')
-            ->modalWidth('lg')
+            ->modalWidth('xl')
             ->fillForm(fn (): array => [
                 'territory' => $this->territory,
                 'application' => $this->application,
             ])
-            ->form([
+            ->schema([
                 ToggleButtons::make('territory')
                     ->label('Territory')
                     ->options($this->territoryOptions())
+                    ->icons([
+                        'Global' => 'heroicon-o-globe-alt',
+                    ])
                     ->inline()
+                    ->grouped()
                     ->required(),
                 ToggleButtons::make('application')
                     ->label('Application')
                     ->options($this->applicationOptions())
+                    ->icons([
+                        'Show All' => 'heroicon-o-squares-2x2',
+                        'Industry' => 'heroicon-o-building-office-2',
+                        'Water Supply' => 'heroicon-o-beaker',
+                        'Agriculture' => 'heroicon-o-sun',
+                        'Wastewater' => 'heroicon-o-arrow-path-rounded-square',
+                    ])
                     ->inline()
+                    ->grouped()
                     ->required(),
             ])
             ->action(function (array $data): void {
