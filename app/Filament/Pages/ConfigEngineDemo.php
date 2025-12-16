@@ -6,15 +6,21 @@ use App\DTO\ConfigOptionDTO;
 use App\DTO\ConfigStageDTO;
 use App\FileAttachmentType;
 use App\Models\ConfigProfile;
+use App\Models\ConfigurationSpecification;
 use App\Models\FileAttachment;
 use App\Models\ProductConfiguration;
 use App\Services\ConfiguratorEngine;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 
 class ConfigEngineDemo extends Page
 {
+    use InteractsWithActions;
+
     protected static ?string $slug = 'config-engine-demo';
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-vertical';
@@ -24,6 +30,10 @@ class ConfigEngineDemo extends Page
     public ?ConfigProfile $configProfile = null;
 
     public ?ProductConfiguration $demoConfiguration = null;
+
+    public string $territory = 'Global';
+
+    public string $application = 'Show All';
 
     /** @var array<int, array<string, mixed>> */
     public array $stages = [];
@@ -35,6 +45,35 @@ class ConfigEngineDemo extends Page
     public array $allowed = [];
 
     protected ?ConfiguratorEngine $engine = null;
+
+    private const TERRITORY_SESSION_KEY = 'config_engine_demo.territory';
+
+    private const APPLICATION_SESSION_KEY = 'config_engine_demo.application';
+
+    /** @return array<string, string> */
+    private function territoryOptions(): array
+    {
+        return [
+            'Global' => 'Global',
+            'USA' => 'USA',
+            'Germany' => 'Germany',
+            'Europe' => 'Europe',
+            'Russia' => 'Russia',
+            'Australia' => 'Australia',
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function applicationOptions(): array
+    {
+        return [
+            'Show All' => 'Show All',
+            'Industry' => 'Industry',
+            'Water Supply' => 'Water Supply',
+            'Agriculture' => 'Agriculture',
+            'Wastewater' => 'Wastewater',
+        ];
+    }
 
     public function getHeading(): string
     {
@@ -59,6 +98,9 @@ class ConfigEngineDemo extends Page
     public function mount(): void
     {
         $this->engine ??= app(ConfiguratorEngine::class);
+
+        $this->territory = (string) session()->get(self::TERRITORY_SESSION_KEY, 'Global');
+        $this->application = (string) session()->get(self::APPLICATION_SESSION_KEY, 'Show All');
 
         $this->configProfile = ConfigProfile::query()
             ->with([
@@ -112,6 +154,38 @@ class ConfigEngineDemo extends Page
         );
     }
 
+    public function editContextAction(): Action
+    {
+        return Action::make('editContext')
+            ->label('Change')
+            ->modalHeading('Territory & Application')
+            ->modalSubmitActionLabel('Apply')
+            ->modalWidth('lg')
+            ->fillForm(fn (): array => [
+                'territory' => $this->territory,
+                'application' => $this->application,
+            ])
+            ->form([
+                ToggleButtons::make('territory')
+                    ->label('Territory')
+                    ->options($this->territoryOptions())
+                    ->inline()
+                    ->required(),
+                ToggleButtons::make('application')
+                    ->label('Application')
+                    ->options($this->applicationOptions())
+                    ->inline()
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                $this->territory = (string) ($data['territory'] ?? 'Global');
+                $this->application = (string) ($data['application'] ?? 'Show All');
+
+                session()->put(self::TERRITORY_SESSION_KEY, $this->territory);
+                session()->put(self::APPLICATION_SESSION_KEY, $this->application);
+            });
+    }
+
     public function getProductProperty(): ?\App\Models\ProductProfile
     {
         return $this->configProfile?->productProfile;
@@ -125,6 +199,44 @@ class ConfigEngineDemo extends Page
     public function getGroupMainImagePathProperty(): ?string
     {
         return $this->group?->mainImage?->file_path;
+    }
+
+    /**
+     * @return Collection<int, ConfigurationSpecification>
+     */
+    public function getDimensionsProperty(): Collection
+    {
+        $configuration = $this->demoConfiguration;
+
+        if ($configuration === null) {
+            return collect();
+        }
+
+        $configuration->loadMissing('configurationSpecifications');
+
+        return $configuration->configurationSpecifications
+            ->filter(fn (ConfigurationSpecification $line): bool => $line->spec_group === 'Dimensions')
+            ->sortBy('sort_order')
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, ConfigurationSpecification>
+     */
+    public function getSpecificationsProperty(): Collection
+    {
+        $configuration = $this->demoConfiguration;
+
+        if ($configuration === null) {
+            return collect();
+        }
+
+        $configuration->loadMissing('configurationSpecifications');
+
+        return $configuration->configurationSpecifications
+            ->filter(fn (ConfigurationSpecification $line): bool => $line->spec_group === 'Specifications')
+            ->sortBy('sort_order')
+            ->values();
     }
 
     /**

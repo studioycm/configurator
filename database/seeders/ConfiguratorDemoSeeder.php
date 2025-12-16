@@ -883,59 +883,44 @@ class ConfiguratorDemoSeeder extends Seeder
         );
 
         // 9) Configuration parts (BOM lines)
+        // Based on the legacy demo dataset shared by the user (kept as simple label/material lines).
         $bomLines = [
-            [
-                'part_number' => 1,
-                'label' => 'Body',
-                'part_code' => 'D60S-BODY-DI',
-                'material' => 'Ductile Iron',
-                'quantity' => 1,
-                'unit' => 'pcs',
-            ],
-            [
-                'part_number' => 2,
-                'label' => 'Cover',
-                'part_code' => 'D60S-COVER-DI',
-                'material' => 'Ductile Iron',
-                'quantity' => 1,
-                'unit' => 'pcs',
-            ],
-            [
-                'part_number' => 3,
-                'label' => 'Float',
-                'part_code' => 'D60S-FLOAT-PP',
-                'material' => 'Polypropylene',
-                'quantity' => 1,
-                'unit' => 'pcs',
-            ],
-            [
-                'part_number' => 4,
-                'label' => 'Seal Kit',
-                'part_code' => 'D60S-SEAL-EPDM',
-                'material' => 'EPDM',
-                'quantity' => 1,
-                'unit' => 'set',
-            ],
-            [
-                'part_number' => 5,
-                'label' => 'Fasteners',
-                'part_code' => 'D60S-BOLTS-SS',
-                'material' => 'Stainless Steel',
-                'quantity' => 1,
-                'unit' => 'set',
-            ],
+            ['part_number' => 1, 'label' => 'Discharge Outlet', 'material' => 'Polyethylene', 'quantity' => null, 'unit' => null],
+            ['part_number' => 2, 'label' => 'Bolt', 'material' => 'Stainless Steel SAE 316', 'quantity' => null, 'unit' => null],
+            ['part_number' => 3, 'label' => 'Angle Support', 'material' => 'Stainless Steel SAE 316', 'quantity' => null, 'unit' => null],
+            ['part_number' => 4, 'label' => 'Ring', 'material' => 'Steel DIN ST.37', 'quantity' => null, 'unit' => null],
+            ['part_number' => 5, 'label' => 'Non-Slam Disc', 'material' => 'Ductile Iron', 'quantity' => null, 'unit' => null],
+            ['part_number' => 6, 'label' => 'Non Slam Housing', 'material' => 'Polyethylene', 'quantity' => null, 'unit' => null],
+            ['part_number' => 7, 'label' => 'Orifice Seat', 'material' => 'Stainless Steel SAE 316', 'quantity' => null, 'unit' => null],
+            ['part_number' => 8, 'label' => 'Orifice Seal', 'material' => 'EPDM', 'quantity' => null, 'unit' => null],
+            ['part_number' => 9, 'label' => 'Bolt, Nut & Washer', 'material' => 'Galvanized Steel', 'quantity' => null, 'unit' => null],
+            ['part_number' => 10, 'label' => 'Cover', 'material' => 'Duct. Iron A536 60-40-18', 'quantity' => null, 'unit' => null],
+            ['part_number' => 11, 'label' => 'O-Ring', 'material' => 'Buna-N', 'quantity' => null, 'unit' => null],
+            ['part_number' => 12, 'label' => 'Float', 'material' => 'Polycarbonate', 'quantity' => null, 'unit' => null],
+            ['part_number' => 13, 'label' => 'Body', 'material' => 'Duct. Iron A536 60-40-18', 'quantity' => null, 'unit' => null],
+            ['part_number' => 14, 'label' => 'Float', 'material' => 'Foamed Polypropylene', 'quantity' => null, 'unit' => null],
+            ['part_number' => 15, 'label' => 'Rolling Seal', 'material' => 'EPDM', 'quantity' => null, 'unit' => null],
+            ['part_number' => 16, 'label' => 'Clamping Stem', 'material' => 'Polypropylene', 'quantity' => null, 'unit' => null],
+            ['part_number' => 17, 'label' => 'Body', 'material' => 'Reinforced Nylon', 'quantity' => null, 'unit' => null],
+            ['part_number' => 18, 'label' => 'Extension', 'material' => 'Reinforced Nylon', 'quantity' => null, 'unit' => null],
+            ['part_number' => 19, 'label' => 'O-Ring', 'material' => 'Buna-N', 'quantity' => null, 'unit' => null],
+            ['part_number' => 20, 'label' => 'O-Ring', 'material' => 'Buna-N', 'quantity' => null, 'unit' => null],
+            ['part_number' => 21, 'label' => 'Base', 'material' => 'Brass ASTM B-124', 'quantity' => null, 'unit' => null],
+            ['part_number' => 22, 'label' => 'Strainer', 'material' => 'Nylon', 'quantity' => null, 'unit' => null],
+            ['part_number' => 23, 'label' => 'Coupler', 'material' => 'Brass', 'quantity' => null, 'unit' => null],
+            ['part_number' => 24, 'label' => 'Adaptor', 'material' => 'Brass', 'quantity' => null, 'unit' => null],
+            ['part_number' => 25, 'label' => 'Air Release Outlet', 'material' => 'Polypropylene, BSPT', 'quantity' => null, 'unit' => null],
+            ['part_number' => 26, 'label' => 'Press. Release Outlet', 'material' => 'Without', 'quantity' => null, 'unit' => null],
         ];
 
         foreach ($bomLines as $i => $line) {
-            $part = $parts[$line['part_code']] ?? null;
-
             ConfigurationPart::updateOrCreate(
                 [
                     'product_configuration_id' => $configurationA->id,
                     'part_number' => $line['part_number'],
                 ],
                 [
-                    'part_id' => $part?->id,
+                    'part_id' => null,
                     'label' => $line['label'],
                     'material' => $line['material'],
                     'quantity' => $line['quantity'],
@@ -949,12 +934,29 @@ class ConfiguratorDemoSeeder extends Seeder
 
         // 10) Configuration specifications (spec sheet lines)
         $specLines = [
-            ['spec_group' => 'General', 'key' => 'Product', 'value' => 'D-060 Series Combination Air Valve', 'unit' => null],
-            ['spec_group' => 'General', 'key' => 'Configuration Code', 'value' => $configurationA->configuration_code, 'unit' => null],
-            ['spec_group' => 'Standards', 'key' => 'Flange Standard', 'value' => 'DIN 16', 'unit' => null],
-            ['spec_group' => 'Materials', 'key' => 'Kinetic Body', 'value' => 'Stainless Steel 316', 'unit' => null],
-            ['spec_group' => 'Materials', 'key' => 'Kinetic Seal', 'value' => 'EPDM', 'unit' => null],
-            ['spec_group' => 'Materials', 'key' => 'Screen Cover', 'value' => 'Polypropylene', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'A', 'value' => '426 mm (16.78″)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'B', 'value' => '750 mm (29.55″)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'C', 'value' => '6″ (150mm)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'E', 'value' => '236 mm (9.29″)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'D', 'value' => '1/8″', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'ØD', 'value' => '11″ (280 mm)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'ØG', 'value' => '3/4″ (22.5 mm)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'ØK', 'value' => '9–1/2″ (241.3 mm)', 'unit' => null],
+            ['spec_group' => 'Dimensions', 'key' => 'Holes', 'value' => '8', 'unit' => null],
+
+            ['spec_group' => 'Specifications', 'key' => 'Series', 'value' => 'D060', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Working Pressure', 'value' => '16 bar (250 psi)', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Valve Type', 'value' => 'Non Slam', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Connection Type', 'value' => 'Flange', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Flange Standard', 'value' => 'ASA 150', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Connection Size', 'value' => '6″', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Automatic Type', 'value' => 'Composite', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Auto Flow Type', 'value' => 'Standard Flow', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Max Temp', 'value' => '60°C (140°F)', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Weight', 'value' => '91 Kg (200.65 Lbs) ±5%', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'AV', 'value' => '17662 mm² (27.376 Sq.in)', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Orifice Area', 'value' => '12 mm² (0.019 Sq.in)', 'unit' => null],
+            ['spec_group' => 'Specifications', 'key' => 'Coating', 'value' => 'FBE Blue', 'unit' => null],
         ];
 
         foreach ($specLines as $i => $line) {
