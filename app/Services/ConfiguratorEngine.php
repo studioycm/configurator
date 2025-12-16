@@ -5,8 +5,8 @@ namespace App\Services;
 use App\DTO\ConfigOptionDTO;
 use App\DTO\ConfigStageDTO;
 use App\Models\ConfigAttribute;
-use App\Models\ConfigProfile;
 use App\Models\ConfigOption;
+use App\Models\ConfigProfile;
 use App\Models\OptionRule;
 use Illuminate\Support\Collection;
 
@@ -47,6 +47,92 @@ final class ConfiguratorEngine
             ->all();
     }
 
+    /**
+     * Build a JSON-friendly manifest that can be reused by a client-side engine.
+     *
+     * @return array{
+     *     profile_id:int,
+     *     stages: array<int, array{
+     *         id:int,
+     *         slug:?string,
+     *         name:string,
+     *         label:string,
+     *         input_type:?string,
+     *         sort_order:int,
+     *         segment_index:?int,
+     *         is_required:bool,
+     *         options: array<int, array{
+     *             id:int,
+     *             label:string,
+     *             code:?string,
+     *             sort_order:int,
+     *             is_default:bool,
+     *             is_active:bool
+     *         }>
+     *     }>,
+     *     rules: array<int, array{
+     *         id:int,
+     *         type:string,
+     *         trigger_option_id:int,
+     *         target_attribute_id:int,
+     *         allowed_option_ids: int[]
+     *     }>
+     * }
+     */
+    public function buildManifest(ConfigProfile $profile): array
+    {
+        $attributes = $profile->attributes()
+            ->with(['options' => fn ($q) => $q->orderBy('sort_order')])
+            ->orderBy('sort_order')
+            ->get();
+
+        $rules = $profile->rules()->get([
+            'id',
+            'config_option_id',
+            'target_attribute_id',
+            'allowed_option_ids',
+        ]);
+
+        return [
+            'profile_id' => (int) $profile->id,
+            'stages' => $attributes
+                ->map(fn (ConfigAttribute $attr) => [
+                    'id' => (int) $attr->id,
+                    'slug' => $attr->slug,
+                    'name' => $attr->name,
+                    'label' => (string) ($attr->label ?? $attr->name),
+                    'input_type' => $attr->input_type?->value,
+                    'sort_order' => (int) $attr->sort_order,
+                    'segment_index' => $attr->segment_index,
+                    'is_required' => (bool) $attr->is_required,
+                    'options' => $attr->options
+                        ->sortBy('sort_order')
+                        ->map(fn (ConfigOption $opt) => [
+                            'id' => (int) $opt->id,
+                            'label' => (string) $opt->label,
+                            'code' => $opt->code,
+                            'sort_order' => (int) $opt->sort_order,
+                            'is_default' => (bool) $opt->is_default,
+                            'is_active' => (bool) $opt->is_active,
+                        ])
+                        ->values()
+                        ->all(),
+                ])
+                ->values()
+                ->all(),
+            'rules' => $rules
+                ->map(fn (OptionRule $rule) => [
+                    'id' => (int) $rule->id,
+                    'type' => 'restrict_allowed_options',
+                    'trigger_option_id' => (int) $rule->config_option_id,
+                    'target_attribute_id' => (int) $rule->target_attribute_id,
+                    'allowed_option_ids' => $rule->allowed_option_ids ?? [],
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
     public function defaultSelection(array $stages): array
     {
         $selection = [];
@@ -57,6 +143,7 @@ final class ConfiguratorEngine
 
             if ($default instanceof ConfigOptionDTO) {
                 $selection[$stage->id] = $default->id;
+
                 continue;
             }
 
@@ -81,6 +168,71 @@ final class ConfiguratorEngine
                 ->map(fn (ConfigOptionDTO $o) => $o->id)
                 ->values()
                 ->all();
+        }
+
+        return $allowed;
+    }
+
+    /**
+     * @param  array{stages: array<int, array{id:int, options: array<int, array{id:int, is_active:bool}>}>}  $manifest
+     * @return array<int, int[]>
+     */
+    public function baseAllowedFromManifest(array $manifest): array
+    {
+        $allowed = [];
+
+        foreach (($manifest['stages'] ?? []) as $stage) {
+            $stageId = (int) ($stage['id'] ?? 0);
+            if (! $stageId) {
+                continue;
+            }
+
+            $allowed[$stageId] = collect($stage['options'] ?? [])
+                ->filter(fn (array $o): bool => (bool) ($o['is_active'] ?? false))
+                ->map(fn (array $o): int => (int) $o['id'])
+                ->values()
+                ->all();
+        }
+
+        return $allowed;
+    }
+
+    /**
+     * Client-side friendly rule evaluation.
+     *
+     * @param  array{stages: array, rules: array}  $manifest
+     * @param  array<int, int>  $selection  attribute_id => option_id
+     * @return array<int, int[]> allowed options per attribute
+     */
+    public function recalculateAllowedFromManifest(array $manifest, array $selection): array
+    {
+        $allowed = $this->baseAllowedFromManifest($manifest);
+
+        if ($selection === []) {
+            return $allowed;
+        }
+
+        $rulesByTrigger = [];
+        foreach (($manifest['rules'] ?? []) as $rule) {
+            $triggerOptionId = (int) ($rule['trigger_option_id'] ?? 0);
+            if (! $triggerOptionId) {
+                continue;
+            }
+
+            $rulesByTrigger[$triggerOptionId][] = $rule;
+        }
+
+        foreach (array_values($selection) as $selectedOptionId) {
+            foreach (($rulesByTrigger[(int) $selectedOptionId] ?? []) as $rule) {
+                $targetAttrId = (int) ($rule['target_attribute_id'] ?? 0);
+                $allowedIds = $rule['allowed_option_ids'] ?? [];
+
+                if ($targetAttrId === 0 || $allowedIds === [] || ! isset($allowed[$targetAttrId])) {
+                    continue;
+                }
+
+                $allowed[$targetAttrId] = array_values(array_intersect($allowed[$targetAttrId], $allowedIds));
+            }
         }
 
         return $allowed;
@@ -124,6 +276,7 @@ final class ConfiguratorEngine
 
             if ($allowedIds === []) {
                 unset($selection[$attrId]);
+
                 continue;
             }
 
@@ -136,6 +289,7 @@ final class ConfiguratorEngine
 
             if ($default instanceof ConfigOptionDTO) {
                 $selection[$attrId] = $default->id;
+
                 continue;
             }
 
@@ -152,6 +306,7 @@ final class ConfiguratorEngine
         foreach ($selection as $attrId => $optionId) {
             if (! in_array($attrId, $stageIds, true)) {
                 unset($selection[$attrId]);
+
                 continue;
             }
 

@@ -18,6 +18,10 @@ class FileAttachmentResource extends Resource
 {
     protected static ?string $model = FileAttachment::class;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Assets';
+
+    protected static ?int $navigationSort = 40;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     public static function form(Schema $schema): Schema

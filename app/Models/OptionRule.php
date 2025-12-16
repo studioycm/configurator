@@ -3,13 +3,11 @@
 namespace App\Models;
 
 use App\Casts\NormalizedIntArrayCast;
-use App\Models\ConfigOption;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class OptionRule extends Model
 {
@@ -45,25 +43,28 @@ class OptionRule extends Model
 
     public function configProfile(): BelongsTo
     {
-        return $this->belongsTo(ConfigProfile::class);
+        return $this->belongsTo(ConfigProfile::class, 'config_profile_id', 'id');
     }
 
     public function option(): BelongsTo
     {
-        return $this->belongsTo(ConfigOption::class);
+        return $this->belongsTo(ConfigOption::class, 'config_option_id', 'id');
+    }
+
+    public function optionAttribute(): HasOneThrough
+    {
+        return $this->hasOneThrough(ConfigAttribute::class, ConfigOption::class, 'id', 'id', 'config_option_id', 'config_attribute_id');
     }
 
     public function targetAttribute(): BelongsTo
     {
-        return $this->belongsTo(ConfigAttribute::class);
+        return $this->belongsTo(ConfigAttribute::class, 'target_attribute_id', 'id');
     }
 
     public function targetAttributeOptions(): HasMany
     {
         return $this->hasMany(ConfigOption::class, 'config_attribute_id', 'target_attribute_id');
     }
-
-
 
     public function allowedOptionLabels(): array
     {

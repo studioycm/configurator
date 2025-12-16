@@ -18,6 +18,10 @@ class ConfigurationPartResource extends Resource
 {
     protected static ?string $model = ConfigurationPart::class;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Configurations';
+
+    protected static ?int $navigationSort = 21;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     public static function form(Schema $schema): Schema

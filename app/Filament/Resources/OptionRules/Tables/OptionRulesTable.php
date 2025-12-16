@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OptionRules\Tables;
 
+use App\Models\OptionRule;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -15,15 +16,19 @@ class OptionRulesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['configProfile', 'option', 'targetAttribute.options']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['configProfile', 'optionAttribute', 'option', 'targetAttribute']))
             ->columns([
                 TextColumn::make('configProfile.name')
                     ->label('Config Profile')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('optionAttribute.label')
+                    ->label('Attribute')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('option.label')
                     ->label('Option')
-                    ->searchable()
+                    ->description(fn (OptionRule $record): string => (string) ($record->option?->code))
                     ->sortable(),
                 TextColumn::make('targetAttribute.label')
                     ->label('Target Attribute')

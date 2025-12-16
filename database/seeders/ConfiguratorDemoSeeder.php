@@ -2,11 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\FileAttachmentType;
 use App\Models\CatalogGroup;
 use App\Models\ConfigAttribute;
 use App\Models\ConfigOption;
 use App\Models\ConfigProfile;
+use App\Models\ConfigurationPart;
+use App\Models\ConfigurationSpecification;
+use App\Models\FileAttachment;
 use App\Models\OptionRule;
+use App\Models\Part;
+use App\Models\ProductConfiguration;
 use App\Models\ProductProfile;
 use Illuminate\Database\Seeder;
 
@@ -768,8 +774,8 @@ class ConfiguratorDemoSeeder extends Seeder
 
         OptionRule::updateOrCreate(
             [
-                'config_profile_id'   => $configProfile->id,
-                'config_option_id'    => $flangeDin16->id,
+                'config_profile_id' => $configProfile->id,
+                'config_option_id' => $flangeDin16->id,
                 'target_attribute_id' => $kvBody->id,
             ],
             [
@@ -780,8 +786,8 @@ class ConfiguratorDemoSeeder extends Seeder
         // Example: if Flange = DIN 16 → only Stainless 316 & Duplex allowed for Kinetic Body
         OptionRule::updateOrCreate(
             [
-                'config_profile_id'   => $configProfile->id,
-                'config_option_id'    => $flangeDin16->id,
+                'config_profile_id' => $configProfile->id,
+                'config_option_id' => $flangeDin16->id,
                 'target_attribute_id' => $kvBody->id,
             ],
             [
@@ -792,12 +798,223 @@ class ConfiguratorDemoSeeder extends Seeder
         // Example: if Kinetic Body = Duplex 5A → only Viton allowed for Kinetic Seal
         OptionRule::updateOrCreate(
             [
-                'config_profile_id'   => $configProfile->id,
-                'config_option_id'    => $kvBodyDx->id,
+                'config_profile_id' => $configProfile->id,
+                'config_option_id' => $kvBodyDx->id,
                 'target_attribute_id' => $kvSeal->id,
             ],
             [
                 'allowed_option_ids' => [$kvSealVt->id],
+            ],
+        );
+
+        // 7) Parts (BOM master data)
+        $parts = collect([
+            [
+                'code' => 'D60S-BODY-DI',
+                'name' => 'Body',
+                'description' => 'Valve main body',
+                'default_material' => 'Ductile Iron',
+                'is_active' => true,
+            ],
+            [
+                'code' => 'D60S-COVER-DI',
+                'name' => 'Cover',
+                'description' => 'Top cover',
+                'default_material' => 'Ductile Iron',
+                'is_active' => true,
+            ],
+            [
+                'code' => 'D60S-FLOAT-PP',
+                'name' => 'Float',
+                'description' => 'Float assembly',
+                'default_material' => 'Polypropylene',
+                'is_active' => true,
+            ],
+            [
+                'code' => 'D60S-SEAL-EPDM',
+                'name' => 'Seal Kit',
+                'description' => 'Seal kit',
+                'default_material' => 'EPDM',
+                'is_active' => true,
+            ],
+            [
+                'code' => 'D60S-BOLTS-SS',
+                'name' => 'Fasteners Set',
+                'description' => 'Bolts, nuts, and washers set',
+                'default_material' => 'Stainless Steel',
+                'is_active' => true,
+            ],
+        ])->mapWithKeys(function (array $data): array {
+            $part = Part::updateOrCreate(
+                ['code' => $data['code']],
+                [
+                    'name' => $data['name'],
+                    'description' => $data['description'],
+                    'default_material' => $data['default_material'],
+                    'is_active' => $data['is_active'],
+                ],
+            );
+
+            return [$data['code'] => $part];
+        });
+
+        // 8) Saved configuration instances
+        $selectionA = [
+            $flange->id => $flangeDin16->id,
+            $kvBody->id => $kvBodyS6->id,
+            $kvSeal->id => $kvSealEp->id,
+            $kvSeat->id => $kvSeatBr->id,
+            $kvFloat->id => $kvFloatPc->id,
+            $pressureRelease->id => $prBrassBall->id,
+            $screenCover->id => $screenP2->id,
+        ];
+
+        $configurationA = ProductConfiguration::updateOrCreate(
+            [
+                'product_profile_id' => $profile->id,
+                'configuration_code' => 'D60S-P16-03-DEMO-A',
+            ],
+            [
+                'name' => 'D60S Demo Configuration A',
+                'is_active' => true,
+                'drawing_image_path' => 'demo/configurations/d60s-p16-03-demo-a/drawing.png',
+                'config_data' => $selectionA,
+            ],
+        );
+
+        // 9) Configuration parts (BOM lines)
+        $bomLines = [
+            [
+                'part_number' => 1,
+                'label' => 'Body',
+                'part_code' => 'D60S-BODY-DI',
+                'material' => 'Ductile Iron',
+                'quantity' => 1,
+                'unit' => 'pcs',
+            ],
+            [
+                'part_number' => 2,
+                'label' => 'Cover',
+                'part_code' => 'D60S-COVER-DI',
+                'material' => 'Ductile Iron',
+                'quantity' => 1,
+                'unit' => 'pcs',
+            ],
+            [
+                'part_number' => 3,
+                'label' => 'Float',
+                'part_code' => 'D60S-FLOAT-PP',
+                'material' => 'Polypropylene',
+                'quantity' => 1,
+                'unit' => 'pcs',
+            ],
+            [
+                'part_number' => 4,
+                'label' => 'Seal Kit',
+                'part_code' => 'D60S-SEAL-EPDM',
+                'material' => 'EPDM',
+                'quantity' => 1,
+                'unit' => 'set',
+            ],
+            [
+                'part_number' => 5,
+                'label' => 'Fasteners',
+                'part_code' => 'D60S-BOLTS-SS',
+                'material' => 'Stainless Steel',
+                'quantity' => 1,
+                'unit' => 'set',
+            ],
+        ];
+
+        foreach ($bomLines as $i => $line) {
+            $part = $parts[$line['part_code']] ?? null;
+
+            ConfigurationPart::updateOrCreate(
+                [
+                    'product_configuration_id' => $configurationA->id,
+                    'part_number' => $line['part_number'],
+                ],
+                [
+                    'part_id' => $part?->id,
+                    'label' => $line['label'],
+                    'material' => $line['material'],
+                    'quantity' => $line['quantity'],
+                    'unit' => $line['unit'],
+                    'segment_index' => null,
+                    'notes' => null,
+                    'sort_order' => $i + 1,
+                ],
+            );
+        }
+
+        // 10) Configuration specifications (spec sheet lines)
+        $specLines = [
+            ['spec_group' => 'General', 'key' => 'Product', 'value' => 'D-060 Series Combination Air Valve', 'unit' => null],
+            ['spec_group' => 'General', 'key' => 'Configuration Code', 'value' => $configurationA->configuration_code, 'unit' => null],
+            ['spec_group' => 'Standards', 'key' => 'Flange Standard', 'value' => 'DIN 16', 'unit' => null],
+            ['spec_group' => 'Materials', 'key' => 'Kinetic Body', 'value' => 'Stainless Steel 316', 'unit' => null],
+            ['spec_group' => 'Materials', 'key' => 'Kinetic Seal', 'value' => 'EPDM', 'unit' => null],
+            ['spec_group' => 'Materials', 'key' => 'Screen Cover', 'value' => 'Polypropylene', 'unit' => null],
+        ];
+
+        foreach ($specLines as $i => $line) {
+            ConfigurationSpecification::updateOrCreate(
+                [
+                    'product_configuration_id' => $configurationA->id,
+                    'key' => $line['key'],
+                ],
+                [
+                    'spec_group' => $line['spec_group'],
+                    'value' => $line['value'],
+                    'unit' => $line['unit'],
+                    'sort_order' => $i + 1,
+                ],
+            );
+        }
+
+        // 11) File attachments (polymorphic)
+        FileAttachment::updateOrCreate(
+            [
+                'attachable_type' => CatalogGroup::class,
+                'attachable_id' => $group->id,
+                'title' => 'Overview',
+            ],
+            [
+                'file_path' => 'demo/catalog/combination-air-valves/overview.pdf',
+                'file_type' => FileAttachmentType::Media,
+                'mime_type' => 'application/pdf',
+                'sort_order' => 1,
+                'is_primary' => true,
+            ],
+        );
+
+        FileAttachment::updateOrCreate(
+            [
+                'attachable_type' => ProductProfile::class,
+                'attachable_id' => $profile->id,
+                'title' => 'Datasheet',
+            ],
+            [
+                'file_path' => 'demo/products/d60s/datasheet.pdf',
+                'file_type' => FileAttachmentType::Datasheet,
+                'mime_type' => 'application/pdf',
+                'sort_order' => 1,
+                'is_primary' => true,
+            ],
+        );
+
+        FileAttachment::updateOrCreate(
+            [
+                'attachable_type' => ProductConfiguration::class,
+                'attachable_id' => $configurationA->id,
+                'title' => 'Specification Sheet',
+            ],
+            [
+                'file_path' => 'demo/configurations/d60s-p16-03-demo-a/spec-sheet.pdf',
+                'file_type' => FileAttachmentType::Specification,
+                'mime_type' => 'application/pdf',
+                'sort_order' => 1,
+                'is_primary' => true,
             ],
         );
     }

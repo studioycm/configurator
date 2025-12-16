@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\ConfigOptions\Tables;
 
-use App\Models\ConfigOption;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,8 +17,12 @@ class ConfigOptionsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['attribute']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['configProfile', 'attribute']))
             ->columns([
+                TextColumn::make('configProfile.name')
+                    ->label('Config Profile')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('attribute.label')
                     ->label('Attribute')
                     ->state(function (Model $record): ?string {
@@ -50,9 +53,26 @@ class ConfigOptionsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('config_profile_id')
+                    ->label('Config Profile')
+                    ->relationship('configProfile', 'name')
+                    ->searchable()
+                    ->preload(),
                 SelectFilter::make('attribute')
                     ->relationship('attribute', 'label')
                     ->preload(),
+                SelectFilter::make('is_active')
+                    ->label('Active')
+                    ->options([
+                        '1' => 'Active',
+                        '0' => 'Inactive',
+                    ]),
+                SelectFilter::make('is_default')
+                    ->label('Default')
+                    ->options([
+                        '1' => 'Default',
+                        '0' => 'Non-default',
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),

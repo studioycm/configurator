@@ -38,6 +38,6 @@ class Part extends Model
 
     public function configurationParts(): HasMany
     {
-        return $this->hasMany(ConfigurationPart::class);
+        return $this->hasMany(ConfigurationPart::class, 'part_id', 'id');
     }
 }

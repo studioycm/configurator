@@ -18,6 +18,10 @@ class OptionRuleResource extends Resource
 {
     protected static ?string $model = OptionRule::class;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
+
+    protected static ?int $navigationSort = 13;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     public static function form(Schema $schema): Schema

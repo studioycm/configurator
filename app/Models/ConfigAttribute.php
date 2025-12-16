@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\ConfigInputType;
-use App\Models\ConfigOption;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,11 +45,13 @@ class ConfigAttribute extends Model
 
     public function configProfile(): BelongsTo
     {
-        return $this->belongsTo(ConfigProfile::class);
+        return $this->belongsTo(ConfigProfile::class, 'config_profile_id', 'id');
     }
 
     public function options(): HasMany
     {
-        return $this->hasMany(ConfigOption::class);
+        return $this->hasMany(ConfigOption::class, 'config_attribute_id', 'id');
     }
+
+
 }

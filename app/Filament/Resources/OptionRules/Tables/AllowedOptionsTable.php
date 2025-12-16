@@ -6,8 +6,8 @@ use App\Models\ConfigOption;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table as TableComponent;
+use Illuminate\Database\Eloquent\Builder;
 
 class AllowedOptionsTable
 {
@@ -22,16 +22,17 @@ class AllowedOptionsTable
                     $query->where('config_attribute_id', $args['attribute_id']);
                 }
 
-                return $query;
+                return $query
+                    ->with('attribute')
+                    ->orderBy('sort_order');
             })
             ->columns([
+                TextColumn::make('label')
+                    ->description(fn (ConfigOption $record): string => (string) ($record->code))
+                    ->searchable(['label', 'code']),
                 TextColumn::make('attribute.label')
                     ->label('Attribute')
-                    ->searchable(),
-                TextColumn::make('label')
-                    ->searchable(),
-                TextColumn::make('code')
-                    ->searchable(),
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('attribute')

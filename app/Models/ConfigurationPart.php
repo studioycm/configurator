@@ -45,11 +45,11 @@ class ConfigurationPart extends Model
 
     public function productConfiguration(): BelongsTo
     {
-        return $this->belongsTo(ProductConfiguration::class);
+        return $this->belongsTo(ProductConfiguration::class, 'product_configuration_id', 'id');
     }
 
     public function part(): BelongsTo
     {
-        return $this->belongsTo(Part::class);
+        return $this->belongsTo(Part::class, 'part_id', 'id');
     }
 }

@@ -18,6 +18,10 @@ class ConfigAttributeResource extends Resource
 {
     protected static ?string $model = ConfigAttribute::class;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
+
+    protected static ?int $navigationSort = 11;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     public static function form(Schema $schema): Schema

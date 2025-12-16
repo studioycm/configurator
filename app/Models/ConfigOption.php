@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class ConfigOption extends Model
 {
@@ -40,13 +41,19 @@ class ConfigOption extends Model
         ];
     }
 
+    // relation has a configProfile through ConfigAttribute's config_profile_id
+    public function configProfile(): HasOneThrough
+    {
+        return $this->hasOneThrough(ConfigProfile::class, ConfigAttribute::class, 'id', 'id', 'config_attribute_id', 'config_profile_id');
+    }
+
     public function attribute(): BelongsTo
     {
-        return $this->belongsTo(ConfigAttribute::class);
+        return $this->belongsTo(ConfigAttribute::class, 'config_attribute_id', 'id');
     }
 
     public function rules(): HasMany
     {
-        return $this->hasMany(OptionRule::class);
+        return $this->hasMany(OptionRule::class, 'config_option_id', 'id');
     }
 }

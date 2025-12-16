@@ -18,6 +18,10 @@ class PartResource extends Resource
 {
     protected static ?string $model = Part::class;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Configurations';
+
+    protected static ?int $navigationSort = 30;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     public static function form(Schema $schema): Schema

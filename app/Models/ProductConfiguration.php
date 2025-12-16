@@ -5,8 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ProductConfiguration extends Model
 {
@@ -43,17 +43,17 @@ class ProductConfiguration extends Model
 
     public function productProfile(): BelongsTo
     {
-        return $this->belongsTo(ProductProfile::class);
+        return $this->belongsTo(ProductProfile::class, 'product_profile_id', 'id');
     }
 
     public function configurationParts(): HasMany
     {
-        return $this->hasMany(ConfigurationPart::class);
+        return $this->hasMany(ConfigurationPart::class, 'product_configuration_id', 'id');
     }
 
     public function configurationSpecifications(): HasMany
     {
-        return $this->hasMany(ConfigurationSpecification::class);
+        return $this->hasMany(ConfigurationSpecification::class, 'product_configuration_id', 'id');
     }
 
     public function fileAttachments(): MorphMany
