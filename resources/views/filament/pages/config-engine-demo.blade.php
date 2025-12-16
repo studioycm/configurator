@@ -1,34 +1,19 @@
 <x-filament-panels::page>
-    @php
-        use App\FileAttachmentType;
-
-        $product = $configProfile->productProfile;
-        $group = $product?->catalogGroup;
-        $groupMainImagePath = $group?->mainImage?->file_path;
-        $groupFiles = $group?->fileAttachments
-            ?->filter(fn ($file) => ! in_array($file->file_type, [FileAttachmentType::MainImage, FileAttachmentType::GalleryImage], true))
-            ->values();
-
-        $productFiles = $product?->fileAttachments
-            ?->filter(fn ($file) => ! in_array($file->file_type, [FileAttachmentType::MainImage, FileAttachmentType::GalleryImage], true))
-            ->values();
-    @endphp
-
     <div x-data="{ tab: 'configurator' }" class="space-y-4">
         <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 px-5 py-5 shadow-sm">
             <div class="flex flex-col gap-2">
                 <div class="text-lg font-semibold leading-tight text-gray-900 dark:text-gray-100">
-                    {{ $product->short_label ?? 'N/A' }}
+                    {{ $this->product?->short_label ?? 'N/A' }}
                 </div>
 
                 <div class="text-sm text-gray-700 dark:text-gray-300">
-                    {{ $product->name ?? $configProfile->name }}
+                    {{ $this->product?->name ?? $configProfile->name }}
                 </div>
 
                 <div class="flex flex-wrap items-center gap-4 text-sm">
                     <div class="flex items-center gap-2 text-sky-900 dark:text-sky-200">
                         <span class="font-semibold">Product Code:</span>
-                        <span class="font-mono text-base">{{ $product->product_code ?? '—' }}</span>
+                        <span class="font-mono text-base">{{ $this->product?->product_code ?? '—' }}</span>
                     </div>
 
                     <div class="flex items-center gap-2 text-sky-900 dark:text-sky-200">
@@ -70,10 +55,10 @@
                     <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Group Image</div>
 
-                        @if ($groupMainImagePath)
+                        @if ($this->groupMainImagePath)
                             <img
-                                src="{{ asset($groupMainImagePath) }}"
-                                alt="{{ $group?->name ?? 'Group image' }}"
+                                src="{{ asset($this->groupMainImagePath) }}"
+                                alt="{{ $this->group?->name ?? 'Group image' }}"
                                 class="aspect-[4/3] w-full rounded-lg object-cover border border-gray-200/60 dark:border-gray-800/70"
                             />
                         @else
@@ -87,7 +72,7 @@
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Group Files</div>
 
                         <div class="space-y-2 text-xs">
-                            @forelse (($groupFiles ?? []) as $file)
+                            @forelse ($this->groupFiles as $file)
                                 <a
                                     href="{{ asset($file->file_path) }}"
                                     target="_blank"
@@ -107,7 +92,7 @@
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Product Files</div>
 
                         <div class="space-y-2 text-xs">
-                            @forelse (($productFiles ?? []) as $file)
+                            @forelse ($this->productFiles as $file)
                                 <a
                                     href="{{ asset($file->file_path) }}"
                                     target="_blank"
@@ -266,8 +251,8 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         @foreach (collect([
-                            $group?->mainImage,
-                            $product?->mainImage,
+                            $this->group?->mainImage,
+                            $this->product?->mainImage,
                             $this->demoConfiguration?->mainImage,
                         ])->filter() as $img)
                             <img
@@ -279,7 +264,7 @@
                     </div>
 
                     <div class="grid grid-cols-3 gap-3">
-                        @foreach (($group?->galleryImages ?? collect())->take(3) as $img)
+                        @foreach (($this->group?->galleryImages ?? collect())->take(3) as $img)
                             <img
                                 src="{{ asset($img->file_path) }}"
                                 alt="{{ $img->title }}"
@@ -288,7 +273,7 @@
                         @endforeach
                     </div>
 
-                    @if (($group?->galleryImages?->count() ?? 0) === 0)
+                    @if (($this->group?->galleryImages?->count() ?? 0) === 0)
                         <div class="text-gray-500 dark:text-gray-400 text-sm">No gallery images yet.</div>
                     @endif
                 </div>

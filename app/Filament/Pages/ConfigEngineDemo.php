@@ -4,11 +4,14 @@ namespace App\Filament\Pages;
 
 use App\DTO\ConfigOptionDTO;
 use App\DTO\ConfigStageDTO;
+use App\FileAttachmentType;
 use App\Models\ConfigProfile;
+use App\Models\FileAttachment;
 use App\Models\ProductConfiguration;
 use App\Services\ConfiguratorEngine;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Collection;
 
 class ConfigEngineDemo extends Page
 {
@@ -109,6 +112,53 @@ class ConfigEngineDemo extends Page
         );
     }
 
+    public function getProductProperty(): ?\App\Models\ProductProfile
+    {
+        return $this->configProfile?->productProfile;
+    }
+
+    public function getGroupProperty(): ?\App\Models\CatalogGroup
+    {
+        return $this->product?->catalogGroup;
+    }
+
+    public function getGroupMainImagePathProperty(): ?string
+    {
+        return $this->group?->mainImage?->file_path;
+    }
+
+    /**
+     * @return Collection<int, FileAttachment>
+     */
+    public function getGroupFilesProperty(): Collection
+    {
+        $group = $this->group;
+
+        if ($group === null) {
+            return collect();
+        }
+
+        $group->loadMissing('fileAttachments');
+
+        return $this->nonImageFiles($group->fileAttachments);
+    }
+
+    /**
+     * @return Collection<int, FileAttachment>
+     */
+    public function getProductFilesProperty(): Collection
+    {
+        $product = $this->product;
+
+        if ($product === null) {
+            return collect();
+        }
+
+        $product->loadMissing('fileAttachments');
+
+        return $this->nonImageFiles($product->fileAttachments);
+    }
+
     public function selectOption(int $attributeId, int $optionId): void
     {
         $this->selection[$attributeId] = $optionId;
@@ -168,5 +218,16 @@ class ConfigEngineDemo extends Page
                 options: $options,
             );
         }, $this->stages);
+    }
+
+    /**
+     * @param  Collection<int, FileAttachment>|null  $attachments
+     * @return Collection<int, FileAttachment>
+     */
+    protected function nonImageFiles(?Collection $attachments): Collection
+    {
+        return ($attachments ?? collect())
+            ->filter(fn (FileAttachment $file): bool => ! in_array($file->file_type, [FileAttachmentType::MainImage, FileAttachmentType::GalleryImage], true))
+            ->values();
     }
 }
