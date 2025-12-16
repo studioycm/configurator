@@ -14,6 +14,7 @@ use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Pages\Page;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 
@@ -160,7 +161,7 @@ class ConfigEngineDemo extends Page
             ->label('Change')
             ->modalHeading('Territory & Application')
             ->modalSubmitActionLabel('Apply')
-            ->modalWidth('xl')
+            ->modalWidth(Width::TwoExtraLarge)
             ->fillForm(fn (): array => [
                 'territory' => $this->territory,
                 'application' => $this->application,
@@ -171,6 +172,14 @@ class ConfigEngineDemo extends Page
                     ->options($this->territoryOptions())
                     ->icons([
                         'Global' => 'heroicon-o-globe-alt',
+                    ])
+                    ->colors([
+                        'Global' => 'gray',
+                        'USA' => 'info',
+                        'Germany' => 'warning',
+                        'Europe' => 'primary',
+                        'Russia' => 'danger',
+                        'Australia' => 'success',
                     ])
                     ->inline()
                     ->grouped()
@@ -184,6 +193,13 @@ class ConfigEngineDemo extends Page
                         'Water Supply' => 'heroicon-o-beaker',
                         'Agriculture' => 'heroicon-o-sun',
                         'Wastewater' => 'heroicon-o-arrow-path-rounded-square',
+                    ])
+                    ->colors([
+                        'Show All' => 'gray',
+                        'Industry' => 'primary',
+                        'Water Supply' => 'info',
+                        'Agriculture' => 'success',
+                        'Wastewater' => 'warning',
                     ])
                     ->inline()
                     ->grouped()
