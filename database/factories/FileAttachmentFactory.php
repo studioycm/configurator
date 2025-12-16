@@ -4,6 +4,8 @@ namespace Database\Factories;
 
 use App\FileAttachmentType;
 use App\Models\CatalogGroup;
+use App\Models\ConfigurationPart;
+use App\Models\Part;
 use App\Models\ProductConfiguration;
 use App\Models\ProductProfile;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -48,6 +50,22 @@ class FileAttachmentFactory extends Factory
         return $this->state(fn () => [
             'attachable_id' => ProductConfiguration::factory(),
             'attachable_type' => ProductConfiguration::class,
+        ]);
+    }
+
+    public function forPart(): static
+    {
+        return $this->state(fn () => [
+            'attachable_id' => Part::factory(),
+            'attachable_type' => Part::class,
+        ]);
+    }
+
+    public function forConfigurationPart(): static
+    {
+        return $this->state(fn () => [
+            'attachable_id' => ConfigurationPart::factory(),
+            'attachable_type' => ConfigurationPart::class,
         ]);
     }
 }

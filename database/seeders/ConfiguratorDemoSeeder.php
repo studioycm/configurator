@@ -977,6 +977,36 @@ class ConfiguratorDemoSeeder extends Seeder
             [
                 'attachable_type' => CatalogGroup::class,
                 'attachable_id' => $group->id,
+                'title' => 'Main Image',
+            ],
+            [
+                'file_path' => 'demo/catalog/combination-air-valves/main.jpg',
+                'file_type' => FileAttachmentType::MainImage,
+                'mime_type' => 'image/jpeg',
+                'sort_order' => 0,
+                'is_primary' => true,
+            ],
+        );
+
+        FileAttachment::updateOrCreate(
+            [
+                'attachable_type' => CatalogGroup::class,
+                'attachable_id' => $group->id,
+                'title' => 'Gallery Image 1',
+            ],
+            [
+                'file_path' => 'demo/catalog/combination-air-valves/gallery-1.jpg',
+                'file_type' => FileAttachmentType::GalleryImage,
+                'mime_type' => 'image/jpeg',
+                'sort_order' => 1,
+                'is_primary' => false,
+            ],
+        );
+
+        FileAttachment::updateOrCreate(
+            [
+                'attachable_type' => CatalogGroup::class,
+                'attachable_id' => $group->id,
                 'title' => 'Overview',
             ],
             [
@@ -1005,6 +1035,21 @@ class ConfiguratorDemoSeeder extends Seeder
 
         FileAttachment::updateOrCreate(
             [
+                'attachable_type' => ProductProfile::class,
+                'attachable_id' => $profile->id,
+                'title' => 'Main Image',
+            ],
+            [
+                'file_path' => 'demo/products/d60s/main.jpg',
+                'file_type' => FileAttachmentType::MainImage,
+                'mime_type' => 'image/jpeg',
+                'sort_order' => 0,
+                'is_primary' => true,
+            ],
+        );
+
+        FileAttachment::updateOrCreate(
+            [
                 'attachable_type' => ProductConfiguration::class,
                 'attachable_id' => $configurationA->id,
                 'title' => 'Specification Sheet',
@@ -1014,6 +1059,21 @@ class ConfiguratorDemoSeeder extends Seeder
                 'file_type' => FileAttachmentType::Specification,
                 'mime_type' => 'application/pdf',
                 'sort_order' => 1,
+                'is_primary' => true,
+            ],
+        );
+
+        FileAttachment::updateOrCreate(
+            [
+                'attachable_type' => ProductConfiguration::class,
+                'attachable_id' => $configurationA->id,
+                'title' => 'Main Image',
+            ],
+            [
+                'file_path' => 'demo/configurations/d60s-p16-03-demo-a/main.jpg',
+                'file_type' => FileAttachmentType::MainImage,
+                'mime_type' => 'image/jpeg',
+                'sort_order' => 0,
                 'is_primary' => true,
             ],
         );

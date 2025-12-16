@@ -9,4 +9,8 @@ enum FileAttachmentType: string
     case Specification = 'specification';
     case Installation = 'installation';
     case Media = 'media';
+
+    case MainImage = 'main_image';
+
+    case GalleryImage = 'gallery_image';
 }

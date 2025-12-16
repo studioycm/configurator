@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ConfigAttributes\Tables;
 
 use App\ConfigInputType;
+use App\Models\ConfigAttribute;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -21,11 +22,8 @@ class ConfigAttributesTable
             ->columns([
                 TextColumn::make('configProfile.name')
                     ->searchable(),
-                TextColumn::make('name')
-                    ->searchable(),
                 TextColumn::make('label')
-                    ->searchable(),
-                TextColumn::make('slug')
+                    ->description(fn (ConfigAttribute $record): string => (string) ($record->name))
                     ->searchable(),
                 TextColumn::make('input_type')
                     ->badge()

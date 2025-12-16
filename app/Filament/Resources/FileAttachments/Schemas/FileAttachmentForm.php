@@ -4,6 +4,8 @@ namespace App\Filament\Resources\FileAttachments\Schemas;
 
 use App\FileAttachmentType;
 use App\Models\CatalogGroup;
+use App\Models\ConfigurationPart;
+use App\Models\Part;
 use App\Models\ProductConfiguration;
 use App\Models\ProductProfile;
 use Filament\Forms\Components\MorphToSelect;
@@ -26,6 +28,10 @@ class FileAttachmentForm
                             ->titleAttribute('name'),
                         MorphToSelect\Type::make(ProductConfiguration::class)
                             ->titleAttribute('name'),
+                        MorphToSelect\Type::make(Part::class)
+                            ->titleAttribute('name'),
+                        MorphToSelect\Type::make(ConfigurationPart::class)
+                            ->titleAttribute('label'),
                     ])
                     ->searchable()
                     ->preload()

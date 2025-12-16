@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\FileAttachmentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class ProductProfile extends Model
 {
@@ -59,5 +61,19 @@ class ProductProfile extends Model
     public function fileAttachments(): MorphMany
     {
         return $this->morphMany(FileAttachment::class, 'attachable');
+    }
+
+    public function mainImage(): MorphOne
+    {
+        return $this->morphOne(FileAttachment::class, 'attachable')
+            ->where('file_type', FileAttachmentType::MainImage)
+            ->orderBy('sort_order');
+    }
+
+    public function galleryImages(): MorphMany
+    {
+        return $this->morphMany(FileAttachment::class, 'attachable')
+            ->where('file_type', FileAttachmentType::GalleryImage)
+            ->orderBy('sort_order');
     }
 }

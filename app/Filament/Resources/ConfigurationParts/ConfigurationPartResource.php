@@ -37,7 +37,7 @@ class ConfigurationPartResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            'fileAttachments' => \App\Filament\Resources\ConfigurationParts\RelationManagers\FileAttachmentsRelationManager::class,
         ];
     }
 

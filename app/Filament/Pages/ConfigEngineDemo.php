@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\DTO\ConfigOptionDTO;
 use App\DTO\ConfigStageDTO;
 use App\Models\ConfigProfile;
+use App\Models\ProductConfiguration;
 use App\Services\ConfiguratorEngine;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
@@ -18,6 +19,8 @@ class ConfigEngineDemo extends Page
     protected string $view = 'filament.pages.config-engine-demo';
 
     public ?ConfigProfile $configProfile = null;
+
+    public ?ProductConfiguration $demoConfiguration = null;
 
     /** @var array<int, array<string, mixed>> */
     public array $stages = [];
@@ -40,7 +43,7 @@ class ConfigEngineDemo extends Page
         return __('D60S Engine Demo');
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('D60S Engine');
     }
@@ -56,13 +59,30 @@ class ConfigEngineDemo extends Page
 
         $this->configProfile = ConfigProfile::query()
             ->with([
-                'productProfile',
+                'productProfile.catalogGroup.mainImage',
+                'productProfile.catalogGroup.fileAttachments',
+                'productProfile.catalogGroup.galleryImages',
+                'productProfile.fileAttachments',
+                'productProfile.mainImage',
+                'productProfile.galleryImages',
                 'attributes' => fn ($q) => $q->orderBy('sort_order'),
                 'attributes.options' => fn ($q) => $q->orderBy('sort_order'),
                 'rules',
             ])
             ->where('slug', 'd60s-p16-03-configurator')
             ->firstOrFail();
+
+        $this->demoConfiguration = ProductConfiguration::query()
+            ->with([
+                'configurationParts.part',
+                'configurationSpecifications',
+                'mainImage',
+                'galleryImages',
+                'fileAttachments',
+            ])
+            ->where('product_profile_id', $this->configProfile->product_profile_id)
+            ->orderBy('id')
+            ->first();
 
         $stageDTOs = $this->engine->buildStages($this->configProfile);
 

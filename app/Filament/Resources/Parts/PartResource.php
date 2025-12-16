@@ -38,6 +38,7 @@ class PartResource extends Resource
     {
         return [
             'configurationParts' => \App\Filament\Resources\Parts\RelationManagers\ConfigurationPartsRelationManager::class,
+            'fileAttachments' => \App\Filament\Resources\Parts\RelationManagers\FileAttachmentsRelationManager::class,
         ];
     }
 

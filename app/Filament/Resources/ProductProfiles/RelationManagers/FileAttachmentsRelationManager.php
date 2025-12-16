@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductProfiles\RelationManagers;
 
+use App\FileAttachmentType;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -10,9 +11,12 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DissociateAction;
 use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -27,6 +31,17 @@ class FileAttachmentsRelationManager extends RelationManager
                 TextInput::make('title')
                     ->required()
                     ->maxLength(255),
+                TextInput::make('file_path')
+                    ->required()
+                    ->maxLength(255),
+                Select::make('file_type')
+                    ->options(FileAttachmentType::class),
+                TextInput::make('mime_type')
+                    ->maxLength(255),
+                TextInput::make('sort_order')
+                    ->numeric(),
+                Toggle::make('is_primary')
+                    ->required(),
             ]);
     }
 
@@ -37,6 +52,13 @@ class FileAttachmentsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('title')
                     ->searchable(),
+                TextColumn::make('file_type')
+                    ->badge(),
+                IconColumn::make('is_primary')
+                    ->boolean(),
+                TextColumn::make('sort_order')
+                    ->numeric()
+                    ->sortable(),
             ])
             ->filters([
                 //

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\ProductConfigurations\RelationManagers;
+namespace App\Filament\Resources\Parts\RelationManagers;
 
 use App\Filament\Resources\FileAttachments\FileAttachmentResource;
 use App\FileAttachmentType;

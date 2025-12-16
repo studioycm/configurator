@@ -19,9 +19,18 @@ class FileAttachmentsTable
                     ->label('Attached To')
                     ->formatStateUsing(fn ($state, $record) => class_basename($record->attachable_type))
                     ->sortable(),
-                TextColumn::make('attachable.name')
+                TextColumn::make('attachable_display')
                     ->label('Name')
-                    ->searchable(),
+                    ->state(function ($record): string {
+                        $attachable = $record->attachable;
+
+                        return (string) (
+                            $attachable?->name
+                            ?? $attachable?->label
+                            ?? $attachable?->title
+                            ?? ($record->attachable_type ? class_basename($record->attachable_type) : '—').' #'.(string) ($record->attachable_id ?? '—')
+                        );
+                    }),
                 TextColumn::make('title')
                     ->searchable(),
                 TextColumn::make('file_path')
