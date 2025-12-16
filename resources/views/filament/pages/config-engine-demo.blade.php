@@ -218,25 +218,9 @@
         </div>
 
             <div x-show="tab === 'details'" x-cloak class="space-y-4">
-                <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div class="space-y-1">
-                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Product Details</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-400">
-                                Territory: <span class="font-medium text-gray-800 dark:text-gray-200">{{ $this->territory }}</span>
-                                · Application: <span class="font-medium text-gray-800 dark:text-gray-200">{{ $this->application }}</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-500 dark:text-gray-400">Config</span>
-                            <span class="font-mono text-sm text-gray-900 dark:text-gray-100">{{ $this->demoConfiguration?->configuration_code ?? '—' }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div class="lg:col-span-2 border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
+                <div class="grid grid-cols-7 gap-4">
+                    {{-- Parts (3fr) --}}
+                    <div class="col-span-3 border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Parts</div>
 
                         @if ($this->demoConfiguration && $this->demoConfiguration->configurationParts->isNotEmpty())
@@ -265,7 +249,27 @@
                         @endif
                     </div>
 
-                    <div class="lg:col-span-1 space-y-4">
+                    {{-- Stacked: Specifications, Dimensions (2fr) --}}
+                    <div class="col-span-2 space-y-4">
+                        {{-- Specifications --}}
+                        <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
+                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Specifications</div>
+
+                            @if ($this->specifications->isNotEmpty())
+                                <div class="space-y-2">
+                                    @foreach ($this->specifications as $line)
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="text-xs text-gray-600 dark:text-gray-400">{{ $line->key }}</div>
+                                            <div class="text-xs font-medium text-gray-900 dark:text-gray-100 text-right">{{ $line->value }}{{ $line->unit ? ' ' . $line->unit : '' }}</div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-gray-500 dark:text-gray-400 text-sm">No specifications yet.</div>
+                            @endif
+                        </div>
+
+                        {{-- Dimensions --}}
                         <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                             <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Dimensions</div>
 
@@ -292,31 +296,13 @@
                                 <div class="text-gray-500 dark:text-gray-400 text-sm">No dimensions yet.</div>
                             @endif
                         </div>
-
-                        <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
-                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Specifications</div>
-
-                            @if ($this->specifications->isNotEmpty())
-                                <div class="space-y-2">
-                                    @foreach ($this->specifications as $line)
-                                        <div class="flex items-start justify-between gap-4">
-                                            <div class="text-xs text-gray-600 dark:text-gray-400">{{ $line->key }}</div>
-                                            <div class="text-xs font-medium text-gray-900 dark:text-gray-100 text-right">{{ $line->value }}{{ $line->unit ? ' ' . $line->unit : '' }}</div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="text-gray-500 dark:text-gray-400 text-sm">No specifications yet.</div>
-                            @endif
-                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
+                    {{-- Images (1fr) --}}
+                    <div class="col-span-1 border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Images</div>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 gap-3">
                             @foreach (collect([
                                 $this->group?->mainImage,
                                 $this->product?->mainImage,
@@ -330,8 +316,8 @@
                             @endforeach
                         </div>
 
-                        <div class="grid grid-cols-3 gap-3">
-                            @foreach (($this->group?->galleryImages ?? collect())->take(3) as $img)
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach (($this->group?->galleryImages ?? collect())->take(6) as $img)
                                 <img
                                     src="{{ asset($img->file_path) }}"
                                     alt="{{ $img->title }}"
@@ -340,15 +326,16 @@
                             @endforeach
                         </div>
 
-                        @if (($this->group?->galleryImages?->count() ?? 0) === 0)
-                            <div class="text-gray-500 dark:text-gray-400 text-sm">No gallery images yet.</div>
+                        @if (collect([$this->group?->mainImage, $this->product?->mainImage, $this->demoConfiguration?->mainImage])->filter()->isEmpty() && ($this->group?->galleryImages?->count() ?? 0) === 0)
+                            <div class="text-gray-500 dark:text-gray-400 text-sm">No images.</div>
                         @endif
                     </div>
 
-                    <div class="border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
+                    {{-- Documents (1fr) --}}
+                    <div class="col-span-1 border border-gray-200/60 dark:border-gray-800/70 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Documents</div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div class="space-y-4">
                             <div class="space-y-2">
                                 <div class="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">GROUP</div>
                                 <div class="space-y-2 text-xs">
@@ -357,13 +344,13 @@
                                             href="{{ asset($file->file_path) }}"
                                             target="_blank"
                                             rel="noopener"
-                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-3 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
+                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
                                         >
-                                            <span class="text-gray-700 dark:text-gray-200">{{ $file->title }}</span>
-                                            <span class="text-primary-600 dark:text-primary-400">Open</span>
+                                            <span class="text-gray-700 dark:text-gray-200 truncate">{{ $file->title }}</span>
+                                            <span class="text-primary-600 dark:text-primary-400 text-[10px]">Open</span>
                                         </a>
                                     @empty
-                                        <div class="text-gray-500 dark:text-gray-400">No files.</div>
+                                        <div class="text-gray-500 dark:text-gray-400 italic">None</div>
                                     @endforelse
                                 </div>
                             </div>
@@ -376,32 +363,32 @@
                                             href="{{ asset($file->file_path) }}"
                                             target="_blank"
                                             rel="noopener"
-                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-3 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
+                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
                                         >
-                                            <span class="text-gray-700 dark:text-gray-200">{{ $file->title }}</span>
-                                            <span class="text-primary-600 dark:text-primary-400">Open</span>
+                                            <span class="text-gray-700 dark:text-gray-200 truncate">{{ $file->title }}</span>
+                                            <span class="text-primary-600 dark:text-primary-400 text-[10px]">Open</span>
                                         </a>
                                     @empty
-                                        <div class="text-gray-500 dark:text-gray-400">No files.</div>
+                                        <div class="text-gray-500 dark:text-gray-400 italic">None</div>
                                     @endforelse
                                 </div>
                             </div>
 
                             <div class="space-y-2">
-                                <div class="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">CONFIGURATION</div>
+                                <div class="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">CONFIG</div>
                                 <div class="space-y-2 text-xs">
                                     @forelse ($this->configurationFiles as $file)
                                         <a
                                             href="{{ asset($file->file_path) }}"
                                             target="_blank"
                                             rel="noopener"
-                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-3 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
+                                            class="flex items-center justify-between rounded-lg border border-gray-200/60 dark:border-gray-800/70 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/70 dark:hover:bg-gray-800 transition"
                                         >
-                                            <span class="text-gray-700 dark:text-gray-200">{{ $file->title }}</span>
-                                            <span class="text-primary-600 dark:text-primary-400">Open</span>
+                                            <span class="text-gray-700 dark:text-gray-200 truncate">{{ $file->title }}</span>
+                                            <span class="text-primary-600 dark:text-primary-400 text-[10px]">Open</span>
                                         </a>
                                     @empty
-                                        <div class="text-gray-500 dark:text-gray-400">No files.</div>
+                                        <div class="text-gray-500 dark:text-gray-400 italic">None</div>
                                     @endforelse
                                 </div>
                             </div>
