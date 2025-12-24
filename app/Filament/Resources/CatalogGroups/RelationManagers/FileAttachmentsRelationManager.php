@@ -13,6 +13,7 @@ use Filament\Actions\DissociateAction;
 use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -34,13 +35,13 @@ class FileAttachmentsRelationManager extends RelationManager
                 TextInput::make('title')
                     ->required()
                     ->maxLength(255),
-                TextInput::make('file_path')
-                    ->required()
-                    ->maxLength(255),
+                SpatieMediaLibraryFileUpload::make('file_path')
+                    ->collection('default')
+                    ->disk(config('media-library.disk_name', 'public'))
+                    ->visibility('public')
+                    ->required(),
                 Select::make('file_type')
                     ->options(FileAttachmentType::class),
-                TextInput::make('mime_type')
-                    ->maxLength(255),
                 TextInput::make('sort_order')
                     ->numeric(),
                 Toggle::make('is_primary')

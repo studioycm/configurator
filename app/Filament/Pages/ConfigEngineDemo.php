@@ -13,14 +13,27 @@ use App\Services\ConfiguratorEngine;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Concerns\InteractsWithInfolists;
+use Filament\Infolists\Contracts\HasInfolists;
+//use Filament\Infolists\Infolist;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 
-class ConfigEngineDemo extends Page
+class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
 {
     use InteractsWithActions;
+    use InteractsWithSchemas;
+    use InteractsWithInfolists;
 
     protected static ?string $slug = 'config-engine-demo';
 
@@ -214,6 +227,20 @@ class ConfigEngineDemo extends Page
             });
     }
 
+    public function viewImageAction(): Action
+    {
+        return Action::make('viewImage')
+            ->label('View image')
+            ->modalHeading('Image preview')
+            ->modalWidth(Width::FiveExtraLarge)
+            ->modalContent(fn (array $arguments): string => sprintf(
+                '<div class="w-full"><img src="%s" class="w-full h-full object-contain" loading="lazy"  alt=""/></div>',
+                e($arguments['url'] ?? '')
+            ))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel(__('Close'));
+    }
+
     public function getProductProperty(): ?\App\Models\ProductProfile
     {
         return $this->configProfile?->productProfile;
@@ -224,9 +251,14 @@ class ConfigEngineDemo extends Page
         return $this->product?->catalogGroup;
     }
 
-    public function getGroupMainImagePathProperty(): ?string
+    public function getGroupMainImageUrlProperty(): ?string
     {
         return $this->group?->mainImage?->file_path;
+    }
+
+    public function getGroupMainImagePathProperty(): ?string
+    {
+        return $this->groupMainImageUrl;
     }
 
     /**
@@ -315,6 +347,164 @@ class ConfigEngineDemo extends Page
         return $this->nonImageFiles($configuration->fileAttachments);
     }
 
+    public function form(Schema $schema): Schema
+    {
+        $components = [];
+
+        foreach ($this->stages as $stage) {
+            $components[] = ToggleButtons::make("selection.{$stage['id']}")
+                ->label($stage['label'])
+                ->options(collect($stage['options'])->mapWithKeys(function ($opt) {
+                    return [$opt['id'] => "{$opt['label']}"];
+                }))
+                ->inlineLabel()
+                ->grouped()
+                ->columns(2)
+                ->colors(function () use ($stage): array {
+                    return collect($stage['options'])
+                        ->mapWithKeys(fn ($opt) => [$opt['id'] => 'primary'])
+                        ->all();
+                })
+                ->live()
+                ->afterStateUpdated(function ($state) use ($stage) {
+                    $this->selectOption($stage['id'], (int) $state);
+                })
+                ->disableOptionWhen(function (string $value) use ($stage) {
+                    $allowedIds = $this->allowed[$stage['id']] ?? [];
+                    return ! in_array((int) $value, $allowedIds);
+                });
+        }
+
+        return $schema->components([
+            SchemaSection::make('Configurator')
+                ->components($components)
+                ->columns(1),
+        ]);
+    }
+
+    public function groupInfolist(Schema $schema): Schema
+    {
+        return $schema
+            ->record($this->group)
+            ->components([
+                SchemaSection::make('Group Image')
+                    ->components([
+                        TextEntry::make('mainImageUrl')
+                            ->hiddenLabel()
+                            ->html()
+                            ->state(function (?\App\Models\CatalogGroup $record): string {
+                                $url = $record?->mainImageUrl;
+
+                                if (! $url) {
+                                    return '';
+                                }
+
+                                return sprintf(
+                                    '<button type="button" wire:click="mountAction(\'viewImage\', { url: \"%s\" })" class="block w-full group">
+                                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                                            <img src="%s" class="w-full h-full object-cover" loading="lazy" />
+                                        </div>
+                                        <div class="mt-2 text-xs text-primary-600 group-hover:underline">Enlarge</div>
+                                    </button>',
+                                    e($url),
+                                    e($url)
+                                );
+                            }),
+                    ]),
+                SchemaSection::make('Group Files')
+                    ->components([
+                        TextEntry::make('fileAttachments')
+                            ->hiddenLabel()
+                            ->html()
+                            ->state(function (?\App\Models\CatalogGroup $record): string {
+                                $files = $this->nonImageFiles($record?->fileAttachments);
+
+                                if ($files->isEmpty()) {
+                                    return '';
+                                }
+
+                                return $this->renderFileLinks($files, false);
+                            }),
+                    ]),
+            ]);
+    }
+
+    public function productInfolist(Schema $schema): Schema
+    {
+        return $schema
+            ->record($this->product)
+            ->components([
+                SchemaSection::make('Images')
+                    ->components([
+                        TextEntry::make('images')
+                            ->hiddenLabel()
+                            ->html()
+                            ->state(function (?\App\Models\ProductProfile $record): string {
+                                $group = $record?->catalogGroup;
+
+                                $images = collect([
+                                    $group?->mainImage,
+                                    $record?->mainImage,
+                                    $this->demoConfiguration?->mainImage,
+                                ])->filter();
+
+                                $gallery = $group?->galleryImages ?? collect();
+
+                                $urls = $images->concat($gallery)
+                                    ->map(fn (FileAttachment $file) => $file->public_url)
+                                    ->filter()
+                                    ->values();
+
+                                if ($urls->isEmpty()) {
+                                    return '';
+                                }
+
+                                $items = $urls->map(function (string $url): string {
+                                    return sprintf(
+                                        '<button type="button" wire:click="mountAction(\'viewImage\', { url: \"%s\" })" class="group block w-full">
+                                            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                                                <img src="%s" class="w-full h-full object-cover" loading="lazy"  alt=""/>
+                                            </div>
+                                            <div class="mt-1 text-[11px] text-primary-600 group-hover:underline">Enlarge</div>
+                                        </button>',
+                                        e($url),
+                                        e($url)
+                                    );
+                                })->implode('');
+
+                                return sprintf('<div class="grid grid-cols-1 gap-2">%s</div>', $items);
+                            }),
+                    ]),
+                SchemaSection::make('Documents')
+                    ->components([
+                        TextEntry::make('documents')
+                            ->hiddenLabel()
+                            ->html()
+                            ->state(function (?\App\Models\ProductProfile $record): string {
+                                $groupFiles = $this->nonImageFiles($record?->catalogGroup?->fileAttachments);
+                                $productFiles = $this->nonImageFiles($record?->fileAttachments);
+                                $configurationFiles = $this->nonImageFiles($this->demoConfiguration?->fileAttachments);
+
+                                $sections = [];
+
+                                if ($groupFiles->isNotEmpty()) {
+                                    $sections[] = '<div class="mb-2 text-xs font-bold text-gray-500">GROUP</div>' . $this->renderFileLinks($groupFiles);
+                                }
+
+                                if ($productFiles->isNotEmpty()) {
+                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">PRODUCT</div>' . $this->renderFileLinks($productFiles);
+                                }
+
+                                if ($configurationFiles->isNotEmpty()) {
+                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">CONFIGURATION</div>' . $this->renderFileLinks($configurationFiles);
+                                }
+
+                                return implode('', $sections);
+                            }),
+                    ]),
+            ]);
+    }
+
     public function selectOption(int $attributeId, int $optionId): void
     {
         $this->selection[$attributeId] = $optionId;
@@ -385,5 +575,25 @@ class ConfigEngineDemo extends Page
         return ($attachments ?? collect())
             ->filter(fn (FileAttachment $file): bool => ! in_array($file->file_type, [FileAttachmentType::MainImage, FileAttachmentType::GalleryImage], true))
             ->values();
+    }
+
+    /**
+     * @param  Collection<int, FileAttachment>  $files
+     */
+    private function renderFileLinks(Collection $files, bool $withContainer = true): string
+    {
+        $links = $files->map(function (FileAttachment $file): string {
+            return sprintf(
+                '<a href="%s" target="_blank" class="flex items-center justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 mb-2 transition"><span class="text-sm font-medium text-gray-700 dark:text-gray-200">%s</span> <span class="text-xs text-primary-600 dark:text-primary-400">Open</span></a>',
+                $file->file_path,
+                e($file->title)
+            );
+        })->implode('');
+
+        if (! $withContainer) {
+            return $links;
+        }
+
+        return sprintf('<div class="space-y-1">%s</div>', $links);
     }
 }

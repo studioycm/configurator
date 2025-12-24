@@ -10,6 +10,7 @@ use App\Models\ProductConfiguration;
 use App\Models\ProductProfile;
 use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
@@ -38,11 +39,13 @@ class FileAttachmentForm
                     ->required(),
                 TextInput::make('title')
                     ->required(),
-                TextInput::make('file_path')
+                SpatieMediaLibraryFileUpload::make('file_path')
+                    ->collection('default')
+                    ->disk(config('media-library.disk_name', 'public'))
+                    ->visibility('public')
                     ->required(),
                 Select::make('file_type')
                     ->options(FileAttachmentType::class),
-                TextInput::make('mime_type'),
                 TextInput::make('sort_order')
                     ->numeric(),
                 Toggle::make('is_primary')

@@ -8,6 +8,8 @@
     "require": {
         "php": "^8.4",
         "filament/filament": "^4.2",
+        "filament/spatie-laravel-media-library-plugin": "^4.3",
+        "filament/spatie-laravel-settings-plugin": "^4.3",
         "lara-zeus/bolt": "^4.0",
         "lara-zeus/bolt-pro": "^4.0",
         "lara-zeus/matrix-choice": "^4.0",
@@ -16,7 +18,9 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "livewire/flux": "^2.1.1",
-        "livewire/volt": "^1.7.0"
+        "livewire/volt": "^1.7.0",
+        "solution-forest/filament-simplelightbox": "^1.0",
+        "xentixar/workflow-manager": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

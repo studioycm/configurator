@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -19,6 +20,9 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use LaraZeus\Accordion\Forms\Accordion;
+use LaraZeus\Bolt\BoltPlugin;
+use LaraZeus\BoltPro\Fields\MatrixGrid;
 use LaraZeus\SpatieTranslatable\SpatieTranslatablePlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -33,9 +37,11 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Aquestia')
             ->brandLogo(asset('images/logo-ari.png'))
             ->darkModeBrandLogo(asset('images/logo-ari.png'))
+            ->defaultThemeMode(ThemeMode::Light)
             ->maxContentWidth(Width::Full)
             ->databaseNotifications()
             ->sidebarFullyCollapsibleOnDesktop(true)
+//            ->sidebarCollapsibleOnDesktop(true)
             ->login()
             ->passwordReset()
             ->colors([
@@ -68,6 +74,12 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 SpatieTranslatablePlugin::make()
                     ->defaultLocales([config('app.locale')]),
+
+//                BoltPlugin::make()
+//                    ->extensions([
+//                        MatrixGrid::class,
+//                        Accordion::class,
+//                    ]),
             ]);
     }
 }

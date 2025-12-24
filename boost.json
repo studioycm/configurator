@@ -1,10 +1,12 @@
 {
     "agents": [
+        "codex",
         "copilot",
         "gemini",
         "phpstorm"
     ],
     "editors": [
+        "codex",
         "gemini",
         "phpstorm",
         "vscode"
