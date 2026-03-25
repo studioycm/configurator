@@ -1,0 +1,555 @@
+# Documentation Search Results
+
+**Packages:** laravel/framework@12.x, filament/filament@4.x, pestphp/pest@4.x, livewire/livewire@3.x, tailwindcss@4.x, laravel/mcp@0.x
+**Results:** 44 documents, 1001 chunks
+
+---
+
+## pint.md > Continuous Integration > GitHub Actions
+Package: laravel/framework@12.x
+
+<a name="running-tests-on-github-actions"></a>
+### GitHub Actions
+
+To automate linting your project with Laravel Pint, you can configure [GitHub Actions](https://github.com/features/actions) to run Pint whenever new code is pushed to GitHub. First, be sure to grant "Read and write permissions" to workflows within GitHub at **Settings > Actions > General > Workflow permissions**. Then, create a `.github/workflows/lint.yml` file with the following content:
+
+```yaml
+name: Fix Code Style
+
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        php: [8.4]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: pint
+
+      - name: Run Pint
+        run: pint
+
+      - name: Commit linted files
+        uses: stefanzweifel/git-auto-commit-action@v6
+```
+
+---
+
+## testing.md > Creating Tests
+Package: laravel/framework@12.x
+
+<a name="creating-tests"></a>
+## Creating Tests
+
+To create a new test case, use the `make:test` Artisan command. By default, tests will be placed in the `tests/Feature` directory:
+
+```shell
+php artisan make:test UserTest
+```
+
+If you would like to create a test within the `tests/Unit` directory, you may use the `--unit` option when executing the `make:test` command:
+
+```shell
+php artisan make:test UserTest --unit
+```
+
+> [!NOTE]
+> Test stubs may be customized using [stub publishing](/docs/{{version}}/artisan#stub-customization).
+
+Once the test has been generated, you may define test as you normally would using Pest or PHPUnit. To run your tests, execute the `vendor/bin/pest`, `vendor/bin/phpunit`, or `php artisan test` command from your terminal:
+
+```php tab=Pest
+<?php
+
+test('basic', function () {
+    expect(true)->toBeTrue();
+});
+```
+
+```php tab=PHPUnit
+<?php
+
+namespace Tests\Unit;
+
+use PHPUnit\Framework\TestCase;
+
+class ExampleTest extends TestCase
+{
+    /**
+     * A basic test example.
+     */
+    public function test_basic_test(): void
+    {
+        $this->assertTrue(true);
+    }
+}
+```
+
+> [!WARNING]
+> If you define your own `setUp` / `tearDown` methods within a test class, be sure to call the respective `parent::setUp()` / `parent::tearDown()` methods on the parent class. Typically, you should invoke `parent::setUp()` at the start of your own `setUp` method, and `parent::tearDown()` at the end of your `tearDown` method.
+
+---
+
+## tables/03-filters/06-layout.md > Customizing the filter form schema
+Package: filament/filament@4.x
+
+## Customizing the filter form schema
+
+You may customize the [form schema](../../schemas/layouts) of the entire filter form at once, in order to rearrange filters into your desired layout, and use any of the [layout components](../../schemas/layouts) available to forms. To do this, use the `filterFormSchema()` method, passing a closure function that receives the array of defined `$filters` that you can insert:
+
+```php
+use Filament\Schemas\Components\Section;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->filters([
+            Filter::make('is_featured'),
+            Filter::make('published_at'),
+            Filter::make('author'),
+        ])
+        ->filtersFormColumns(2)
+        ->filtersFormSchema(fn (array $filters): array => [
+            Section::make('Visibility')
+                ->description('These filters affect the visibility of the records in the table.')
+                ->schema([
+                    $filters['is_featured'],
+                    $filters['published_at'],
+                ])
+                    ->columns(2)
+                ->columnSpanFull(),
+            $filters['author'],
+        ]);
+}
+```
+
+In this example, we have put two of the filters inside a [section](../../schemas/sections) component, and used the `columns()` method to specify that the section should have two columns. We have also used the `columnSpanFull()` method to specify that the section should span the full width of the filter form, which is also 2 columns wide. We have inserted each filter into the form schema by using the filter's name as the key in the `$filters` array.
+
+---
+
+## docs/10-testing/05-testing-actions.md > Calling an action in a test
+Package: filament/filament@4.x
+
+## Calling an action in a test
+
+You can call an action by passing its name or class to `callAction()`:
+
+```php
+use function Pest\Livewire\livewire;
+
+it('can send invoices', function () {
+    $invoice = Invoice::factory()->create();
+
+    livewire(EditInvoice::class, [
+        'invoice' => $invoice,
+    ])
+        ->callAction('send');
+
+    expect($invoice->refresh())
+        ->isSent()->toBeTrue();
+});
+```
+
+---
+
+## why-pest.md >
+Package: pestphp/pest@4.x
+
+---
+title: Why Pest
+description: When testing PHP code, you have access to a range of frameworks. Nevertheless, we believe that Pest is the most elegant and sophisticated testing framework in the world. It's designed to make the testing process enjoyable, and our goal is to make tests easy to read and understand, with a code syntax that closely resembles natural human language.
+---
+
+# Why Pest
+
+When testing PHP code, you have access to a range of frameworks. Nevertheless, we believe that Pest is the most elegant and sophisticated testing framework in the world. It's designed to make the testing process enjoyable, and our goal is to make tests easy to read and understand, with a code syntax that closely resembles natural human language.
+
+```php
+function sum($a, $b) {
+    return $a + $b;
+}
+
+test('sum', function () {
+  $result = sum(1, 2);
+
+  expect($result)->toBe(3);
+});
+```
+
+You can expect a smooth and efficient coding experience thanks to Pest's easy-to-use API inspired by Ruby's Rspec and Jest. In addition, the test reporting is well-organized, practical, and informative, with clear and concise error and stack trace displays for quick debugging. With Pest, you can obtain test reporting that is unmatched in its beauty, directly from the console!
+
+<div class="code-snippet">
+    <img src="/assets/img/failure.webp?1" style="--lines: 16" />
+</div>
+
+In addition to its exceptional test reporting, Pest also offers a range of other valuable features, including:
+
+- Built-in [parallel](/docs/optimizing-tests#parallel) features for faster test runs
+- [Browser Testing](/docs/browser-testing) for testing your application in various browsers and devices
+- Beautiful [documentation](/docs/installation) that's easy to navigate
+- Native [profiling tools](/docs/optimizing-tests#profiling) to optimize slow-running tests
+- Out-of-the-box [Architectural Testing](/docs/arch-testing) to test application rules
+- [Coverage](/docs/test-coverage) report directly on the terminal to track code coverage
+- [Mutation Testing](#mutation-testing) to evaluate the quality of your test suite
+- [Team Management](/docs/team-management) to manage tasks / todos with your team
+- Dozens of [optional plugins](/docs/plugins), such as [Snapshot testing](https://github.com/spatie/pest-plugin-snapshots), to customize Pest to fit your needs.
+
+Whether you're engaged in a small personal project or a large-scale enterprise application, Pest has got you covered. So if you want to make the testing process enjoyable and efficient, give Pest a try. We're confident that you'll love it as much as we do.
+
+---
+
+You can learn about how to install Pest by visiting the next section of the documentation: [Installation →](/docs/installation)
+
+
+---
+
+## pint.md > Configuring Pint > Excluding Files / Folders
+Package: laravel/framework@12.x
+
+<a name="excluding-files-or-folders"></a>
+### Excluding Files / Folders
+
+By default, Pint will inspect all `.php` files in your project except those in the `vendor` directory. If you wish to exclude more folders, you may do so using the `exclude` configuration option:
+
+```json
+{
+    "exclude": [
+        "my-specific/folder"
+    ]
+}
+```
+
+If you wish to exclude all files that contain a given name pattern, you may do so using the `notName` configuration option:
+
+```json
+{
+    "notName": [
+        "*-my-file.php"
+    ]
+}
+```
+
+If you would like to exclude a file by providing an exact path to the file, you may do so using the `notPath` configuration option:
+
+```json
+{
+    "notPath": [
+        "path/to/excluded-file.php"
+    ]
+}
+```
+
+---
+
+## pint.md >
+Package: laravel/framework@12.x
+
+# Laravel Pint
+
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Running Pint](#running-pint)
+- [Configuring Pint](#configuring-pint)
+    - [Presets](#presets)
+    - [Rules](#rules)
+    - [Excluding Files / Folders](#excluding-files-or-folders)
+- [Continuous Integration](#continuous-integration)
+    - [GitHub Actions](#running-tests-on-github-actions)
+
+---
+
+## testing.md > Using PHPUnit
+Package: livewire/livewire@3.x
+
+Using PHPUnit
+
+While Pest is recommended, you can absolutely use PHPUnit to test Livewire components. All the same testing utilities work with PHPUnit's syntax.
+
+Here's a PHPUnit example for comparison:
+
+```php
+<?php
+
+namespace Tests\Feature\Livewire;
+
+use Livewire\Livewire;
+use App\Models\Post;
+use Tests\TestCase;
+
+class CreatePostTest extends TestCase
+{
+    public function test_can_create_post()
+    {
+        $this->assertEquals(0, Post::count());
+
+        Livewire::test('post.create')
+            ->set('title', 'My new post')
+            ->set('content', 'Post content')
+            ->call('save');
+
+        $this->assertEquals(1, Post::count());
+    }
+
+    public function test_title_is_required()
+    {
+        Livewire::test('post.create')
+            ->set('title', '')
+            ->call('save')
+            ->assertHasErrors('title');
+    }
+}
+```
+
+All features documented on this page work identically with PHPUnit—just use PHPUnit's assertion syntax instead of Pest's.
+
+> [!tip] Consider trying Pest
+> If you're interested in exploring Pest's more elegant syntax and features, check out [pestphp.com](https://pestphp.com/) to learn more.
+
+## Al
+
+---
+
+## tables/03-filters/06-layout.md > Hiding the filter indicators
+Package: filament/filament@4.x
+
+## Hiding the filter indicators
+
+To hide the active filters indicators above the table, you may use `hiddenFilterIndicators()`:
+
+```php
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->filters([
+            // ...
+        ])
+        ->hiddenFilterIndicators();
+}
+```
+
+---
+
+## docs/10-testing/04-testing-schemas.md > Filling a form in a test
+Package: filament/filament@4.x
+
+## Filling a form in a test
+
+To fill a form with data, pass the data to `fillForm()`:
+
+```php
+use function Pest\Livewire\livewire;
+
+livewire(CreatePost::class)
+    ->fillForm([
+        'title' => fake()->sentence(),
+        // ...
+    ]);
+```
+
+> If you have multiple schemas on a Livewire component, you can specify which form you want to fill using `fillForm([...], 'createPostForm')`.
+
+---
+
+## filter.mdx > Examples
+Package: tailwindcss@4.x
+
+## Examples
+
+### Basic example
+
+Use utilities like `blur-xs` and `grayscale` to apply filters to an element:
+
+<Figure>
+
+<Example padding={false}>
+  {
+    <div>
+      <div>
+        <div>
+          <p>blur-xs</p>
+          <div>
+            <img
+
+              src="https://images.unsplash.com/photo-1554629947-334ff61d85dc?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&h=1000&q=90"
+            />
+            <div></div>
+          </div>
+        </div>
+        <div>
+          <p>grayscale</p>
+          <div>
+            <img
+
+              src="https://images.unsplash.com/photo-1554629947-334ff61d85dc?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&h=1000&q=90"
+            />
+            <div></div>
+          </div>
+        </div>
+        <div>
+          <p>
+            combined
+          </p>
+          <div>
+            <img
+
+              src="https://images.unsplash.com/photo-1554629947-334ff61d85dc?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&h=1000&q=90"
+            />
+            <div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</Example>
+
+```html
+<!-- [!code classes:blur-xs,grayscale] -->
+<img class="blur-xs" src="/img/mountains.jpg" />
+<img class="grayscale" src="/img/mountains.jpg" />
+<img class="blur-xs grayscale" src="/img/mountains.jpg" />
+```
+
+</Figure>
+
+You can combine the following filter utilities: [blur](/docs/filter-blur), [brightness](/docs/filter-brightness), [contrast](/docs/filter-contrast), [drop-shadow](/docs/filter-drop-shadow), [grayscale](/docs/filter-grayscale), [hue-rotate](/docs/filter-hue-rotate), [invert](/docs/filter-invert), [saturate](/docs/filter-saturate), and [sepia](/docs/filter-sepia).
+
+### Removing filters
+
+Use the `filter-none` utility to remove all of the filters applied to an element:
+
+```html
+<!-- [!code classes:md:filter-none] -->
+<img class="blur-md brightness-150 invert md:filter-none" src="/img/mountains.jpg" />
+```
+
+### Using a custom value
+
+<UsingACustomValue
+  element="img"
+  elementAttributes={{ src: "/img/mountains.jpg" }}
+  utility="filter"
+  value="url('filters.svg#filter-id')"
+/>
+
+### Applying on hover
+
+<TargetingSpecificStates
+  element="img"
+  elementAttributes={{ src: "/img/mountains.jpg" }}
+  property="filter"
+  defaultClass="blur-sm"
+  featuredClass="filter-none"
+/>
+
+### Responsive design
+
+<ResponsiveDesign
+  element="img"
+  elementAttributes={{ src: "/img/mountains.jpg" }}
+  property="filter"
+  defaultClass="blur-sm"
+  featuredClass="filter-none"
+/>
+
+
+---
+
+## mcp.md > Testing Servers
+Package: laravel/mcp@0.x
+
+<a name="testing-servers"></a>
+## Testing Servers
+
+You may test your MCP servers using the built-in MCP Inspector or by writing unit tests.
+
+---
+
+## telescope.md > Filtering
+Package: laravel/framework@12.x
+
+<a name="filtering"></a>
+## Filtering
+
+---
+
+## pint.md > Configuring Pint > Rules
+Package: laravel/framework@12.x
+
+<a name="rules"></a>
+### Rules
+
+Rules are style guidelines that Pint will use to fix code style issues in your code. As mentioned above, presets are predefined groups of rules that should be perfect for most PHP projects, so you typically will not need to worry about the individual rules they contain.
+
+However, if you wish, you may enable or disable specific rules in your `pint.json` file or use the `empty` preset and define the rules from scratch:
+
+```json
+{
+    "preset": "laravel",
+    "rules": {
+        "simplified_null_return": true,
+        "array_indentation": false,
+        "new_with_parentheses": {
+            "anonymous_class": true,
+            "named_class": true
+        }
+    }
+}
+```
+
+Pint is built on top of [PHP CS Fixer](https://github.com/FriendsOfPHP/PHP-CS-Fixer). Therefore, you may use any of its rules to fix code style issues in your project: [PHP CS Fixer Configurator](https://mlocati.github.io/php-cs-fixer-configurator).
+
+---
+
+## AGENTS.md > Testing Documentation
+Package: livewire/livewire@3.x
+
+ion
+
+**Pest is the recommended testing framework** for Livewire 4. All testing examples should use Pest syntax unless specifically demonstrating PHPUnit compatibility.
+
+### Pest Examples
+
+```php
+it('can create a post', function () {
+    expect(Post::count())->toBe(0);
+
+    Livewire::test('post.create')
+        ->set('title', 'My new post')
+        ->call('save');
+
+    expect(Post::count())->toBe(1);
+});
+```
+
+### PHPUnit Examples
+
+Only show PHPUnit when:
+- Demonstrating that both frameworks work
+- In a dedicated "Using PHPUnit" section
+- Converting legacy docs that were PHPUnit-only
+
+### Testing Resources
+
+Link to Pest documentation where appropriate:
+- Installation: https://pestphp.com/docs/installation
+- Browser testing: https://pestphp.com/docs/browser-testing
+- Expectations: https://pestphp.com/docs/expectations
+- Main site: https://pestphp.com/
+
+## Layout File Format
+
+_[Content truncated due to token limit]_

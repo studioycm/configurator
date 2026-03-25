@@ -1,18 +1,27 @@
 {
     "agents": [
-        "codex",
+        "claude_code",
         "copilot",
-        "gemini",
-        "phpstorm"
-    ],
-    "editors": [
         "codex",
-        "gemini",
-        "phpstorm",
-        "vscode"
+        "junie",
+        "gemini"
     ],
-    "guidelines": [
-        "filament/filament"
+    "guidelines": true,
+    "mcp": true,
+    "nightwatch_mcp": false,
+    "packages": [
+        "filament/filament",
+        "laravel/fortify"
     ],
-    "herd_mcp": true
+    "sail": false,
+    "skills": [
+        "laravel-best-practices",
+        "configuring-horizon",
+        "fluxui-development",
+        "volt-development",
+        "pest-testing",
+        "tailwindcss-development",
+        "fortify-development",
+        "technical-debt-manager-php-laravel"
+    ]
 }

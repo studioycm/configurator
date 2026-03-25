@@ -24,6 +24,11 @@ class ConfigProfileResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    public static function getNavigationLabel(): string
+    {
+        return 'Configurators';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return ConfigProfileForm::configure($schema);

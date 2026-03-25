@@ -209,7 +209,7 @@
                         </div>
                     </div>
 
-                    <div class="col-span-1 space-y-3">
+                    <div class="col-span-2 space-y-3">
                         {{ $this->productInfolist }}
                     </div>
 
