@@ -71,7 +71,7 @@ class FileAttachmentsTable
             ->recordActions([
                 EditAction::make('editFile')
                     ->icon('heroicon-o-arrow-up-tray')
-                    ->label('')
+                    ->iconButton()
                     ->tooltip('Replace file')
                     ->modalHeading(fn (FileAttachment $record): string => 'Replace file for '.self::contextLabel($record))
                     ->schema([
@@ -94,7 +94,7 @@ class FileAttachmentsTable
                     }),
                 EditAction::make('editAll')
                     ->icon('heroicon-o-pencil-square')
-                    ->label('')
+                    ->iconButton()
                     ->tooltip('Edit all fields')
                     ->modalHeading(fn (FileAttachment $record): string => 'Edit file for '.self::contextLabel($record)),
             ])

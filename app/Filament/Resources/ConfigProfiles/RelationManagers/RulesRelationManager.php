@@ -34,15 +34,22 @@ class RulesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('id')
+            ->heading(fn ($ownerRecord) => $ownerRecord->attribute->label)
+            ->modifyQueryUsing(fn($query) => $query->with('configProfile', 'optionAttribute', 'configOption', 'targetAttribute'))
             ->columns([
-                TextColumn::make('config_option_id')
-                    ->numeric()
-                    ->label('Option'),
+                TextColumn::make('id'),
+                TextColumn::make('configProfile.name')
+                    ->label('Configurator'),
+                TextColumn::make('configOption')
+                    ->label('Option')
+                    ->description(fn($record) => (string) (
+                        $record->optionAttribute->label ?? ''
+                    )),
                 TextColumn::make('target_attribute_id')
                     ->numeric()
                     ->label('Target Attribute'),
                 TextColumn::make('allowed_option_ids')
-                    ->label('Allowed Option Ids'),
+                    ->label('Allowed Option'),
             ])
             ->headerActions([
                 CreateAction::make(),

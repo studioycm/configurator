@@ -10,31 +10,46 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Database\Eloquent\Builder;
 
 class OptionRuleForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(3)
             ->components([
                 Select::make('config_profile_id')
-                    ->label('Config Profile')
+                    ->label('Configurator')
                     ->relationship('configProfile', 'name')
                     ->searchable()
                     ->preload()
+                    ->live()
                     ->required(),
-                Select::make('config_option_id')
-                    ->label('Option')
-                    ->relationship('option', 'label')
+                Select::make('option_attribute_id')
+                    ->label('Attribute')
+                    ->disabled(fn (Get $get): bool => empty($get('config_profile_id')))
+                    ->relationship('optionAttribute', 'label', modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('config_profile_id', $get('config_profile_id')))
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set) => $set('config_option_id', null))
+                    ->dehydrated(false),
+                Select::make('config_option_id')
+                    ->label('Option')
+                    ->disabled(fn (Get $get): bool => empty($get('option_attribute_id')))
+                    ->relationship('option', 'label', modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('config_attribute_id', $get('option_attribute_id')))
+                    ->searchable()
+                    ->preload()
+                    ->live()
                     ->required(),
                 Select::make('target_attribute_id')
                     ->label('Target Attribute')
-                    ->relationship('targetAttribute', 'label')
+                    ->disabled(fn (Get $get): bool => empty($get('config_option_id')))
+                    ->relationship('targetAttribute', 'label', modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('config_profile_id', $get('config_profile_id')))
                     ->searchable()
                     ->preload()
-                    ->reactive()
+                    ->live()
                     ->afterStateUpdated(fn (Set $set) => $set('allowed_option_ids', []))
                     ->required(),
                 ModalTableSelect::make('allowed_option_ids')

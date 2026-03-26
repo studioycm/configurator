@@ -20,27 +20,42 @@ class ConfigProfilesTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with('productProfile'))
             ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('productProfile.name')
-                    ->searchable(),
+                    ->label('Product')
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('name')
-                    ->searchable(),
+                    ->label('Name')
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('slug')
-                    ->searchable(),
+                    ->label('Slug')
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('scope')
+                    ->label('Scope')
                     ->badge()
-                    ->searchable(),
+                    ->searchable(isIndividual: true, isGlobal: false),
                 IconColumn::make('is_active')
+                    ->label('Active')
                     ->boolean(),
                 TextColumn::make('created_at')
+                    ->label('Created At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Updated At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('product_profile_id')
+                    ->label('Product')
+                    ->relationship('productProfile', 'name')
+                    ->searchable()
+                    ->preload(),
                 SelectFilter::make('is_active')
                     ->label('Active')
                     ->options([
@@ -53,7 +68,7 @@ class ConfigProfilesTable
                         ->all())
                     ->searchable(),
             ])
-            ->filtersFormColumns(4)
+            ->filtersFormColumns(5)
             ->deferFilters(false)
             ->filtersLayout(FiltersLayout::AboveContent)
             ->recordActions([

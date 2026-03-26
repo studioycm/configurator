@@ -26,6 +26,8 @@ class ConfigOptionResource extends Resource
 
     protected static ?string $modelLabel = 'Option';
 
+    protected static ?string $recordTitleAttribute = 'label';
+
     protected static ?int $navigationSort = 12;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

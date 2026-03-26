@@ -9,6 +9,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,34 +21,45 @@ class ConfigAttributesTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with('configProfile'))
             ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('configProfile.name')
-                    ->searchable(),
+                    ->label('Configurator')
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('label')
+                    ->label('Name')
                     ->description(fn (ConfigAttribute $record): string => (string) ($record->name))
-                    ->searchable(),
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('input_type')
+                    ->label('Input Type')
                     ->badge()
-                    ->searchable(),
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('sort_order')
+                    ->label('Sort Order')
                     ->numeric()
                     ->sortable(),
                 IconColumn::make('is_required')
+                    ->label('Required')
                     ->boolean(),
                 TextColumn::make('segment_index')
+                    ->label('Segment Index')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')
+                    ->label('Created At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Updated At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('config_profile_id')
-                    ->label('Config Profile')
+                    ->label('Configurator')
                     ->relationship('configProfile', 'name')
                     ->searchable()
                     ->preload(),
@@ -64,6 +76,9 @@ class ConfigAttributesTable
                         ->all())
                     ->searchable(),
             ])
+            ->filtersFormColumns(5)
+            ->deferFilters(false)
+            ->filtersLayout(FiltersLayout::AboveContent)
             ->recordActions([
                 EditAction::make(),
             ])

@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class OptionRulesRelationManager extends RelationManager
 {
@@ -26,7 +27,7 @@ class OptionRulesRelationManager extends RelationManager
         return $schema
             ->components([
                 Select::make('config_profile_id')
-                    ->label('Config Profile')
+                    ->label('Configurator')
                     ->relationship('configProfile', 'name')
                     ->searchable()
                     ->preload()
@@ -36,7 +37,7 @@ class OptionRulesRelationManager extends RelationManager
                     ->relationship('targetAttribute', 'label')
                     ->searchable()
                     ->preload()
-                    ->reactive()
+                    ->live()
                     ->afterStateUpdated(fn (Set $set) => $set('allowed_option_ids', []))
                     ->required(),
                 ModalTableSelect::make('allowed_option_ids')
@@ -63,9 +64,10 @@ class OptionRulesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('id')
+            ->modifyQueryUsing(fn($query) => $query->with('configProfile', 'targetAttribute'))
             ->columns([
                 TextColumn::make('configProfile.name')
-                    ->label('Config Profile')
+                    ->label('Configurator')
                     ->searchable(),
                 TextColumn::make('targetAttribute.label')
                     ->label('Target Attribute')

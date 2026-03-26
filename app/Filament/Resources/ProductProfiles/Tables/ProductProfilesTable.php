@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -18,37 +19,44 @@ class ProductProfilesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable()
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('catalogGroup.name')
                     ->label('Category')
-                    ->searchable()
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('name')
-                    ->label('Product name')
-                    ->searchable()
+                    ->label('Name')
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('product_code')
-                    ->searchable()
+                    ->label('Product Code')
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('slug')
-                    ->searchable()
+                    ->label('Slug')
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('short_label')
-                    ->searchable()
+                    ->label('Short Label')
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 IconColumn::make('is_active')
+                    ->label('Active')
                     ->boolean()
                     ->toggleable(),
                 TextColumn::make('sort_order')
+                    ->label('Sort Order')
                     ->numeric()
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('created_at')
+                    ->label('Created At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Updated At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -60,6 +68,9 @@ class ProductProfilesTable
                     ->searchable()
                     ->preload(),
             ])
+            ->filtersFormColumns(5)
+            ->deferFilters(false)
+            ->filtersLayout(FiltersLayout::AboveContent)
             ->recordActions([
                 EditAction::make(),
             ])
