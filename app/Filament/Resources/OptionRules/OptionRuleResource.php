@@ -20,6 +20,8 @@ class OptionRuleResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
 
+    protected static ?string $navigationLabel = 'Rules & Dependencies';
+
     protected static ?int $navigationSort = 13;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

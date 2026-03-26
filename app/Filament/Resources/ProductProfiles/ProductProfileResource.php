@@ -5,6 +5,9 @@ namespace App\Filament\Resources\ProductProfiles;
 use App\Filament\Resources\ProductProfiles\Pages\CreateProductProfile;
 use App\Filament\Resources\ProductProfiles\Pages\EditProductProfile;
 use App\Filament\Resources\ProductProfiles\Pages\ListProductProfiles;
+use App\Filament\Resources\ProductProfiles\RelationManagers\ConfigProfilesRelationManager;
+use App\Filament\Resources\ProductProfiles\RelationManagers\FileAttachmentsRelationManager;
+use App\Filament\Resources\ProductProfiles\RelationManagers\ProductConfigurationsRelationManager;
 use App\Filament\Resources\ProductProfiles\Schemas\ProductProfileForm;
 use App\Filament\Resources\ProductProfiles\Tables\ProductProfilesTable;
 use App\Models\ProductProfile;
@@ -18,11 +21,16 @@ class ProductProfileResource extends Resource
 {
     protected static ?string $model = ProductProfile::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Catalog';
+    protected static string|\UnitEnum|null $navigationGroup = 'Catalog manager';
 
     protected static ?int $navigationSort = 2;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Products';
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -37,9 +45,9 @@ class ProductProfileResource extends Resource
     public static function getRelations(): array
     {
         return [
-            'files' => \App\Filament\Resources\ProductProfiles\RelationManagers\FileAttachmentsRelationManager::class,
-            'configProfiles' => \App\Filament\Resources\ProductProfiles\RelationManagers\ConfigProfilesRelationManager::class,
-            'productConfigurations' => \App\Filament\Resources\ProductProfiles\RelationManagers\ProductConfigurationsRelationManager::class,
+            'files' => FileAttachmentsRelationManager::class,
+            'configProfiles' => ConfigProfilesRelationManager::class,
+            'productConfigurations' => ProductConfigurationsRelationManager::class,
         ];
     }
 

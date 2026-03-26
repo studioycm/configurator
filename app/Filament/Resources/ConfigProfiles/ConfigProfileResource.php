@@ -7,6 +7,7 @@ use App\Filament\Resources\ConfigProfiles\Pages\EditConfigProfile;
 use App\Filament\Resources\ConfigProfiles\Pages\ListConfigProfiles;
 use App\Filament\Resources\ConfigProfiles\Schemas\ConfigProfileForm;
 use App\Filament\Resources\ConfigProfiles\Tables\ConfigProfilesTable;
+use App\Filament\Resources\ConfigProfiles\RelationManagers;
 use App\Models\ConfigProfile;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -42,8 +43,8 @@ class ConfigProfileResource extends Resource
     public static function getRelations(): array
     {
         return [
-            'attributes' => \App\Filament\Resources\ConfigProfiles\RelationManagers\AttributesRelationManager::class,
-            'rules' => \App\Filament\Resources\ConfigProfiles\RelationManagers\RulesRelationManager::class,
+            'attributes' => RelationManagers\AttributesRelationManager::class,
+            'rules' => RelationManagers\RulesRelationManager::class,
         ];
     }
 

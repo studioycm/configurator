@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ConfigAttributes;
 use App\Filament\Resources\ConfigAttributes\Pages\CreateConfigAttribute;
 use App\Filament\Resources\ConfigAttributes\Pages\EditConfigAttribute;
 use App\Filament\Resources\ConfigAttributes\Pages\ListConfigAttributes;
+use App\Filament\Resources\ConfigAttributes\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\ConfigAttributes\Schemas\ConfigAttributeForm;
 use App\Filament\Resources\ConfigAttributes\Tables\ConfigAttributesTable;
 use App\Models\ConfigAttribute;
@@ -20,9 +21,16 @@ class ConfigAttributeResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
 
+    protected static ?string $navigationLabel = 'Attributes';
+
     protected static ?int $navigationSort = 11;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Attributes';
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -37,7 +45,7 @@ class ConfigAttributeResource extends Resource
     public static function getRelations(): array
     {
         return [
-            'options' => \App\Filament\Resources\ConfigAttributes\RelationManagers\OptionsRelationManager::class,
+            'options' => OptionsRelationManager::class,
         ];
     }
 

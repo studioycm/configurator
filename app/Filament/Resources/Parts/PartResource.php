@@ -18,7 +18,9 @@ class PartResource extends Resource
 {
     protected static ?string $model = Part::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurations';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product Configurations';
+
+    protected static ?string $navigationLabel = 'Parts';
 
     protected static ?int $navigationSort = 30;
 

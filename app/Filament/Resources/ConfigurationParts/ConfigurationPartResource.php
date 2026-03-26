@@ -18,7 +18,9 @@ class ConfigurationPartResource extends Resource
 {
     protected static ?string $model = ConfigurationPart::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurations';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product Configurations';
+
+    protected static ?string $navigationLabel = 'Configuration associated Parts';
 
     protected static ?int $navigationSort = 21;
 

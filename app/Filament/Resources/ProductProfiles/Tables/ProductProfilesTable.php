@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class ProductProfilesTable
@@ -15,21 +16,34 @@ class ProductProfilesTable
     {
         return $table
             ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('catalogGroup.name')
-                    ->searchable(),
+                    ->label('Category')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('name')
-                    ->searchable(),
+                    ->label('Product name')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('product_code')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('slug')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('short_label')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 IconColumn::make('is_active')
-                    ->boolean(),
+                    ->boolean()
+                    ->toggleable(),
                 TextColumn::make('sort_order')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -40,7 +54,11 @@ class ProductProfilesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('catalog_group_id')
+                    ->label('Category')
+                    ->relationship('catalogGroup', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->recordActions([
                 EditAction::make(),

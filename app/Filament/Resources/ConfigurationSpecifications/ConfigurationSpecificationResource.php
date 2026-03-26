@@ -18,7 +18,9 @@ class ConfigurationSpecificationResource extends Resource
 {
     protected static ?string $model = ConfigurationSpecification::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurations';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product Configurations';
+
+    protected static ?string $navigationLabel = 'Specifications';
 
     protected static ?int $navigationSort = 22;
 
