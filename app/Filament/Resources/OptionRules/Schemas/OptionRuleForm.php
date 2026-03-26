@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\OptionRules\Schemas;
 
 use App\Filament\Resources\OptionRules\Tables\AllowedOptionsTable;
+use App\Models\ConfigAttribute;
 use App\Models\ConfigOption;
+use App\Models\OptionRule;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
@@ -29,7 +31,16 @@ class OptionRuleForm
                 Select::make('option_attribute_id')
                     ->label('Attribute')
                     ->disabled(fn (Get $get): bool => empty($get('config_profile_id')))
-                    ->relationship('optionAttribute', 'label', modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('config_profile_id', $get('config_profile_id')))
+                    ->options(fn (Get $get) => ConfigAttribute::query()
+                        ->where('config_profile_id', $get('config_profile_id'))
+                        ->pluck('label', 'id')
+                    )
+                    ->afterStateHydrated(function (Set $set, OptionRule $record) {
+                        if ($record && $record->config_option_id) {
+                            // Find the attribute ID that belongs to the saved option
+                            $set('option_attribute_id', $record->optionAttribute->id);
+                        }
+                    })
                     ->searchable()
                     ->preload()
                     ->live()

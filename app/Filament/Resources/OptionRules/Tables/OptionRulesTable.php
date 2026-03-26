@@ -22,28 +22,35 @@ class OptionRulesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable(isIndividual: true, isGlobal: false),
+                    ->searchable(isIndividual: true, isGlobal: false)
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('configProfile.name')
                     ->label('Configurator')
                     ->searchable(isIndividual: true, isGlobal: false)
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('optionAttribute.label')
                     ->label('Attribute')
                     ->searchable(isIndividual: true, isGlobal: false)
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('option.label')
                     ->label('Option')
                     ->description(fn (OptionRule $record): string => (string) ($record->option?->code))
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('targetAttribute.label')
                     ->label('Target Attribute')
                     ->searchable(isIndividual: true, isGlobal: false)
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('allowed_option_ids')
                     ->label('Allowed Options')
-                    ->state(fn (Model $record) => collect($record->allowedOptionLabels())->join(', '))
+                    ->state(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
                     ->limit(50)
-                    ->tooltip(fn (Model $record) => collect($record->allowedOptionLabels())->join(', ')),
+                    ->tooltip(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime()
