@@ -45,7 +45,11 @@ class ConfigProfile extends Model
         ];
     }
 
-    public function productProfile(): BelongsTo
+    public function catalogGroups(): HasMany
+    {
+        return $this->hasMany(CatalogGroup::class, 'config_profile_id', 'id');
+    }
+        public function productProfile(): BelongsTo
     {
         return $this->belongsTo(ProductProfile::class, 'product_profile_id', 'id');
     }

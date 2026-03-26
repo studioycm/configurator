@@ -26,6 +26,7 @@ class CatalogGroup extends Model
         'slug',
         'description',
         'parent_id',
+        'config_profile_id',
         'is_active',
         'sort_order',
         'path',
@@ -41,6 +42,7 @@ class CatalogGroup extends Model
         return [
             'id' => 'integer',
             'parent_id' => 'integer',
+            'config_profile_id' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -48,6 +50,11 @@ class CatalogGroup extends Model
     public function productProfiles(): HasMany
     {
         return $this->hasMany(ProductProfile::class, 'catalog_group_id', 'id');
+    }
+
+    public function configProfile(): BelongsTo
+    {
+        return $this->belongsTo(ConfigProfile::class, 'config_profile_id', 'id');
     }
 
     public function fileAttachments(): MorphMany

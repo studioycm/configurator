@@ -21,7 +21,15 @@ class CatalogGroupForm
                 Textarea::make('description')
                     ->columnSpanFull(),
                 Select::make('parent_id')
-                    ->relationship('parent', 'name'),
+                    ->label('Parent')
+                    ->relationship('parent', 'name')
+                    ->searchable()
+                    ->preload(),
+                Select::make('config_profile_id')
+                    ->label('Configurator')
+                    ->relationship('configProfile', 'name')
+                    ->searchable()
+                    ->preload(),
                 Toggle::make('is_active')
                     ->required(),
                 TextInput::make('sort_order')

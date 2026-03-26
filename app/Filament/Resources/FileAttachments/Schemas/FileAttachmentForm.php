@@ -43,6 +43,8 @@ class FileAttachmentForm
                     ->collection('default')
                     ->disk(config('media-library.disk_name', 'public'))
                     ->visibility('public')
+                    ->acceptedFileTypes(['application/pdf','image/*'])
+                    ->maxSize(4096)
                     ->required(),
                 Select::make('file_type')
                     ->options(FileAttachmentType::class),

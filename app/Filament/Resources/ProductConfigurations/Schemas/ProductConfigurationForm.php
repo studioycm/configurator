@@ -24,7 +24,8 @@ class ProductConfigurationForm
                 Toggle::make('is_active')
                     ->required(),
                 FileUpload::make('drawing_image_path')
-                    ->image(),
+                    ->image()
+                    ->maxSize(4096),
                 Textarea::make('config_data')
                     ->columnSpanFull(),
             ]);

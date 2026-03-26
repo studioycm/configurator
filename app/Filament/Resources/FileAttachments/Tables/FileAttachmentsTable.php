@@ -79,6 +79,8 @@ class FileAttachmentsTable
                             ->collection('default')
                             ->disk(config('media-library.disk_name', 'public'))
                             ->visibility('public')
+                            ->acceptedFileTypes(['application/pdf','image/*'])
+                            ->maxSize(4096)
                             ->required(),
                     ])
                     ->action(function (FileAttachment $record, array $data): void {

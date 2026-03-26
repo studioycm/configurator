@@ -16,6 +16,9 @@ class CatalogGroupsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function ($query) {
+                return $query->with(['parent', 'configProfile']);
+            })
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
@@ -28,6 +31,9 @@ class CatalogGroupsTable
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('parent.name')
                     ->label('Parent')
+                    ->searchable(isIndividual: true, isGlobal: false),
+                TextColumn::make('configProfile.name')
+                    ->label('Configurator')
                     ->searchable(isIndividual: true, isGlobal: false),
                 IconColumn::make('is_active')
                     ->label('Active')
@@ -54,6 +60,11 @@ class CatalogGroupsTable
                 SelectFilter::make('parent_id')
                     ->label('Parent')
                     ->relationship('parent', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('config_profile_id')
+                    ->label('Configurator')
+                    ->relationship('configProfile', 'name')
                     ->searchable()
                     ->preload(),
             ])

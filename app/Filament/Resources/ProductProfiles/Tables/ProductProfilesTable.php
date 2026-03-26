@@ -16,6 +16,9 @@ class ProductProfilesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function ($query) {
+                return $query->with('catalogGroup');
+            })
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
