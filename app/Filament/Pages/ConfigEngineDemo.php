@@ -361,8 +361,12 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                 ->grouped()
                 ->columns(2)
                 ->colors(function () use ($stage): array {
+                    $allowedIds = $this->allowed[$stage['id']] ?? [];
                     return collect($stage['options'])
-                        ->mapWithKeys(fn ($opt) => [$opt['id'] => 'primary'])
+                        ->mapWithKeys(function ($opt) use ($allowedIds) {
+                            $isDisabled = ! in_array((int) $opt['id'], $allowedIds);
+                            return [$opt['id'] => $isDisabled ? 'danger' : 'primary'];
+                        })
                         ->all();
                 })
                 ->live()

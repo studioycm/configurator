@@ -5,3 +5,10 @@
 @source './vendor/lara-zeus/bolt/resources/views/filament/**/*.blade.php';
 @source './vendor/lara-zeus/accordion/resources/views/**/*.blade.php';
 @source './vendor/lara-zeus/bolt-pro/resources/views/filament/**/*.blade.php';
+
+
+.fi-fo-toggle-buttons label.fi-disabled.fi-color-danger {
+    opacity: 0.4;
+    color: #000;
+    background-color: #ff9e9e;
+}
