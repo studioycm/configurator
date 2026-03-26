@@ -14,6 +14,7 @@ class ConfigurationSpecificationForm
             ->components([
                 Select::make('product_configuration_id')
                     ->relationship('productConfiguration', 'name')
+                    ->searchable()
                     ->required(),
                 TextInput::make('spec_group'),
                 TextInput::make('key')

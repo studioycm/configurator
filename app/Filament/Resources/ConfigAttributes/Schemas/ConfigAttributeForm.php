@@ -16,6 +16,7 @@ class ConfigAttributeForm
             ->components([
                 Select::make('config_profile_id')
                     ->relationship('configProfile', 'name')
+                    ->searchable()
                     ->required(),
                 TextInput::make('name')
                     ->required(),

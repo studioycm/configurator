@@ -26,6 +26,7 @@ class OptionsRelationManager extends RelationManager
                 Select::make('config_attribute_id')
                     ->label('Attribute')
                     ->relationship('attribute', 'label')
+                    ->searchable()
                     ->disabled()
                     ->dehydrated(false),
                 TextInput::make('label')

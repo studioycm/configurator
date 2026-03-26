@@ -8,11 +8,11 @@ use App\Models\FileAttachment;
 use App\Models\Part;
 use App\Models\ProductConfiguration;
 use App\Models\ProductProfile;
-use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -70,7 +70,7 @@ class FileAttachmentsTable
             ])
             ->recordActions([
                 EditAction::make('editFile')
-                    ->icon('heroicon-o-arrow-up-tray')
+                    ->icon(Heroicon::OutlinedArrowUpTray)
                     ->iconButton()
                     ->tooltip('Replace file')
                     ->modalHeading(fn (FileAttachment $record): string => 'Replace file for '.self::contextLabel($record))
@@ -79,7 +79,7 @@ class FileAttachmentsTable
                             ->collection('default')
                             ->disk(config('media-library.disk_name', 'public'))
                             ->visibility('public')
-                            ->acceptedFileTypes(['application/pdf','image/*'])
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(4096)
                             ->required(),
                     ])
@@ -95,7 +95,7 @@ class FileAttachmentsTable
                         $record->save();
                     }),
                 EditAction::make('editAll')
-                    ->icon('heroicon-o-pencil-square')
+                    ->icon(Heroicon::OutlinedPencilSquare)
                     ->iconButton()
                     ->tooltip('Edit all fields')
                     ->modalHeading(fn (FileAttachment $record): string => 'Edit file for '.self::contextLabel($record)),

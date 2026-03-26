@@ -6,27 +6,74 @@
 @source './vendor/lara-zeus/accordion/resources/views/**/*.blade.php';
 @source './vendor/lara-zeus/bolt-pro/resources/views/filament/**/*.blade.php';
 
-
-.fi-fo-toggle-buttons label.fi-color.fi-btn {
-    transition: background-color 0.3s, color 0.3s, opacity 0.3s ease-in-out;
+/* 1. Strip the outer container */
+.fi-fo-toggle-buttons.fi-btn-group {
+    @apply ring-0! shadow-none! bg-transparent! rounded-none!;
 }
 
-.fi-fo-toggle-buttons label.fi-color.fi-btn.fi-disabled.fi-color-danger {
-    opacity: 0.4;
-    color: #bd0000;
-    background-color: #ffeded;
-}
+.fi-fo-toggle-buttons {
 
-.fi-fo-toggle-buttons:has(input:not(:checked)+label.fi-color.fi-btn:hover) input:checked+:is(label.fi-btn:not(.fi-outlined).fi-color) {
-    opacity: 0.6;
-}
+    /* 2. Base Styles: Less Padding, Dark Gray Text, Double Separator */
+    & label.fi-color.fi-btn {
+        /* py-0.5 makes it extremely slim vertically. px-3 keeps the text breathing */
+        @apply py-0.5! px-3! min-h-7! font-bold! bg-transparent! shadow-none! transition-all! duration-300! ease-in-out! rounded-none!;
 
-.fi-fo-toggle-buttons label.fi-color.fi-btn:hover,
-.fi-fo-toggle-buttons input:checked+:is(label.fi-btn:not(.fi-outlined).fi-color) {
-    color: #fff;
-}
+        /* Base color: Dark gray (not completely black) */
+        @apply text-gray-700! border-transparent! no-underline!;
 
-.fi-fo-toggle-buttons label.fi-color.fi-btn:hover {
-    background-color: #0190ad;
-}
+        .dark & {
+            @apply text-gray-300!;
+        }
 
+        /* The Separator: Doubled thickness (border-e-2) */
+        &:not(:last-of-type) {
+            @apply border-e-2! border-gray-300!;
+
+            .dark & {
+                @apply border-gray-700!;
+            }
+        }
+
+        /* 3. Hover State: Dark Blue + Underscore */
+        &:hover:not(.fi-disabled) {
+            @apply text-blue-800! bg-transparent! underline! decoration-2! underline-offset-[6px]!;
+
+            .dark & {
+                @apply text-blue-300!;
+            }
+        }
+    }
+
+    /* 4. Selected (Active) State: Standard Blue + Underscore */
+    & input:checked + label.fi-btn:not(.fi-outlined).fi-color {
+        @apply text-blue-600! bg-transparent! underline! decoration-2! underline-offset-[6px]!;
+
+        .dark & {
+            @apply text-blue-400!;
+        }
+    }
+
+    /* 5. Disabled "Danger" State: Red */
+    & label.fi-color.fi-btn.fi-disabled.fi-color-danger {
+        @apply opacity-50! text-red-600! no-underline!;
+
+        .dark & {
+            @apply opacity-60! text-red-400!;
+        }
+
+        /* Keep the double separator on disabled items */
+        &:not(:last-of-type) {
+            @apply border-e-2! border-gray-300!;
+
+            .dark & {
+                @apply border-gray-700!;
+            }
+        }
+    }
+
+    /* 6. The "Underscore Steal" Effect */
+    /* If hovering over ANY unselected, enabled button -> Remove underline from the selected button */
+    &:has(input:not(:checked) + label.fi-btn:hover:not(.fi-disabled)) input:checked + label.fi-btn:not(.fi-outlined).fi-color {
+        @apply no-underline!;
+    }
+}

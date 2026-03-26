@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\ConfigurationParts\Schemas;
 
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class ConfigurationPartForm
@@ -15,6 +15,7 @@ class ConfigurationPartForm
             ->components([
                 Select::make('product_configuration_id')
                     ->relationship('productConfiguration', 'name')
+                    ->searchable()
                     ->required(),
                 Select::make('part_id')
                     ->relationship('part', 'name'),

@@ -5,39 +5,41 @@ namespace App\Filament\Pages;
 use App\DTO\ConfigOptionDTO;
 use App\DTO\ConfigStageDTO;
 use App\FileAttachmentType;
+use App\Models\CatalogGroup;
 use App\Models\ConfigProfile;
 use App\Models\ConfigurationSpecification;
 use App\Models\FileAttachment;
 use App\Models\ProductConfiguration;
+use App\Models\ProductProfile;
 use App\Services\ConfiguratorEngine;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Components\Section as SchemaSection;
-use Filament\Schemas\Concerns\InteractsWithSchemas;
-use Filament\Schemas\Contracts\HasSchemas;
-use Filament\Schemas\Schema;
-use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Concerns\InteractsWithInfolists;
 use Filament\Infolists\Contracts\HasInfolists;
-//use Filament\Infolists\Infolist;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section as SchemaSection;
+// use Filament\Infolists\Infolist;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
 {
     use InteractsWithActions;
-    use InteractsWithSchemas;
     use InteractsWithInfolists;
+    use InteractsWithSchemas;
 
     protected static ?string $slug = 'config-engine-demo';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-vertical';
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsVertical;
 
     protected string $view = 'filament.pages.config-engine-demo';
 
@@ -172,6 +174,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     {
         return Action::make('editContext')
             ->label('Change')
+            ->visible(true)
             ->modalHeading('Territory & Application')
             ->modalSubmitActionLabel('Apply')
             ->modalWidth(Width::TwoExtraLarge)
@@ -184,7 +187,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                     ->label('Territory')
                     ->options($this->territoryOptions())
                     ->icons([
-                        'Global' => 'heroicon-o-globe-alt',
+                        'Global' => Heroicon::OutlinedGlobeAlt,
                     ])
                     ->colors([
                         'Global' => 'gray',
@@ -201,11 +204,11 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                     ->label('Application')
                     ->options($this->applicationOptions())
                     ->icons([
-                        'Show All' => 'heroicon-o-squares-2x2',
-                        'Industry' => 'heroicon-o-building-office-2',
-                        'Water Supply' => 'heroicon-o-beaker',
-                        'Agriculture' => 'heroicon-o-sun',
-                        'Wastewater' => 'heroicon-o-arrow-path-rounded-square',
+                        'Show All' => Heroicon::OutlinedSquares2x2,
+                        'Industry' => Heroicon::OutlinedBuildingOffice2,
+                        'Water Supply' => Heroicon::OutlinedBeaker,
+                        'Agriculture' => Heroicon::OutlinedSun,
+                        'Wastewater' => Heroicon::OutlinedArrowPathRoundedSquare,
                     ])
                     ->colors([
                         'Show All' => 'gray',
@@ -231,22 +234,25 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     {
         return Action::make('viewImage')
             ->label('View image')
+            ->visible(true)
             ->modalHeading('Image preview')
             ->modalWidth(Width::FiveExtraLarge)
-            ->modalContent(fn (array $arguments): string => sprintf(
-                '<div class="w-full"><img src="%s" class="w-full h-full object-contain" loading="lazy"  alt=""/></div>',
-                e($arguments['url'] ?? '')
+            ->stickyModalHeader()
+            ->stickyModalFooter()
+            ->modalContent(fn (array $arguments): View => view(
+                'filament.pages.config-engine-demo.partials.modal-image',
+                ['url' => (string) ($arguments['url'] ?? '')],
             ))
             ->modalSubmitAction(false)
             ->modalCancelActionLabel(__('Close'));
     }
 
-    public function getProductProperty(): ?\App\Models\ProductProfile
+    public function getProductProperty(): ?ProductProfile
     {
         return $this->configProfile?->productProfile;
     }
 
-    public function getGroupProperty(): ?\App\Models\CatalogGroup
+    public function getGroupProperty(): ?CatalogGroup
     {
         return $this->product?->catalogGroup;
     }
@@ -362,9 +368,11 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                 ->columns(2)
                 ->colors(function () use ($stage): array {
                     $allowedIds = $this->allowed[$stage['id']] ?? [];
+
                     return collect($stage['options'])
                         ->mapWithKeys(function ($opt) use ($allowedIds) {
                             $isDisabled = ! in_array((int) $opt['id'], $allowedIds);
+
                             return [$opt['id'] => $isDisabled ? 'danger' : 'primary'];
                         })
                         ->all();
@@ -376,6 +384,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                 })
                 ->disableOptionWhen(function (string $value) use ($stage) {
                     $allowedIds = $this->allowed[$stage['id']] ?? [];
+
                     return ! in_array((int) $value, $allowedIds);
                 });
         }
@@ -397,23 +406,18 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                         TextEntry::make('mainImageUrl')
                             ->hiddenLabel()
                             ->html()
-                            ->state(function (?\App\Models\CatalogGroup $record): string {
+                            ->state(function (?CatalogGroup $record): Htmlable|string {
                                 $url = $record?->mainImageUrl;
 
                                 if (! $url) {
                                     return '';
                                 }
 
-                                return sprintf(
-                                    '<button type="button" wire:click="mountAction(\'viewImage\', { url: \"%s\" })" class="block w-full group">
-                                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-                                            <img src="%s" class="w-full h-full object-cover" loading="lazy" />
-                                        </div>
-                                        <div class="mt-2 text-xs text-primary-600 group-hover:underline">Enlarge</div>
-                                    </button>',
-                                    e($url),
-                                    e($url)
-                                );
+                                return $this->renderHtmlView('filament.pages.config-engine-demo.partials.image-trigger', [
+                                    'url' => $url,
+                                    'alt' => 'Main Image',
+                                    'captionClass' => 'mt-2 text-xs text-primary-600 group-hover:underline',
+                                ]);
                             }),
                     ]),
                 SchemaSection::make('Group Files')
@@ -421,7 +425,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                         TextEntry::make('fileAttachments')
                             ->hiddenLabel()
                             ->html()
-                            ->state(function (?\App\Models\CatalogGroup $record): string {
+                            ->state(function (?CatalogGroup $record): string {
                                 $files = $this->nonImageFiles($record?->fileAttachments);
 
                                 if ($files->isEmpty()) {
@@ -444,7 +448,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                         TextEntry::make('images')
                             ->hiddenLabel()
                             ->html()
-                            ->state(function (?\App\Models\ProductProfile $record): string {
+                            ->state(function (?ProductProfile $record): Htmlable|string {
                                 $group = $record?->catalogGroup;
 
                                 $images = collect([
@@ -464,20 +468,9 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                                     return '';
                                 }
 
-                                $items = $urls->map(function (string $url): string {
-                                    return sprintf(
-                                        '<button type="button" wire:click="mountAction(\'viewImage\', { url: \"%s\" })" class="group block w-full">
-                                            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-                                                <img src="%s" class="w-full h-full object-cover" loading="lazy"  alt=""/>
-                                            </div>
-                                            <div class="mt-1 text-[11px] text-primary-600 group-hover:underline">Enlarge</div>
-                                        </button>',
-                                        e($url),
-                                        e($url)
-                                    );
-                                })->implode('');
-
-                                return sprintf('<div class="grid grid-cols-1 gap-2">%s</div>', $items);
+                                return $this->renderHtmlView('filament.pages.config-engine-demo.partials.image-grid', [
+                                    'urls' => $urls,
+                                ]);
                             }),
                     ]),
                 SchemaSection::make('Documents')
@@ -485,7 +478,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                         TextEntry::make('documents')
                             ->hiddenLabel()
                             ->html()
-                            ->state(function (?\App\Models\ProductProfile $record): string {
+                            ->state(function (?ProductProfile $record): string {
                                 $groupFiles = $this->nonImageFiles($record?->catalogGroup?->fileAttachments);
                                 $productFiles = $this->nonImageFiles($record?->fileAttachments);
                                 $configurationFiles = $this->nonImageFiles($this->demoConfiguration?->fileAttachments);
@@ -493,15 +486,15 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                                 $sections = [];
 
                                 if ($groupFiles->isNotEmpty()) {
-                                    $sections[] = '<div class="mb-2 text-xs font-bold text-gray-500">GROUP</div>' . $this->renderFileLinks($groupFiles);
+                                    $sections[] = '<div class="mb-2 text-xs font-bold text-gray-500">GROUP</div>'.$this->renderFileLinks($groupFiles);
                                 }
 
                                 if ($productFiles->isNotEmpty()) {
-                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">PRODUCT</div>' . $this->renderFileLinks($productFiles);
+                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">PRODUCT</div>'.$this->renderFileLinks($productFiles);
                                 }
 
                                 if ($configurationFiles->isNotEmpty()) {
-                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">CONFIGURATION</div>' . $this->renderFileLinks($configurationFiles);
+                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">CONFIGURATION</div>'.$this->renderFileLinks($configurationFiles);
                                 }
 
                                 return implode('', $sections);
@@ -587,18 +580,17 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
      */
     private function renderFileLinks(Collection $files, bool $withContainer = true): string
     {
-        $links = $files->map(function (FileAttachment $file): string {
-            return sprintf(
-                '<a href="%s" target="_blank" class="flex items-center justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 mb-2 transition"><span class="text-sm font-medium text-gray-700 dark:text-gray-200">%s</span> <span class="text-xs text-primary-600 dark:text-primary-400">Open</span></a>',
-                $file->file_path,
-                e($file->title)
-            );
-        })->implode('');
+        return view('filament.pages.config-engine-demo.partials.file-links', [
+            'files' => $files,
+            'withContainer' => $withContainer,
+        ])->render();
+    }
 
-        if (! $withContainer) {
-            return $links;
-        }
-
-        return sprintf('<div class="space-y-1">%s</div>', $links);
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function renderHtmlView(string $view, array $data = []): Htmlable
+    {
+        return new HtmlString(view($view, $data)->render());
     }
 }

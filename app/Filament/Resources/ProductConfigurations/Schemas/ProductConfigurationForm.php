@@ -4,8 +4,8 @@ namespace App\Filament\Resources\ProductConfigurations\Schemas;
 
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -17,6 +17,7 @@ class ProductConfigurationForm
             ->components([
                 Select::make('product_profile_id')
                     ->relationship('productProfile', 'name')
+                    ->searchable()
                     ->required(),
                 TextInput::make('configuration_code')
                     ->required(),

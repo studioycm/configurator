@@ -15,6 +15,7 @@ class ProductProfileForm
             ->components([
                 Select::make('catalog_group_id')
                     ->relationship('catalogGroup', 'name')
+                    ->searchable()
                     ->required(),
                 TextInput::make('name')
                     ->required(),

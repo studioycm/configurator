@@ -4,8 +4,8 @@ namespace App\Filament\Resources\ConfigProfiles\Schemas;
 
 use App\ConfigProfileScope;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -17,6 +17,7 @@ class ConfigProfileForm
             ->components([
                 Select::make('product_profile_id')
                     ->relationship('productProfile', 'name')
+                    ->searchable()
                     ->required(),
                 TextInput::make('name')
                     ->required(),
