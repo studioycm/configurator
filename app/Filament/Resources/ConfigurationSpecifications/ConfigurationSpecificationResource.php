@@ -22,6 +22,11 @@ class ConfigurationSpecificationResource extends Resource
 
     protected static ?string $navigationLabel = 'Specifications';
 
+    protected static ?string $pluralModelLabel = 'Specifications';
+
+    protected static ?string $modelLabel = 'Specification';
+
+
     protected static ?int $navigationSort = 22;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

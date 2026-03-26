@@ -22,6 +22,10 @@ class OptionRuleResource extends Resource
 
     protected static ?string $navigationLabel = 'Rules & Dependencies';
 
+    protected static ?string $pluralModelLabel = 'Rules';
+
+    protected static ?string $modelLabel = 'Rule';
+
     protected static ?int $navigationSort = 13;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

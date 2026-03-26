@@ -32,6 +32,9 @@ class ProductProfileResource extends Resource
         return 'Products';
     }
 
+    protected static ?string $pluralModelLabel = 'Products';
+    protected static ?string $modelLabel = 'Product';
+
     public static function form(Schema $schema): Schema
     {
         return ProductProfileForm::configure($schema);

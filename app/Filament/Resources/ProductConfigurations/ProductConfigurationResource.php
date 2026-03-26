@@ -22,6 +22,9 @@ class ProductConfigurationResource extends Resource
 
     protected static ?string $navigationLabel = 'Configurations';
 
+    protected static ?string $pluralModelLabel = 'Configurations';
+    protected static ?string $modelLabel = 'Configuration';
+
     protected static ?int $navigationSort = 20;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

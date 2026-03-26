@@ -22,6 +22,9 @@ class ConfigurationPartResource extends Resource
 
     protected static ?string $navigationLabel = 'Configuration associated Parts';
 
+    protected static ?string $pluralModelLabel = 'Configuration Parts';
+    protected static ?string $modelLabel = 'Configuration Part';
+
     protected static ?int $navigationSort = 21;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

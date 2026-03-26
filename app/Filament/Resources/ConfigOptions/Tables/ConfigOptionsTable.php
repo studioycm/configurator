@@ -19,23 +19,18 @@ class ConfigOptionsTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['configProfile', 'attribute']))
             ->columns([
-                TextColumn::make('configProfile.name')
-                    ->label('Config Profile')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('attribute.label')
-                    ->label('Attribute')
-                    ->state(function (Model $record): ?string {
-                        $attribute = $record->getRelationValue('attribute');
-
-                        return $attribute?->label ?? $attribute?->name;
-                    })
-                    ->searchable()
-                    ->sortable(),
                 TextColumn::make('label')
                     ->searchable(),
                 TextColumn::make('code')
                     ->searchable(),
+                TextColumn::make('attribute.label')
+                    ->label('Attribute')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('configProfile.name')
+                    ->label('Configurator')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),

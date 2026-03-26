@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49aa9a21ad7a559ca873486f8d52383e",
+    "content-hash": "8a4b9d404683f8eb2977a31ff9078055",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -12594,6 +12594,28 @@
             "time": "2025-08-14T07:29:31+00:00"
         },
         {
+            "name": "filament/blueprint",
+            "version": "v1.1.2",
+            "dist": {
+                "type": "zip",
+                "url": "https://packages.filamentphp.com/composer/10/551/download"
+            },
+            "require": {
+                "filament/support": "^4.0",
+                "laravel/boost": "^1.8|^2.0"
+            },
+            "type": "library",
+            "license": [
+                "proprietary"
+            ],
+            "description": "Guidelines for AI agents to produce detailed Filament implementation plans.",
+            "homepage": "https://github.com/filamentphp/filament",
+            "support": {
+                "issues": "https://github.com/filamentphp/filament/issues",
+                "source": "https://github.com/filamentphp/filament"
+            }
+        },
+        {
             "name": "filp/whoops",
             "version": "2.18.4",
             "source": {
@@ -13336,6 +13358,135 @@
                 "source": "https://github.com/laravel/sail"
             },
             "time": "2026-03-23T15:56:34+00:00"
+        },
+        {
+            "name": "laraveldaily/filacheck",
+            "version": "v1.1.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/LaravelDaily/FilaCheck.git",
+                "reference": "3f5ac6192dd8861f39721b4fef1b1204f8165120"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/LaravelDaily/FilaCheck/zipball/3f5ac6192dd8861f39721b4fef1b1204f8165120",
+                "reference": "3f5ac6192dd8861f39721b4fef1b1204f8165120",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "nikic/php-parser": "^5.0",
+                "php": "^8.2",
+                "symfony/console": "^6.0|^7.0|^8.0"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0|^4.0"
+            },
+            "suggest": {
+                "laraveldaily/filacheck-pro": "Unlock performance rules, best practices checks, and more advanced static analysis"
+            },
+            "bin": [
+                "bin/filacheck"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Filacheck\\FilacheckServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Filacheck\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Povilas Korop",
+                    "email": "povilas@laraveldaily.com"
+                }
+            ],
+            "description": "Static analysis for Filament projects - detect deprecated patterns and code issues",
+            "homepage": "https://github.com/LaravelDaily/filacheck",
+            "keywords": [
+                "code-quality",
+                "filament",
+                "laravel",
+                "lint",
+                "livewire",
+                "static-analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/LaravelDaily/FilaCheck/issues",
+                "source": "https://github.com/LaravelDaily/FilaCheck/tree/v1.1.3"
+            },
+            "time": "2026-03-21T06:03:57+00:00"
+        },
+        {
+            "name": "laraveldaily/filacheck-pro",
+            "version": "v1.1.1",
+            "dist": {
+                "type": "zip",
+                "url": "https://satis.filamentexamples.com/dist/laraveldaily/filacheck-pro/laraveldaily-filacheck-pro-535e31da25161252ac6bbd81ec86cb582b3270a8-zip-21a0f7.zip",
+                "reference": "535e31da25161252ac6bbd81ec86cb582b3270a8",
+                "shasum": "78e3fe88af7999804752b3b131ec6d82080cc6ec"
+            },
+            "require": {
+                "laraveldaily/filacheck": "^1.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0|^4.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "FilacheckPro\\FilacheckProServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "FilacheckPro\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "FilacheckPro\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "authors": [
+                {
+                    "name": "Povilas Korop",
+                    "email": "povilas@laraveldaily.com"
+                }
+            ],
+            "description": "Premium FilaCheck rules - performance optimization, best practices, and advanced static analysis",
+            "keywords": [
+                "code-quality",
+                "filament",
+                "laravel",
+                "lint",
+                "livewire",
+                "performance",
+                "static-analysis"
+            ],
+            "support": {
+                "source": "https://github.com/LaravelDaily/FilaCheck-Pro/tree/v1.1.1",
+                "issues": "https://github.com/LaravelDaily/FilaCheck-Pro/issues"
+            },
+            "time": "2026-03-21T06:04:21+00:00"
         },
         {
             "name": "mockery/mockery",

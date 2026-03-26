@@ -30,6 +30,9 @@ class ConfigProfileResource extends Resource
         return 'Configurators';
     }
 
+    protected static ?string $pluralModelLabel = 'Configurators';
+    protected static ?string $modelLabel = 'Configurator';
+
     public static function form(Schema $schema): Schema
     {
         return ConfigProfileForm::configure($schema);

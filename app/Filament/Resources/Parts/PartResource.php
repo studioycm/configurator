@@ -22,6 +22,9 @@ class PartResource extends Resource
 
     protected static ?string $navigationLabel = 'Parts';
 
+    protected static ?string $pluralModelLabel = 'Parts';
+    protected static ?string $modelLabel = 'Part';
+
     protected static ?int $navigationSort = 30;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

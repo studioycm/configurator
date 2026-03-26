@@ -32,6 +32,9 @@ class ConfigAttributeResource extends Resource
         return 'Attributes';
     }
 
+    protected static ?string $pluralModelLabel = 'Attributes';
+    protected static ?string $modelLabel = 'Attribute';
+
     public static function form(Schema $schema): Schema
     {
         return ConfigAttributeForm::configure($schema);

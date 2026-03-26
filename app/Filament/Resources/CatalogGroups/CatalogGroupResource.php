@@ -28,6 +28,10 @@ class CatalogGroupResource extends Resource
 
     protected static ?string $navigationLabel = 'Categories';
 
+    protected static ?string $pluralModelLabel = 'Categories';
+
+    protected static ?string $modelLabel = 'Category';
+
     public static function form(Schema $schema): Schema
     {
         return CatalogGroupForm::configure($schema);

@@ -8,6 +8,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,6 +53,9 @@ class ConfigProfilesTable
                         ->all())
                     ->searchable(),
             ])
+            ->filtersFormColumns(4)
+            ->deferFilters(false)
+            ->filtersLayout(FiltersLayout::AboveContent)
             ->recordActions([
                 EditAction::make(),
             ])

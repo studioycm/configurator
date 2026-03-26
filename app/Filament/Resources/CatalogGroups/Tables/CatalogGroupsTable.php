@@ -16,7 +16,7 @@ class CatalogGroupsTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('slug')
                     ->searchable(),
                 TextColumn::make('parent.name')
