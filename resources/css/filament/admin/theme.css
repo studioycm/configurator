@@ -7,8 +7,26 @@
 @source './vendor/lara-zeus/bolt-pro/resources/views/filament/**/*.blade.php';
 
 
-.fi-fo-toggle-buttons label.fi-disabled.fi-color-danger {
-    opacity: 0.4;
-    color: #000;
-    background-color: #ff9e9e;
+.fi-fo-toggle-buttons label.fi-color.fi-btn {
+    transition: background-color 0.3s, color 0.3s, opacity 0.3s ease-in-out;
 }
+
+.fi-fo-toggle-buttons label.fi-color.fi-btn.fi-disabled.fi-color-danger {
+    opacity: 0.4;
+    color: #bd0000;
+    background-color: #ffeded;
+}
+
+.fi-fo-toggle-buttons:has(input:not(:checked)+label.fi-color.fi-btn:hover) input:checked+:is(label.fi-btn:not(.fi-outlined).fi-color) {
+    opacity: 0.6;
+}
+
+.fi-fo-toggle-buttons label.fi-color.fi-btn:hover,
+.fi-fo-toggle-buttons input:checked+:is(label.fi-btn:not(.fi-outlined).fi-color) {
+    color: #fff;
+}
+
+.fi-fo-toggle-buttons label.fi-color.fi-btn:hover {
+    background-color: #0190ad;
+}
+

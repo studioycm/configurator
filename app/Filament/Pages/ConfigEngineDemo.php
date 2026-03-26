@@ -369,6 +369,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                         })
                         ->all();
                 })
+                ->extraFieldWrapperAttributes(['class' => 'configurator-toggle-buttons'])
                 ->live()
                 ->afterStateUpdated(function ($state) use ($stage) {
                     $this->selectOption($stage['id'], (int) $state);
