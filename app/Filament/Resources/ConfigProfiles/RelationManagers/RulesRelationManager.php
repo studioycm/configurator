@@ -14,6 +14,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -91,6 +92,14 @@ class RulesRelationManager extends RelationManager
                         'attribute_id' => $get('target_attribute_id'),
                     ])
                     ->tableConfiguration(AllowedOptionsTable::class),
+                ToggleButtons::make('dependency_type')
+                    ->label('Dependency Type')
+                    ->options([
+                        'hidden' => 'Hidden',
+                        'disabled' => 'Disabled',
+                    ])
+                    ->grouped()
+                    ->dehydrated(false),
             ]);
     }
 

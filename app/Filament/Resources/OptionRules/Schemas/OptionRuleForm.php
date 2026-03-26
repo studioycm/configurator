@@ -9,6 +9,7 @@ use App\Models\OptionRule;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -19,7 +20,7 @@ class OptionRuleForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(3)
+            ->columns(4)
             ->components([
                 Select::make('config_profile_id')
                     ->label('Configurator')
@@ -80,6 +81,14 @@ class OptionRuleForm
                         'attribute_id' => $get('target_attribute_id'),
                     ])
                     ->tableConfiguration(AllowedOptionsTable::class),
+                ToggleButtons::make('dependency_type')
+                    ->label('Dependency Type')
+                    ->options([
+                        'hidden' => 'Hidden',
+                        'disabled' => 'Disabled',
+                    ])
+                    ->grouped()
+                    ->dehydrated(false),
             ]);
     }
 }
