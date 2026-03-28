@@ -26,9 +26,44 @@ class OptionRuleForm
     {
         return $schema
             ->components([
+                Section::make('Activation Conditions')
+                    ->description('Add optional context-aware checks that must also match before the rule becomes active.')
+                    ->schema([
+                        Repeater::make('rule_payload.activate_if')
+                            ->label('Activation Conditions')
+                            ->defaultItems(0)
+                            ->addActionLabel('Add activation condition')
+                            ->helperText('Examples: context.territory, context.application, configuration.code_set')
+                            ->table([
+                                TableColumn::make('Source')->markAsRequired(),
+                                TableColumn::make('Operator')->markAsRequired(),
+                                TableColumn::make('Value')->markAsRequired(),
+                            ])
+                            ->schema([
+                                TextInput::make('source')
+                                    ->label('Source')
+                                    ->required(),
+                                Select::make('operator')
+                                    ->label('Operator')
+                                    ->options([
+                                        '=' => '=',
+                                        '!=' => '!=',
+                                        'in' => 'in',
+                                        'not_in' => 'not_in',
+                                    ])
+                                    ->native(false)
+                                    ->default('=')
+                                    ->required(),
+                                TextInput::make('value')
+                                    ->label('Value')
+                                    ->placeholder('Enter a comma-separated list for multi-value operators')
+                                    ->required(),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Rule Trigger & Scope')
                     ->description('Define which selected option activates this rule and which target attribute it affects.')
-                    ->columns(4)
+                    ->columns(2)
                     ->schema([
                         Select::make('config_profile_id')
                             ->label('Configurator')
@@ -107,7 +142,7 @@ class OptionRuleForm
                     ]),
                 Section::make('Rule Lifecycle')
                     ->description('Control how this rule behaves when it matches.')
-                    ->columns(3)
+                    ->columns(2)
                     ->schema([
                         ToggleButtons::make('dependency_type')
                             ->label('Restriction Mode')
@@ -199,7 +234,6 @@ class OptionRuleForm
                                     ->required(),
                                 TextInput::make('label')
                                     ->label('Effective Label')
-                                    ->helperText('Shown while this rule is active. The original option label is not changed.')
                                     ->required(),
                             ])
                             ->columnSpanFull(),
@@ -217,7 +251,6 @@ class OptionRuleForm
                                     ->required(),
                                 TextInput::make('value')
                                     ->label('Effective Value')
-                                    ->helperText('Used only while this rule is active; the master option value stays unchanged.')
                                     ->required(),
                             ])
                             ->columnSpanFull(),
@@ -235,46 +268,11 @@ class OptionRuleForm
                                     ->required(),
                                 TextInput::make('hint')
                                     ->label('Effective Hint')
-                                    ->helperText('Shown only while this rule is active.')
                                     ->required(),
                             ])
                             ->columnSpanFull(),
                     ]),
-                Section::make('Activation Conditions')
-                    ->description('Add optional context-aware checks that must also match before the rule becomes active.')
-                    ->schema([
-                        Repeater::make('rule_payload.activate_if')
-                            ->label('Activation Conditions')
-                            ->defaultItems(0)
-                            ->addActionLabel('Add activation condition')
-                            ->table([
-                                TableColumn::make('Source')->markAsRequired(),
-                                TableColumn::make('Operator')->markAsRequired(),
-                                TableColumn::make('Value')->markAsRequired(),
-                            ])
-                            ->schema([
-                                TextInput::make('source')
-                                    ->label('Source')
-                                    ->helperText('Examples: context.territory, context.application, configuration.code_set.')
-                                    ->required(),
-                                Select::make('operator')
-                                    ->label('Operator')
-                                    ->options([
-                                        '=' => '=',
-                                        '!=' => '!=',
-                                        'in' => 'in',
-                                        'not_in' => 'not_in',
-                                    ])
-                                    ->native(false)
-                                    ->default('=')
-                                    ->required(),
-                                TextInput::make('value')
-                                    ->label('Value')
-                                    ->helperText('For multi-value operators, enter a comma-separated list.')
-                                    ->required(),
-                            ])
-                            ->columnSpanFull(),
-                    ]),
+
             ]);
     }
 
