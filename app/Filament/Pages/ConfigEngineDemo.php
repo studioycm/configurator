@@ -443,6 +443,33 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
         return $schema
             ->record($this->product)
             ->components([
+                SchemaSection::make('Documents')
+                    ->components([
+                        TextEntry::make('documents')
+                            ->hiddenLabel()
+                            ->html()
+                            ->state(function (?ProductProfile $record): string {
+                                $groupFiles = $this->nonImageFiles($record?->catalogGroup?->fileAttachments);
+                                $productFiles = $this->nonImageFiles($record?->fileAttachments);
+                                $configurationFiles = $this->nonImageFiles($this->demoConfiguration?->fileAttachments);
+
+                                $sections = [];
+
+                                if ($groupFiles->isNotEmpty()) {
+                                    $sections[] = '<div class="mb-2 text-xs font-bold text-gray-500">GROUP</div>'.$this->renderFileLinks($groupFiles);
+                                }
+
+                                if ($productFiles->isNotEmpty()) {
+                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">PRODUCT</div>'.$this->renderFileLinks($productFiles);
+                                }
+
+                                if ($configurationFiles->isNotEmpty()) {
+                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">CONFIGURATION</div>'.$this->renderFileLinks($configurationFiles);
+                                }
+
+                                return implode('', $sections);
+                            }),
+                    ]),
                 SchemaSection::make('Images')
                     ->components([
                         TextEntry::make('images')
@@ -471,33 +498,6 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                                 return $this->renderHtmlView('filament.pages.config-engine-demo.partials.image-grid', [
                                     'urls' => $urls,
                                 ]);
-                            }),
-                    ]),
-                SchemaSection::make('Documents')
-                    ->components([
-                        TextEntry::make('documents')
-                            ->hiddenLabel()
-                            ->html()
-                            ->state(function (?ProductProfile $record): string {
-                                $groupFiles = $this->nonImageFiles($record?->catalogGroup?->fileAttachments);
-                                $productFiles = $this->nonImageFiles($record?->fileAttachments);
-                                $configurationFiles = $this->nonImageFiles($this->demoConfiguration?->fileAttachments);
-
-                                $sections = [];
-
-                                if ($groupFiles->isNotEmpty()) {
-                                    $sections[] = '<div class="mb-2 text-xs font-bold text-gray-500">GROUP</div>'.$this->renderFileLinks($groupFiles);
-                                }
-
-                                if ($productFiles->isNotEmpty()) {
-                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">PRODUCT</div>'.$this->renderFileLinks($productFiles);
-                                }
-
-                                if ($configurationFiles->isNotEmpty()) {
-                                    $sections[] = '<div class="mt-4 mb-2 text-xs font-bold text-gray-500">CONFIGURATION</div>'.$this->renderFileLinks($configurationFiles);
-                                }
-
-                                return implode('', $sections);
                             }),
                     ]),
             ]);
