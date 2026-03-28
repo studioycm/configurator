@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Collection;
 
 class OptionRule extends Model
 {
@@ -83,27 +84,7 @@ class OptionRule extends Model
             return [];
         }
 
-        $options = null;
-
-        if ($this->relationLoaded('targetAttribute') && $this->targetAttribute?->relationLoaded('options')) {
-            $options = $this->targetAttribute->options;
-        }
-
-        if ($options === null) {
-            $options = $this->targetAttribute()
-                ->with('options')
-                ->first()?->options;
-        }
-
-        if ($options === null) {
-            return [];
-        }
-
-        return $options
-            ->whereIn('id', $allowedIds)
-            ->pluck('label')
-            ->values()
-            ->all();
+        return $this->resolveOptionLabels($allowedIds, onlyTargetAttribute: true);
     }
 
     /**
@@ -112,31 +93,108 @@ class OptionRule extends Model
      */
     public function targetOptionLabelsFor(array $optionIds): array
     {
+        return $this->resolveOptionLabels($optionIds, onlyTargetAttribute: true);
+    }
+
+    /**
+     * @param  int[]  $optionIds
+     * @return array<int, string>
+     */
+    public function configuratorOptionLabelsFor(array $optionIds): array
+    {
+        return $this->resolveOptionLabels($optionIds, includeAttributeLabel: true);
+    }
+
+    public function configuratorOptionLabel(int $optionId): ?string
+    {
+        return $this->configuratorOptionLabelsFor([$optionId])[0] ?? null;
+    }
+
+    /**
+     * @param  int[]  $optionIds
+     * @return array<int, string>
+     */
+    protected function resolveOptionLabels(array $optionIds, bool $onlyTargetAttribute = false, bool $includeAttributeLabel = false): array
+    {
+        $optionIds = collect($optionIds)
+            ->filter(fn (mixed $optionId): bool => is_numeric($optionId))
+            ->map(fn (mixed $optionId): int => (int) $optionId)
+            ->values()
+            ->all();
+
         if ($optionIds === []) {
             return [];
         }
 
-        $options = null;
+        $options = $this->resolveOptionCollection($optionIds, $onlyTargetAttribute)->keyBy('id');
 
-        if ($this->relationLoaded('targetAttribute') && $this->targetAttribute?->relationLoaded('options')) {
-            $options = $this->targetAttribute->options;
-        }
+        return collect($optionIds)
+            ->map(function (int $optionId) use ($includeAttributeLabel, $options): ?string {
+                $option = $options->get($optionId);
 
-        if ($options === null) {
-            $options = $this->targetAttribute()
-                ->with('options')
-                ->first()?->options;
-        }
+                if (! $option instanceof ConfigOption) {
+                    return null;
+                }
 
-        if ($options === null) {
-            return [];
-        }
-
-        return $options
-            ->whereIn('id', $optionIds)
-            ->pluck('label')
+                return $this->formatOptionReference($option, $includeAttributeLabel);
+            })
+            ->filter(fn (?string $label): bool => filled($label))
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  int[]  $optionIds
+     * @return Collection<int, ConfigOption>
+     */
+    protected function resolveOptionCollection(array $optionIds, bool $onlyTargetAttribute = false): Collection
+    {
+        if ($onlyTargetAttribute) {
+            $options = null;
+
+            if ($this->relationLoaded('targetAttribute') && $this->targetAttribute?->relationLoaded('options')) {
+                $options = $this->targetAttribute->options;
+            }
+
+            if ($options === null) {
+                $options = $this->targetAttribute()
+                    ->with('options')
+                    ->first()?->options;
+            }
+
+            return ($options ?? collect())
+                ->whereIn('id', $optionIds)
+                ->values();
+        }
+
+        $query = ConfigOption::query()
+            ->with('attribute:id,label,config_profile_id')
+            ->whereIn('id', $optionIds);
+
+        if ($this->config_profile_id) {
+            $query->whereHas('attribute', fn ($attributeQuery) => $attributeQuery->where('config_profile_id', $this->config_profile_id));
+        }
+
+        return $query->get();
+    }
+
+    protected function formatOptionReference(ConfigOption $option, bool $includeAttributeLabel = false): string
+    {
+        $optionLabel = $option->label;
+
+        if (! $includeAttributeLabel) {
+            return $optionLabel;
+        }
+
+        $attributeLabel = $option->relationLoaded('attribute')
+            ? $option->attribute?->label
+            : $option->attribute()->value('label');
+
+        if (! filled($attributeLabel)) {
+            return $optionLabel;
+        }
+
+        return $attributeLabel.' — '.$optionLabel;
     }
 
     public function effectType(): string
@@ -202,7 +260,7 @@ class OptionRule extends Model
             ->filter(fn (mixed $override): bool => is_array($override))
             ->filter(fn (array $override): bool => is_numeric($override['option_id'] ?? null) && is_string($override['label'] ?? null) && $override['label'] !== '')
             ->map(function (array $override): string {
-                $label = $this->targetOptionLabelsFor([(int) $override['option_id']])[0] ?? ('#'.$override['option_id']);
+                $label = $this->configuratorOptionLabel((int) $override['option_id']) ?? ('#'.$override['option_id']);
 
                 return $label.' → '.$override['label'];
             })
@@ -231,7 +289,7 @@ class OptionRule extends Model
             ->filter(fn (mixed $override): bool => is_array($override))
             ->filter(fn (array $override): bool => is_numeric($override['option_id'] ?? null) && is_string($override['value'] ?? null) && $override['value'] !== '')
             ->map(function (array $override): string {
-                $label = $this->targetOptionLabelsFor([(int) $override['option_id']])[0] ?? ('#'.$override['option_id']);
+                $label = $this->configuratorOptionLabel((int) $override['option_id']) ?? ('#'.$override['option_id']);
 
                 return $label.' → '.$override['value'];
             })
@@ -260,7 +318,7 @@ class OptionRule extends Model
             ->filter(fn (mixed $override): bool => is_array($override))
             ->filter(fn (array $override): bool => is_numeric($override['option_id'] ?? null) && is_string($override['hint'] ?? null) && $override['hint'] !== '')
             ->map(function (array $override): string {
-                $label = $this->targetOptionLabelsFor([(int) $override['option_id']])[0] ?? ('#'.$override['option_id']);
+                $label = $this->configuratorOptionLabel((int) $override['option_id']) ?? ('#'.$override['option_id']);
 
                 return $label.' → '.$override['hint'];
             })

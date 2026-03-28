@@ -145,7 +145,7 @@ dataset('table-standards-pages', [
             'optionAttribute.label' => 'Attribute',
             'option.label' => 'Option',
             'targetAttribute.label' => 'Target Attribute',
-            'allowed_option_ids' => 'Allowed Options',
+            'allowed_option_ids' => 'Allowed Target Options',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
         ],

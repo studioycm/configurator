@@ -22,7 +22,7 @@ class OptionRulesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable(isIndividual: true, isGlobal: false)
+                    ->searchable()
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('configProfile.name')
@@ -38,6 +38,7 @@ class OptionRulesTable
                 TextColumn::make('option.label')
                     ->label('Option')
                     ->description(fn (OptionRule $record): string => (string) ($record->option?->code))
+                    ->searchable(['label', 'code'], isIndividual: true, isGlobal: false)
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('targetAttribute.label')
@@ -46,9 +47,10 @@ class OptionRulesTable
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('allowed_option_ids')
-                    ->label('Allowed Options')
+                    ->label('Allowed Target Options')
                     ->state(fn (OptionRule $record): array => $record->allowedOptionLabels())
                     ->listWithLineBreaks()
+                    ->bulleted()
                     ->limitList(3)
                     ->expandableLimitedList()
                     ->toggleable(),
@@ -61,16 +63,17 @@ class OptionRulesTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('rule_payload')
-                    ->label('Rule Payload')
+                    ->label('Rule Actions')
                     ->state(fn (OptionRule $record): array => array_merge(
-                        $record->hiddenOptionLabels() === [] ? [] : ['Hide: '.implode(', ', $record->hiddenOptionLabels())],
-                        $record->disabledOptionLabels() === [] ? [] : ['Disable: '.implode(', ', $record->disabledOptionLabels())],
-                        $record->labelOverrideSummaries(),
-                        $record->valueOverrideSummaries(),
-                        $record->hintOverrideSummaries(),
-                        $record->activationConditionSummaries(),
+                        $record->hiddenOptionLabels() === [] ? [] : ['Additional hidden target options: '.implode(', ', $record->hiddenOptionLabels())],
+                        $record->disabledOptionLabels() === [] ? [] : ['Additional disabled target options: '.implode(', ', $record->disabledOptionLabels())],
+                        array_map(fn (string $summary): string => 'Label override: '.$summary, $record->labelOverrideSummaries()),
+                        array_map(fn (string $summary): string => 'Value override: '.$summary, $record->valueOverrideSummaries()),
+                        array_map(fn (string $summary): string => 'Hint override: '.$summary, $record->hintOverrideSummaries()),
+                        array_map(fn (string $summary): string => 'Activation: '.$summary, $record->activationConditionSummaries()),
                     ))
                     ->listWithLineBreaks()
+                    ->bulleted()
                     ->limitList(3)
                     ->expandableLimitedList(),
                 TextColumn::make('is_active')

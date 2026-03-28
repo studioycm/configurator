@@ -29,7 +29,7 @@ class ConfigAttributesTable
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('label')
                     ->label('Name')
-                    ->description(fn (ConfigAttribute $record): string => (string) ($record->name))
+                    ->description(fn (ConfigAttribute $record): string => collect([$record->name, $record->slug])->filter()->implode(' · '))
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('sort_order')
                     ->label('Sort Order')
@@ -48,13 +48,14 @@ class ConfigAttributesTable
                     ->formatStateUsing(fn (?ConfigInputType $state): string => $state?->getLabel() ?? 'Toggle')
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('ui_schema')
-                    ->label('UI Schema')
+                    ->label('UI Metadata')
                     ->state(fn (ConfigAttribute $record): array => array_filter([
                         $record->groupKey() ? 'Group: '.$record->groupKey() : null,
                         $record->helpText() ? 'Help: '.$record->helpText() : null,
                         'Auto select: '.($record->autoSelectFirstAllowed() ? 'Yes' : 'No'),
                     ]))
                     ->listWithLineBreaks()
+                    ->bulleted()
                     ->limitList(3)
                     ->expandableLimitedList(),
                 TextColumn::make('created_at')

@@ -24,6 +24,7 @@ class ConfigOptionsTable
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('label')
                     ->label('Name')
+                    ->description(fn ($record): ?string => $record->shortLabel() ? 'Short: '.$record->shortLabel() : null)
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('code')
                     ->label('Code')
@@ -47,7 +48,7 @@ class ConfigOptionsTable
                     ->label('Active')
                     ->boolean(),
                 TextColumn::make('ui_meta')
-                    ->label('UI Meta')
+                    ->label('UI Metadata')
                     ->state(fn ($record): array => array_filter([
                         $record->shortLabel() ? 'Short: '.$record->shortLabel() : null,
                         $record->hintText() ? 'Hint: '.$record->hintText() : null,
@@ -56,6 +57,7 @@ class ConfigOptionsTable
                         $record->isDisabledByDefault() ? 'Disabled by default' : null,
                     ]))
                     ->listWithLineBreaks()
+                    ->bulleted()
                     ->limitList(3)
                     ->expandableLimitedList(),
                 TextColumn::make('created_at')
