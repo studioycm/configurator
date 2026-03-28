@@ -160,6 +160,7 @@ final class ConfiguratorEngine
      *     hidden: array<int, int[]>,
      *     disabled: array<int, int[]>,
      *     label_overrides: array<string, string>,
+     *     value_overrides: array<string, string>,
      *     hints: array<string, string>
      * }
      */
@@ -210,6 +211,12 @@ final class ConfiguratorEngine
             $presentationState['label_overrides'] = array_replace(
                 $presentationState['label_overrides'],
                 $rule->labelOverrides(),
+                $rule->valueOverrides(),
+            );
+
+            $presentationState['value_overrides'] = array_replace(
+                $presentationState['value_overrides'],
+                $rule->valueOverrides(),
             );
 
             $presentationState['hints'] = array_replace(
@@ -234,6 +241,7 @@ final class ConfiguratorEngine
             'hidden' => $this->normalizePresentationBucket($presentationState['hidden']),
             'disabled' => $this->normalizePresentationBucket($presentationState['disabled']),
             'label_overrides' => $presentationState['label_overrides'],
+            'value_overrides' => $presentationState['value_overrides'],
             'hints' => $presentationState['hints'],
         ];
     }
@@ -554,6 +562,7 @@ final class ConfiguratorEngine
      *     hidden: array<int, int[]>,
      *     disabled: array<int, int[]>,
      *     label_overrides: array<string, string>,
+     *     value_overrides: array<string, string>,
      *     hints: array<string, string>
      * }
      */
@@ -566,6 +575,7 @@ final class ConfiguratorEngine
         $hidden = [];
         $disabled = [];
         $labelOverrides = [];
+        $valueOverrides = [];
         $hints = [];
 
         foreach ($attributes as $attribute) {
@@ -602,6 +612,7 @@ final class ConfiguratorEngine
             'hidden' => $hidden,
             'disabled' => $disabled,
             'label_overrides' => $labelOverrides,
+            'value_overrides' => $valueOverrides,
             'hints' => $hints,
         ];
     }

@@ -23,7 +23,7 @@ class ConfigAttributesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable(),
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('configProfile.name')
                     ->label('Configurator')
                     ->searchable(isIndividual: true, isGlobal: false),
@@ -42,11 +42,21 @@ class ConfigAttributesTable
                     ->label('Segment Index')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('ui_schema.presentation.input_mode')
-                    ->label('Type')
+                TextColumn::make('input_type')
+                    ->label('Input Type')
                     ->badge()
-                    ->default(fn (ConfigAttribute $record): string => $record->uiSchema['presentation']['input_mode'] ?? $record->input_type->getLabel())
+                    ->formatStateUsing(fn (?ConfigInputType $state): string => $state?->getLabel() ?? 'Toggle')
                     ->searchable(isIndividual: true, isGlobal: false),
+                TextColumn::make('ui_schema')
+                    ->label('UI Schema')
+                    ->state(fn (ConfigAttribute $record): array => array_filter([
+                        $record->groupKey() ? 'Group: '.$record->groupKey() : null,
+                        $record->helpText() ? 'Help: '.$record->helpText() : null,
+                        'Auto select: '.($record->autoSelectFirstAllowed() ? 'Yes' : 'No'),
+                    ]))
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList(),
                 TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime()

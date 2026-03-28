@@ -276,16 +276,28 @@ test('evaluateState applies context aware ui state and rule priority', function 
         'config_option_id' => $bodyOpt->id,
         'target_attribute_id' => $sealAttr->id,
         'allowed_option_ids' => [$sealOpt1->id, $sealOpt2->id],
+        'dependency_type' => 'hidden',
         'is_active' => true,
         'priority' => 10,
         'rule_payload' => [
-            'ui_mode' => 'hidden',
             'disable_option_ids' => [$sealOpt2->id],
             'label_overrides' => [
-                (string) $sealOpt1->id => 'EPDM Premium',
+                [
+                    'option_id' => $sealOpt1->id,
+                    'label' => 'EPDM Premium',
+                ],
+            ],
+            'value_overrides' => [
+                [
+                    'option_id' => $sealOpt1->id,
+                    'value' => 'EPDM Premium',
+                ],
             ],
             'hints' => [
-                (string) $sealOpt1->id => 'Rule hint',
+                [
+                    'option_id' => $sealOpt1->id,
+                    'hint' => 'Rule hint',
+                ],
             ],
             'activate_if' => [
                 [
@@ -405,9 +417,9 @@ test('evaluateState ignores context gated rules when the context does not match'
         'config_option_id' => $bodyOpt->id,
         'target_attribute_id' => $sealAttr->id,
         'allowed_option_ids' => [$sealOpt1->id],
+        'dependency_type' => 'hidden',
         'is_active' => true,
         'rule_payload' => [
-            'ui_mode' => 'hidden',
             'activate_if' => [
                 [
                     'source' => 'context.territory',

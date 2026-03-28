@@ -6,18 +6,18 @@ use App\Filament\Resources\OptionRules\Tables\AllowedOptionsTable;
 use App\Models\ConfigAttribute;
 use App\Models\ConfigOption;
 use App\Models\OptionRule;
+use App\OptionRuleDependencyType;
 use Filament\Actions\Action;
-use Filament\Forms\Components\CodeEditor;
-use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\ModalTableSelect;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use JsonException;
 
 class OptionRuleForm
 {
@@ -88,14 +88,11 @@ class OptionRuleForm
                     ->tableConfiguration(AllowedOptionsTable::class),
                 ToggleButtons::make('dependency_type')
                     ->label('Dependency Type')
-                    ->options([
-                        'hidden' => 'Hidden',
-                        'disabled' => 'Disabled',
-                    ])
+                    ->options(OptionRuleDependencyType::class)
                     ->grouped()
                     ->live()
-                    ->formatStateUsing(fn (?OptionRule $record): ?string => $record?->uiMode())
-                    ->dehydrated(false),
+                    ->default(OptionRuleDependencyType::Disabled->value)
+                    ->required(),
                 ToggleButtons::make('is_active')
                     ->label('Rule State')
                     ->boolean()
@@ -109,62 +106,113 @@ class OptionRuleForm
                     ])
                     ->default(0)
                     ->native(false),
-                //                CodeEditor::make('rule_payload')
-                //                    ->label('Rules (json)')
-                //                    ->language(Language::Json),
-                Textarea::make('rule_payload')
-                    ->label('Rule Payload')
-                    ->rows(8)
-                    ->formatStateUsing(fn (mixed $state): string => self::encodeJson($state))
-                    ->dehydrateStateUsing(function (?string $state, Get $get): ?array {
-                        $payload = self::decodeJson($state) ?? [];
-                        $dependencyType = $get('dependency_type');
-
-                        if (is_string($dependencyType) && $dependencyType !== '') {
-                            $payload['ui_mode'] = $dependencyType;
-                        }
-
-                        return $payload === [] ? null : $payload;
-                    })
+                ModalTableSelect::make('rule_payload.hide_option_ids')
+                    ->label('Hide Options')
+                    ->multiple()
+                    ->dehydrateStateUsing(fn (?array $state): array => array_values($state ?? []))
+                    ->getOptionLabelsUsing(fn (?array $values): array => ConfigOption::query()
+                        ->whereIn('id', $values ?? [])
+                        ->pluck('label', 'id')
+                        ->all())
+                    ->disabled(fn (Get $get): bool => empty($get('target_attribute_id')))
+                    ->hidden(fn (Get $get): bool => empty($get('target_attribute_id')))
+                    ->selectAction(fn (Action $action) => $action->modalHeading('Select Hidden Options'))
+                    ->tableArguments(fn (Get $get): array => ['attribute_id' => $get('target_attribute_id')])
+                    ->tableConfiguration(AllowedOptionsTable::class),
+                ModalTableSelect::make('rule_payload.disable_option_ids')
+                    ->label('Disable Options')
+                    ->multiple()
+                    ->dehydrateStateUsing(fn (?array $state): array => array_values($state ?? []))
+                    ->getOptionLabelsUsing(fn (?array $values): array => ConfigOption::query()
+                        ->whereIn('id', $values ?? [])
+                        ->pluck('label', 'id')
+                        ->all())
+                    ->disabled(fn (Get $get): bool => empty($get('target_attribute_id')))
+                    ->hidden(fn (Get $get): bool => empty($get('target_attribute_id')))
+                    ->selectAction(fn (Action $action) => $action->modalHeading('Select Disabled Options'))
+                    ->tableArguments(fn (Get $get): array => ['attribute_id' => $get('target_attribute_id')])
+                    ->tableConfiguration(AllowedOptionsTable::class),
+                Repeater::make('rule_payload.label_overrides')
+                    ->label('Label Overrides')
+                    ->defaultItems(0)
+                    ->table([
+                        TableColumn::make('Option')->markAsRequired(),
+                        TableColumn::make('Label')->markAsRequired(),
+                    ])
+                    ->schema([
+                        Select::make('option_id')
+                            ->label('Option')
+                            ->options(fn (Get $get): array => ConfigOption::query()
+                                ->where('config_attribute_id', $get('../../target_attribute_id'))
+                                ->pluck('label', 'id')
+                                ->all())
+                            ->required(),
+                        TextInput::make('label')
+                            ->required(),
+                    ])
+                    ->columnSpanFull(),
+                Repeater::make('rule_payload.value_overrides')
+                    ->label('Value Overrides')
+                    ->defaultItems(0)
+                    ->table([
+                        TableColumn::make('Option')->markAsRequired(),
+                        TableColumn::make('Value')->markAsRequired(),
+                    ])
+                    ->schema([
+                        Select::make('option_id')
+                            ->label('Option')
+                            ->options(fn (Get $get): array => ConfigOption::query()
+                                ->where('config_attribute_id', $get('../../target_attribute_id'))
+                                ->pluck('label', 'id')
+                                ->all())
+                            ->required(),
+                        TextInput::make('value')
+                            ->required(),
+                    ])
+                    ->columnSpanFull(),
+                Repeater::make('rule_payload.hints')
+                    ->label('Hints')
+                    ->defaultItems(0)
+                    ->table([
+                        TableColumn::make('Option')->markAsRequired(),
+                        TableColumn::make('Hint')->markAsRequired(),
+                    ])
+                    ->schema([
+                        Select::make('option_id')
+                            ->label('Option')
+                            ->options(fn (Get $get): array => ConfigOption::query()
+                                ->where('config_attribute_id', $get('../../target_attribute_id'))
+                                ->pluck('label', 'id')
+                                ->all())
+                            ->required(),
+                        TextInput::make('hint')
+                            ->required(),
+                    ])
+                    ->columnSpanFull(),
+                Repeater::make('rule_payload.activate_if')
+                    ->label('Activation Conditions')
+                    ->defaultItems(0)
+                    ->table([
+                        TableColumn::make('Source')->markAsRequired(),
+                        TableColumn::make('Operator')->markAsRequired(),
+                        TableColumn::make('Value')->markAsRequired(),
+                    ])
+                    ->schema([
+                        TextInput::make('source')
+                            ->required(),
+                        Select::make('operator')
+                            ->options([
+                                '=' => '=',
+                                '!=' => '!=',
+                                'in' => 'in',
+                                'not_in' => 'not_in',
+                            ])
+                            ->default('=')
+                            ->required(),
+                        TextInput::make('value')
+                            ->required(),
+                    ])
                     ->columnSpanFull(),
             ]);
-    }
-
-    private static function encodeJson(mixed $state): string
-    {
-        if ($state === null || $state === '') {
-            return '';
-        }
-
-        if (is_string($state)) {
-            return $state;
-        }
-
-        try {
-            return json_encode($state, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return '';
-        }
-    }
-
-    /**
-     * @return array<int|string, mixed>|null
-     */
-    private static function decodeJson(?string $state): ?array
-    {
-        $state = trim((string) $state);
-
-        if ($state === '') {
-            return null;
-        }
-
-        try {
-            /** @var array<int|string, mixed> $decoded */
-            $decoded = json_decode($state, true, 512, JSON_THROW_ON_ERROR);
-
-            return $decoded;
-        } catch (JsonException) {
-            return null;
-        }
     }
 }

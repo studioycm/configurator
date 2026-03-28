@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OptionRules\Tables;
 
 use App\Models\OptionRule;
+use App\OptionRuleDependencyType;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -21,7 +22,7 @@ class OptionRulesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable()
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('configProfile.name')
@@ -46,18 +47,32 @@ class OptionRulesTable
                     ->toggleable(),
                 TextColumn::make('allowed_option_ids')
                     ->label('Allowed Options')
-                    ->state(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
-                    ->limit(50)
-                    ->tooltip(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
+                    ->state(fn (OptionRule $record): array => $record->allowedOptionLabels())
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList()
                     ->toggleable(),
+                TextColumn::make('dependency_type')
+                    ->label('Dependency Type')
+                    ->badge()
+                    ->formatStateUsing(fn (?OptionRuleDependencyType $state): string => $state?->getLabel() ?? 'Disabled'),
                 TextColumn::make('priority')
                     ->label('Priority')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('rule_payload')
-                    ->label('UI Mode')
-                    ->state(fn (OptionRule $record): string => $record->uiMode() ?? '—')
-                    ->badge(),
+                    ->label('Rule Payload')
+                    ->state(fn (OptionRule $record): array => array_merge(
+                        $record->hiddenOptionLabels() === [] ? [] : ['Hide: '.implode(', ', $record->hiddenOptionLabels())],
+                        $record->disabledOptionLabels() === [] ? [] : ['Disable: '.implode(', ', $record->disabledOptionLabels())],
+                        $record->labelOverrideSummaries(),
+                        $record->valueOverrideSummaries(),
+                        $record->hintOverrideSummaries(),
+                        $record->activationConditionSummaries(),
+                    ))
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList(),
                 TextColumn::make('is_active')
                     ->label('Active')
                     ->badge()

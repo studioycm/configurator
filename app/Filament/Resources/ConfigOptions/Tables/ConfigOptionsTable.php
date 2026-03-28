@@ -46,6 +46,18 @@ class ConfigOptionsTable
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
+                TextColumn::make('ui_meta')
+                    ->label('UI Meta')
+                    ->state(fn ($record): array => array_filter([
+                        $record->shortLabel() ? 'Short: '.$record->shortLabel() : null,
+                        $record->hintText() ? 'Hint: '.$record->hintText() : null,
+                        $record->badge() ? 'Badge: '.$record->badge() : null,
+                        $record->isHiddenByDefault() ? 'Hidden by default' : null,
+                        $record->isDisabledByDefault() ? 'Disabled by default' : null,
+                    ]))
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList(),
                 TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime()

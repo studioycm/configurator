@@ -85,7 +85,12 @@ class ConfigProfile extends Model
      */
     public function contextField(string $key): ?array
     {
-        return collect($this->contextSchema())
-            ->first(fn (array $field): bool => ($field['key'] ?? null) === $key);
+        foreach ($this->contextSchema() as $field) {
+            if (($field['key'] ?? null) === $key) {
+                return $field;
+            }
+        }
+
+        return null;
     }
 }

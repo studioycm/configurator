@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ConfigOptions\RelationManagers;
 use App\Filament\Resources\OptionRules\Tables\AllowedOptionsTable;
 use App\Models\ConfigOption;
 use App\Models\OptionRule;
+use App\OptionRuleDependencyType;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -13,15 +14,14 @@ use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 
 class OptionRulesRelationManager extends RelationManager
 {
@@ -49,11 +49,10 @@ class OptionRulesRelationManager extends RelationManager
                     ->label('Allowed Options')
                     ->multiple()
                     ->dehydrateStateUsing(fn (?array $state): array => array_values($state ?? []))
-                    ->getOptionLabelsUsing(fn (?array $values): array =>
-                        ConfigOption::query()
-                            ->whereIn('id', $values ?? [])
-                            ->pluck('label', 'id')
-                            ->all()
+                    ->getOptionLabelsUsing(fn (?array $values): array => ConfigOption::query()
+                        ->whereIn('id', $values ?? [])
+                        ->pluck('label', 'id')
+                        ->all()
                     )
                     ->disabled(fn (Get $get): bool => empty($get('target_attribute_id')))
                     ->hidden(fn (Get $get): bool => empty($get('target_attribute_id')))
@@ -64,12 +63,10 @@ class OptionRulesRelationManager extends RelationManager
                     ->tableConfiguration(AllowedOptionsTable::class),
                 ToggleButtons::make('dependency_type')
                     ->label('Dependency Type')
-                    ->options([
-                        'hidden' => 'Hidden',
-                        'disabled' => 'Disabled',
-                    ])
+                    ->options(OptionRuleDependencyType::class)
                     ->grouped()
-                    ->dehydrated(false),
+                    ->default(OptionRuleDependencyType::Disabled->value)
+                    ->required(),
             ]);
     }
 
@@ -105,9 +102,15 @@ class OptionRulesRelationManager extends RelationManager
                     ->toggleable(),
                 TextColumn::make('allowed_option_ids')
                     ->label('Allowed Options')
-                    ->state(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
-                    ->limit(50)
-                    ->tooltip(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
+                    ->state(fn (OptionRule $record): array => $record->allowedOptionLabels())
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList()
+                    ->toggleable(),
+                TextColumn::make('dependency_type')
+                    ->label('Dependency Type')
+                    ->badge()
+                    ->formatStateUsing(fn (?OptionRuleDependencyType $state): string => $state?->getLabel() ?? 'Disabled')
                     ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Created At')

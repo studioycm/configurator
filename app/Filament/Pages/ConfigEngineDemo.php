@@ -25,12 +25,14 @@ use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
 {
@@ -315,12 +317,15 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
         $components = [];
 
         foreach ($this->stages as $stage) {
-            if (($stage['input_mode'] ?? 'toggle') === 'select') {
+            $stage_id = $stage['id'];
+            if (($stage['input_type'] ?? 'toggle') === 'select') {
                 $components[] = Select::make("selection.{$stage['id']}")
                     ->label($stage['label'])
                     ->options(fn (): array => $this->optionLabelsForStage((int) $stage['id']))
-                    ->hintIconTooltip(fn (): ?string => $this->stageHelperTextById((int) $stage['id']))
-                    ->hintIcon('heroicon-o-information-circle')
+                    ->hintColor('info')
+                    ->hintAction(fn (): Action =>
+                        $this->hintActionForStage($stage)
+                    )
                     ->inlineLabel()
                     ->native(false)
                     ->live()
@@ -339,8 +344,10 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             $components[] = ToggleButtons::make("selection.{$stage['id']}")
                 ->label($stage['label'])
                 ->options(fn (): array => $this->optionLabelsForStage((int) $stage['id']))
-                ->hintIconTooltip(fn (): ?string => $this->stageHelperTextById((int) $stage['id']))
-                ->hintIcon('heroicon-o-information-circle')
+                ->hintColor('info')
+                ->hintAction(fn (): Action =>
+                    $this->hintActionForStage($stage)
+                )
                 ->inlineLabel()
                 ->grouped()
                 ->columns(2)
@@ -571,7 +578,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                     'sort_order' => (int) $attribute->sort_order,
                     'segment_index' => $attribute->segment_index,
                     'is_required' => (bool) $attribute->is_required,
-                    'input_mode' => $attribute->presentationMode(),
+                    'input_type' => $attribute->presentationMode(),
                     'help_text' => $attribute->helpText(),
                     'options' => $attribute->options
                         ->map(fn ($option): array => [
@@ -677,7 +684,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             ->map(function (array $field) {
                 $key = (string) ($field['key'] ?? '');
                 $label = (string) ($field['label'] ?? str($key)->headline());
-                $options = is_array($field['options'] ?? null) ? $field['options'] : [];
+                $options = $this->normalizeContextOptions($field['options'] ?? null);
                 $required = (bool) ($field['required'] ?? false);
 
                 if ($options === []) {
@@ -697,6 +704,26 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                     ->required($required);
             })
             ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function normalizeContextOptions(mixed $options): array
+    {
+        if (! is_array($options)) {
+            return [];
+        }
+
+        return collect($options)
+            ->mapWithKeys(function (mixed $label, mixed $key): array {
+                if (is_string($key) && ! is_numeric($key)) {
+                    return [$key => (string) $label];
+                }
+
+                return [(string) $label => (string) $label];
+            })
             ->all();
     }
 
@@ -824,7 +851,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             $selectedHint,
         ]));
 
-        return $parts === [] ? null : implode(' — ', $parts);
+        return $parts === [] ? null : implode('<br>— ', $parts);
     }
 
     protected function stageHelperTextById(int $stageId): ?string
@@ -866,5 +893,22 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     private function renderHtmlView(string $view, array $data = []): Htmlable
     {
         return new HtmlString(view($view, $data)->render());
+    }
+
+    private function hintActionForStage(array $stage)
+    {
+        $stage_id = $stage['id'];
+        return Action::make('helper_text_' . $stage_id)
+            ->hidden(fn (): bool => $this->stageHelperTextById((int) $stage['id']) === null)
+            ->tooltip(fn (): HtmlString|null => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)                        ->modalHeading($stage['label'])
+            ->requiresConfirmation()
+            ->modalAlignment(Alignment::Start)
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalDescription(fn (): HtmlString|null => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)
+            ->modalSubmitActionLabel('Ok')
+            ->modalCancelAction(false)
+            ->iconButton()
+            ->color('info')
+            ->icon('heroicon-o-information-circle');
     }
 }

@@ -82,11 +82,11 @@ class ConfigOption extends Model
 
     public function isHiddenByDefault(): bool
     {
-        return (bool) data_get($this->ui_meta ?? [], 'dev_flags.hidden_by_default', false);
+        return (bool) data_get($this->ui_meta ?? [], 'hidden_by_default', false);
     }
 
     public function isDisabledByDefault(): bool
     {
-        return (bool) data_get($this->ui_meta ?? [], 'dev_flags.disabled_by_default', false);
+        return (bool) data_get($this->ui_meta ?? [], 'disabled_by_default', false);
     }
 }

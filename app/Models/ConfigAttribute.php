@@ -57,12 +57,12 @@ class ConfigAttribute extends Model
 
     public function presentationMode(): string
     {
-        return (string) data_get($this->ui_schema ?? [], 'presentation.input_mode', $this->input_type?->value ?? 'toggle');
+        return $this->input_type?->value ?? 'toggle';
     }
 
     public function helpText(): ?string
     {
-        $helpText = data_get($this->ui_schema ?? [], 'presentation.help_text');
+        $helpText = data_get($this->ui_schema ?? [], 'help_text');
 
         return is_string($helpText) && $helpText !== '' ? $helpText : null;
     }
@@ -76,6 +76,6 @@ class ConfigAttribute extends Model
 
     public function autoSelectFirstAllowed(): bool
     {
-        return (bool) data_get($this->ui_schema ?? [], 'runtime.auto_select_first_allowed', true);
+        return (bool) data_get($this->ui_schema ?? [], 'auto_select_first_allowed', true);
     }
 }

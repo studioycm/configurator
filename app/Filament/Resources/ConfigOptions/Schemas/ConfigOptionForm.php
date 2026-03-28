@@ -7,7 +7,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
-use JsonException;
 
 class ConfigOptionForm
 {
@@ -33,50 +32,23 @@ class ConfigOptionForm
                     ->required(),
                 Toggle::make('is_active')
                     ->required(),
-                Textarea::make('ui_meta')
-                    ->label('UI Meta')
-                    ->rows(8)
-                    ->formatStateUsing(fn (mixed $state): string => self::encodeJson($state))
-                    ->dehydrateStateUsing(fn (?string $state): ?array => self::decodeJson($state))
+                TextInput::make('ui_meta.label_short')
+                    ->label('Short Label')
+                    ->helperText('Optional default compact label. Rules can still override the effective label at runtime.'),
+                TextInput::make('ui_meta.badge')
+                    ->label('Badge'),
+                TextInput::make('ui_meta.color')
+                    ->label('Color'),
+                Toggle::make('ui_meta.hidden_by_default')
+                    ->label('Hidden by Default')
+                    ->default(false),
+                Toggle::make('ui_meta.disabled_by_default')
+                    ->label('Disabled by Default')
+                    ->default(false),
+                Textarea::make('ui_meta.hint')
+                    ->label('Hint')
+                    ->rows(3)
                     ->columnSpanFull(),
             ]);
-    }
-
-    private static function encodeJson(mixed $state): string
-    {
-        if ($state === null || $state === '') {
-            return '';
-        }
-
-        if (is_string($state)) {
-            return $state;
-        }
-
-        try {
-            return json_encode($state, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return '';
-        }
-    }
-
-    /**
-     * @return array<int|string, mixed>|null
-     */
-    private static function decodeJson(?string $state): ?array
-    {
-        $state = trim((string) $state);
-
-        if ($state === '') {
-            return null;
-        }
-
-        try {
-            /** @var array<int|string, mixed> $decoded */
-            $decoded = json_decode($state, true, 512, JSON_THROW_ON_ERROR);
-
-            return $decoded;
-        } catch (JsonException) {
-            return null;
-        }
     }
 }

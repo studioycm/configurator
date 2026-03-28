@@ -11,6 +11,7 @@
     "nightwatch_mcp": false,
     "packages": [
         "filament/filament",
+        "filament/blueprint",
         "laravel/fortify"
     ],
     "sail": false,

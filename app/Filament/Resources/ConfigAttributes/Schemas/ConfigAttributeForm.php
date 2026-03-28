@@ -3,15 +3,11 @@
 namespace App\Filament\Resources\ConfigAttributes\Schemas;
 
 use App\ConfigInputType;
-use Filament\Forms\Components\CodeEditor;
-use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use JsonException;
 
 class ConfigAttributeForm
 {
@@ -41,62 +37,16 @@ class ConfigAttributeForm
                     ->required(),
                 TextInput::make('segment_index')
                     ->numeric(),
-                //                CodeEditor::make('ui_schema')
-                //                    ->label('UI Schema')
-                //                    ->language(Language::Json),
-                Textarea::make('ui_schema')
-                    ->label('UI Schema')
-                    ->rows(8)
-                    ->formatStateUsing(fn (mixed $state): string => self::encodeJson($state))
-                    ->dehydrateStateUsing(function (?string $state, Get $get): ?array {
-                        $payload = self::decodeJson($state) ?? [];
-                        $inputType = $get('input_type');
-
-                        if (is_string($inputType) && $inputType !== '') {
-                            $payload['input_mode'] = $inputType;
-                        }
-
-                        return $payload === [] ? null : $payload;
-                    })
+                TextInput::make('ui_schema.group')
+                    ->label('Group')
+                    ->helperText('Optional group key for organizing related attributes.'),
+                Toggle::make('ui_schema.auto_select_first_allowed')
+                    ->label('Auto Select First Allowed')
+                    ->default(true),
+                Textarea::make('ui_schema.help_text')
+                    ->label('Help Text')
+                    ->rows(3)
                     ->columnSpanFull(),
             ]);
-    }
-
-    private static function encodeJson(mixed $state): string
-    {
-        if ($state === null || $state === '') {
-            return '';
-        }
-
-        if (is_string($state)) {
-            return $state;
-        }
-
-        try {
-            return json_encode($state, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return '';
-        }
-    }
-
-    /**
-     * @return array<int|string, mixed>|null
-     */
-    private static function decodeJson(?string $state): ?array
-    {
-        $state = trim((string) $state);
-
-        if ($state === '') {
-            return null;
-        }
-
-        try {
-            /** @var array<int|string, mixed> $decoded */
-            $decoded = json_decode($state, true, 512, JSON_THROW_ON_ERROR);
-
-            return $decoded;
-        } catch (JsonException) {
-            return null;
-        }
     }
 }

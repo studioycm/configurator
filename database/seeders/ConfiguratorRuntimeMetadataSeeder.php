@@ -124,12 +124,12 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
                 'required' => true,
                 'default' => 'Global',
                 'options' => [
-                    'Global' => 'Global',
-                    'Europe' => 'Europe',
-                    'Germany' => 'Germany',
-                    'USA' => 'USA',
-                    'Australia' => 'Australia',
-                    'Russia' => 'Russia',
+                    'Global',
+                    'Europe',
+                    'Germany',
+                    'USA',
+                    'Australia',
+                    'Russia',
                 ],
             ],
             [
@@ -139,11 +139,11 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
                 'required' => true,
                 'default' => 'Show All',
                 'options' => [
-                    'Show All' => 'Show All',
-                    'Industry' => 'Industry',
-                    'Water Supply' => 'Water Supply',
-                    'Agriculture' => 'Agriculture',
-                    'Wastewater' => 'Wastewater',
+                    'Show All',
+                    'Industry',
+                    'Water Supply',
+                    'Agriculture',
+                    'Wastewater',
                 ],
             ],
         ];
@@ -155,19 +155,19 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
     private function attributeSchemas(): array
     {
         return [
-            'flange-standard' => $this->attributeSchema('general', 'toggle', 'Select the flange drilling standard.'),
-            'kinetic-valve-body-material' => $this->attributeSchema('kinetic-valve', 'select', 'Body material drives downstream compatibility rules.'),
-            'kinetic-valve-seal-material' => $this->attributeSchema('kinetic-valve', 'toggle', 'Seal material may be restricted by body material.'),
-            'kinetic-valve-seat-material' => $this->attributeSchema('kinetic-valve', 'select', 'Seat material affects the O-ring compatibility set.'),
-            'kinetic-valve-bolt-set-material' => $this->attributeSchema('kinetic-valve', 'toggle', 'Select the bolt set material.'),
-            'kinetic-valve-float-material' => $this->attributeSchema('kinetic-valve', 'toggle', 'Choose the kinetic valve float material.'),
-            'automatic-valve-body-material' => $this->attributeSchema('automatic-valve', 'toggle', 'Select the automatic valve body material.'),
-            'automatic-valve-seal-material' => $this->attributeSchema('automatic-valve', 'toggle', 'Seal material may be narrowed by upstream choices.'),
-            'automatic-valve-float-material' => $this->attributeSchema('automatic-valve', 'toggle', 'Choose the automatic valve float material.'),
-            'o-ring-material' => $this->attributeSchema('sealing', 'toggle', 'O-ring options may change based on seat material.'),
-            'air-release-outlet' => $this->attributeSchema('connections', 'toggle', 'Select the air release outlet standard.'),
-            'pressure-release-outlet' => $this->attributeSchema('connections', 'select', 'Pressure release outlet has the richest rule set in the demo.'),
-            'screen-cover-material' => $this->attributeSchema('connections', 'toggle', 'Screen cover availability is controlled by outlet selection.'),
+            'flange-standard' => $this->attributeSchema('general', 'Select the flange drilling standard.'),
+            'kinetic-valve-body-material' => $this->attributeSchema('kinetic-valve', 'Body material drives downstream compatibility rules.'),
+            'kinetic-valve-seal-material' => $this->attributeSchema('kinetic-valve', 'Seal material may be restricted by body material.'),
+            'kinetic-valve-seat-material' => $this->attributeSchema('kinetic-valve', 'Seat material affects the O-ring compatibility set.'),
+            'kinetic-valve-bolt-set-material' => $this->attributeSchema('kinetic-valve', 'Select the bolt set material.'),
+            'kinetic-valve-float-material' => $this->attributeSchema('kinetic-valve', 'Choose the kinetic valve float material.'),
+            'automatic-valve-body-material' => $this->attributeSchema('automatic-valve', 'Select the automatic valve body material.'),
+            'automatic-valve-seal-material' => $this->attributeSchema('automatic-valve', 'Seal material may be narrowed by upstream choices.'),
+            'automatic-valve-float-material' => $this->attributeSchema('automatic-valve', 'Choose the automatic valve float material.'),
+            'o-ring-material' => $this->attributeSchema('sealing', 'O-ring options may change based on seat material.'),
+            'air-release-outlet' => $this->attributeSchema('connections', 'Select the air release outlet standard.'),
+            'pressure-release-outlet' => $this->attributeSchema('connections', 'Pressure release outlet has the richest rule set in the demo.'),
+            'screen-cover-material' => $this->attributeSchema('connections', 'Screen cover availability is controlled by outlet selection.'),
         ];
     }
 
@@ -206,15 +206,11 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
             ],
             $this->optionKey('pressure-release-outlet', 'SP') => [
                 'label_short' => 'SS Plug',
-                'dev_flags' => [
-                    'disabled_by_default' => true,
-                ],
+                'disabled_by_default' => true,
             ],
             $this->optionKey('pressure-release-outlet', 'BP') => [
                 'label_short' => 'Brass Plug',
-                'dev_flags' => [
-                    'hidden_by_default' => true,
-                ],
+                'hidden_by_default' => true,
             ],
             $this->optionKey('pressure-release-outlet', 'SV') => [
                 'label_short' => 'SS Ball Valve',
@@ -240,25 +236,34 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
     {
         return [
             $this->ruleKey('pressure-release-outlet', 'W0', 'screen-cover-material') => [
+                'dependency_type' => 'hidden',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'hidden',
                     'hints' => [
-                        (string) $this->optionId($options, 'screen-cover-material', 'P2') => 'Only polypropylene cover is available when no pressure release outlet is used.',
+                        [
+                            'option_id' => $this->optionId($options, 'screen-cover-material', 'P2'),
+                            'hint' => 'Only polypropylene cover is available when no pressure release outlet is used.',
+                        ],
                     ],
                 ],
                 'is_active' => true,
                 'priority' => 0,
             ],
             $this->ruleKey('pressure-release-outlet', 'BV', 'screen-cover-material') => [
+                'dependency_type' => 'disabled',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'disabled',
                     'label_overrides' => [
-                        (string) $this->optionId($options, 'screen-cover-material', 'D2') => 'Ductile Iron (Europe)',
+                        [
+                            'option_id' => $this->optionId($options, 'screen-cover-material', 'D2'),
+                            'label' => 'Ductile Iron (Europe)',
+                        ],
                     ],
                     'hints' => [
-                        (string) $this->optionId($options, 'screen-cover-material', 'D2') => 'European context rule is active for the Brass Ball Valve setup.',
+                        [
+                            'option_id' => $this->optionId($options, 'screen-cover-material', 'D2'),
+                            'hint' => 'European context rule is active for the Brass Ball Valve setup.',
+                        ],
                     ],
                     'activate_if' => [
                         [
@@ -272,59 +277,80 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
                 'priority' => 10,
             ],
             $this->ruleKey('flange-standard', 'D6', 'kinetic-valve-body-material') => [
+                'dependency_type' => 'hidden',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'hidden',
                     'hints' => [
-                        (string) $this->optionId($options, 'kinetic-valve-body-material', 'S6') => 'DIN 16 compatible stainless option.',
-                        (string) $this->optionId($options, 'kinetic-valve-body-material', 'DX') => 'DIN 16 compatible duplex option.',
+                        [
+                            'option_id' => $this->optionId($options, 'kinetic-valve-body-material', 'S6'),
+                            'hint' => 'DIN 16 compatible stainless option.',
+                        ],
+                        [
+                            'option_id' => $this->optionId($options, 'kinetic-valve-body-material', 'DX'),
+                            'hint' => 'DIN 16 compatible duplex option.',
+                        ],
                     ],
                 ],
                 'is_active' => true,
                 'priority' => 0,
             ],
             $this->ruleKey('kinetic-valve-body-material', 'DX', 'kinetic-valve-seal-material') => [
+                'dependency_type' => 'disabled',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'disabled',
                     'hints' => [
-                        (string) $this->optionId($options, 'kinetic-valve-seal-material', 'VT') => 'Viton is required for the Duplex 5A body material.',
+                        [
+                            'option_id' => $this->optionId($options, 'kinetic-valve-seal-material', 'VT'),
+                            'hint' => 'Viton is required for the Duplex 5A body material.',
+                        ],
                     ],
                 ],
                 'is_active' => true,
                 'priority' => 0,
             ],
             $this->ruleKey('kinetic-valve-body-material', 'DX', 'automatic-valve-seal-material') => [
+                'dependency_type' => 'hidden',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'hidden',
                     'hints' => [
-                        (string) $this->optionId($options, 'automatic-valve-seal-material', 'V2') => 'Only Viton is permitted for the automatic valve seal with Duplex 5A.',
+                        [
+                            'option_id' => $this->optionId($options, 'automatic-valve-seal-material', 'V2'),
+                            'hint' => 'Only Viton is permitted for the automatic valve seal with Duplex 5A.',
+                        ],
                     ],
                 ],
                 'is_active' => true,
                 'priority' => 0,
             ],
             $this->ruleKey('kinetic-valve-seat-material', 'S3', 'o-ring-material') => [
+                'dependency_type' => 'disabled',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'disabled',
                     'label_overrides' => [
-                        (string) $this->optionId($options, 'o-ring-material', 'V3') => 'Viton (Recommended)',
+                        [
+                            'option_id' => $this->optionId($options, 'o-ring-material', 'V3'),
+                            'label' => 'Viton (Recommended)',
+                        ],
                     ],
                     'hints' => [
-                        (string) $this->optionId($options, 'o-ring-material', 'V3') => 'Recommended with the SS316 seat material.',
+                        [
+                            'option_id' => $this->optionId($options, 'o-ring-material', 'V3'),
+                            'hint' => 'Recommended with the SS316 seat material.',
+                        ],
                     ],
                 ],
                 'is_active' => true,
                 'priority' => 0,
             ],
             $this->ruleKey('kinetic-valve-body-material', 'DX', 'pressure-release-outlet') => [
+                'dependency_type' => 'hidden',
                 'rule_payload' => [
                     'effect' => 'restrict_allowed_options',
-                    'ui_mode' => 'hidden',
                     'hints' => [
-                        (string) $this->optionId($options, 'pressure-release-outlet', 'BV') => 'Brass Ball Valve remains available for the Duplex 5A combination.',
+                        [
+                            'option_id' => $this->optionId($options, 'pressure-release-outlet', 'BV'),
+                            'hint' => 'Brass Ball Valve remains available for the Duplex 5A combination.',
+                        ],
                     ],
                     'activate_if' => [
                         [
@@ -370,14 +396,12 @@ class ConfiguratorRuntimeMetadataSeeder extends Seeder
     /**
      * @return array<string, mixed>
      */
-    private function attributeSchema(string $group, string $inputMode, string $helpText): array
+    private function attributeSchema(string $group, string $helpText): array
     {
         return [
             'group' => $group,
-            'presentation' => [
-                'input_mode' => $inputMode,
-                'help_text' => $helpText,
-            ],
+            'help_text' => $helpText,
+            'auto_select_first_allowed' => true,
         ];
     }
 
