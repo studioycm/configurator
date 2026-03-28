@@ -27,6 +27,7 @@ class ConfigProfile extends Model
         'scope',
         'is_active',
         'extra_rules_json',
+        'runtime_context_schema',
     ];
 
     /**
@@ -42,6 +43,7 @@ class ConfigProfile extends Model
             'scope' => ConfigProfileScope::class,
             'is_active' => 'boolean',
             'extra_rules_json' => JsonRuleCast::class,
+            'runtime_context_schema' => 'array',
         ];
     }
 
@@ -49,7 +51,8 @@ class ConfigProfile extends Model
     {
         return $this->hasMany(CatalogGroup::class, 'config_profile_id', 'id');
     }
-        public function productProfile(): BelongsTo
+
+    public function productProfile(): BelongsTo
     {
         return $this->belongsTo(ProductProfile::class, 'product_profile_id', 'id');
     }
@@ -67,5 +70,22 @@ class ConfigProfile extends Model
     public function rules(): HasMany
     {
         return $this->hasMany(OptionRule::class, 'config_profile_id', 'id');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function contextSchema(): array
+    {
+        return array_values($this->runtime_context_schema ?? []);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function contextField(string $key): ?array
+    {
+        return collect($this->contextSchema())
+            ->first(fn (array $field): bool => ($field['key'] ?? null) === $key);
     }
 }

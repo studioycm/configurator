@@ -11,7 +11,6 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 
 class OptionRulesTable
 {
@@ -22,7 +21,7 @@ class OptionRulesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable(isIndividual: true, isGlobal: false)
+                    ->searchable()
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('configProfile.name')
@@ -51,6 +50,19 @@ class OptionRulesTable
                     ->limit(50)
                     ->tooltip(fn (OptionRule $record) => collect($record->allowedOptionLabels())->join(', '))
                     ->toggleable(),
+                TextColumn::make('priority')
+                    ->label('Priority')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('rule_payload')
+                    ->label('UI Mode')
+                    ->state(fn (OptionRule $record): string => $record->uiMode() ?? '—')
+                    ->badge(),
+                TextColumn::make('is_active')
+                    ->label('Active')
+                    ->badge()
+                    ->state(fn (OptionRule $record): string => $record->is_active ? 'Active' : 'Inactive')
+                    ->color(fn (OptionRule $record): string => $record->is_active ? 'success' : 'gray'),
                 TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime()

@@ -7,17 +7,21 @@ use App\Models\ConfigAttribute;
 use App\Models\ConfigOption;
 use App\Models\OptionRule;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CodeEditor;
+use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\ModalTableSelect;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use JsonException;
 
 class OptionRuleForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $hideConfigProfile = false): Schema
     {
         return $schema
             ->columns(4)
@@ -28,7 +32,9 @@ class OptionRuleForm
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->required(),
+                    ->required(! $hideConfigProfile)
+                    ->hidden($hideConfigProfile)
+                    ->dehydrated(! $hideConfigProfile),
                 Select::make('option_attribute_id')
                     ->label('Attribute')
                     ->disabled(fn (Get $get): bool => empty($get('config_profile_id')))
@@ -68,11 +74,10 @@ class OptionRuleForm
                     ->label('Allowed Options')
                     ->multiple()
                     ->dehydrateStateUsing(fn (?array $state): array => array_values($state ?? []))
-                    ->getOptionLabelsUsing(fn (?array $values): array =>
-                        ConfigOption::query()
-                            ->whereIn('id', $values ?? [])
-                            ->pluck('label', 'id')
-                            ->all()
+                    ->getOptionLabelsUsing(fn (?array $values): array => ConfigOption::query()
+                        ->whereIn('id', $values ?? [])
+                        ->pluck('label', 'id')
+                        ->all()
                     )
                     ->disabled(fn (Get $get): bool => empty($get('target_attribute_id')))
                     ->hidden(fn (Get $get): bool => empty($get('target_attribute_id')))
@@ -88,7 +93,78 @@ class OptionRuleForm
                         'disabled' => 'Disabled',
                     ])
                     ->grouped()
+                    ->live()
+                    ->formatStateUsing(fn (?OptionRule $record): ?string => $record?->uiMode())
                     ->dehydrated(false),
+                ToggleButtons::make('is_active')
+                    ->label('Rule State')
+                    ->boolean()
+                    ->grouped()
+                    ->default(true),
+                Select::make('priority')
+                    ->options([
+                        -10 => 'Low',
+                        0 => 'Normal',
+                        10 => 'High',
+                    ])
+                    ->default(0)
+                    ->native(false),
+                //                CodeEditor::make('rule_payload')
+                //                    ->label('Rules (json)')
+                //                    ->language(Language::Json),
+                Textarea::make('rule_payload')
+                    ->label('Rule Payload')
+                    ->rows(8)
+                    ->formatStateUsing(fn (mixed $state): string => self::encodeJson($state))
+                    ->dehydrateStateUsing(function (?string $state, Get $get): ?array {
+                        $payload = self::decodeJson($state) ?? [];
+                        $dependencyType = $get('dependency_type');
+
+                        if (is_string($dependencyType) && $dependencyType !== '') {
+                            $payload['ui_mode'] = $dependencyType;
+                        }
+
+                        return $payload === [] ? null : $payload;
+                    })
+                    ->columnSpanFull(),
             ]);
+    }
+
+    private static function encodeJson(mixed $state): string
+    {
+        if ($state === null || $state === '') {
+            return '';
+        }
+
+        if (is_string($state)) {
+            return $state;
+        }
+
+        try {
+            return json_encode($state, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return '';
+        }
+    }
+
+    /**
+     * @return array<int|string, mixed>|null
+     */
+    private static function decodeJson(?string $state): ?array
+    {
+        $state = trim((string) $state);
+
+        if ($state === '') {
+            return null;
+        }
+
+        try {
+            /** @var array<int|string, mixed> $decoded */
+            $decoded = json_decode($state, true, 512, JSON_THROW_ON_ERROR);
+
+            return $decoded;
+        } catch (JsonException) {
+            return null;
+        }
     }
 }

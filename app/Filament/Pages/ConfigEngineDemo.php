@@ -14,6 +14,7 @@ use App\Models\ProductProfile;
 use App\Services\ConfiguratorEngine;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Concerns\InteractsWithInfolists;
@@ -51,6 +52,9 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
 
     public string $application = 'Show All';
 
+    /** @var array<string, mixed> */
+    public array $context = [];
+
     /** @var array<int, array<string, mixed>> */
     public array $stages = [];
 
@@ -60,11 +64,25 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     /** @var array<int, array<int>> attribute_id => [allowed_option_ids...] */
     public array $allowed = [];
 
+    /** @var array<int, array<int>> */
+    public array $hiddenOptionsByAttribute = [];
+
+    /** @var array<int, array<int>> */
+    public array $disabledOptionsByAttribute = [];
+
+    /** @var array<string, string> */
+    public array $labelOverridesByOption = [];
+
+    /** @var array<string, string> */
+    public array $hintOverridesByOption = [];
+
     protected ?ConfiguratorEngine $engine = null;
 
     private const TERRITORY_SESSION_KEY = 'config_engine_demo.territory';
 
     private const APPLICATION_SESSION_KEY = 'config_engine_demo.application';
+
+    private const CONTEXT_SESSION_PREFIX = 'config_engine_demo.context.';
 
     /** @return array<string, string> */
     private function territoryOptions(): array
@@ -115,9 +133,6 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     {
         $this->engine ??= app(ConfiguratorEngine::class);
 
-        $this->territory = (string) session()->get(self::TERRITORY_SESSION_KEY, 'Global');
-        $this->application = (string) session()->get(self::APPLICATION_SESSION_KEY, 'Show All');
-
         $this->configProfile = ConfigProfile::query()
             ->with([
                 'productProfile.catalogGroup.mainImage',
@@ -145,29 +160,12 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             ->orderBy('id')
             ->first();
 
-        $stageDTOs = $this->engine->buildStages($this->configProfile);
+        $this->seedContextFromSession();
+        $this->stages = $this->buildStageData();
 
-        $this->stages = array_map(fn (ConfigStageDTO $dto) => $dto->toArray(), $stageDTOs);
-
+        $stageDTOs = $this->stageDTOsFromData();
         $this->selection = $this->engine->defaultSelection($stageDTOs);
-
-        $this->allowed = $this->engine->recalculateAllowed(
-            $this->configProfile,
-            $stageDTOs,
-            $this->selection,
-        );
-
-        $this->selection = $this->engine->pruneInvalidSelections(
-            $stageDTOs,
-            $this->selection,
-            $this->allowed,
-        );
-
-        $this->selection = $this->engine->fillMissingSelections(
-            $stageDTOs,
-            $this->allowed,
-            $this->selection,
-        );
+        $this->refreshConfiguratorState();
     }
 
     public function editContextAction(): Action
@@ -175,58 +173,17 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
         return Action::make('editContext')
             ->label('Change')
             ->visible(true)
-            ->modalHeading('Territory & Application')
+            ->modalHeading('Configurator Context')
             ->modalSubmitActionLabel('Apply')
             ->modalWidth(Width::TwoExtraLarge)
-            ->fillForm(fn (): array => [
-                'territory' => $this->territory,
-                'application' => $this->application,
-            ])
-            ->schema([
-                ToggleButtons::make('territory')
-                    ->label('Territory')
-                    ->options($this->territoryOptions())
-                    ->icons([
-                        'Global' => Heroicon::OutlinedGlobeAlt,
-                    ])
-                    ->colors([
-                        'Global' => 'gray',
-                        'USA' => 'info',
-                        'Germany' => 'warning',
-                        'Europe' => 'primary',
-                        'Russia' => 'danger',
-                        'Australia' => 'success',
-                    ])
-                    ->inline()
-                    ->grouped()
-                    ->required(),
-                ToggleButtons::make('application')
-                    ->label('Application')
-                    ->options($this->applicationOptions())
-                    ->icons([
-                        'Show All' => Heroicon::OutlinedSquares2x2,
-                        'Industry' => Heroicon::OutlinedBuildingOffice2,
-                        'Water Supply' => Heroicon::OutlinedBeaker,
-                        'Agriculture' => Heroicon::OutlinedSun,
-                        'Wastewater' => Heroicon::OutlinedArrowPathRoundedSquare,
-                    ])
-                    ->colors([
-                        'Show All' => 'gray',
-                        'Industry' => 'primary',
-                        'Water Supply' => 'info',
-                        'Agriculture' => 'success',
-                        'Wastewater' => 'warning',
-                    ])
-                    ->inline()
-                    ->grouped()
-                    ->required(),
-            ])
+            ->fillForm(fn (): array => $this->context)
+            ->schema($this->contextSchemaComponents())
             ->action(function (array $data): void {
-                $this->territory = (string) ($data['territory'] ?? 'Global');
-                $this->application = (string) ($data['application'] ?? 'Show All');
+                $this->context = $data;
 
-                session()->put(self::TERRITORY_SESSION_KEY, $this->territory);
-                session()->put(self::APPLICATION_SESSION_KEY, $this->application);
+                $this->persistContextToSession();
+                $this->syncLegacyContextProperties();
+                $this->refreshConfiguratorState();
             });
     }
 
@@ -358,35 +315,46 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
         $components = [];
 
         foreach ($this->stages as $stage) {
+            if (($stage['input_mode'] ?? 'toggle') === 'select') {
+                $components[] = Select::make("selection.{$stage['id']}")
+                    ->label($stage['label'])
+                    ->options(fn (): array => $this->optionLabelsForStage((int) $stage['id']))
+                    ->hintIconTooltip(fn (): ?string => $this->stageHelperTextById((int) $stage['id']))
+                    ->hintIcon('heroicon-o-information-circle')
+                    ->inlineLabel()
+                    ->native(false)
+                    ->live()
+                    ->afterStateUpdated(function ($state) use ($stage): void {
+                        if ($state === null || $state === '') {
+                            return;
+                        }
+
+                        $this->selectOption($stage['id'], (int) $state);
+                    })
+                    ->disableOptionWhen(fn (string $value): bool => $this->optionIsDisabled((int) $stage['id'], (int) $value));
+
+                continue;
+            }
+
             $components[] = ToggleButtons::make("selection.{$stage['id']}")
                 ->label($stage['label'])
-                ->options(collect($stage['options'])->mapWithKeys(function ($opt) {
-                    return [$opt['id'] => "{$opt['label']}"];
-                }))
+                ->options(fn (): array => $this->optionLabelsForStage((int) $stage['id']))
+                ->hintIconTooltip(fn (): ?string => $this->stageHelperTextById((int) $stage['id']))
+                ->hintIcon('heroicon-o-information-circle')
                 ->inlineLabel()
                 ->grouped()
                 ->columns(2)
-                ->colors(function () use ($stage): array {
-                    $allowedIds = $this->allowed[$stage['id']] ?? [];
-
-                    return collect($stage['options'])
-                        ->mapWithKeys(function ($opt) use ($allowedIds) {
-                            $isDisabled = ! in_array((int) $opt['id'], $allowedIds);
-
-                            return [$opt['id'] => $isDisabled ? 'danger' : 'primary'];
-                        })
-                        ->all();
-                })
+                ->colors(fn (): array => $this->optionColorsForStage((int) $stage['id']))
                 ->extraFieldWrapperAttributes(['class' => 'configurator-toggle-buttons'])
                 ->live()
-                ->afterStateUpdated(function ($state) use ($stage) {
+                ->afterStateUpdated(function ($state) use ($stage): void {
+                    if ($state === null || $state === '') {
+                        return;
+                    }
+
                     $this->selectOption($stage['id'], (int) $state);
                 })
-                ->disableOptionWhen(function (string $value) use ($stage) {
-                    $allowedIds = $this->allowed[$stage['id']] ?? [];
-
-                    return ! in_array((int) $value, $allowedIds);
-                });
+                ->disableOptionWhen(fn (string $value): bool => $this->optionIsDisabled((int) $stage['id'], (int) $value));
         }
 
         return $schema->components([
@@ -507,13 +475,25 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     {
         $this->selection[$attributeId] = $optionId;
 
+        $this->refreshConfiguratorState();
+    }
+
+    protected function refreshConfiguratorState(): void
+    {
         $stageDTOs = $this->stageDTOsFromData();
 
-        $this->allowed = $this->engine->recalculateAllowed(
+        $evaluation = $this->engine->evaluateState(
             $this->configProfile,
             $stageDTOs,
             $this->selection,
+            $this->context,
         );
+
+        $this->allowed = $evaluation['allowed'];
+        $this->hiddenOptionsByAttribute = $evaluation['hidden'];
+        $this->disabledOptionsByAttribute = $evaluation['disabled'];
+        $this->labelOverridesByOption = $evaluation['label_overrides'];
+        $this->hintOverridesByOption = $evaluation['hints'];
 
         $this->selection = $this->engine->pruneInvalidSelections(
             $stageDTOs,
@@ -526,6 +506,19 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             $this->allowed,
             $this->selection,
         );
+
+        $evaluation = $this->engine->evaluateState(
+            $this->configProfile,
+            $stageDTOs,
+            $this->selection,
+            $this->context,
+        );
+
+        $this->allowed = $evaluation['allowed'];
+        $this->hiddenOptionsByAttribute = $evaluation['hidden'];
+        $this->disabledOptionsByAttribute = $evaluation['disabled'];
+        $this->labelOverridesByOption = $evaluation['label_overrides'];
+        $this->hintOverridesByOption = $evaluation['hints'];
     }
 
     public function getCurrentCodeProperty(): ?string
@@ -562,6 +555,287 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                 options: $options,
             );
         }, $this->stages);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function buildStageData(): array
+    {
+        return $this->configProfile?->attributes
+            ->map(function ($attribute): array {
+                return [
+                    'id' => (int) $attribute->id,
+                    'slug' => $attribute->slug,
+                    'label' => (string) ($attribute->label ?? $attribute->name),
+                    'sort_order' => (int) $attribute->sort_order,
+                    'segment_index' => $attribute->segment_index,
+                    'is_required' => (bool) $attribute->is_required,
+                    'input_mode' => $attribute->presentationMode(),
+                    'help_text' => $attribute->helpText(),
+                    'options' => $attribute->options
+                        ->map(fn ($option): array => [
+                            'id' => (int) $option->id,
+                            'label' => (string) $option->label,
+                            'code' => $option->code,
+                            'sort_order' => (int) $option->sort_order,
+                            'is_default' => (bool) $option->is_default,
+                            'is_active' => (bool) $option->is_active,
+                        ])
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all() ?? [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function contextSchemaDefinition(): array
+    {
+        $schema = $this->configProfile?->contextSchema() ?? [];
+
+        return $schema !== [] ? $schema : [
+            [
+                'key' => 'territory',
+                'label' => 'Territory',
+                'type' => 'select',
+                'required' => true,
+                'default' => 'Global',
+                'options' => $this->territoryOptions(),
+            ],
+            [
+                'key' => 'application',
+                'label' => 'Application',
+                'type' => 'select',
+                'required' => true,
+                'default' => 'Show All',
+                'options' => $this->applicationOptions(),
+            ],
+        ];
+    }
+
+    protected function seedContextFromSession(): void
+    {
+        $context = [];
+
+        foreach ($this->contextSchemaDefinition() as $field) {
+            $key = (string) ($field['key'] ?? '');
+
+            if ($key === '') {
+                continue;
+            }
+
+            $legacyValue = match ($key) {
+                'territory' => session()->get(self::TERRITORY_SESSION_KEY),
+                'application' => session()->get(self::APPLICATION_SESSION_KEY),
+                default => null,
+            };
+
+            $context[$key] = session()->get(
+                $this->contextSessionKey($key),
+                $legacyValue ?? $field['default'] ?? null,
+            );
+        }
+
+        $this->context = $context;
+        $this->syncLegacyContextProperties();
+    }
+
+    protected function persistContextToSession(): void
+    {
+        foreach ($this->contextSchemaDefinition() as $field) {
+            $key = (string) ($field['key'] ?? '');
+
+            if ($key === '') {
+                continue;
+            }
+
+            session()->put($this->contextSessionKey($key), $this->context[$key] ?? null);
+        }
+
+        session()->put(self::TERRITORY_SESSION_KEY, $this->territory);
+        session()->put(self::APPLICATION_SESSION_KEY, $this->application);
+    }
+
+    protected function syncLegacyContextProperties(): void
+    {
+        $this->territory = (string) ($this->context['territory'] ?? 'Global');
+        $this->application = (string) ($this->context['application'] ?? 'Show All');
+    }
+
+    protected function contextSessionKey(string $key): string
+    {
+        return self::CONTEXT_SESSION_PREFIX.$key;
+    }
+
+    protected function contextSchemaComponents(): array
+    {
+        return collect($this->contextSchemaDefinition())
+            ->map(function (array $field) {
+                $key = (string) ($field['key'] ?? '');
+                $label = (string) ($field['label'] ?? str($key)->headline());
+                $options = is_array($field['options'] ?? null) ? $field['options'] : [];
+                $required = (bool) ($field['required'] ?? false);
+
+                if ($options === []) {
+                    return Select::make($key)
+                        ->label($label)
+                        ->native(false)
+                        ->required($required);
+                }
+
+                return ToggleButtons::make($key)
+                    ->label($label)
+                    ->options($options)
+                    ->icons($this->contextIconsFor($key))
+                    ->colors($this->contextColorsFor($key))
+                    ->inline()
+                    ->grouped()
+                    ->required($required);
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function contextIconsFor(string $key): array
+    {
+        return match ($key) {
+            'territory' => [
+                'Global' => Heroicon::OutlinedGlobeAlt,
+            ],
+            'application' => [
+                'Show All' => Heroicon::OutlinedSquares2x2,
+                'Industry' => Heroicon::OutlinedBuildingOffice2,
+                'Water Supply' => Heroicon::OutlinedBeaker,
+                'Agriculture' => Heroicon::OutlinedSun,
+                'Wastewater' => Heroicon::OutlinedArrowPathRoundedSquare,
+            ],
+            default => [],
+        };
+    }
+
+    protected function contextColorsFor(string $key): array
+    {
+        return match ($key) {
+            'territory' => [
+                'Global' => 'gray',
+                'USA' => 'info',
+                'Germany' => 'warning',
+                'Europe' => 'primary',
+                'Russia' => 'danger',
+                'Australia' => 'success',
+            ],
+            'application' => [
+                'Show All' => 'gray',
+                'Industry' => 'primary',
+                'Water Supply' => 'info',
+                'Agriculture' => 'success',
+                'Wastewater' => 'warning',
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     * @return Collection<int, array<string, mixed>>
+     */
+    protected function stageById(int $stageId): ?array
+    {
+        /** @var array<string, mixed>|null $stage */
+        $stage = collect($this->stages)
+            ->first(fn (array $candidate): bool => (int) ($candidate['id'] ?? 0) === $stageId);
+
+        return $stage;
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    protected function visibleOptionsForStage(int $stageId): Collection
+    {
+        $stage = $this->stageById($stageId);
+
+        if ($stage === null) {
+            return collect();
+        }
+
+        $hiddenIds = $this->hiddenOptionsByAttribute[(int) $stage['id']] ?? [];
+
+        return collect($stage['options'])
+            ->reject(fn (array $option): bool => in_array((int) $option['id'], $hiddenIds, true))
+            ->values();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function optionLabelsForStage(int $stageId): array
+    {
+        return $this->visibleOptionsForStage($stageId)
+            ->mapWithKeys(fn (array $option): array => [(int) $option['id'] => $this->optionLabel($option)])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function optionColorsForStage(int $stageId): array
+    {
+        return $this->visibleOptionsForStage($stageId)
+            ->mapWithKeys(function (array $option) use ($stageId): array {
+                $optionId = (int) $option['id'];
+
+                return [$optionId => $this->optionIsDisabled($stageId, $optionId) ? 'danger' : 'primary'];
+            })
+            ->all();
+    }
+
+    protected function optionIsDisabled(int $stageId, int $optionId): bool
+    {
+        $allowedIds = $this->allowed[$stageId] ?? [];
+
+        return ! in_array($optionId, $allowedIds, true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $option
+     */
+    protected function optionLabel(array $option): string
+    {
+        return $this->labelOverridesByOption[(string) $option['id']] ?? (string) $option['label'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $stage
+     */
+    protected function stageHelperText(array $stage): ?string
+    {
+        $selectedOptionId = $this->selection[(int) $stage['id']] ?? null;
+        $selectedHint = $selectedOptionId !== null
+            ? ($this->hintOverridesByOption[(string) $selectedOptionId] ?? null)
+            : null;
+
+        $parts = array_values(array_filter([
+            $stage['help_text'] ?? null,
+            $selectedHint,
+        ]));
+
+        return $parts === [] ? null : implode(' — ', $parts);
+    }
+
+    protected function stageHelperTextById(int $stageId): ?string
+    {
+        $stage = $this->stageById($stageId);
+
+        if ($stage === null) {
+            return null;
+        }
+
+        return $this->stageHelperText($stage);
     }
 
     /**

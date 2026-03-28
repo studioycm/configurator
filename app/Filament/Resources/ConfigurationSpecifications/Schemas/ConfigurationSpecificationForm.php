@@ -8,14 +8,17 @@ use Filament\Schemas\Schema;
 
 class ConfigurationSpecificationForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $hideProductConfiguration = false): Schema
     {
         return $schema
             ->components([
                 Select::make('product_configuration_id')
                     ->relationship('productConfiguration', 'name')
                     ->searchable()
-                    ->required(),
+                    ->preload()
+                    ->required(! $hideProductConfiguration)
+                    ->hidden($hideProductConfiguration)
+                    ->dehydrated(! $hideProductConfiguration),
                 TextInput::make('spec_group'),
                 TextInput::make('key')
                     ->required(),

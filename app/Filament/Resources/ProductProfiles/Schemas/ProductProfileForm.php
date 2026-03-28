@@ -9,14 +9,17 @@ use Filament\Schemas\Schema;
 
 class ProductProfileForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $hideCatalogGroup = false): Schema
     {
         return $schema
             ->components([
                 Select::make('catalog_group_id')
                     ->relationship('catalogGroup', 'name')
                     ->searchable()
-                    ->required(),
+                    ->preload()
+                    ->required(! $hideCatalogGroup)
+                    ->hidden($hideCatalogGroup)
+                    ->dehydrated(! $hideCatalogGroup),
                 TextInput::make('name')
                     ->required(),
                 TextInput::make('product_code')

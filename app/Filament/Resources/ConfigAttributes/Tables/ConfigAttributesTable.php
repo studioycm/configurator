@@ -23,17 +23,13 @@ class ConfigAttributesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable(isIndividual: true, isGlobal: false),
+                    ->searchable(),
                 TextColumn::make('configProfile.name')
                     ->label('Configurator')
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('label')
                     ->label('Name')
                     ->description(fn (ConfigAttribute $record): string => (string) ($record->name))
-                    ->searchable(isIndividual: true, isGlobal: false),
-                TextColumn::make('input_type')
-                    ->label('Input Type')
-                    ->badge()
                     ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('sort_order')
                     ->label('Sort Order')
@@ -46,6 +42,11 @@ class ConfigAttributesTable
                     ->label('Segment Index')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('ui_schema.presentation.input_mode')
+                    ->label('Type')
+                    ->badge()
+                    ->default(fn (ConfigAttribute $record): string => $record->uiSchema['presentation']['input_mode'] ?? $record->input_type->getLabel())
+                    ->searchable(isIndividual: true, isGlobal: false),
                 TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime()

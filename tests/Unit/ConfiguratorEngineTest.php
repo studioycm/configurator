@@ -6,8 +6,9 @@ use App\Models\ConfigProfile;
 use App\Models\OptionRule;
 use App\Services\ConfiguratorEngine;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class, DatabaseMigrations::class);
+uses(TestCase::class, DatabaseMigrations::class);
 
 function makeStages(): array
 {
@@ -41,7 +42,7 @@ function makeStages(): array
 }
 
 test('default selection picks defaults then first active', function () {
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
     $stages = makeStages();
 
     $selection = $engine->defaultSelection($stages);
@@ -50,7 +51,7 @@ test('default selection picks defaults then first active', function () {
 });
 
 test('base allowed returns all active option ids', function () {
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
     $stages = makeStages();
 
     $allowed = $engine->baseAllowed($stages);
@@ -122,7 +123,7 @@ test('recalculateAllowed intersects rules only', function () {
         'allowed_option_ids' => [$sealOpt1->id],
     ]);
 
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
 
     $stages = [
         new ConfigStageDTO(
@@ -160,7 +161,7 @@ test('recalculateAllowed intersects rules only', function () {
 });
 
 test('pruneInvalidSelections removes only invalid choices', function () {
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
     $stages = makeStages();
     $allowed = [1 => [1], 2 => [3]];
     $selection = [1 => 2, 2 => 3, 99 => 5];
@@ -171,7 +172,7 @@ test('pruneInvalidSelections removes only invalid choices', function () {
 });
 
 test('fillMissingSelections auto picks default or first allowed when current is invalid', function () {
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
     $stages = makeStages();
 
     $allowed = [
@@ -193,7 +194,7 @@ test('fillMissingSelections auto picks default or first allowed when current is 
 });
 
 test('isComplete validates required stages filled', function () {
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
     $stages = makeStages();
 
     expect($engine->isComplete($stages, []))->toBeFalse();
@@ -202,11 +203,258 @@ test('isComplete validates required stages filled', function () {
 });
 
 test('buildConfigurationCode concatenates codes by segment index', function () {
-    $engine = new ConfiguratorEngine();
+    $engine = new ConfiguratorEngine;
     $stages = makeStages();
     $selection = [1 => 2, 2 => 4];
 
     $code = $engine->buildConfigurationCode($stages, $selection);
 
     expect($code)->toBe('CS-VT');
+});
+
+test('evaluateState applies context aware ui state and rule priority', function () {
+    $profile = ConfigProfile::factory()->create();
+
+    $bodyAttr = $profile->attributes()->create([
+        'name' => 'Body',
+        'label' => 'Body',
+        'slug' => 'body',
+        'input_type' => 'select',
+        'sort_order' => 1,
+        'is_required' => true,
+        'segment_index' => 1,
+    ]);
+
+    $sealAttr = $profile->attributes()->create([
+        'name' => 'Seal',
+        'label' => 'Seal',
+        'slug' => 'seal',
+        'input_type' => 'select',
+        'sort_order' => 2,
+        'is_required' => true,
+        'segment_index' => 2,
+    ]);
+
+    $bodyOpt = $bodyAttr->options()->create([
+        'label' => 'Ductile Iron',
+        'code' => 'DI',
+        'sort_order' => 1,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    $sealOpt1 = $sealAttr->options()->create([
+        'label' => 'EPDM',
+        'code' => 'EP',
+        'sort_order' => 1,
+        'is_default' => true,
+        'is_active' => true,
+        'ui_meta' => [
+            'hint' => 'Base hint',
+            'label_short' => 'EP',
+        ],
+    ]);
+
+    $sealOpt2 = $sealAttr->options()->create([
+        'label' => 'Viton',
+        'code' => 'VT',
+        'sort_order' => 2,
+        'is_default' => false,
+        'is_active' => true,
+    ]);
+
+    $sealOpt3 = $sealAttr->options()->create([
+        'label' => 'NBR',
+        'code' => 'NB',
+        'sort_order' => 3,
+        'is_default' => false,
+        'is_active' => true,
+    ]);
+
+    OptionRule::factory()->create([
+        'config_profile_id' => $profile->id,
+        'config_option_id' => $bodyOpt->id,
+        'target_attribute_id' => $sealAttr->id,
+        'allowed_option_ids' => [$sealOpt1->id, $sealOpt2->id],
+        'is_active' => true,
+        'priority' => 10,
+        'rule_payload' => [
+            'ui_mode' => 'hidden',
+            'disable_option_ids' => [$sealOpt2->id],
+            'label_overrides' => [
+                (string) $sealOpt1->id => 'EPDM Premium',
+            ],
+            'hints' => [
+                (string) $sealOpt1->id => 'Rule hint',
+            ],
+            'activate_if' => [
+                [
+                    'source' => 'context.territory',
+                    'operator' => '=',
+                    'value' => 'Europe',
+                ],
+            ],
+        ],
+    ]);
+
+    OptionRule::factory()->create([
+        'config_profile_id' => $profile->id,
+        'config_option_id' => $bodyOpt->id,
+        'target_attribute_id' => $sealAttr->id,
+        'allowed_option_ids' => [$sealOpt3->id],
+        'is_active' => false,
+        'priority' => 100,
+    ]);
+
+    $engine = new ConfiguratorEngine;
+
+    $stages = [
+        new ConfigStageDTO(
+            id: $bodyAttr->id,
+            slug: $bodyAttr->slug,
+            label: $bodyAttr->label,
+            sortOrder: $bodyAttr->sort_order,
+            segmentIndex: $bodyAttr->segment_index,
+            isRequired: (bool) $bodyAttr->is_required,
+            options: [
+                new ConfigOptionDTO($bodyOpt->id, $bodyOpt->label, $bodyOpt->code, $bodyOpt->sort_order, (bool) $bodyOpt->is_default, (bool) $bodyOpt->is_active),
+            ],
+        ),
+        new ConfigStageDTO(
+            id: $sealAttr->id,
+            slug: $sealAttr->slug,
+            label: $sealAttr->label,
+            sortOrder: $sealAttr->sort_order,
+            segmentIndex: $sealAttr->segment_index,
+            isRequired: (bool) $sealAttr->is_required,
+            options: [
+                new ConfigOptionDTO($sealOpt1->id, $sealOpt1->label, $sealOpt1->code, $sealOpt1->sort_order, (bool) $sealOpt1->is_default, (bool) $sealOpt1->is_active),
+                new ConfigOptionDTO($sealOpt2->id, $sealOpt2->label, $sealOpt2->code, $sealOpt2->sort_order, (bool) $sealOpt2->is_default, (bool) $sealOpt2->is_active),
+                new ConfigOptionDTO($sealOpt3->id, $sealOpt3->label, $sealOpt3->code, $sealOpt3->sort_order, (bool) $sealOpt3->is_default, (bool) $sealOpt3->is_active),
+            ],
+        ),
+    ];
+
+    $state = $engine->evaluateState(
+        $profile->load('attributes.options', 'rules'),
+        $stages,
+        [$bodyAttr->id => $bodyOpt->id],
+        ['territory' => 'Europe'],
+    );
+
+    expect($state['allowed'][$sealAttr->id])->toEqual([$sealOpt1->id])
+        ->and($state['hidden'][$sealAttr->id])->toEqual([$sealOpt3->id])
+        ->and($state['disabled'][$sealAttr->id])->toEqual([$sealOpt2->id])
+        ->and($state['label_overrides'][(string) $sealOpt1->id])->toBe('EPDM Premium')
+        ->and($state['hints'][(string) $sealOpt1->id])->toBe('Rule hint');
+});
+
+test('evaluateState ignores context gated rules when the context does not match', function () {
+    $profile = ConfigProfile::factory()->create();
+
+    $bodyAttr = $profile->attributes()->create([
+        'name' => 'Body',
+        'label' => 'Body',
+        'slug' => 'body',
+        'input_type' => 'select',
+        'sort_order' => 1,
+        'is_required' => true,
+        'segment_index' => 1,
+    ]);
+
+    $sealAttr = $profile->attributes()->create([
+        'name' => 'Seal',
+        'label' => 'Seal',
+        'slug' => 'seal',
+        'input_type' => 'select',
+        'sort_order' => 2,
+        'is_required' => true,
+        'segment_index' => 2,
+    ]);
+
+    $bodyOpt = $bodyAttr->options()->create([
+        'label' => 'Ductile Iron',
+        'code' => 'DI',
+        'sort_order' => 1,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    $sealOpt1 = $sealAttr->options()->create([
+        'label' => 'EPDM',
+        'code' => 'EP',
+        'sort_order' => 1,
+        'is_default' => true,
+        'is_active' => true,
+        'ui_meta' => [
+            'hint' => 'Base hint',
+            'label_short' => 'EP',
+        ],
+    ]);
+
+    $sealOpt2 = $sealAttr->options()->create([
+        'label' => 'Viton',
+        'code' => 'VT',
+        'sort_order' => 2,
+        'is_default' => false,
+        'is_active' => true,
+    ]);
+
+    OptionRule::factory()->create([
+        'config_profile_id' => $profile->id,
+        'config_option_id' => $bodyOpt->id,
+        'target_attribute_id' => $sealAttr->id,
+        'allowed_option_ids' => [$sealOpt1->id],
+        'is_active' => true,
+        'rule_payload' => [
+            'ui_mode' => 'hidden',
+            'activate_if' => [
+                [
+                    'source' => 'context.territory',
+                    'operator' => '=',
+                    'value' => 'Europe',
+                ],
+            ],
+        ],
+    ]);
+
+    $engine = new ConfiguratorEngine;
+
+    $stages = [
+        new ConfigStageDTO(
+            id: $bodyAttr->id,
+            slug: $bodyAttr->slug,
+            label: $bodyAttr->label,
+            sortOrder: $bodyAttr->sort_order,
+            segmentIndex: $bodyAttr->segment_index,
+            isRequired: (bool) $bodyAttr->is_required,
+            options: [
+                new ConfigOptionDTO($bodyOpt->id, $bodyOpt->label, $bodyOpt->code, $bodyOpt->sort_order, (bool) $bodyOpt->is_default, (bool) $bodyOpt->is_active),
+            ],
+        ),
+        new ConfigStageDTO(
+            id: $sealAttr->id,
+            slug: $sealAttr->slug,
+            label: $sealAttr->label,
+            sortOrder: $sealAttr->sort_order,
+            segmentIndex: $sealAttr->segment_index,
+            isRequired: (bool) $sealAttr->is_required,
+            options: [
+                new ConfigOptionDTO($sealOpt1->id, $sealOpt1->label, $sealOpt1->code, $sealOpt1->sort_order, (bool) $sealOpt1->is_default, (bool) $sealOpt1->is_active),
+                new ConfigOptionDTO($sealOpt2->id, $sealOpt2->label, $sealOpt2->code, $sealOpt2->sort_order, (bool) $sealOpt2->is_default, (bool) $sealOpt2->is_active),
+            ],
+        ),
+    ];
+
+    $state = $engine->evaluateState(
+        $profile->load('attributes.options', 'rules'),
+        $stages,
+        [$bodyAttr->id => $bodyOpt->id],
+        ['territory' => 'USA'],
+    );
+
+    expect($state['allowed'][$sealAttr->id])->toEqual([$sealOpt1->id, $sealOpt2->id])
+        ->and($state['hidden'][$sealAttr->id])->toEqual([])
+        ->and($state['label_overrides'][(string) $sealOpt1->id])->toBe('EP')
+        ->and($state['hints'][(string) $sealOpt1->id])->toBe('Base hint');
 });

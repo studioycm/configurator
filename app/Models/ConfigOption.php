@@ -24,6 +24,7 @@ class ConfigOption extends Model
         'sort_order',
         'is_default',
         'is_active',
+        'ui_meta',
     ];
 
     /**
@@ -38,6 +39,7 @@ class ConfigOption extends Model
             'config_attribute_id' => 'integer',
             'is_default' => 'boolean',
             'is_active' => 'boolean',
+            'ui_meta' => 'array',
         ];
     }
 
@@ -55,5 +57,36 @@ class ConfigOption extends Model
     public function rules(): HasMany
     {
         return $this->hasMany(OptionRule::class, 'config_option_id', 'id');
+    }
+
+    public function hintText(): ?string
+    {
+        $hint = data_get($this->ui_meta ?? [], 'hint');
+
+        return is_string($hint) && $hint !== '' ? $hint : null;
+    }
+
+    public function shortLabel(): ?string
+    {
+        $shortLabel = data_get($this->ui_meta ?? [], 'label_short');
+
+        return is_string($shortLabel) && $shortLabel !== '' ? $shortLabel : null;
+    }
+
+    public function badge(): ?string
+    {
+        $badge = data_get($this->ui_meta ?? [], 'badge');
+
+        return is_string($badge) && $badge !== '' ? $badge : null;
+    }
+
+    public function isHiddenByDefault(): bool
+    {
+        return (bool) data_get($this->ui_meta ?? [], 'dev_flags.hidden_by_default', false);
+    }
+
+    public function isDisabledByDefault(): bool
+    {
+        return (bool) data_get($this->ui_meta ?? [], 'dev_flags.disabled_by_default', false);
     }
 }

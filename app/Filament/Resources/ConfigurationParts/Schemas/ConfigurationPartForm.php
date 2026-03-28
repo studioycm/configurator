@@ -9,14 +9,17 @@ use Filament\Schemas\Schema;
 
 class ConfigurationPartForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $hideProductConfiguration = false): Schema
     {
         return $schema
             ->components([
                 Select::make('product_configuration_id')
                     ->relationship('productConfiguration', 'name')
                     ->searchable()
-                    ->required(),
+                    ->preload()
+                    ->required(! $hideProductConfiguration)
+                    ->hidden($hideProductConfiguration)
+                    ->dehydrated(! $hideProductConfiguration),
                 Select::make('part_id')
                     ->relationship('part', 'name'),
                 TextInput::make('part_number')

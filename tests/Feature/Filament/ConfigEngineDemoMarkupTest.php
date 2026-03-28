@@ -64,3 +64,12 @@ it('renders config engine file links from the blade partial', function () {
         ->toContain('Open')
         ->toContain('space-y-1');
 });
+
+it('builds config engine option fields from reactive closures so hidden options disappear on the first rerender', function () {
+    $pageSource = file_get_contents(app_path('Filament/Pages/ConfigEngineDemo.php'));
+
+    expect($pageSource)
+        ->toContain("->options(fn (): array => \$this->optionLabelsForStage((int) \$stage['id']))")
+        ->toContain("->colors(fn (): array => \$this->optionColorsForStage((int) \$stage['id']))")
+        ->not->toContain('$visibleOptions = $this->visibleOptionsForStage($stage);');
+});

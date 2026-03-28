@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\FileAttachmentType;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -28,6 +28,7 @@ class ProductConfiguration extends Model
         'is_active',
         'drawing_image_path',
         'config_data',
+        'resolved_state',
     ];
 
     /**
@@ -42,6 +43,7 @@ class ProductConfiguration extends Model
             'product_profile_id' => 'integer',
             'is_active' => 'boolean',
             'config_data' => 'array',
+            'resolved_state' => 'array',
         ];
     }
 
