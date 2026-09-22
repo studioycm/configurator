@@ -20,6 +20,8 @@ return [
 
     'driver' => env('SESSION_DRIVER', 'database'),
 
+    'serialization' => env('SESSION_SERIALIZATION', 'json'),
+
     /*
     |--------------------------------------------------------------------------
     | Session Lifetime

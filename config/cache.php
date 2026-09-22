@@ -15,6 +15,8 @@ return [
     |
     */
 
+    'serializable_classes' => false,
+
     'default' => env('CACHE_STORE', 'database'),
 
     /*

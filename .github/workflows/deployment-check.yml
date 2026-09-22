@@ -56,5 +56,8 @@ jobs:
         run: |
           php artisan key:generate --force --no-interaction
           php artisan config:cache --no-interaction
+          php artisan event:cache --no-interaction
           php artisan route:cache --no-interaction
           php artisan view:cache --no-interaction
+          php artisan filament:cache-components --no-interaction
+          php artisan icons:cache --no-interaction
