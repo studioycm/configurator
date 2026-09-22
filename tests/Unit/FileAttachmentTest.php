@@ -6,11 +6,12 @@ use App\Models\FileAttachment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+uses(TestCase::class, RefreshDatabase::class);
 
 it('returns an absolute url for media stored on the public disk', function () {
-    Storage::fake('public');
+    Storage::fake('public', ['url' => url('/storage')]);
 
     $attachment = FileAttachment::factory()->forCatalogGroup()->create();
 
@@ -27,7 +28,7 @@ it('returns an absolute url for media stored on the public disk', function () {
 });
 
 it('falls back to a legacy storage url when no media exists', function () {
-    Storage::fake('public');
+    Storage::fake('public', ['url' => url('/storage')]);
 
     $attachment = FileAttachment::factory()->forCatalogGroup()->create([
         'file_path' => 'demo/catalog/sample.pdf',

@@ -32,7 +32,6 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
 
 class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
 {
@@ -323,8 +322,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                     ->label($stage['label'])
                     ->options(fn (): array => $this->optionLabelsForStage((int) $stage['id']))
                     ->hintColor('info')
-                    ->hintAction(fn (): Action =>
-                        $this->hintActionForStage($stage)
+                    ->hintAction(fn (): Action => $this->hintActionForStage($stage)
                     )
                     ->inlineLabel()
                     ->native(false)
@@ -345,8 +343,7 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
                 ->label($stage['label'])
                 ->options(fn (): array => $this->optionLabelsForStage((int) $stage['id']))
                 ->hintColor('info')
-                ->hintAction(fn (): Action =>
-                    $this->hintActionForStage($stage)
+                ->hintAction(fn (): Action => $this->hintActionForStage($stage)
                 )
                 ->inlineLabel()
                 ->grouped()
@@ -898,17 +895,18 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
     private function hintActionForStage(array $stage)
     {
         $stage_id = $stage['id'];
-        return Action::make('helper_text_' . $stage_id)
+
+        return Action::make('helper_text_'.$stage_id)
             ->hidden(fn (): bool => $this->stageHelperTextById((int) $stage['id']) === null)
-            ->tooltip(fn (): HtmlString|null => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)                        ->modalHeading($stage['label'])
+            ->tooltip(fn (): ?HtmlString => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)->modalHeading($stage['label'])
             ->requiresConfirmation()
             ->modalAlignment(Alignment::Start)
             ->modalWidth(Width::TwoExtraLarge)
-            ->modalDescription(fn (): HtmlString|null => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)
+            ->modalDescription(fn (): ?HtmlString => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)
             ->modalSubmitActionLabel('Ok')
             ->modalCancelAction(false)
             ->iconButton()
             ->color('info')
-            ->icon('heroicon-o-information-circle');
+            ->icon(Heroicon::OutlinedInformationCircle);
     }
 }

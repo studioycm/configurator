@@ -6,23 +6,30 @@
         "junie",
         "gemini"
     ],
+    "cloud": false,
     "guidelines": true,
     "mcp": true,
+    "nightwatch": false,
     "nightwatch_mcp": false,
     "packages": [
         "filament/filament",
-        "filament/blueprint",
-        "laravel/fortify"
+        "filament/blueprint"
     ],
     "sail": false,
     "skills": [
+        "infer-conventions",
+        "fortify-development",
         "laravel-best-practices",
+        "testing-best-practices",
         "configuring-horizon",
         "fluxui-development",
+        "livewire-development",
         "volt-development",
-        "pest-testing",
         "tailwindcss-development",
-        "fortify-development",
+        "filament-development",
+        "filament-security-audit",
+        "planning-filament",
+        "reviewing-filament-plans",
         "technical-debt-manager-php-laravel"
     ]
 }

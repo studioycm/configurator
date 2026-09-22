@@ -22,7 +22,7 @@ class OptionRulesTable
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
-                    ->searchable()
+                    ->searchable(isIndividual: true, isGlobal: false)
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('configProfile.name')

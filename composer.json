@@ -7,36 +7,33 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "filament/filament": "^4.2",
-        "filament/spatie-laravel-media-library-plugin": "^4.3",
-        "filament/spatie-laravel-settings-plugin": "^4.3",
-        "lara-zeus/bolt": "^4.0",
-        "lara-zeus/bolt-pro": "^4.0",
-        "lara-zeus/matrix-choice": "^4.0",
-        "lara-zeus/spatie-translatable": "^1.0",
+        "filament/filament": "^5.0",
+        "filament/spatie-laravel-media-library-plugin": "^5.0",
+        "filament/spatie-laravel-settings-plugin": "^5.0",
+        "lara-zeus/spatie-translatable": "^2.0",
         "laravel/fortify": "^1.30",
-        "laravel/framework": "^12.0",
+        "laravel/framework": "^13.0",
         "laravel/horizon": "^5.41",
-        "laravel/tinker": "^2.10.1",
+        "laravel/tinker": "^3.0",
         "livewire/flux": "^2.1.1",
+        "livewire/livewire": "^4.0",
         "livewire/volt": "^1.7.0",
-        "solution-forest/filament-simplelightbox": "^1.0",
-        "xentixar/workflow-manager": "^2.0"
+        "solution-forest/filament-simplelightbox": "^1.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "filament/blueprint": "^1.1",
+        "filament/blueprint": "^2.0",
         "jasonmccreary/laravel-test-assertions": "^2.8",
         "laravel-shift/blueprint": "^2.13",
-        "laravel/boost": "^2.4",
+        "laravel/boost": "^2.9.1",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
         "laravel/sail": "^1.41",
         "laraveldaily/filacheck-pro": "^1.1",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^4.1",
-        "pestphp/pest-plugin-laravel": "^4.0"
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-laravel": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -87,13 +84,6 @@
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ]
     },
-    "extra": {
-        "laravel": {
-            "dont-discover": [
-                "rupadana/filament-api-service"
-            ]
-        }
-    },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
@@ -104,7 +94,7 @@
         }
     },
     "repositories": [
-            {
+        {
             "name": "filacheck",
             "type": "composer",
             "url": "https://satis.filamentexamples.com"
@@ -113,12 +103,8 @@
             "name": "filament",
             "type": "composer",
             "url": "https://packages.filamentphp.com/composer"
-        },
-        {
-                "type": "composer",
-                "url": "https://composer.larazeus.com"
-            }
-        ],
+        }
+    ],
     "minimum-stability": "stable",
     "prefer-stable": true
 }

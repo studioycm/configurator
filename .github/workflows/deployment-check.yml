@@ -1,0 +1,60 @@
+name: Deployment check
+
+on:
+  push:
+    branches:
+      - 'upgrade/**'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-build:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Install production PHP dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Check platform requirements
+        run: composer check-platform-reqs --no-dev
+
+      - name: Build assets from lockfile
+        run: |
+          npm ci
+          npm run build
+
+      - name: Compile deployment caches
+        run: |
+          php artisan key:generate --force --no-interaction
+          php artisan config:cache --no-interaction
+          php artisan route:cache --no-interaction
+          php artisan view:cache --no-interaction

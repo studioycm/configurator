@@ -21,7 +21,8 @@ class ConfigurationPartForm
                     ->hidden($hideProductConfiguration)
                     ->dehydrated(! $hideProductConfiguration),
                 Select::make('part_id')
-                    ->relationship('part', 'name'),
+                    ->relationship('part', 'name')
+                    ->searchable(),
                 TextInput::make('part_number')
                     ->required()
                     ->numeric(),

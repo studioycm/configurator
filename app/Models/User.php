@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,12 +11,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use \LaraZeus\Bolt\Models\Concerns\BelongToBolt;
 
 class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable, BelongToBolt;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -65,10 +65,11 @@ class User extends Authenticatable implements FilamentUser
             ->implode('');
     }
 
-
     public function canAccessPanel(Panel $panel): bool
     {
-        if (in_array($this->email, ['ycm@data4.work', 'beny.cr@gmail.com'])) return true;
+        if (in_array($this->email, ['ycm@data4.work', 'beny.cr@gmail.com'])) {
+            return true;
+        }
 
         return false;
     }
