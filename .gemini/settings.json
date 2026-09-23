@@ -1,19 +1,19 @@
 {
     "mcpServers": {
         "laravel-boost": {
-            "command": "php",
+            "command": "/Users/studioycm/Library/Application Support/Herd/bin/php84",
             "args": [
-                "artisan",
+                "/Users/studioycm/Herd/configurator/artisan",
                 "boost:mcp"
             ]
         },
         "herd": {
-            "command": "php",
+            "command": "/Users/studioycm/Library/Application Support/Herd/bin/php84",
             "args": [
-                "C:/Users/user-pc/.config/herd/bin/herd-mcp.phar"
+                "/Users/studioycm/Library/Application Support/Herd/bin/herd-mcp.phar"
             ],
             "env": {
-                "SITE_PATH": "D:\\0-Dev\\Herd\\configurator"
+                "SITE_PATH": "/Users/studioycm/Herd/configurator"
             }
         }
     }

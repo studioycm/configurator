@@ -1,3 +1,12 @@
 [mcp_servers.laravel-boost]
-command = "php"
-args = ["artisan", "boost:mcp"]
+command = "/Users/studioycm/Library/Application Support/Herd/bin/php84"
+args = ["/Users/studioycm/Herd/configurator/artisan", "boost:mcp"]
+cwd = "/Users/studioycm/Herd/configurator"
+
+[mcp_servers.herd]
+command = "/Users/studioycm/Library/Application Support/Herd/bin/php84"
+args = ["/Users/studioycm/Library/Application Support/Herd/bin/herd-mcp.phar"]
+cwd = "/Users/studioycm/Herd/configurator"
+
+[mcp_servers.herd.env]
+SITE_PATH = "/Users/studioycm/Herd/configurator"
