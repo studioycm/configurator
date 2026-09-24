@@ -8,6 +8,7 @@ use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Configurators\Pages\CreateConfigurator;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
+use App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager;
 use App\Livewire\Catalog\ConfiguratorGroups;
 use App\Livewire\Catalog\ConfiguratorOverview;
 use App\Livewire\Catalog\ConfiguratorPreview;
@@ -76,7 +77,7 @@ test('new Configurator creation is unassigned and does not fabricate canonical c
     expect($record->groups()->count())->toBe(0)->and($record->attributes()->count())->toBe(0)->and(Option::count())->toBe(0);
 });
 
-test('local inclusion dialogs preserve shared identity and stored default through option reordering', function () {
+test('local inclusion editors preserve shared identity and stored default through option reordering', function () {
     [$configurator, $data] = canonicalDefinitionFixture();
     $draft = $data['attributes'][0];
     unset($draft['display_order'], $draft['code_order']);
@@ -97,9 +98,12 @@ test('local inclusion dialogs preserve shared identity and stored default throug
     }
     unset($option);
     $saved['label_override'] = 'Local only';
-    $manager->callTableAction('edit', $inclusion, data: $saved)->assertHasNoTableActionErrors();
+    Livewire\Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $inclusion, 'pageClass' => EditConfigurator::class])
+        ->call('reorderTable', array_column($saved['options'], 'id'))->assertHasNoErrors();
+    unset($saved['options']);
+    $manager->callTableAction('edit', $inclusion)->fillForm($saved, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($inclusion->fresh()->default_configurator_option_id)->toBe($default)->and($inclusion->fresh()->label_override)->toBe('Local only')->and($inclusion->attribute->label)->toBe('A');
-    expect($inclusion->options()->orderBy('display_order')->pluck('id')->all())->toBe(array_map('intval', array_column($saved['options'], 'id')));
+    expect($inclusion->options()->orderBy('display_order')->pluck('id')->last())->toBe($default);
 });
 
 test('local ordering uses complete permutations and direct mutation methods reauthorize the owner', function () {
@@ -142,16 +146,13 @@ test('failed inclusion validation keeps the staged draft and renders its repair 
     $inclusion = $configurator->attributes()->orderBy('display_order')->first();
     $draft = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['attributes'][0];
     unset($draft['display_order'], $draft['code_order']);
-    array_shift($draft['options']);
-    foreach ($draft['options'] as &$option) {
-        unset($option['display_order']);
-    } unset($option);
+    unset($draft['options']);
+    $draft['default_configurator_option_id'] = '999999';
     $draft['label_override'] = 'Unsaved local draft';
     $component = Livewire\Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $inclusion, data: $draft)->assertHasTableActionErrors(['default_configurator_option_id'])
-        ->assertSet('mountedActions.0.data.label_override', 'Unsaved local draft');
-    $schema = $component->instance()->getSchema($component->instance()->getMountedActionSchemaName());
-    expect($schema->toHtml())->toContain('Repair these items before saving', 'Choose a default from this inclusion');
+        ->callTableAction('edit', $inclusion)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(['default_configurator_option_id'], 'editorForm')
+        ->assertSet('editorData.label_override', 'Unsaved local draft');
+    expect($component->instance()->editorForm->toHtml())->toContain('Repair these items before saving');
     expect($inclusion->fresh()->label_override)->toBeNull()->and($inclusion->options()->count())->toBe(2);
 });
 

@@ -10,9 +10,11 @@ use App\Models\ConfiguratorRule;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleDraft;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -21,6 +23,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 
 class RulesRelationManager extends RelationManager
 {
@@ -28,42 +32,112 @@ class RulesRelationManager extends RelationManager
 
     protected static bool $isLazy = false;
 
+    protected string $view = 'filament.resources.configurators.rules';
+
+    #[Locked]
+    public ?int $selectedRuleId = null;
+
+    #[Locked]
+    public ?string $editorKind = null;
+
+    /** @var array<string, mixed> */
+    public array $editorData = [];
+
+    public function editorForm(Schema $schema): Schema
+    {
+        return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->editorKind === null ? [] : ConfiguratorRuleForm::components($this->owner(), $this->editorKind));
+    }
+
+    public function selectRule(int $id): void
+    {
+        $rule = $this->owner()->rules()->findOrFail($id);
+        $this->selectedRuleId = $rule->id;
+        $this->editorKind = $rule->kind;
+        $this->resetValidation();
+        $this->cacheSchema('editorForm')->fill($this->ruleDraft($id));
+        $this->dispatch('configurator-editor-filled');
+    }
+
+    public function createRule(string $kind): void
+    {
+        Gate::authorize('manage-catalog');
+        abort_unless(in_array($kind, ['Mapping', 'Advanced'], true), 422);
+        $this->selectedRuleId = null;
+        $this->editorKind = $kind;
+        $this->resetValidation();
+        $this->cacheSchema('editorForm')->fill(app(ConfiguratorRuleDraft::class)->fromRule(['id' => 'new:'.Str::uuid(), 'label' => '', 'kind' => $kind, 'is_active' => true, 'priority' => 0, 'driver_configurator_attribute_id' => null, 'target_configurator_attribute_id' => null, 'conditions' => [], 'effects' => [], 'sets' => []]));
+        $this->dispatch('configurator-editor-filled');
+    }
+
+    public function closeEditor(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->selectedRuleId = null;
+        $this->editorKind = null;
+        $this->editorData = [];
+        $this->resetValidation();
+        $this->dispatch('configurator-editor-filled');
+    }
+
+    public function saveEditor(): void
+    {
+        Gate::authorize('manage-catalog');
+        abort_if($this->editorKind === null, 404);
+        $this->editorForm->getState();
+        $state = $this->editorForm->getRawState();
+        $this->saveRule($this->selectedRuleId, $this->editorKind, $state instanceof Arrayable ? $state->toArray() : $state);
+        if ($this->selectedRuleId === null) {
+            $this->closeEditor();
+        } else {
+            $this->selectRule($this->selectedRuleId);
+        }
+    }
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return $ownerRecord instanceof Configurator && Gate::allows('manage-catalog');
+    }
+
+    #[On('configurator-updated')]
+    public function refreshDefinition(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->cacheSchema('editorForm');
+        $this->flushCachedTableRecords();
     }
 
     public function table(Table $table): Table
     {
         return $table->modifyQueryUsing(fn ($query) => $query->with(['driverAttribute.attribute', 'targetAttribute.attribute', 'effects.targetAttribute.attribute'])->withCount('mappingSets'))
             ->columns([
-                TextColumn::make('label')->searchable(fn (): bool => ! $this->isTableReordering), TextColumn::make('kind')->badge(),
+                TextColumn::make('label')->wrap()->searchable(fn (): bool => ! $this->isTableReordering), TextColumn::make('kind')->badge(),
                 TextColumn::make('summary')->state(fn (ConfiguratorRule $record): string => $record->kind === 'Mapping'
                     ? ($record->driverAttribute?->label_override ?? $record->driverAttribute?->attribute->label).' → '.($record->targetAttribute?->label_override ?? $record->targetAttribute?->attribute->label).' · '.$record->mapping_sets_count.' sets'
-                    : $record->effects->take(5)->map(fn ($effect): string => Str::headline($effect->kind).' · '.($effect->targetAttribute?->label_override ?? $effect->targetAttribute?->attribute->label))->implode('; '))->wrap(),
+                    : $record->effects->take(5)->map(fn ($effect): string => Str::headline($effect->kind).' · '.($effect->targetAttribute?->label_override ?? $effect->targetAttribute?->attribute->label))->implode('; '))->wrap()->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('is_active')->label('Enabled')->boolean(),
             ])->defaultSort('priority', 'desc')->reorderable('priority', direction: 'desc')->paginated(false)
+            ->recordAction('edit')->recordClasses(fn (ConfiguratorRule $record): ?string => $record->id === $this->selectedRuleId ? 'catalog-selected-row' : null)
             ->headerActions([$this->createAction('Mapping'), $this->createAction('Advanced')])
             ->recordActions([
                 Action::make('edit')->label('Edit')->authorize('manage-catalog')
-                    ->schema(fn (ConfiguratorRule $record): array => ConfiguratorRuleForm::components($this->owner(), $record->kind))
-                    ->fillForm(fn (ConfiguratorRule $record): array => $this->ruleDraft($record->id))
-                    ->action(fn (ConfiguratorRule $record) => $this->saveRule($record->id, $record->kind, $this->rawDraft())),
-                Action::make('moveUp')->label('Move up')->authorize('manage-catalog')->action(fn (ConfiguratorRule $record) => $this->moveRule($record->id, -1)),
-                Action::make('moveDown')->label('Move down')->authorize('manage-catalog')->action(fn (ConfiguratorRule $record) => $this->moveRule($record->id, 1)),
-                Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
-                    ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Remove this rule and its owned conditions, effects and mapping sets in one save. Other rules and shared definitions remain available.')
-                    ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
+                    ->extraAttributes(['data-editor-switch' => true])
+                    ->action(fn (ConfiguratorRule $record) => $this->selectRule($record->id)),
+                ActionGroup::make([
+                    Action::make('moveUp')->label('Move up')->authorize('manage-catalog')->action(fn (ConfiguratorRule $record) => $this->moveRule($record->id, -1)),
+                    Action::make('moveDown')->label('Move down')->authorize('manage-catalog')->action(fn (ConfiguratorRule $record) => $this->moveRule($record->id, 1)),
+                    Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                        ->schema([View::make('filament.forms.validation-summary')])
+                        ->modalDescription('Remove this rule and its owned conditions, effects and mapping sets in one save. Other rules and shared definitions remain available.')
+                        ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
+                ]),
             ]);
     }
 
     private function createAction(string $kind): Action
     {
         return Action::make('add'.$kind)->label($kind === 'Mapping' ? 'Add mapping' : 'Add advanced rule')->authorize('manage-catalog')
-            ->schema(fn (): array => ConfiguratorRuleForm::components($this->owner(), $kind))
-            ->fillForm(fn (): array => app(ConfiguratorRuleDraft::class)->fromRule(['id' => 'new:'.Str::uuid(), 'label' => '', 'kind' => $kind, 'is_active' => true, 'priority' => 0, 'driver_configurator_attribute_id' => null, 'target_configurator_attribute_id' => null, 'conditions' => [], 'effects' => [], 'sets' => []]))
-            ->action(fn () => $this->saveRule(null, $kind, $this->rawDraft()));
+            ->extraAttributes(['data-editor-switch' => true])
+            ->action(fn () => $this->createRule($kind));
     }
 
     /** @param array<string, mixed> $data */
@@ -96,7 +170,7 @@ class RulesRelationManager extends RelationManager
                 return $draft;
             });
         } catch (\Throwable $exception) {
-            ConfiguratorFormErrors::rethrow($exception, $this->getMountedActionSchema(), '/^rules\.\d+\./');
+            ConfiguratorFormErrors::rethrow($exception, $this->editorKind === null ? null : $this->editorForm, '/^rules\.\d+\./');
         }
         $this->saved();
     }
@@ -111,6 +185,9 @@ class RulesRelationManager extends RelationManager
 
             return $draft;
         }), $this->getMountedActionSchema());
+        if ($this->selectedRuleId === $id) {
+            $this->closeEditor();
+        }
         $this->saved();
     }
 
@@ -162,14 +239,6 @@ class RulesRelationManager extends RelationManager
             }
         }
         abort(404);
-    }
-
-    /** @return array<string, mixed> */
-    private function rawDraft(): array
-    {
-        $state = $this->getMountedActionSchema()->getRawState();
-
-        return $state instanceof Arrayable ? $state->toArray() : $state;
     }
 
     private function owner(): Configurator

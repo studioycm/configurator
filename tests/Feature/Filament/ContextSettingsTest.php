@@ -94,7 +94,7 @@ test('rule editor offers inherited context choices and preserves their string id
     $ruleDraft['label'] = 'Edited context rule';
     Livewire::test(RulesRelationManager::class, [
         'ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class,
-    ])->callTableAction('edit', $configurator->rules()->sole(), data: $ruleDraft)->assertHasNoTableActionErrors();
+    ])->callTableAction('edit', $configurator->rules()->sole())->fillForm($ruleDraft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($configurator->rules()->sole()->conditions()->sole()->operand)->toBe($operand);
     expect($configurator->rules()->sole()->label)->toBe('Edited context rule');
 })->with([

@@ -10,24 +10,82 @@ use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Services\ConfiguratorDefinitionLoader;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 
 class AttributesRelationManager extends RelationManager
 {
     protected static string $relationship = 'attributes';
 
     protected static bool $isLazy = false;
+
+    protected string $view = 'filament.resources.configurators.attributes';
+
+    #[Locked]
+    public ?int $selectedAttributeId = null;
+
+    /** @var array<string, mixed> */
+    public array $editorData = [];
+
+    public function editorForm(Schema $schema): Schema
+    {
+        return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->selectedAttributeId === null ? [] : ConfiguratorAttributeForm::components($this->owner(), $this->selectedAttribute(), withOptions: false));
+    }
+
+    public function selectedAttribute(): ?ConfiguratorAttribute
+    {
+        return $this->selectedAttributeId === null ? null : $this->owner()->attributes()->with('attribute')->findOrFail($this->selectedAttributeId);
+    }
+
+    public function selectAttribute(int $id): void
+    {
+        $attribute = $this->owner()->attributes()->findOrFail($id);
+        $this->selectedAttributeId = $attribute->id;
+        $this->resetValidation();
+        $data = $this->inclusionDraft($id);
+        unset($data['options']);
+        $this->cacheSchema('editorForm')->fill($data);
+        $this->dispatch('configurator-editor-filled');
+    }
+
+    public function closeEditor(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->selectedAttributeId = null;
+        $this->editorData = [];
+        $this->resetValidation();
+        $this->dispatch('configurator-editor-filled');
+    }
+
+    public function saveEditor(): void
+    {
+        $attribute = $this->selectedAttribute();
+        abort_unless($attribute, 404);
+        $this->saveInclusion($attribute->id, $this->editorForm->getState());
+        $this->selectAttribute($attribute->id);
+        $this->dispatch('configurator-attribute-updated', attributeId: $attribute->id);
+    }
+
+    #[On('configurator-options-updated')]
+    public function refreshOptions(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->flushCachedTableRecords();
+    }
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -38,14 +96,15 @@ class AttributesRelationManager extends RelationManager
     {
         return $table->modifyQueryUsing(fn ($query) => $query->with(['attribute', 'defaultOption.option.value'])->withCount('options'))
             ->columns([
-                TextColumn::make('attribute.label')->label('Attribute')->formatStateUsing(fn (ConfiguratorAttribute $record): string => $record->label_override ?? $record->attribute->label),
-                TextColumn::make('attribute.key')->label('Canonical key'),
-                TextColumn::make('input_type')->label('Input'),
-                TextColumn::make('options_count')->label('Included options'),
+                TextColumn::make('attribute.label')->label('Attribute')->wrap()->formatStateUsing(fn (ConfiguratorAttribute $record): string => $record->label_override ?? $record->attribute->label),
+                TextColumn::make('attribute.key')->label('Canonical key')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('input_type')->label('Input')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('options_count')->label('Options'),
                 TextColumn::make('defaultOption.option.code')->label('Default code'),
-                TextColumn::make('defaultOption.option.value.label')->label('Default Value'),
-                TextColumn::make('code_order')->label('Code position')->formatStateUsing(fn (int $state): int => $state + 1),
+                TextColumn::make('defaultOption.option.value.label')->label('Default Value')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('code_order')->label('Code position')->formatStateUsing(fn (int $state): int => $state + 1)->toggleable(isToggledHiddenByDefault: true),
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)
+            ->recordAction('edit')->recordClasses(fn (ConfiguratorAttribute $record): ?string => $record->id === $this->selectedAttributeId ? 'catalog-selected-row' : null)
             ->headerActions([
                 Action::make('include')->label('Include attribute')->authorize('manage-catalog')
                     ->schema(fn (): array => ConfiguratorAttributeForm::components($this->owner()))
@@ -57,15 +116,16 @@ class AttributesRelationManager extends RelationManager
                     ->action(fn (array $data) => $this->saveCodeOrder(array_column($data['order'], 'id'))),
             ])->recordActions([
                 Action::make('edit')->label('Edit')->authorize('manage-catalog')
-                    ->schema(fn (ConfiguratorAttribute $record): array => ConfiguratorAttributeForm::components($this->owner(), $record))
-                    ->fillForm(fn (ConfiguratorAttribute $record): array => $this->inclusionDraft($record->id))
-                    ->action(fn (ConfiguratorAttribute $record, array $data) => $this->saveInclusion($record->id, $data)),
-                Action::make('moveUp')->label('Move up')->authorize('manage-catalog')->action(fn (ConfiguratorAttribute $record) => $this->moveAttribute($record->id, -1)),
-                Action::make('moveDown')->label('Move down')->authorize('manage-catalog')->action(fn (ConfiguratorAttribute $record) => $this->moveAttribute($record->id, 1)),
-                Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
-                    ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Remove this local inclusion and its local options. Referencing rules must be repaired first; shared canonical records remain available.')
-                    ->action(fn (ConfiguratorAttribute $record) => $this->removeInclusion($record->id)),
+                    ->extraAttributes(['data-editor-switch' => true])
+                    ->action(fn (ConfiguratorAttribute $record) => $this->selectAttribute($record->id)),
+                ActionGroup::make([
+                    Action::make('moveUp')->label('Move up')->authorize('manage-catalog')->action(fn (ConfiguratorAttribute $record) => $this->moveAttribute($record->id, -1)),
+                    Action::make('moveDown')->label('Move down')->authorize('manage-catalog')->action(fn (ConfiguratorAttribute $record) => $this->moveAttribute($record->id, 1)),
+                    Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                        ->schema([View::make('filament.forms.validation-summary')])
+                        ->modalDescription('Remove this local inclusion and its local options. Referencing rules must be repaired first; shared canonical records remain available.')
+                        ->action(fn (ConfiguratorAttribute $record) => $this->removeInclusion($record->id)),
+                ]),
             ]);
     }
 
@@ -108,7 +168,7 @@ class AttributesRelationManager extends RelationManager
                 return $draft;
             });
         } catch (\Throwable $exception) {
-            ConfiguratorFormErrors::rethrow($exception, $this->getMountedActionSchema(), '/^attributes\.\d+\./');
+            ConfiguratorFormErrors::rethrow($exception, $this->getMountedActionSchema() ?? ($this->selectedAttributeId !== null ? $this->editorForm : null), '/^attributes\.\d+\./');
         }
         $this->saved();
     }
@@ -123,6 +183,9 @@ class AttributesRelationManager extends RelationManager
 
             return $draft;
         }), $this->getMountedActionSchema());
+        if ($this->selectedAttributeId === $id) {
+            $this->closeEditor();
+        }
         $this->saved();
     }
 

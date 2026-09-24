@@ -22,6 +22,7 @@ class ConfiguratorsTable
             TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('updated_at')->label('Updated At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
         ])->filters([])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
-            ->defaultSort('name')->recordActions([Action::make('edit')->label('Manage')->url(fn (Configurator $record): string => ConfiguratorResource::getUrl('edit', ['record' => $record]))]);
+            ->defaultSort('name')->recordUrl(fn (Configurator $record): string => ConfiguratorResource::getUrl('edit', ['record' => $record]))
+            ->recordActions([Action::make('edit')->label('Manage')->url(fn (Configurator $record): string => ConfiguratorResource::getUrl('edit', ['record' => $record]))]);
     }
 }

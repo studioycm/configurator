@@ -99,10 +99,11 @@
 .catalog-record-editor .fi-breadcrumbs { display: none; }
 .catalog-selected-row { background: #eff6ff; }
 .catalog-editor-placeholder { color: #64748b; padding: 2rem 1rem; text-align: center; }
+.catalog-related-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.65fr); gap: 1.5rem; align-items: start; }
 .dark .fi-body { background: #111827; }
 .dark .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header, .dark .catalog-record-editor { background: #182231; border-color: #334155; }
 .dark .catalog-selected-row { background: #243b53; }
-@media (max-width: 1199px) { .catalog-split-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1199px) { .catalog-split-layout, .catalog-related-workspace { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 639px) { .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header, .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 1rem; } }
 
 .catalog-tag-filters .fi-fo-toggle-buttons label.fi-color.fi-btn,

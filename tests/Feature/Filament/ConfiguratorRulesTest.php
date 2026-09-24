@@ -55,10 +55,10 @@ test('matrix saves complete sets preserves identities and accepts partial covera
     $originalSet = $rule->mappingSets()->sole()->id;
     $draft = app(ConfiguratorRuleDraft::class)->fromRule($data['rules'][0]);
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callTableAction('edit', $rule, data: $draft)->assertHasNoTableActionErrors();
+    $manager->callTableAction('edit', $rule)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($rule->mappingSets()->sole()->id)->toBe($originalSet);
     $draft['sets'][] = ['id' => 'new:other', 'label' => 'Overlapping target', 'source_option_ids' => [$data['attributes'][0]['options'][1]['id']], 'target_option_ids' => $draft['sets'][0]['target_option_ids']];
-    $manager->callTableAction('edit', $rule, data: $draft)->assertHasNoTableActionErrors();
+    $manager->callTableAction('edit', $rule)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($rule->mappingSets()->count())->toBe(2)->and($rule->mappingSets()->orderBy('sort_order')->first()->id)->toBe($originalSet);
 });
 
@@ -80,9 +80,9 @@ test('invalid matrix leaves the entire saved aggregate unchanged and keeps the s
         $draft['sets'][0]['id'] = '999999';
     }
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $rule, data: $draft)->assertHasTableActionErrors();
+        ->callTableAction('edit', $rule)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(form: 'editorForm');
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
-    expect($manager->get('mountedActions')[0]['data']['label'])->toBe('Unsaved repair');
+    expect($manager->get('editorData.label'))->toBe('Unsaved repair');
 })->with(['empty', 'duplicate', 'driver', 'cycle', 'foreign set']);
 
 test('rule editor direct methods reject foreign owners kind conversions and unauthorized callers', function () {
@@ -124,7 +124,7 @@ test('advanced action persists typed context and grouped option conditions with 
     $draft = app(ConfiguratorRuleDraft::class)->fromRule($before['rules'][0]);
     $draft['label'] = 'Edited advanced rule';
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callTableAction('edit', $configurator->rules()->sole(), data: $draft)->assertHasNoTableActionErrors();
+    $manager->callTableAction('edit', $configurator->rules()->sole())->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     $after = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     expect($after['rules'][0]['conditions'])->toBe($before['rules'][0]['conditions'])
         ->and($after['rules'][0]['effects'])->toBe($before['rules'][0]['effects'])->and($after['rules'][0]['label'])->toBe('Edited advanced rule');
@@ -154,20 +154,20 @@ test('context operator changes keep the previous operand visible until explicitl
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
     $before = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->mountTableAction('edit', $configurator->rules()->sole());
-    $blockKey = array_key_first($manager->get('mountedActions')[0]['data']['condition_blocks']);
-    $path = 'mountedActions.0.data.condition_blocks.'.$blockKey.'.data.';
+        ->callTableAction('edit', $configurator->rules()->sole());
+    $blockKey = array_key_first($manager->get('editorData.condition_blocks'));
+    $path = 'editorData.condition_blocks.'.$blockKey.'.data.';
 
     $manager->set($path.'operator', $nextOperator)->set($path.$nextField, $nextValue)
-        ->callMountedTableAction()->assertHasTableActionErrors();
+        ->call('saveEditor')->assertHasFormErrors(form: 'editorForm');
     expect($manager->errors()->get(rtrim($path, '.')))->toBe(['Clear the previous operand explicitly before changing its source or scalar/list operator.']);
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
-    $schema = $manager->instance()->getMountedActionSchemaName();
+    $schema = 'editorForm';
     $componentKey = collect($manager->instance()->{$schema}->getFlatComponents(withHidden: true))
         ->keys()->first(fn ($key): bool => is_string($key) && str_ends_with($key, '.'.$staleKey));
     expect($componentKey)->not->toBeNull();
-    $manager->assertSchemaComponentVisible($componentKey)
-        ->set($path.$staleField, $cleared)->callMountedTableAction()->assertHasNoTableActionErrors();
+    $manager->assertSchemaComponentVisible($componentKey, 'editorForm')
+        ->set($path.$staleField, $cleared)->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
 
     $after = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     expect($after['rules'][0]['conditions'][0])->toMatchArray(['operator' => $nextOperator, 'operand' => $nextValue]);

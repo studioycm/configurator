@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
 class ConfiguratorAttributeForm
 {
     /** @return array<Component> */
-    public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null): array
+    public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true): array
     {
         $labels = [];
         $optionLabels = function (mixed $attributeId) use (&$labels): array {
@@ -44,7 +44,7 @@ class ConfiguratorAttributeForm
                 TextInput::make('label_override')->label('Local label')->maxLength(255)->helperText('Leave empty to use the shared Attribute label.'),
                 Textarea::make('help_text')->label('Local help')->maxLength(1000)->rows(3),
             ]),
-            Repeater::make('options')->label('Included Options')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
+            ...($withOptions ? [Repeater::make('options')->label('Included Options')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                 Select::make('option_id')->label('Canonical Option')->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()
@@ -60,8 +60,12 @@ class ConfiguratorAttributeForm
                 TextInput::make('hint')->label('Local hint')->maxLength(1000),
                 Toggle::make('hidden_by_default')->label('Initially hidden')->default(false),
                 Toggle::make('disabled_by_default')->label('Initially disabled')->default(false),
-            ])->helperText('Reordering does not change the stored default. Repair defaults and rule references before removing an Option.'),
-            Select::make('default_configurator_option_id')->label('Stored default')->required()->live()->options(function (Get $get) use ($optionLabels): array {
+            ])->helperText('Reordering does not change the stored default. Repair defaults and rule references before removing an Option.')] : []),
+            Select::make('default_configurator_option_id')->label('Stored default')->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
+                if (! $withOptions) {
+                    return $inclusion->options()->with('option.value')->orderBy('display_order')->get()
+                        ->mapWithKeys(fn ($option): array => [$option->id => $option->option->code.' · '.($option->label_override ?? $option->option->value->label)])->all();
+                }
                 $canonical = $optionLabels($get('attribute_id'));
                 $options = [];
                 foreach ($get('options') ?? [] as $row) {
