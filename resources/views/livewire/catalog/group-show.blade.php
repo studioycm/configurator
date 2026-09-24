@@ -31,15 +31,16 @@
                     </div>
                 </fieldset>
             @endif
-            <div class="mb-4">
+            <div class="mb-4 flex items-center gap-2">
                 <h2 class="text-sm font-semibold">{{ __('Filters') }}</h2>
+                <button type="button" wire:click="clearFilters" aria-label="{{ __('Clear filters') }}" @disabled($result->state->filters === [])
+                    class="min-h-6 shrink-0 rounded border border-zinc-300 px-1.5 py-0.5 text-xs font-normal leading-4 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:cursor-default disabled:opacity-40 dark:border-zinc-600 dark:hover:bg-zinc-800">{{ __('Clear') }}</button>
             </div>
             <div class="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
                 @foreach ($result->fields as $field)<x-catalog.filter-field :field="$field" :group-id="$group->id" />@endforeach
             </div>
             @if ($result->fields !== [])<p id="catalog-choice-help" class="mt-4 text-xs leading-5 text-zinc-600 dark:text-zinc-400">{{ __('Counts show compatibility with your other choices. Choosing a zero-count value may clear earlier choices. Clear filters keeps your preset; Reset all removes it too.') }}</p>@endif
             <footer class="mt-4 flex flex-wrap justify-start gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                <button type="button" wire:click="clearFilters" class="min-h-9 rounded-full border border-zinc-300 px-4 text-xs hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 dark:border-zinc-600 dark:hover:bg-zinc-800">{{ __('Clear filters') }}</button>
                 <button type="button" wire:click="resetAll" class="min-h-9 rounded-full border border-zinc-300 px-4 text-xs hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 dark:border-zinc-600 dark:hover:bg-zinc-800">{{ __('Reset all') }}</button>
             </footer>
         </section>
