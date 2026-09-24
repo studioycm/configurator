@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Gate;
 
 class ContextSettings extends Page
 {
-    protected static ?string $title = 'Territory & application';
+    protected static ?string $title = 'Territory & Application';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
 
