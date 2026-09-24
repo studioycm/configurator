@@ -158,6 +158,7 @@ class CatalogDiscovery
                 $page = 1;
                 $notices[] = 'Some catalog choices were adjusted to the current group settings.';
             }
+            $compatible = $this->compatibleValues($groupId, $filters->keys()->all(), $constraints, $vocabulary);
             $fields = [];
             foreach ($filters as $key => $filter) {
                 if ($vocabulary[$key] === [] || ($preset?->property_key === $key && count($preset->allowed_values) === 1)) {
@@ -166,7 +167,7 @@ class CatalogDiscovery
                 $order = array_values(array_unique([...array_values(array_filter($filter->value_order ?? [], fn (mixed $value): bool => is_string($value) && in_array($value, $vocabulary[$key], true))), ...$vocabulary[$key]]));
                 $values = [];
                 foreach ($order as $value) {
-                    $values[] = ['value' => $value, 'label' => $filter->value_labels[$value] ?? $value, 'selected' => ($selected[$key] ?? null) === $value];
+                    $values[] = ['value' => $value, 'label' => $filter->value_labels[$value] ?? $value, 'selected' => ($selected[$key] ?? null) === $value, 'compatible' => in_array($value, $compatible[$key] ?? [], true)];
                 }
                 $fields[] = ['key' => $key, 'label' => $filter->label, 'values' => $values];
             }
@@ -188,6 +189,36 @@ class CatalogDiscovery
                 'property_label' => $filters->get($item->property_key)?->label ?? str_replace('_', ' ', $item->property_key),
             ])->values()->all(), $products, array_values(array_unique($notices)), $settings, $adjusted || ($action === null && $raw !== [] && $raw != $state->toArray()), $showProducts);
         });
+    }
+
+    /**
+     * @param  list<string>  $keys
+     * @param  array<string, array{property: string, values: list<string>}>  $constraints
+     * @param  array<string, list<string>>  $vocabulary
+     * @return array<string, list<string>>
+     */
+    private function compatibleValues(int $groupId, array $keys, array $constraints, array $vocabulary): array
+    {
+        $compatible = [];
+        $union = null;
+        foreach ($keys as $key) {
+            $others = $constraints;
+            unset($others['filter:'.$key]);
+            if ($others === []) {
+                $compatible[$key] = $vocabulary[$key];
+
+                continue;
+            }
+            [$value, $type] = $this->expressions($key);
+            $query = $this->predicate($groupId, $others)->whereRaw($type)->whereRaw($value.' <> ?', [''])
+                ->selectRaw('? as property_key, '.$value.' as facet_value', [$key])->distinct()->toBase();
+            $union = $union === null ? $query : $union->unionAll($query);
+        }
+        foreach ($union?->get() ?? [] as $row) {
+            $compatible[$row->property_key][] = $row->facet_value;
+        }
+
+        return $compatible;
     }
 
     /** @param array<string, array{property: string, values: list<string>}> $constraints */

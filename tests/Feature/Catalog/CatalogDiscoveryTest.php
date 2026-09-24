@@ -167,3 +167,28 @@ test('filtered discovery calculates only the total count and skips card fetching
     expect($queries->filter(fn (string $sql): bool => str_contains(strtolower($sql), 'count(*)')))->toHaveCount(1);
     expect($queries->filter(fn (string $sql): bool => str_contains($sql, 'product_code')))->toBeEmpty();
 });
+
+test('filter availability omits its own choice and empty choices remain selectable with newer choice precedence', function () {
+    $group = discoveryFixture();
+    $result = discover($group, [], 'filter', ['Working_Pressure', '25']);
+    $result = discover($group, $result->state->toArray(), 'filter', ['Connection_Size', '1']);
+    $connections = collect(collect($result->fields)->firstWhere('key', 'Connection_Type')['values'])->keyBy('value');
+    $pressures = collect(collect($result->fields)->firstWhere('key', 'Working_Pressure')['values'])->keyBy('value');
+
+    expect($connections['Flange']['compatible'])->toBeFalse()
+        ->and($connections['Threaded']['compatible'])->toBeTrue()
+        ->and($pressures['16']['compatible'])->toBeTrue()
+        ->and($pressures['25']['selected'])->toBeTrue();
+
+    $result = discover($group, $result->state->toArray(), 'filter', ['Connection_Type', 'Flange']);
+    expect($result->products->pluck('product_code')->all())->toBe(['B'])
+        ->and($result->state->filters)->toBe(['Connection_Size' => '1', 'Connection_Type' => 'Flange']);
+});
+
+test('filter availability respects subgroup constraints even on its own property', function () {
+    $group = discoveryFixture();
+    $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Model', 'allowed_values' => ['A']]);
+    $result = discover($group, [], 'subgroup', $preset->id);
+    $pressures = collect(collect($result->fields)->firstWhere('key', 'Working_Pressure')['values'])->keyBy('value');
+    expect($pressures['16']['compatible'])->toBeFalse()->and($pressures['25']['compatible'])->toBeTrue();
+});

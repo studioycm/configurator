@@ -18,14 +18,14 @@ class ValuesTable
     {
         return $table->columns([
             TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: true, isGlobal: false)->toggleable(),
-            TextColumn::make('label')->label('Label')->sortable()->toggleable()->searchable(isIndividual: true, isGlobal: false),
+            TextColumn::make('label')->label('Master value')->sortable()->toggleable()->searchable(['label', 'description']),
             TextColumn::make('tags')->badge(),
             TextColumn::make('options_count')->label('Options')->sortable()->toggleable(),
             TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('updated_at')->label('Updated At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
         ])->filters([
             Filter::make('tags')->schema([
-                ToggleButtons::make('values')->label('Filter by tags')->multiple()->inline()->options(fn (): array => Value::tagOptions()),
+                ToggleButtons::make('values')->label('Filter by tags')->multiple()->inline()->extraAttributes(['class' => 'catalog-tag-filters'])->options(fn (): array => Value::tagOptions()),
             ])->query(function (Builder $query, array $data): Builder {
                 $tags = array_values(array_filter($data['values'] ?? [], 'is_string'));
 
@@ -36,6 +36,6 @@ class ValuesTable
                 }));
             }),
         ])->filtersFormColumns(1)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
-            ->defaultSort('label')->recordActions([Action::make('edit')->label('Edit')->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]);
+            ->searchPlaceholder('Search master values')->defaultSort('label')->recordActions([Action::make('edit')->label('Edit')->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]);
     }
 }

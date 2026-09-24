@@ -104,3 +104,20 @@
 .dark .catalog-selected-row { background: #243b53; }
 @media (max-width: 1199px) { .catalog-split-layout { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 639px) { .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header, .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 1rem; } }
+
+.catalog-tag-filters .fi-fo-toggle-buttons label.fi-color.fi-btn,
+.fi-fo-toggle-buttons.catalog-tag-filters label.fi-color.fi-btn {
+    @apply rounded-full! border! border-slate-300! bg-white! px-3! py-1! font-medium! text-slate-600! no-underline!;
+}
+.catalog-tag-filters .fi-fo-toggle-buttons input:checked + label.fi-btn.fi-color,
+.fi-fo-toggle-buttons.catalog-tag-filters input:checked + label.fi-btn.fi-color {
+    @apply border-blue-400! bg-blue-50! text-blue-700! no-underline!;
+}
+.dark .catalog-tag-filters .fi-fo-toggle-buttons label.fi-color.fi-btn,
+.dark .fi-fo-toggle-buttons.catalog-tag-filters label.fi-color.fi-btn {
+    @apply border-slate-600! bg-slate-900! text-slate-200!;
+}
+.dark .catalog-tag-filters .fi-fo-toggle-buttons input:checked + label.fi-btn.fi-color,
+.dark .fi-fo-toggle-buttons.catalog-tag-filters input:checked + label.fi-btn.fi-color {
+    @apply border-blue-400! bg-blue-950! text-blue-200!;
+}

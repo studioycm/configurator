@@ -138,3 +138,13 @@ test('attribute options use canonical saves and reject duplicate codes', functio
     $manager->callTableAction('create', data: ['value_id' => Value::factory()->create()->id, 'code' => 'Z9'])->assertHasTableActionErrors(['code']);
     expect($attribute->options()->count())->toBe(1);
 });
+
+test('master value search finds specification text and combines with selected tags', function () {
+    $metal = Value::factory()->create(['label' => 'Material A', 'description' => 'ASTM metal', 'tags' => ['metal']]);
+    $polymer = Value::factory()->create(['label' => 'Material B', 'description' => 'ASTM polymer', 'tags' => ['polymer']]);
+    $other = Value::factory()->create(['label' => 'Unrelated', 'description' => 'Other specification', 'tags' => ['metal']]);
+    Livewire\Livewire::test(ListValues::class)->searchTable('ASTM')
+        ->assertCanSeeTableRecords([$metal, $polymer])->assertCanNotSeeTableRecords([$other])
+        ->filterTable('tags', ['values' => ['metal']])
+        ->assertCanSeeTableRecords([$metal])->assertCanNotSeeTableRecords([$polymer, $other]);
+});
