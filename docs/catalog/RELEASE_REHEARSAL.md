@@ -1,6 +1,14 @@
 # Catalog rebuild — deployment and rehearsal evidence
 
-Updated 2026-09-24. **The user-authorized development promotion is live.** Application commit `62e7bb42ea8458e0769434fe93451393cf49a546` was pushed to primary `master` and deployed by Forge deployment `78450920` (finished 03:18:57 UTC). The original application and data remain recoverable. This is the working development release; approved client configuration definitions are still missing, D060 remains unassigned and Preview & Test remains a placeholder.
+Updated 2026-09-24. **The user-authorized development promotion is live.** Current application commit `92290a41f88c9a84d0be3093bd895eab7677acba` is deployed by Forge release `78452711` (finished 04:15:25 UTC), following the original promotion below. The original application and data remain recoverable. Preview & Test remains a placeholder. The actual legacy library is partially imported; ten conflicting-code Options and the real Configurator definition remain pending. Local D060 is unassigned; remote D060 has a newer `test d060` assignment created before the library import and preserved by it.
+
+## Full-width filters and legacy library update
+
+- Filter choices fill each column and stack vertically; all seven columns were verified in the live browser.
+- Private legacy source export SHA-256: `817404483c876dc9e949d4510884770e915b7a17beaf0296422a47af489916e3`. The additive import created 13 Attributes, 25 Options and 25 separate Values locally and remotely. Ten Options sharing five duplicated codes remain pending the user's code-uniqueness decision. No source code was invented or normalized, no labels were merged, and no Configurator membership or assignment was imported.
+- A remote dry-run, hash-gated apply and repeat review verified the expected result, then zero new records. The source database was read only. Pre-import target dump: private `ari-catalog-cutover-20260924/rebuild-before-library.sql`, SHA-256 `e8615eb0f3ae30dd50c0888de482dfa465ee0f5b4bac6fe1586cef1c13a8c133`.
+- Local browser confirmed the imported Attribute/Value/Option relationships. Remote rows were verified by database query; this browser still requires remote admin sign-in. Remote `test d060` was created 03:46:47 UTC and assigned 03:47:03 UTC, before this import; its zero inclusions were left unchanged.
+- Validation: full SQLite suite 253 tests / 1428 assertions; targeted isolated MySQL suite 14 / 98; Pint and Vite build passed. GitHub check `35954825976` passed. Application revision and current Forge release match.
 
 ## Primary development workflow
 
@@ -68,7 +76,7 @@ Private evidence resides under Git-ignored `storage/app/imports/ari/rehearsal/` 
 
 ## Remaining client release work and historical gates
 
-1. Supply approved client Attributes, Options, codes, parent metadata and any SubGroups. Keep D060 unassigned until its real definition is approved. No temporary QA definitions were deployed remotely.
+1. Resolve the ten legacy Options with conflicting codes, then supply the real Configurator definition, parent metadata and any SubGroups. The library import did not assign D060; the newer remote `test d060` assignment is separate user development state. No local synthetic QA definitions were deployed remotely.
 2. Complete a fresh interactive login with the retained account and any required 2FA, then review actual client content in administration. Restore Preview & Test functionality only when that deferred work is requested.
 3. Remote inspection, backup/restore verification, separate target migration/import, worker/storage disposition, immutable build and the explicitly authorized development switch are complete above. Future populated retained-package content requires a new reviewed retention map; the local transfer guard remains unchanged.
 4. Preserve old code/database/storage as a matching set. After new writes begin, rollback requires reviewed reconciliation of those writes, not an automatic switch back.
