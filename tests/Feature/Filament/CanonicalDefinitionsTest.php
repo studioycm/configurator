@@ -6,10 +6,14 @@ use App\Actions\SaveCanonicalOption;
 use App\Actions\SaveConfiguratorDefinition;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Attributes\Pages\CreateAttribute;
+use App\Filament\Resources\Attributes\Pages\EditAttribute;
+use App\Filament\Resources\Attributes\Pages\ListAttributes;
+use App\Filament\Resources\Attributes\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Options\OptionResource;
 use App\Filament\Resources\Options\Pages\CreateOption;
 use App\Filament\Resources\Values\Pages\CreateValue;
+use App\Filament\Resources\Values\Pages\ListValues;
 use App\Filament\Resources\Values\ValueResource;
 use App\Models\Attribute;
 use App\Models\Option;
@@ -96,4 +100,41 @@ test('a concurrent canonical code collision becomes a validation error and rolls
         Option::flushEventListeners();
     }
     expect(Option::count())->toBe(0);
+});
+
+test('master value tags validate and filter the list with toggle choices', function () {
+    $first = app(SaveCanonicalDefinition::class)->handle($this->actor, new Value, ['label' => 'Tagged value', 'tags' => ['Material', 'Valve']]);
+    $second = Value::factory()->create(['tags' => ['Connection']]);
+    expect($first->fresh()->tags)->toBe(['Material', 'Valve']);
+    expect(fn () => app(SaveCanonicalDefinition::class)->handle($this->actor, $first, ['label' => 'Invalid', 'tags' => [['nested']]]))->toThrow(ValidationException::class);
+    Livewire\Livewire::test(ListValues::class)
+        ->assertCanSeeTableRecords([$first, $second])
+        ->filterTable('tags', ['values' => ['Material']])
+        ->assertCanSeeTableRecords([$first])->assertCanNotSeeTableRecords([$second])
+        ->filterTable('tags', ['values' => []])->assertCanSeeTableRecords([$first, $second]);
+});
+
+test('attribute list opens its existing editor and options beside the table', function () {
+    $attribute = Attribute::factory()->create();
+    $value = Value::factory()->create();
+    $option = Option::factory()->for($attribute)->for($value)->create();
+    Livewire\Livewire::test(ListAttributes::class)
+        ->call('selectRecord', (string) $attribute->id)
+        ->assertSet('selectedRecord', (string) $attribute->id)
+        ->assertSee('Shared Attribute')->assertSee($value->label)->assertSee($option->code);
+    Livewire\Livewire::test(EditAttribute::class, ['record' => $attribute->id])
+        ->fillForm(['key' => $attribute->key, 'label' => 'Updated in panel'])->call('save')->assertHasNoFormErrors()->assertDispatched('catalog-record-saved');
+    expect($attribute->fresh()->label)->toBe('Updated in panel');
+});
+
+test('attribute options use canonical saves and reject duplicate codes', function () {
+    $attribute = Attribute::factory()->create();
+    $value = Value::factory()->create();
+    $manager = Livewire\Livewire::test(OptionsRelationManager::class, [
+        'ownerRecord' => $attribute, 'pageClass' => EditAttribute::class,
+    ]);
+    $manager->callTableAction('create', data: ['value_id' => $value->id, 'code' => 'Z9'])->assertHasNoTableActionErrors();
+    expect($attribute->options()->sole()->value_id)->toBe($value->id);
+    $manager->callTableAction('create', data: ['value_id' => Value::factory()->create()->id, 'code' => 'Z9'])->assertHasTableActionErrors(['code']);
+    expect($attribute->options()->count())->toBe(1);
 });

@@ -14,7 +14,15 @@ use Illuminate\Validation\ValidationException;
 
 class EditAttribute extends EditRecord
 {
+    protected string $view = 'filament.resources.record-editor';
+
     protected static string $resource = AttributeResource::class;
+
+    protected function afterSave(): void
+    {
+        $this->dispatch('catalog-record-saved');
+        $this->dispatch('catalog-editor-saved');
+    }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {

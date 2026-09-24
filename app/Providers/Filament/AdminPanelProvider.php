@@ -39,26 +39,27 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('images/favicon-aquestia.png'))
             ->brandName('Aquestia')
             ->brandLogo(asset('images/logo-ari.png'))
+            ->brandLogoHeight('2.5rem')
+            ->sidebarWidth('16rem')
             ->darkModeBrandLogo(asset('images/logo-ari.png'))
             ->defaultThemeMode(ThemeMode::Light)
             ->maxContentWidth(Width::Full)
             ->databaseNotifications()
-            ->sidebarFullyCollapsibleOnDesktop(true)
+            ->topbar(false)
+            ->navigationGroups(['Product configuration', 'Catalog'])
 //            ->sidebarCollapsibleOnDesktop(true)
             ->login()
             ->passwordReset()
             ->colors([
-                'primary' => '#09c3aa',
+                'primary' => '#0877e8',
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
             ->navigationItems([
-                NavigationItem::make('Open public catalog')
-                    ->group('Catalog')
+                NavigationItem::make('Open dashboard catalog')
                     ->sort(0)
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
-                    ->url(fn (): string => route('catalog.index'))
-                    ->openUrlInNewTab(),
+                    ->url(fn (): string => route('catalog.index')),
             ])
             ->pages([
                 Dashboard::class,

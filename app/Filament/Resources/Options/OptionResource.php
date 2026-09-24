@@ -20,9 +20,9 @@ class OptionResource extends Resource
 {
     protected static ?string $model = Option::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
 
-    protected static ?int $navigationSort = 13;
+    protected static ?int $navigationSort = 2;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 

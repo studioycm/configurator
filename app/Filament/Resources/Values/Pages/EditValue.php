@@ -14,7 +14,15 @@ use Illuminate\Validation\ValidationException;
 
 class EditValue extends EditRecord
 {
+    protected string $view = 'filament.resources.record-editor';
+
     protected static string $resource = ValueResource::class;
+
+    protected function afterSave(): void
+    {
+        $this->dispatch('catalog-record-saved');
+        $this->dispatch('catalog-editor-saved');
+    }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
@@ -36,7 +44,7 @@ class EditValue extends EditRecord
             Action::make('usage')->label('View usage')->authorize('manage-catalog')
                 ->modalHeading('Shared definition usage')->modalSubmitAction(false)->modalCancelActionLabel('Close')
                 ->modalContent(fn () => view('filament.resources.canonical-usage', ['usage' => app(CanonicalUsage::class)->report($this->getRecord())])),
-            Action::make('remove')->label('Delete shared value')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+            Action::make('remove')->label('Delete master value')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->modalDescription('Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.')
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());

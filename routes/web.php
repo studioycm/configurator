@@ -10,16 +10,17 @@ use App\Livewire\Settings\TwoFactor;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
-Route::view('/', 'home')->name('home');
+Route::redirect('/', '/dashboard')->name('home');
 
-Route::livewire('/catalog', CatalogIndex::class)->name('catalog.index');
-
-Route::livewire('/catalog/groups/{group}', GroupShow::class)->name('catalog.groups.show');
-Route::livewire('/catalog/products/{product}', ProductShow::class)->name('catalog.products.show');
-
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+Route::middleware(['auth'])->group(function () {
+    Route::redirect('/dashboard', '/dashboard/catalog')->name('dashboard');
+    Route::livewire('/dashboard/catalog', CatalogIndex::class)->name('catalog.index');
+    Route::livewire('/dashboard/catalog/groups/{group}', GroupShow::class)->name('catalog.groups.show');
+    Route::livewire('/dashboard/catalog/products/{product}', ProductShow::class)->name('catalog.products.show');
+    Route::redirect('/catalog', '/dashboard/catalog');
+    Route::get('/catalog/groups/{group}', fn (string $group) => redirect()->route('catalog.groups.show', ['group' => $group, ...request()->query()]));
+    Route::get('/catalog/products/{product}', fn (string $product) => redirect()->route('catalog.products.show', ['product' => $product]));
+});
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');

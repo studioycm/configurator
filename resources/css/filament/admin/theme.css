@@ -77,3 +77,30 @@
         @apply no-underline!;
     }
 }
+
+.fi-body { background: #f4f6f9; }
+.fi-sidebar { background: #17212c; color: #d6dce4; }
+.fi-sidebar-header { background: #17212c; box-shadow: none; }
+.fi-sidebar-header .fi-logo { background: white; padding: .4rem; border-radius: .4rem; height: 3rem; }
+.fi-sidebar .fi-sidebar-item-label, .fi-sidebar .fi-sidebar-item-icon { color: #c9d3de; }
+.fi-sidebar .fi-sidebar-group-label { color: #8e9eaf; }
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn { background: #294762; }
+.fi-sidebar .fi-sidebar-item-btn:hover { background: #22374a; }
+.fi-sidebar .fi-sidebar-item.fi-active .fi-sidebar-item-label { color: white; }
+.fi-main { padding-inline: 0; }
+.fi-main > .fi-page > .fi-page-header-main-ctn { padding-block: 0; gap: 0; }
+.fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header { background: white; border-bottom: 1px solid #dce3eb; padding: 1.5rem 2rem; min-height: 6rem; }
+.fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 1.5rem 2rem; }
+.catalog-split-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.catalog-record-editor { background: white; border: 1px solid #dce3eb; border-radius: .75rem; padding: 1.25rem; }
+.catalog-record-editor .fi-page-header-main-ctn { padding-block: 0; gap: 1.25rem; }
+.catalog-record-editor .fi-header { flex-wrap: wrap; gap: .75rem; }
+.catalog-record-editor .fi-header-heading { font-size: 1.25rem; }
+.catalog-record-editor .fi-breadcrumbs { display: none; }
+.catalog-selected-row { background: #eff6ff; }
+.catalog-editor-placeholder { color: #64748b; padding: 2rem 1rem; text-align: center; }
+.dark .fi-body { background: #111827; }
+.dark .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header, .dark .catalog-record-editor { background: #182231; border-color: #334155; }
+.dark .catalog-selected-row { background: #243b53; }
+@media (max-width: 1199px) { .catalog-split-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 639px) { .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header, .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 1rem; } }

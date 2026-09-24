@@ -27,10 +27,8 @@ class CatalogDiscovery
             $presets = $group->subGroups->filter(fn (SubGroup $preset): bool => in_array($preset->property_key, $registry, true))->keyBy('id');
             $keys = array_values(array_unique([...$filters->keys()->all(), ...$presets->pluck('property_key')->all()]));
             $vocabulary = [];
-            $baseCounts = [];
             foreach ($keys as $key) {
-                $baseCounts[$key] = $this->aggregate($this->predicate($groupId, []), $key);
-                $vocabulary[$key] = array_column($baseCounts[$key], 'value');
+                $vocabulary[$key] = array_column($this->vocabulary($groupId, $key), 'value');
             }
             $this->diagnoseTypes($groupId, $keys);
             $presets = $presets->filter(function (SubGroup $preset) use ($vocabulary): bool {
@@ -165,13 +163,10 @@ class CatalogDiscovery
                 if ($vocabulary[$key] === [] || ($preset?->property_key === $key && count($preset->allowed_values) === 1)) {
                     continue;
                 }
-                $others = $constraints;
-                unset($others['filter:'.$key]);
-                $counts = array_column($others === [] ? $baseCounts[$key] : $this->aggregate($this->predicate($groupId, $others), $key), 'count', 'value');
                 $order = array_values(array_unique([...array_values(array_filter($filter->value_order ?? [], fn (mixed $value): bool => is_string($value) && in_array($value, $vocabulary[$key], true))), ...$vocabulary[$key]]));
                 $values = [];
                 foreach ($order as $value) {
-                    $values[] = ['value' => $value, 'label' => $filter->value_labels[$value] ?? $value, 'count' => $counts[$value] ?? 0, 'selected' => ($selected[$key] ?? null) === $value];
+                    $values[] = ['value' => $value, 'label' => $filter->value_labels[$value] ?? $value, 'selected' => ($selected[$key] ?? null) === $value];
                 }
                 $fields[] = ['key' => $key, 'label' => $filter->label, 'values' => $values];
             }
@@ -207,20 +202,20 @@ class CatalogDiscovery
         return $query;
     }
 
-    /** @return list<array{value: string, count: int}> */
+    /** @return list<array{value: string}> */
     public function vocabulary(int $groupId, string $key): array
     {
         return $this->aggregate($this->predicate($groupId, []), $key);
     }
 
-    /** @return list<array{value: string, count: int}> */
+    /** @return list<array{value: string}> */
     private function aggregate(Builder $query, string $key): array
     {
         [$value, $type] = $this->expressions($key);
 
-        return $query->whereRaw($type)->whereRaw($value.' <> ?', [''])->selectRaw($value.' as facet_value, count(*) as aggregate, min(id) as first_id')
+        return $query->whereRaw($type)->whereRaw($value.' <> ?', [''])->selectRaw($value.' as facet_value, min(id) as first_id')
             ->groupByRaw($value)->orderBy('first_id')->toBase()->get()
-            ->map(fn (object $row): array => ['value' => $row->facet_value, 'count' => (int) $row->aggregate])->all();
+            ->map(fn (object $row): array => ['value' => $row->facet_value])->all();
     }
 
     /** @return array{string, string} */

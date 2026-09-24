@@ -1,23 +1,25 @@
 <?php
 
-use App\Livewire\Catalog\Index;
-
-test('visitors can open the public catalog before products are imported', function () {
-    $this->get('/catalog')
-        ->assertOk()
-        ->assertSeeLivewire(Index::class)
-        ->assertSee('The catalog is being prepared.')
-        ->assertDontSee('D060');
-});
-
 use App\Livewire\Catalog\GroupShow;
+use App\Livewire\Catalog\Index;
 use App\Livewire\Catalog\ProductShow;
 use App\Models\Group;
 use App\Models\GroupFilter;
 use App\Models\Product;
 use App\Models\SubGroup;
+use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
+
+beforeEach(fn () => $this->actingAs(User::factory()->create()));
+
+test('signed in users can open the catalog before products are imported', function () {
+    $this->get(route('catalog.index'))
+        ->assertOk()
+        ->assertSeeLivewire(Index::class)
+        ->assertSee('The catalog is being prepared.')
+        ->assertDontSee('D060');
+});
 
 test('catalog navigation follows actual ancestors and branches without descendant cards', function () {
     $root = Group::factory()->create(['name' => 'Actual root']);
@@ -26,7 +28,7 @@ test('catalog navigation follows actual ancestors and branches without descendan
     $this->get(route('catalog.index'))->assertSee('Actual root')->assertDontSee('Actual leaf');
     $this->get(route('catalog.groups.show', $root))->assertSee('Actual leaf')->assertDontSee('Actual product');
     $this->get(route('catalog.groups.show', $leaf))->assertSeeInOrder(['Actual root', 'Actual leaf', $product->product_code]);
-    $this->get(route('catalog.products.show', $product))->assertSeeInOrder(['Actual root', 'Actual leaf', 'Actual product']);
+    $this->get(route('catalog.products.show', $product))->assertSee('Actual product')->assertSeeInOrder(['Actual root', 'Actual leaf']);
 });
 
 test('a leaf immediately paginates only its own products in code order', function () {
@@ -52,8 +54,8 @@ test('public product facts are escaped and unassigned configuration remains hone
 });
 
 test('unknown catalog records return not found', function () {
-    $this->get('/catalog/groups/999999')->assertNotFound();
-    $this->get('/catalog/products/999999')->assertNotFound();
+    $this->get('/dashboard/catalog/groups/999999')->assertNotFound();
+    $this->get('/dashboard/catalog/products/999999')->assertNotFound();
 });
 
 test('product cards preserve literal zero values and omit blank or malformed properties', function () {

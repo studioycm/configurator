@@ -13,7 +13,19 @@ class Value extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['label', 'description'];
+    protected $fillable = ['label', 'description', 'tags'];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['tags' => 'array'];
+    }
+
+    /** @return array<string, string> */
+    public static function tagOptions(): array
+    {
+        return static::query()->whereNotNull('tags')->pluck('tags')->flatten()->unique()->sort()->mapWithKeys(fn (string $tag): array => [$tag => $tag])->all();
+    }
 
     public function options(): HasMany
     {

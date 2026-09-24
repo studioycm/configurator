@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Groups\Pages;
 
 use App\Filament\Resources\Groups\GroupResource;
+use App\Filament\Resources\SplitListRecords;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ListRecords;
 
-class ListGroups extends ListRecords
+class ListGroups extends SplitListRecords
 {
     protected static string $resource = GroupResource::class;
 

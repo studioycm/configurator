@@ -9,6 +9,7 @@ use App\Models\SubGroup;
 use App\Models\User;
 use App\Services\CatalogDiscovery;
 use Database\Seeders\D060FilterSeeder;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 function discoveryFixture(): Group
@@ -96,14 +97,14 @@ test('preset only properties, clear filters and toggling use distinct boundaries
     expect($result->state->filters)->toBe([])->and($result->products->total())->toBe(2);
 });
 
-test('counts exclude their own ordinary filter and cover every page while retaining the preset', function () {
+test('filter vocabulary remains available across pages without option counts', function () {
     $group = discoveryFixture();
     $group->update(['result_settings' => ['default_page_size' => 1, 'allow_page_size_change' => true, 'page_size_options' => [1, 2, 10]]]);
     $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['25', '16']]);
     $result = discover($group, [], 'subgroup', $preset->id);
     $result = discover($group, $result->state->toArray(), 'filter', ['Working_Pressure', '25']);
     $field = collect($result->fields)->firstWhere('key', 'Working_Pressure');
-    expect(array_column($field['values'], 'count', 'value'))->toBe([25 => 2, 16 => 1])->and($result->products->count())->toBe(1)->and($result->products->total())->toBe(2);
+    expect(array_column($field['values'], 'value'))->toBe(['25', '16'])->and(array_column($field['values'], 'count'))->toBe([])->and($result->products->count())->toBe(1)->and($result->products->total())->toBe(2);
     $state = $result->state->toArray();
     $state['page'] = 2;
     expect(discover($group, $state)->state->page)->toBe(2);
@@ -148,5 +149,21 @@ test('audited source filter metadata reproduces the observed 36 versus 9 outcome
 
 test('malformed scalar snapshots render a repairable page instead of a server error', function () {
     $group = discoveryFixture();
-    $this->get(route('catalog.groups.show', $group).'?d=invalid')->assertOk()->assertSee('data-catalog-repair="1"', false);
+    $this->actingAs(User::factory()->create())->get(route('catalog.groups.show', $group).'?d=invalid')->assertOk()->assertSee('data-catalog-repair="1"', false);
+});
+
+test('filtered discovery calculates only the total count and skips card fetching above the threshold', function () {
+    $group = discoveryFixture();
+    $group->update(['result_settings' => ['max_results' => 1]]);
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+    try {
+        $result = discover($group, [], 'filter', ['Working_Pressure', '25']);
+        $queries = collect(DB::getQueryLog())->pluck('query');
+    } finally {
+        DB::disableQueryLog();
+    }
+    expect($result->products->total())->toBe(2)->and($result->showProducts)->toBeFalse();
+    expect($queries->filter(fn (string $sql): bool => str_contains(strtolower($sql), 'count(*)')))->toHaveCount(1);
+    expect($queries->filter(fn (string $sql): bool => str_contains($sql, 'product_code')))->toBeEmpty();
 });

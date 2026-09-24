@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Attributes;
 use App\Filament\Resources\Attributes\Pages\CreateAttribute;
 use App\Filament\Resources\Attributes\Pages\EditAttribute;
 use App\Filament\Resources\Attributes\Pages\ListAttributes;
+use App\Filament\Resources\Attributes\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\Attributes\Schemas\AttributeForm;
 use App\Filament\Resources\Attributes\Tables\AttributesTable;
 use App\Models\Attribute;
@@ -20,9 +21,9 @@ class AttributeResource extends Resource
 {
     protected static ?string $model = Attribute::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 3;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
@@ -70,6 +71,11 @@ class AttributeResource extends Resource
     public static function table(Table $table): Table
     {
         return AttributesTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [OptionsRelationManager::class];
     }
 
     public static function getPages(): array

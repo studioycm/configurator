@@ -14,8 +14,8 @@ class AttributesTable
     public static function configure(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: true, isGlobal: false)->toggleable(),
-            TextColumn::make('key')->label('Key')->sortable()->toggleable()->searchable(isIndividual: true, isGlobal: false),
+            TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: true, isGlobal: false)->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('key')->label('Key')->sortable()->toggleable(isToggledHiddenByDefault: true)->searchable(isIndividual: true, isGlobal: false),
             TextColumn::make('label')->label('Label')->sortable()->toggleable()->searchable(isIndividual: true, isGlobal: false),
             TextColumn::make('options_count')->label('Options')->sortable()->toggleable(),
             TextColumn::make('configurator_attributes_count')->label('Used in configurators')->sortable()->toggleable(),

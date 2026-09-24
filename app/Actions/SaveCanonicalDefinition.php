@@ -27,11 +27,13 @@ class SaveCanonicalDefinition
                     $this->usage->configurators($record)->orderBy('id')->lockForUpdate()->get();
                     $record = $record->newQuery()->whereKey($record->id)->lockForUpdate()->firstOrFail();
                 }
-                $rules = ['definition' => ['required', $record instanceof Attribute ? 'array:key,label' : 'array:label,description'], 'definition.label' => ['required', 'string', 'max:255']];
+                $rules = ['definition' => ['required', $record instanceof Attribute ? 'array:key,label' : 'array:label,description,tags'], 'definition.label' => ['required', 'string', 'max:255']];
                 if ($record instanceof Attribute) {
                     $rules['definition.key'] = ['required', 'string', 'max:100', Rule::unique('attributes', 'key')->ignore($record->id)];
                 } else {
                     $rules['definition.description'] = ['nullable', 'string', 'max:5000'];
+                    $rules['definition.tags'] = ['sometimes', 'array', 'list', 'max:30'];
+                    $rules['definition.tags.*'] = ['required', 'string', 'max:80', 'distinct'];
                 }
                 $validated = Validator::make(['definition' => $data], $rules)->validate()['definition'];
                 if ($record instanceof Attribute && $record->exists && $record->key !== $validated['key'] && ($record->options()->exists() || $record->inclusions()->exists())) {

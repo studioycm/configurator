@@ -50,6 +50,20 @@ class GroupForm
         $properties = array_combine(CatalogImportParser::propertyKeys(), array_map(fn (string $key): string => str_replace('_', ' ', $key), CatalogImportParser::propertyKeys()));
 
         return [
+            Section::make('Product cards')->schema([
+                Select::make('catalog_settings.result_settings.card_properties')->label('Properties to display')->multiple()->searchable()
+                    ->options($properties)->default([])->placeholder('Use group filter properties')
+                    ->helperText('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Values appear inline, separated by commas.')
+                    ->columnSpanFull(),
+                Select::make('catalog_settings.result_settings.cards_per_row')->label('Cards per row')
+                    ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
+                    ->default(4)->required()->selectablePlaceholder(false)
+                    ->helperText('Desktop columns. Smaller screens use fewer columns.'),
+                Select::make('catalog_settings.result_settings.max_results')->label('Show cards when results are at most')
+                    ->options(['all' => 'All'] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
+                    ->default('all')->required()->selectablePlaceholder(false)
+                    ->helperText('All shows cards immediately. A number shows cards only when the matching total is at or below that number.'),
+            ])->columns(2)->columnSpanFull(),
             Section::make('Catalog filters')->description('Only these properties appear as discovery filters. Omitted source values remain available.')->schema([
                 Repeater::make('catalog_settings.filters')->label('Filters')->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
@@ -78,20 +92,6 @@ class GroupForm
                         ->columnSpanFull(),
                 ])->columns(2)->columnSpanFull(),
             ])->columnSpanFull(),
-            Section::make('Product cards')->schema([
-                Select::make('catalog_settings.result_settings.card_properties')->label('Properties to display')->multiple()->searchable()
-                    ->options($properties)->default([])->placeholder('Use group filter properties')
-                    ->helperText('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Values appear inline, separated by commas.')
-                    ->columnSpanFull(),
-                Select::make('catalog_settings.result_settings.cards_per_row')->label('Cards per row')
-                    ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
-                    ->default(4)->required()->selectablePlaceholder(false)
-                    ->helperText('Desktop columns. Smaller screens use fewer columns.'),
-                Select::make('catalog_settings.result_settings.max_results')->label('Maximum results before showing cards')
-                    ->options(['all' => 'All'] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
-                    ->default('all')->required()->selectablePlaceholder(false)
-                    ->helperText('All shows cards immediately. A number shows cards only when the matching total is at or below that number.'),
-            ])->columns(2)->columnSpanFull(),
             Section::make('Results')->schema([
                 TextInput::make('catalog_settings.result_settings.default_page_size')->label('Default products per page')->integer()->required()->default(10)->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE),
                 Toggle::make('catalog_settings.result_settings.allow_page_size_change')->label('Let visitors change page size')->default(false)->live(),

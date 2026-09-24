@@ -1,6 +1,4 @@
 <div>
-    <p class="mb-3 text-sm font-medium uppercase tracking-widest text-teal-700 dark:text-teal-300">{{ __('Catalog') }}</p>
-    <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{{ __('Product catalog') }}</h1>
     @if ($groups->isNotEmpty())
         <p class="mt-4 max-w-2xl text-zinc-600 dark:text-zinc-400">{{ __('Choose a product group to explore its products.') }}</p>
         <x-catalog.group-tree :groups="$groups" />

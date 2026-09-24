@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 class EditGroup extends EditRecord
 {
+    protected string $view = 'filament.resources.record-editor';
+
     protected static string $resource = GroupResource::class;
 
     protected function getHeaderActions(): array
@@ -34,6 +36,8 @@ class EditGroup extends EditRecord
 
     protected function afterSave(): void
     {
+        $this->dispatch('catalog-record-saved');
+        $this->dispatch('catalog-editor-saved');
         $this->getRecord()->refresh();
         $this->fillForm();
     }

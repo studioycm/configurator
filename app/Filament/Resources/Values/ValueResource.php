@@ -20,15 +20,15 @@ class ValueResource extends Resource
 {
     protected static ?string $model = Value::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
 
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 1;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $modelLabel = 'Value';
+    protected static ?string $modelLabel = 'Master value';
 
-    protected static ?string $pluralModelLabel = 'Values';
+    protected static ?string $pluralModelLabel = 'Master values';
 
     protected static ?string $recordTitleAttribute = 'label';
 

@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Options\Pages;
 
 use App\Filament\Resources\Options\OptionResource;
+use App\Filament\Resources\SplitListRecords;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ListRecords;
 
-class ListOptions extends ListRecords
+class ListOptions extends SplitListRecords
 {
     protected static string $resource = OptionResource::class;
 

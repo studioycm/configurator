@@ -20,9 +20,9 @@ class ConfiguratorResource extends Resource
 {
     protected static ?string $model = Configurator::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
+    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 4;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 

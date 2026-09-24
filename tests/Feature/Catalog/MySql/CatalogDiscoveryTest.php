@@ -49,7 +49,7 @@ test('profiles the audited corpus with bounded queries selected card columns and
             continue;
         }
         $current = collect($heavy->fields)->firstWhere('key', $field['key']);
-        $choice = collect($current['values'] ?? [])->first(fn (array $choice): bool => $choice['count'] > 0);
+        $choice = collect($current['values'] ?? [])->first();
         if ($choice) {
             $heavy = $service->prepare($group->id, $heavy->state->toArray(), 'filter', [$field['key'], $choice['value']]);
         }
@@ -67,7 +67,7 @@ test('profiles the audited corpus with bounded queries selected card columns and
         expect($cardQuery)->not->toBeNull()->and(count($queries))->toBeLessThanOrEqual(32)->and($result->products->count())->toBe(min(10, $result->products->total()));
         $profile['samples'][$name] = ['query_count' => count($queries), 'sql_ms' => array_sum(array_column($queries, 'time')), 'elapsed_ms' => (hrtime(true) - $started) / 1e6, 'total' => $result->products->total(), 'card_json_bytes' => strlen($result->products->getCollection()->toJson()), 'explain' => DB::select('EXPLAIN '.$cardQuery['query'], $cardQuery['bindings'])];
     }
-    $response = $this->get(route('catalog.groups.show', $group))->assertOk();
+    $response = $this->actingAs($actor)->get(route('catalog.groups.show', $group))->assertOk();
     $profile['initial_html_bytes'] = strlen($response->getContent());
     File::ensureDirectoryExists(storage_path('framework/testing'));
     File::put(storage_path('framework/testing/catalog-discovery-profile.json'), json_encode($profile, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));

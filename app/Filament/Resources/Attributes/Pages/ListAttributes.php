@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Attributes\Pages;
 
 use App\Filament\Resources\Attributes\AttributeResource;
+use App\Filament\Resources\SplitListRecords;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ListRecords;
 
-class ListAttributes extends ListRecords
+class ListAttributes extends SplitListRecords
 {
     protected static string $resource = AttributeResource::class;
 
