@@ -6,9 +6,6 @@
         <x-catalog.group-tree :groups="$children" />
     @else
         <section aria-label="Product filters" class="mt-6 rounded-xl border border-zinc-300 p-4 dark:border-zinc-700">
-            <div class="mb-4">
-                <h2 class="text-sm font-semibold">{{ __('Filters') }}</h2>
-            </div>
             @if ($result->subGroups !== [])
                 <fieldset class="mb-6 min-w-0">
                     <legend class="mb-2 text-xs font-semibold">{{ __(':property sub-group', ['property' => implode(', ', array_unique(array_column($result->subGroups, 'property_label')))]) }}</legend>
@@ -28,6 +25,9 @@
                     </div>
                 </fieldset>
             @endif
+            <div class="mb-4">
+                <h2 class="text-sm font-semibold">{{ __('Filters') }}</h2>
+            </div>
             <div class="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
                 @foreach ($result->fields as $field)<x-catalog.filter-field :field="$field" :group-id="$group->id" />@endforeach
             </div>
