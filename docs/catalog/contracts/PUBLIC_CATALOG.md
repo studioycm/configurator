@@ -24,6 +24,8 @@ The visitor's jobs are to choose a family, compare actual matching Products and 
 
 **Later user layout amendment, 2026-09-24:** public pages share centered navigation and a header light/dark toggle. Use full-width content with responsive padding. Group filters have compact 12px text and a responsive grid with up to eight columns on wide screens; narrower layouts retain usable controls and no horizontal overflow. The existing Flux preference owns appearance. This amendment changes presentation only, not discovery state, counts or precedence.
 
+**Public shell amendment, 2026-09-24:** use the same Aquestia PNG favicon as the Filament admin panel. Add a Log in link at the right end of the header, after the appearance toggle, targeting the existing named admin login route. Keep the navigation centered; small screens place the right-aligned controls above the centered navigation to avoid overlap. No authentication or access behavior changes.
+
 Use `make:livewire <name> --class --no-interaction` for new components and `make:class` for new PHP classes, following the project's generators and conventions. Do not convert existing components to single-file syntax as part of this work.
 
 | File / class | Responsibility |
