@@ -1,23 +1,8 @@
 <section class="min-w-0" aria-label="{{ __('Product configuration') }}" wire:loading.attr="aria-busy" x-data="{ tab: 'configurator' }">
-    @teleport('#catalog-product-context')
-        <div>
-            @if ($result->definition)
-                <div class="my-4 space-y-3 border-t border-slate-700 pt-3" role="group" aria-label="{{ __('Product context') }}">
-                    @foreach (['territory', 'application'] as $dimension)
-                        <label class="block" wire:key="context-{{ $dimension }}">
-                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">{{ __(ucfirst($dimension)) }}</span>
-                            <select wire:change="changeContext('{{ $dimension }}', $event.target.value)" class="w-full rounded-lg border border-slate-600 bg-[#203448] px-2 py-1.5 text-sm text-slate-100 [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400">
-                                <option value="All" @selected($result->context[$dimension] === 'All')>{{ __('All') }}</option>
-                                @foreach ($result->definition->contextSchema[$dimension] as $choice)
-                                    <option value="{{ $choice['value'] }}" @selected($result->context[$dimension] === $choice['value'])>{{ $choice['label'] }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-    @endteleport
+    @if ($result->definition)
+        <livewire:catalog.context-selector :context="$result->context" :schema="$result->definition->contextSchema"
+            @context-changed="changeContext($event.detail.dimension, $event.detail.choice)" :key="'product-context-'.$product->id" />
+    @endif
     <div class="min-w-0 flex-1 space-y-3">
         <div class="space-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-blue-950 dark:text-blue-100">

@@ -2,6 +2,7 @@
 
 use App\Actions\SaveConfiguratorDefinition;
 use App\Livewire\Catalog\ConfiguratorPreview;
+use App\Livewire\Catalog\ContextSelector;
 use App\Livewire\Catalog\ProductConfigurator;
 use App\Models\Group;
 use App\Models\Product;
@@ -82,6 +83,28 @@ test('public identity and accepted runtime state are locked against direct clien
     [$configurator, $product] = publicConfigurationFixture();
     expect(fn () => Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->set('productId', 999999))->toThrow(CannotUpdateLockedPropertyException::class);
     expect(fn () => Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->set('runtime.selections', []))->toThrow(CannotUpdateLockedPropertyException::class);
+});
+
+test('context choices update configuration and reject choices outside the current schema', function () {
+    [$configurator, $product, $draft] = publicConfigurationFixture(function (array &$draft): void {
+        $draft['context_schema'] = [
+            'territory' => [['value' => 'eu', 'label' => 'European Union']],
+            'application' => [['value' => 'water', 'label' => 'Drinking water']],
+        ];
+        $draft['rules'] = [fixtureAdvanced('europe', [[
+            'id' => 'new:europe', 'source_kind' => 'Territory', 'source_configurator_attribute_id' => null,
+            'property_key' => null, 'context_dimension' => 'territory', 'operator' => 'Equals', 'operand' => 'eu', 'option_ids' => [],
+        ]], 'B', 'DisableOptions', ['new:B0'])];
+    });
+
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])
+        ->assertSeeLivewire(ContextSelector::class)->assertSee('A0-B0-C0')
+        ->call('changeContext', 'territory', 'eu')->assertSet('runtime.context.territory', 'eu')->assertSee('A0-B1-C0')
+        ->call('changeContext', 'application', 'water')->assertSet('runtime.context.application', 'water')->assertSee('A0-B1-C0')
+        ->call('changeContext', 'territory', 'unavailable')->assertSet('runtime.context.territory', 'eu')
+        ->assertSee('That context choice is not available.')->assertSee('A0-B1-C0')
+        ->call('changeContext', 'territory', 'All')->assertSet('runtime.context.territory', 'All')
+        ->call('selectOption', $draft['attributes'][1]['id'], $draft['attributes'][1]['options'][0]['id'])->assertSee('A0-B0-C0');
 });
 
 test('Preview reauthorizes and rejects a Product outside its currently assigned Groups', function () {
