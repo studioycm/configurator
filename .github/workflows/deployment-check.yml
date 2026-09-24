@@ -3,6 +3,7 @@ name: Deployment check
 on:
   push:
     branches:
+      - master
       - 'upgrade/**'
   pull_request:
     branches:

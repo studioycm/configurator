@@ -1,70 +1,30 @@
 <?php
 
+use App\DTO\ConfiguratorEvaluationInput;
+use App\Services\ConfiguratorDefinitionCompiler;
 use App\Services\ConfiguratorEngine;
+use Tests\TestCase;
+
+require_once __DIR__.'/../ConfiguratorFixtures.php';
+uses(TestCase::class);
 
 test('baseAllowedFromManifest returns only active option ids per attribute', function () {
-    $engine = new ConfiguratorEngine;
+    [$data, $attributes, $options] = compiledDefinitionFixture();
+    $data['attributes'][0]['options'][1]['disabled_by_default'] = true;
+    $data['attributes'][1]['options'][1]['hidden_by_default'] = true;
+    $result = app(ConfiguratorEngine::class)->evaluate(new ConfiguratorEvaluationInput(app(ConfiguratorDefinitionCompiler::class)->compile($data, $attributes, $options)));
+    expect($result->attributes['new:A']['legal'])->toBe(['new:A0'])->and($result->attributes['new:B']['legal'])->toBe(['new:B0']);
 
-    $manifest = [
-        'stages' => [
-            [
-                'id' => 100,
-                'options' => [
-                    ['id' => 1, 'is_active' => true],
-                    ['id' => 2, 'is_active' => false],
-                ],
-            ],
-            [
-                'id' => 200,
-                'options' => [
-                    ['id' => 10, 'is_active' => true],
-                ],
-            ],
-        ],
-        'rules' => [],
-    ];
-
-    expect($engine->baseAllowedFromManifest($manifest))->toBe([
-        100 => [1],
-        200 => [10],
-    ]);
 });
 
 test('recalculateAllowedFromManifest applies restrict_allowed_options rules', function () {
-    $engine = new ConfiguratorEngine;
+    [$data, $attributes, $options] = compiledDefinitionFixture();
+    $data['attributes'][1]['options'][0]['disabled_by_default'] = true;
+    $rule = fixtureMapping();
+    $rule['sets'][0]['source_option_ids'] = ['new:A1'];
+    $rule['sets'][0]['target_option_ids'] = ['new:B0', 'new:B1'];
+    $data['rules'] = [$rule];
+    $result = app(ConfiguratorEngine::class)->evaluate(new ConfiguratorEvaluationInput(app(ConfiguratorDefinitionCompiler::class)->compile($data, $attributes, $options), selections: ['new:A' => 'new:A1']));
+    expect($result->attributes['new:B']['legal'])->toBe(['new:B1']);
 
-    $manifest = [
-        'stages' => [
-            [
-                'id' => 100,
-                'options' => [
-                    ['id' => 1, 'is_active' => true],
-                    ['id' => 2, 'is_active' => true],
-                ],
-            ],
-            [
-                'id' => 200,
-                'options' => [
-                    ['id' => 10, 'is_active' => true],
-                    ['id' => 11, 'is_active' => true],
-                    ['id' => 12, 'is_active' => false],
-                ],
-            ],
-        ],
-        'rules' => [
-            [
-                'id' => 1,
-                'type' => 'restrict_allowed_options',
-                'trigger_option_id' => 2,
-                'target_attribute_id' => 200,
-                'allowed_option_ids' => [11, 12],
-            ],
-        ],
-    ];
-
-    $allowed = $engine->recalculateAllowedFromManifest($manifest, [
-        100 => 2,
-    ]);
-
-    expect($allowed[200])->toBe([11]);
 });

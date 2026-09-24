@@ -2,18 +2,12 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        $this->call([
-            ConfiguratorRuntimeMetadataSeeder::class,
-        ]);
+        // Catalog data enters through the reviewed import; definitions are authored separately.
     }
 }

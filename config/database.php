@@ -32,6 +32,19 @@ return [
 
     'connections' => [
 
+        'catalog_source' => [
+            'driver' => 'mysql',
+            'host' => env('CATALOG_SOURCE_DB_HOST'),
+            'port' => env('CATALOG_SOURCE_DB_PORT'),
+            'database' => env('CATALOG_SOURCE_DB_DATABASE'),
+            'username' => env('CATALOG_SOURCE_DB_USERNAME'),
+            'password' => env('CATALOG_SOURCE_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),

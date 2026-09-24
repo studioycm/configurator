@@ -1,15 +1,16 @@
 <?php
 
-use App\FileAttachmentType;
-use App\Models\CatalogGroup;
-use App\Models\ConfigurationPart;
-use App\Models\FileAttachment;
-use App\Models\Part;
-use App\Models\ProductConfiguration;
-use App\Models\ProductProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\Legacy\FileAttachmentType;
+use Tests\Fixtures\Legacy\LoadsLegacyFixtures;
+use Tests\Fixtures\Legacy\Models\CatalogGroup;
+use Tests\Fixtures\Legacy\Models\ConfigurationPart;
+use Tests\Fixtures\Legacy\Models\FileAttachment;
+use Tests\Fixtures\Legacy\Models\Part;
+use Tests\Fixtures\Legacy\Models\ProductConfiguration;
+use Tests\Fixtures\Legacy\Models\ProductProfile;
 
-uses(RefreshDatabase::class);
+uses(LoadsLegacyFixtures::class, RefreshDatabase::class);
 
 test('attachable models can resolve main and gallery images via file attachments', function () {
     $group = CatalogGroup::factory()->create();

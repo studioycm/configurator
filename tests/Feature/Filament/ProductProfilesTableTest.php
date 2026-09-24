@@ -1,37 +1,37 @@
 <?php
 
-use App\Filament\Resources\ProductProfiles\Pages\ListProductProfiles;
-use App\Models\CatalogGroup;
-use App\Models\ProductProfile;
+use App\Filament\Resources\Products\Pages\ListProducts;
+use App\Models\Group;
+use App\Models\Product;
 use App\Models\User;
 use Livewire\Livewire;
 
-test('product profiles can be filtered by catalog group', function () {
+test('products can be filtered by group', function () {
     $user = User::factory()->create([
         'email' => 'ycm@data4.work',
     ]);
 
     $this->actingAs($user);
 
-    $primaryGroup = CatalogGroup::factory()->create([
+    $primaryGroup = Group::factory()->create([
         'name' => 'Primary Category',
     ]);
-    $secondaryGroup = CatalogGroup::factory()->create([
+    $secondaryGroup = Group::factory()->create([
         'name' => 'Secondary Category',
     ]);
 
-    $matchingProfiles = ProductProfile::factory()
+    $matchingProfiles = Product::factory()
         ->count(2)
-        ->for($primaryGroup, 'catalogGroup')
+        ->for($primaryGroup, 'group')
         ->create();
-    $nonMatchingProfile = ProductProfile::factory()
-        ->for($secondaryGroup, 'catalogGroup')
+    $nonMatchingProfile = Product::factory()
+        ->for($secondaryGroup, 'group')
         ->create();
 
-    Livewire::test(ListProductProfiles::class)
-        ->assertTableFilterExists('catalog_group_id')
+    Livewire::test(ListProducts::class)
+        ->assertTableFilterExists('group_id')
         ->assertCanSeeTableRecords($matchingProfiles->concat([$nonMatchingProfile]))
-        ->filterTable('catalog_group_id', $primaryGroup->getKey())
+        ->filterTable('group_id', $primaryGroup->getKey())
         ->assertCanSeeTableRecords($matchingProfiles)
         ->assertCanNotSeeTableRecords([$nonMatchingProfile]);
 });

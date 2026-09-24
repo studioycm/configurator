@@ -1,21 +1,28 @@
 <?php
 
+use App\ConditionSource;
 use App\ConfigInputType;
-use App\ConfigProfileScope;
+use App\RuleKind;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class, DatabaseMigrations::class);
+uses(TestCase::class, DatabaseMigrations::class);
 
 test('core configurator tables are migrated', function () {
     $tables = [
-        'catalog_groups',
-        'product_profiles',
-        'config_profiles',
-        'config_attributes',
-        'config_options',
-        'option_rules',
-        'file_attachments',
+        'groups',
+        'products',
+        'configurators',
+        'attributes',
+        'values',
+        'options',
+        'configurator_attributes',
+        'configurator_options',
+        'configurator_rules',
+        'rule_conditions',
+        'rule_effects',
+        'mapping_sets',
     ];
 
     foreach ($tables as $table) {
@@ -24,6 +31,8 @@ test('core configurator tables are migrated', function () {
 });
 
 test('enums resolve expected values', function () {
-    expect(ConfigProfileScope::ConfigurationSelection->value)->toBe('configuration_selection')
-        ->and(ConfigInputType::Select->value)->toBe('select');
+    expect(ConditionSource::SelectionCode->value)->toBe('SelectionCode')
+        ->and(RuleKind::Mapping->value)->toBe('Mapping')
+        ->and(ConfigInputType::Select->value)->toBe('select')
+        ->and(ConfigInputType::Toggle->value)->toBe('toggle');
 });

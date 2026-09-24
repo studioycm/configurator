@@ -1,0 +1,99 @@
+<?php
+
+namespace Tests\Fixtures\Legacy\Models;
+
+use App\Casts\JsonRuleCast;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Tests\Fixtures\Legacy\ConfigProfileScope;
+use Tests\Fixtures\Legacy\Database\Factories\ConfigProfileFactory;
+
+#[UseFactory(ConfigProfileFactory::class)]
+class ConfigProfile extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'product_profile_id',
+        'name',
+        'slug',
+        'description',
+        'scope',
+        'is_active',
+        'extra_rules_json',
+        'runtime_context_schema',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'id' => 'integer',
+            'product_profile_id' => 'integer',
+            'scope' => ConfigProfileScope::class,
+            'is_active' => 'boolean',
+            'extra_rules_json' => JsonRuleCast::class,
+            'runtime_context_schema' => 'array',
+        ];
+    }
+
+    public function catalogGroups(): HasMany
+    {
+        return $this->hasMany(CatalogGroup::class, 'config_profile_id', 'id');
+    }
+
+    public function productProfile(): BelongsTo
+    {
+        return $this->belongsTo(ProductProfile::class, 'product_profile_id', 'id');
+    }
+
+    public function attributes(): HasMany
+    {
+        return $this->hasMany(ConfigAttribute::class, 'config_profile_id', 'id');
+    }
+
+    public function options(): HasManyThrough
+    {
+        return $this->hasManyThrough(ConfigOption::class, ConfigAttribute::class, 'config_profile_id', 'config_attribute_id', 'id', 'id');
+    }
+
+    public function rules(): HasMany
+    {
+        return $this->hasMany(OptionRule::class, 'config_profile_id', 'id');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function contextSchema(): array
+    {
+        return array_values($this->runtime_context_schema ?? []);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function contextField(string $key): ?array
+    {
+        foreach ($this->contextSchema() as $field) {
+            if (($field['key'] ?? null) === $key) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+}

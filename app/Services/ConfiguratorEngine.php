@@ -2,673 +2,252 @@
 
 namespace App\Services;
 
-use App\DTO\ConfigOptionDTO;
-use App\DTO\ConfigStageDTO;
-use App\Models\ConfigAttribute;
-use App\Models\ConfigOption;
-use App\Models\ConfigProfile;
-use App\Models\OptionRule;
-use Illuminate\Support\Collection;
+use App\ConditionJunction;
+use App\ConditionOperator;
+use App\ConditionSource;
+use App\ConfiguratorIntentType;
+use App\DTO\ConfiguratorConditionDTO;
+use App\DTO\ConfiguratorConditionGroupDTO;
+use App\DTO\ConfiguratorDefinition;
+use App\DTO\ConfiguratorEvaluationInput;
+use App\DTO\ConfiguratorEvaluationResult;
+use App\DTO\ConfiguratorOptionDTO;
+use App\RuleEffectKind;
+use App\RuleKind;
+use App\RuleTargetScope;
 
 final class ConfiguratorEngine
 {
-    /**
-     * @return ConfigStageDTO[]
-     */
-    public function buildStages(ConfigProfile $profile): array
+    public function evaluate(ConfiguratorEvaluationInput $input): ConfiguratorEvaluationResult
     {
-        $attributes = $profile->attributes()
-            ->with(['options' => fn ($q) => $q->orderBy('sort_order')])
-            ->orderBy('sort_order')
-            ->get();
-
-        return $attributes
-            ->map(fn (ConfigAttribute $attr) => new ConfigStageDTO(
-                id: $attr->id,
-                slug: $attr->slug,
-                label: $attr->label ?? $attr->name,
-                sortOrder: (int) $attr->sort_order,
-                segmentIndex: $attr->segment_index,
-                isRequired: (bool) $attr->is_required,
-                options: $attr->options
-                    ->sortBy('sort_order')
-                    ->map(fn (ConfigOption $opt) => new ConfigOptionDTO(
-                        id: $opt->id,
-                        label: $opt->label,
-                        code: $opt->code,
-                        sortOrder: (int) $opt->sort_order,
-                        isDefault: (bool) $opt->is_default,
-                        isActive: (bool) $opt->is_active,
-                    ))
-                    ->values()
-                    ->all(),
-            ))
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Build a JSON-friendly manifest that can be reused by a client-side engine.
-     *
-     * @return array<string, mixed>
-     */
-    public function buildManifest(ConfigProfile $profile): array
-    {
-        $attributes = $profile->attributes()
-            ->with(['options' => fn ($q) => $q->orderBy('sort_order')])
-            ->orderBy('sort_order')
-            ->get();
-
-        $rules = $profile->rules()->get([
-            'id',
-            'config_option_id',
-            'target_attribute_id',
-            'allowed_option_ids',
-            'rule_payload',
-            'is_active',
-            'priority',
-        ]);
-
-        return [
-            'profile_id' => (int) $profile->id,
-            'stages' => $attributes
-                ->map(fn (ConfigAttribute $attr) => [
-                    'id' => (int) $attr->id,
-                    'slug' => $attr->slug,
-                    'name' => $attr->name,
-                    'label' => (string) ($attr->label ?? $attr->name),
-                    'input_type' => $attr->input_type?->value,
-                    'sort_order' => (int) $attr->sort_order,
-                    'segment_index' => $attr->segment_index,
-                    'is_required' => (bool) $attr->is_required,
-                    'options' => $attr->options
-                        ->sortBy('sort_order')
-                        ->map(fn (ConfigOption $opt) => [
-                            'id' => (int) $opt->id,
-                            'label' => (string) $opt->label,
-                            'code' => $opt->code,
-                            'sort_order' => (int) $opt->sort_order,
-                            'is_default' => (bool) $opt->is_default,
-                            'is_active' => (bool) $opt->is_active,
-                        ])
-                        ->values()
-                        ->all(),
-                ])
-                ->values()
-                ->all(),
-            'rules' => $rules
-                ->map(fn (OptionRule $rule) => [
-                    'id' => (int) $rule->id,
-                    'type' => $rule->effectType(),
-                    'trigger_option_id' => (int) $rule->config_option_id,
-                    'target_attribute_id' => (int) $rule->target_attribute_id,
-                    'allowed_option_ids' => $rule->allowed_option_ids ?? [],
-                    'rule_payload' => $rule->rule_payload ?? [],
-                    'is_active' => (bool) $rule->is_active,
-                    'priority' => (int) $rule->priority,
-                ])
-                ->values()
-                ->all(),
-        ];
-    }
-
-    public function defaultSelection(array $stages): array
-    {
-        $selection = [];
-
-        foreach ($stages as $stage) {
-            $default = collect($stage->options)
-                ->first(fn (ConfigOptionDTO $o) => $o->isDefault && $o->isActive);
-
-            if ($default instanceof ConfigOptionDTO) {
-                $selection[$stage->id] = $default->id;
-
-                continue;
-            }
-
-            $firstActive = collect($stage->options)
-                ->first(fn (ConfigOptionDTO $o) => $o->isActive);
-
-            if ($firstActive instanceof ConfigOptionDTO) {
-                $selection[$stage->id] = $firstActive->id;
+        if ($input->definition === null) {
+            return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], $input->diagnostics === [] ? [['code' => 'unassigned', 'message' => 'This Product does not have an assigned Configurator.']] : $input->diagnostics, false, null, $input->configuratorId);
+        }
+        $context = [];
+        $diagnostics = $input->diagnostics;
+        foreach (['territory', 'application'] as $dimension) {
+            $choice = $input->context[$dimension] ?? ConfiguratorPolicy::UNRESTRICTED_CONTEXT;
+            $choices = [ConfiguratorPolicy::UNRESTRICTED_CONTEXT, ...array_column($input->definition->contextSchema[$dimension], 'value')];
+            $context[$dimension] = is_string($choice) && in_array($choice, $choices, true) ? $choice : ConfiguratorPolicy::UNRESTRICTED_CONTEXT;
+            if ($context[$dimension] !== $choice) {
+                $diagnostics[] = ['code' => 'context_repaired', 'message' => 'A context choice is no longer available. Unrestricted context was restored.'];
             }
         }
+        $baseline = $this->settle($input, $context, $input->selections, $input->remembered, $diagnostics);
+        $intent = $input->intent;
+        if ($intent->malformed) {
+            return $this->diagnostic($baseline, ['code' => 'interaction_rejected', 'message' => 'The interaction was malformed. Current choices have been refreshed.']);
+        }
+        if ($intent->kind === ConfiguratorIntentType::SelectOption) {
+            $attribute = $baseline->attributes[$intent->attributeId] ?? null;
+            if ($attribute === null || ! $attribute['applicable'] || ! in_array($intent->optionId, $attribute['legal'], true)) {
+                return $this->diagnostic($baseline, ['code' => 'selection_rejected', 'message' => 'That Option is not currently available. Choices have been refreshed.', 'attribute_id' => $intent->attributeId]);
+            }
+            $selections = $baseline->selections;
+            $selections[$intent->attributeId] = $intent->optionId;
 
-        return $selection;
-    }
+            return $this->settle($input, $context, $selections, $baseline->remembered, $diagnostics);
+        }
+        if ($intent->kind === ConfiguratorIntentType::ChangeContext) {
+            $choices = isset($input->definition->contextSchema[$intent->dimension]) ? [ConfiguratorPolicy::UNRESTRICTED_CONTEXT, ...array_column($input->definition->contextSchema[$intent->dimension], 'value')] : [];
+            if (! in_array($intent->choice, $choices, true)) {
+                return $this->diagnostic($baseline, ['code' => 'context_rejected', 'message' => 'That context choice is not available. Current choices have been refreshed.']);
+            }
+            $context[$intent->dimension] = $intent->choice;
 
-    public function baseAllowed(array $stages): array
-    {
-        $allowed = [];
-
-        foreach ($stages as $stage) {
-            $allowed[$stage->id] = collect($stage->options)
-                ->filter(fn (ConfigOptionDTO $o) => $o->isActive)
-                ->map(fn (ConfigOptionDTO $o) => $o->id)
-                ->values()
-                ->all();
+            return $this->settle($input, $context, $baseline->selections, $baseline->remembered, $diagnostics);
         }
 
-        return $allowed;
+        return $baseline;
     }
 
-    /**
-     * @param  array<int, int>  $selection
-     * @param  array<string, mixed>  $context
-     * @return array{
-     *     allowed: array<int, int[]>,
-     *     hidden: array<int, int[]>,
-     *     disabled: array<int, int[]>,
-     *     label_overrides: array<string, string>,
-     *     value_overrides: array<string, string>,
-     *     hints: array<string, string>
-     * }
-     */
-    public function evaluateState(ConfigProfile $profile, array $stages, array $selection, array $context = []): array
+    /** @param array<string, string> $context @param array<string, mixed> $prior @param array<string, mixed> $memory @param list<array<string, mixed>> $diagnostics */
+    private function settle(ConfiguratorEvaluationInput $input, array $context, array $prior, array $memory, array $diagnostics): ConfiguratorEvaluationResult
     {
-        $allowed = $this->baseAllowed($stages);
-        $presentationState = $this->basePresentationState($profile);
-        $targetOptionIds = $this->targetOptionIdsByAttribute($profile);
+        $definition = $input->definition;
+        $states = [];
+        $selections = [];
+        $remembered = [];
+        foreach ($definition->evaluationOrder as $id) {
+            $attribute = $definition->attributes[$id];
+            $all = array_map('strval', array_keys($attribute->options));
+            $hidden = array_map('strval', array_keys(array_filter($attribute->options, fn (ConfiguratorOptionDTO $option): bool => $option->hidden)));
+            $disabled = array_map('strval', array_keys(array_filter($attribute->options, fn (ConfiguratorOptionDTO $option): bool => $option->disabled)));
+            $legal = array_values(array_diff($all, $hidden, $disabled));
+            $applicable = true;
+            $contributors = [];
+            foreach ($definition->rules as $rule) {
+                if (! $rule->active || ! $this->matches($rule->conditions, $definition, $selections, $input->properties, $context)) {
+                    continue;
+                }
+                if ($rule->kind === RuleKind::Mapping) {
+                    if ($rule->targetId !== $id || ! isset($selections[$rule->driverId])) {
+                        continue;
+                    }
+                    foreach ($rule->sets as $set) {
+                        if (in_array($selections[$rule->driverId], $set->sources, true)) {
+                            $legal = array_values(array_intersect($legal, $set->targets));
+                            $disabled = [...$disabled, ...array_diff($all, $set->targets)];
+                            $contributors[] = $rule->id;
+                            break;
+                        }
+                    }
 
-        foreach ($this->activeRulesForEvaluation($profile, $selection, $stages, $context) as $rule) {
-            $targetAttrId = (int) $rule->target_attribute_id;
-            $allowedIds = $rule->allowed_option_ids ?? [];
-
-            if ($allowedIds !== [] && isset($allowed[$targetAttrId])) {
-                $allowed[$targetAttrId] = array_values(array_intersect($allowed[$targetAttrId], $allowedIds));
-
-                $disallowedIds = array_values(array_diff($targetOptionIds[$targetAttrId] ?? [], $allowedIds));
-
-                if ($disallowedIds !== []) {
-                    if ($rule->uiMode() === 'hidden') {
-                        $presentationState['hidden'][$targetAttrId] = $this->mergeOptionIds(
-                            $presentationState['hidden'][$targetAttrId] ?? [],
-                            $disallowedIds,
-                        );
-                    } else {
-                        $presentationState['disabled'][$targetAttrId] = $this->mergeOptionIds(
-                            $presentationState['disabled'][$targetAttrId] ?? [],
-                            $disallowedIds,
-                        );
+                    continue;
+                }
+                foreach ($rule->effects as $effect) {
+                    if ($effect->attributeId !== $id) {
+                        continue;
+                    }
+                    if ($effect->kind === RuleEffectKind::HideAttribute) {
+                        $applicable = false;
+                        $contributors[] = $rule->id;
+                    } elseif ($effect->kind === RuleEffectKind::AllowOptions) {
+                        $legal = array_values(array_intersect($legal, $effect->optionIds));
+                        $disabled = [...$disabled, ...array_diff($all, $effect->optionIds)];
+                        $contributors[] = $rule->id;
+                    } elseif (in_array($effect->kind, [RuleEffectKind::ExcludeOptions, RuleEffectKind::HideOptions, RuleEffectKind::DisableOptions], true)) {
+                        $legal = array_values(array_diff($legal, $effect->optionIds));
+                        $contributors[] = $rule->id;
+                        if ($effect->kind === RuleEffectKind::HideOptions) {
+                            $hidden = [...$hidden, ...$effect->optionIds];
+                        } else {
+                            $disabled = [...$disabled, ...$effect->optionIds];
+                        }
                     }
                 }
             }
-
-            if (($hiddenIds = $rule->hiddenOptionIds()) !== []) {
-                $presentationState['hidden'][$targetAttrId] = $this->mergeOptionIds(
-                    $presentationState['hidden'][$targetAttrId] ?? [],
-                    $hiddenIds,
-                );
+            $current = $this->included($prior[$id] ?? null, $all);
+            $rememberedChoice = $this->included($memory[$id] ?? null, $all);
+            $optionPresentation = [];
+            foreach ($attribute->options as $option) {
+                $optionPresentation[$option->id] = ['label' => $option->label, 'display_value' => $option->displayValue, 'hint' => $option->hint];
             }
-
-            if (($disabledIds = $rule->disabledOptionIds()) !== []) {
-                $presentationState['disabled'][$targetAttrId] = $this->mergeOptionIds(
-                    $presentationState['disabled'][$targetAttrId] ?? [],
-                    $disabledIds,
-                );
-            }
-
-            $presentationState['label_overrides'] = array_replace(
-                $presentationState['label_overrides'],
-                $rule->labelOverrides(),
-                $rule->valueOverrides(),
-            );
-
-            $presentationState['value_overrides'] = array_replace(
-                $presentationState['value_overrides'],
-                $rule->valueOverrides(),
-            );
-
-            $presentationState['hints'] = array_replace(
-                $presentationState['hints'],
-                $rule->hintOverrides(),
-            );
-        }
-
-        foreach ($allowed as $attributeId => $allowedOptionIds) {
-            $blockedOptionIds = $this->mergeOptionIds(
-                $presentationState['hidden'][$attributeId] ?? [],
-                $presentationState['disabled'][$attributeId] ?? [],
-            );
-
-            if ($blockedOptionIds !== []) {
-                $allowed[$attributeId] = array_values(array_diff($allowedOptionIds, $blockedOptionIds));
-            }
-        }
-
-        return [
-            'allowed' => $this->normalizePresentationBucket($allowed),
-            'hidden' => $this->normalizePresentationBucket($presentationState['hidden']),
-            'disabled' => $this->normalizePresentationBucket($presentationState['disabled']),
-            'label_overrides' => $presentationState['label_overrides'],
-            'value_overrides' => $presentationState['value_overrides'],
-            'hints' => $presentationState['hints'],
-        ];
-    }
-
-    /**
-     * @param  array{stages: array<int, array{id:int, options: array<int, array{id:int, is_active:bool}>}>}  $manifest
-     * @return array<int, int[]>
-     */
-    public function baseAllowedFromManifest(array $manifest): array
-    {
-        $allowed = [];
-
-        foreach (($manifest['stages'] ?? []) as $stage) {
-            $stageId = (int) ($stage['id'] ?? 0);
-            if (! $stageId) {
-                continue;
-            }
-
-            $allowed[$stageId] = collect($stage['options'] ?? [])
-                ->filter(fn (array $o): bool => (bool) ($o['is_active'] ?? false))
-                ->map(fn (array $o): int => (int) $o['id'])
-                ->values()
-                ->all();
-        }
-
-        return $allowed;
-    }
-
-    /**
-     * Client-side friendly rule evaluation.
-     *
-     * @param  array{stages: array, rules: array}  $manifest
-     * @param  array<int, int>  $selection  attribute_id => option_id
-     * @return array<int, int[]> allowed options per attribute
-     */
-    public function recalculateAllowedFromManifest(array $manifest, array $selection): array
-    {
-        $allowed = $this->baseAllowedFromManifest($manifest);
-
-        if ($selection === []) {
-            return $allowed;
-        }
-
-        $rulesByTrigger = [];
-        foreach (($manifest['rules'] ?? []) as $rule) {
-            $triggerOptionId = (int) ($rule['trigger_option_id'] ?? 0);
-            if (! $triggerOptionId) {
-                continue;
-            }
-
-            $rulesByTrigger[$triggerOptionId][] = $rule;
-        }
-
-        foreach (array_values($selection) as $selectedOptionId) {
-            foreach (($rulesByTrigger[(int) $selectedOptionId] ?? []) as $rule) {
-                $targetAttrId = (int) ($rule['target_attribute_id'] ?? 0);
-                $allowedIds = $rule['allowed_option_ids'] ?? [];
-
-                if ($targetAttrId === 0 || $allowedIds === [] || ! isset($allowed[$targetAttrId])) {
-                    continue;
+            $states[$id] = ['applicable' => $applicable, 'legal' => $applicable ? $legal : [], 'hidden' => array_values(array_unique($hidden)), 'disabled' => array_values(array_unique($disabled)), 'label' => $attribute->label, 'display_value' => null, 'hint' => $attribute->help, 'options' => $optionPresentation];
+            if (! $applicable) {
+                $candidate = $current ?? $rememberedChoice;
+                if ($candidate !== null) {
+                    $remembered[$id] = $candidate;
                 }
 
-                $allowed[$targetAttrId] = array_values(array_intersect($allowed[$targetAttrId], $allowedIds));
-            }
-        }
-
-        return $allowed;
-    }
-
-    public function recalculateAllowed(ConfigProfile $profile, array $stages, array $selection, array $context = []): array
-    {
-        return $this->evaluateState($profile, $stages, $selection, $context)['allowed'];
-    }
-
-    public function fillMissingSelections(array $stages, array $allowed, array $selection): array
-    {
-        foreach ($stages as $stage) {
-            $attrId = $stage->id;
-            $current = $selection[$attrId] ?? null;
-            $allowedIds = $allowed[$attrId] ?? [];
-
-            if ($allowedIds === []) {
-                unset($selection[$attrId]);
-
                 continue;
             }
-
-            if ($current && in_array($current, $allowedIds, true)) {
-                continue;
+            $choice = $definition->policy->selection($legal, $current, $rememberedChoice, $attribute->defaultOptionId);
+            if ($choice !== null) {
+                $selections[$id] = $choice;
+                if ((is_string($prior[$id] ?? null) || is_int($prior[$id] ?? null)) && (string) $prior[$id] !== $choice) {
+                    $diagnostics[] = ['code' => 'selection_adjusted', 'message' => 'Choice for '.$attribute->label.' was updated to '.$attribute->options[$choice]->label.' because the previous choice is unavailable.', 'attribute_id' => $id];
+                }
+            } else {
+                $diagnostics[] = ['code' => 'no_legal_options', 'message' => 'No legal Option remains for '.$attribute->label.'.', 'attribute_id' => $id, 'rule_ids' => array_values(array_unique($contributors))];
             }
-
-            $default = collect($stage->options)
-                ->first(fn (ConfigOptionDTO $o) => $o->isDefault && $o->isActive && in_array($o->id, $allowedIds, true));
-
-            if ($default instanceof ConfigOptionDTO) {
-                $selection[$attrId] = $default->id;
-
-                continue;
-            }
-
-            $selection[$attrId] = $allowedIds[0];
+        }
+        $this->presentation($definition, $states, $selections, $input->properties, $context, $diagnostics);
+        $applicable = array_filter($definition->attributes, fn ($attribute): bool => $states[$attribute->id]['applicable']);
+        $complete = $applicable !== [] && count($selections) === count($applicable);
+        $code = null;
+        if ($complete) {
+            uasort($applicable, fn ($a, $b): int => [$a->codeOrder, $a->id] <=> [$b->codeOrder, $b->id]);
+            $code = implode($definition->policy->codeSeparator, array_map(fn ($attribute): string => $attribute->options[$selections[$attribute->id]]->code, $applicable));
+        } elseif ($applicable === []) {
+            $diagnostics[] = ['code' => 'unusable_definition', 'message' => 'This Configurator has no applicable Attributes.'];
         }
 
-        return $selection;
+        return new ConfiguratorEvaluationResult($definition, $states, $selections, $remembered, $context, $diagnostics, $complete, $code, $input->configuratorId);
     }
 
-    public function pruneInvalidSelections(array $stages, array $selection, array $allowed): array
+    /** @param array<string, string> $selections @param array<string, mixed> $properties @param array<string, string> $context */
+    private function matches(ConfiguratorConditionDTO|ConfiguratorConditionGroupDTO $condition, ConfiguratorDefinition $definition, array $selections, array $properties, array $context): bool
     {
-        $stageIds = collect($stages)->map(fn (ConfigStageDTO $s) => $s->id)->all();
-
-        foreach ($selection as $attrId => $optionId) {
-            if (! in_array($attrId, $stageIds, true)) {
-                unset($selection[$attrId]);
-
-                continue;
+        if ($condition instanceof ConfiguratorConditionGroupDTO) {
+            foreach ($condition->conditions as $child) {
+                $matches = $this->matches($child, $definition, $selections, $properties, $context);
+                if ($condition->operator === ConditionJunction::All && ! $matches) {
+                    return false;
+                }
+                if ($condition->operator === ConditionJunction::Any && $matches) {
+                    return true;
+                }
             }
 
-            $allowedIds = $allowed[$attrId] ?? [];
-            if (! in_array($optionId, $allowedIds, true)) {
-                unset($selection[$attrId]);
+            return $condition->operator === ConditionJunction::All;
+        }
+        $operand = $condition->operand;
+        if (in_array($condition->source, [ConditionSource::SelectionOption, ConditionSource::SelectionCode], true)) {
+            $selected = $selections[$condition->attributeId] ?? null;
+            if ($selected === null) {
+                return false;
             }
-        }
-
-        return $selection;
-    }
-
-    public function isComplete(array $stages, array $selection): bool
-    {
-        $stageCount = count($stages);
-
-        if ($stageCount === 0 || count($selection) < $stageCount) {
-            return false;
-        }
-
-        foreach ($stages as $stage) {
-            if ($stage->isRequired && ! isset($selection[$stage->id])) {
+            $value = $condition->source === ConditionSource::SelectionCode ? $definition->attributes[$condition->attributeId]->options[$selected]->code : $selected;
+            $operands = $condition->source === ConditionSource::SelectionCode ? array_map(fn (string $id): string => $definition->attributes[$condition->attributeId]->options[$id]->code, $condition->optionIds) : $condition->optionIds;
+            $operand = in_array($condition->operator, [ConditionOperator::In, ConditionOperator::NotIn], true) ? $operands : $operands[0];
+        } elseif ($condition->source === ConditionSource::ProductProperty) {
+            $value = $properties[$condition->propertyKey] ?? null;
+            if (! is_string($value)) {
+                return false;
+            }
+        } else {
+            $value = $context[$condition->contextDimension] ?? ConfiguratorPolicy::UNRESTRICTED_CONTEXT;
+            if ($value === ConfiguratorPolicy::UNRESTRICTED_CONTEXT) {
                 return false;
             }
         }
 
-        return true;
-    }
-
-    public function buildConfigurationCode(array $stages, array $selection): ?string
-    {
-        if (! $this->isComplete($stages, $selection)) {
-            return null;
-        }
-
-        $sorted = collect($stages)
-            ->sortBy(fn (ConfigStageDTO $s) => [$s->segmentIndex ?? $s->sortOrder, $s->sortOrder])
-            ->values();
-
-        $segments = [];
-
-        foreach ($sorted as $stage) {
-            $optionId = $selection[$stage->id] ?? null;
-            if (! $optionId) {
-                return null;
-            }
-
-            /** @var ConfigOptionDTO|null $opt */
-            $opt = collect($stage->options)->firstWhere('id', $optionId);
-
-            if (! $opt) {
-                return null;
-            }
-
-            $segments[] = $opt->code;
-        }
-
-        return implode('-', $segments);
-    }
-
-    public function collectUiActions(
-        ConfigProfile $profile,
-        array $stages,
-        array $selection,
-        array $allowed,
-        array $context = [],
-    ): array {
-        $evaluatedState = $this->evaluateState($profile, $stages, $selection, $context);
-
-        return [
-            'hidden' => $evaluatedState['hidden'],
-            'disabled' => $evaluatedState['disabled'],
-            'label_overrides' => $evaluatedState['label_overrides'],
-            'hints' => $evaluatedState['hints'],
-        ];
-    }
-
-    /**
-     * @param  array<int, int>  $selection
-     * @param  ConfigStageDTO[]  $stages
-     * @param  array<string, mixed>  $context
-     * @return Collection<int, OptionRule>
-     */
-    protected function activeRulesForEvaluation(ConfigProfile $profile, array $selection, array $stages, array $context = []): Collection
-    {
-        /** @var Collection<int, OptionRule> $rules */
-        $rules = $profile->relationLoaded('rules')
-            ? $profile->rules
-            : $profile->rules()->get();
-
-        return $rules
-            ->filter(fn (OptionRule $rule): bool => (bool) $rule->is_active)
-            ->filter(fn (OptionRule $rule): bool => in_array((int) $rule->config_option_id, $selection, true))
-            ->filter(fn (OptionRule $rule): bool => $this->ruleMatchesContext($rule, $selection, $stages, $context))
-            ->sortBy([
-                ['priority', 'asc'],
-                ['id', 'asc'],
-            ])
-            ->values();
-    }
-
-    /**
-     * @param  array<int, int>  $selection
-     * @param  ConfigStageDTO[]  $stages
-     * @param  array<string, mixed>  $context
-     */
-    protected function ruleMatchesContext(OptionRule $rule, array $selection, array $stages, array $context = []): bool
-    {
-        $conditions = $rule->activationConditions();
-
-        if ($conditions === []) {
-            return true;
-        }
-
-        foreach ($conditions as $condition) {
-            $actual = $this->resolveConditionValue((string) ($condition['source'] ?? ''), $selection, $stages, $context);
-            $expected = $condition['value'] ?? null;
-            $operator = (string) ($condition['operator'] ?? '=');
-
-            if (! $this->matchesCondition($actual, $operator, $expected)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @param  array<int, int>  $selection
-     * @param  ConfigStageDTO[]  $stages
-     * @param  array<string, mixed>  $context
-     */
-    protected function resolveConditionValue(string $source, array $selection, array $stages, array $context): mixed
-    {
-        if ($source === 'configuration_code') {
-            return $this->buildConfigurationCode($stages, $selection);
-        }
-
-        if (str_starts_with($source, 'context.')) {
-            return data_get($context, substr($source, 8));
-        }
-
-        if (str_starts_with($source, 'selection_code.')) {
-            return $this->resolveSelectionValue(substr($source, 15), $selection, $stages, true);
-        }
-
-        if (str_starts_with($source, 'selection.')) {
-            return $this->resolveSelectionValue(substr($source, 10), $selection, $stages);
-        }
-
-        return null;
-    }
-
-    /**
-     * @param  array<int, int>  $selection
-     * @param  ConfigStageDTO[]  $stages
-     */
-    protected function resolveSelectionValue(string $stageKey, array $selection, array $stages, bool $returnCode = false): mixed
-    {
-        if ($stageKey === '') {
-            return null;
-        }
-
-        $stage = collect($stages)->first(function (ConfigStageDTO $candidate) use ($stageKey): bool {
-            if ((string) $candidate->id === $stageKey) {
-                return true;
-            }
-
-            return $candidate->slug === $stageKey;
-        });
-
-        if (! $stage instanceof ConfigStageDTO) {
-            return null;
-        }
-
-        $selectedOptionId = $selection[$stage->id] ?? null;
-
-        if (! $returnCode || ! $selectedOptionId) {
-            return $selectedOptionId;
-        }
-
-        /** @var ConfigOptionDTO|null $selectedOption */
-        $selectedOption = collect($stage->options)->firstWhere('id', $selectedOptionId);
-
-        return $selectedOption?->code;
-    }
-
-    protected function matchesCondition(mixed $actual, string $operator, mixed $expected): bool
-    {
-        return match ($operator) {
-            '=', '==' => $actual == $expected,
-            '!=', '<>' => $actual != $expected,
-            'in' => in_array($actual, (array) $expected, true),
-            'not_in' => ! in_array($actual, (array) $expected, true),
-            'contains' => is_array($actual)
-                ? in_array($expected, $actual, true)
-                : str_contains((string) $actual, (string) $expected),
-            default => false,
+        return match ($condition->operator) {
+            ConditionOperator::Equals => $value === $operand,
+            ConditionOperator::NotEquals => $value !== $operand,
+            ConditionOperator::In => in_array($value, $operand, true),
+            ConditionOperator::NotIn => ! in_array($value, $operand, true),
+            ConditionOperator::Contains => str_contains($value, $operand),
         };
     }
 
-    /**
-     * @return array{
-     *     hidden: array<int, int[]>,
-     *     disabled: array<int, int[]>,
-     *     label_overrides: array<string, string>,
-     *     value_overrides: array<string, string>,
-     *     hints: array<string, string>
-     * }
-     */
-    protected function basePresentationState(ConfigProfile $profile): array
+    /** @param array<string, array<string, mixed>> $states @param array<string, string> $selections @param array<string, mixed> $properties @param array<string, string> $context @param list<array<string, mixed>> $diagnostics */
+    private function presentation(ConfiguratorDefinition $definition, array &$states, array $selections, array $properties, array $context, array &$diagnostics): void
     {
-        $attributes = $profile->relationLoaded('attributes')
-            ? $profile->attributes
-            : $profile->attributes()->with('options')->get();
-
-        $hidden = [];
-        $disabled = [];
-        $labelOverrides = [];
-        $valueOverrides = [];
-        $hints = [];
-
-        foreach ($attributes as $attribute) {
-            $options = $attribute->relationLoaded('options')
-                ? $attribute->options
-                : $attribute->options()->orderBy('sort_order')->get();
-
-            $hidden[$attribute->id] = $options
-                ->filter(fn (ConfigOption $option): bool => $option->isHiddenByDefault())
-                ->pluck('id')
-                ->map(fn (mixed $id): int => (int) $id)
-                ->values()
-                ->all();
-
-            $disabled[$attribute->id] = $options
-                ->filter(fn (ConfigOption $option): bool => $option->isDisabledByDefault())
-                ->pluck('id')
-                ->map(fn (mixed $id): int => (int) $id)
-                ->values()
-                ->all();
-
-            foreach ($options as $option) {
-                if (($shortLabel = $option->shortLabel()) !== null) {
-                    $labelOverrides[(string) $option->id] = $shortLabel;
+        $outcomes = [];
+        foreach ($definition->rules as $rule) {
+            if (! $rule->active || ! $this->matches($rule->conditions, $definition, $selections, $properties, $context)) {
+                continue;
+            }
+            foreach ($rule->effects as $effect) {
+                $field = match ($effect->kind) {
+                    RuleEffectKind::SetLabel => 'label', RuleEffectKind::SetDisplayValue => 'display_value', RuleEffectKind::SetHint => 'hint', default => null
+                };
+                if ($field === null) {
+                    continue;
                 }
-
-                if (($hint = $option->hintText()) !== null) {
-                    $hints[(string) $option->id] = $hint;
+                foreach ($effect->scope === RuleTargetScope::Attribute ? ['attribute'] : $effect->optionIds as $target) {
+                    $outcomes[$effect->attributeId][$target][$field][] = ['priority' => $rule->priority, 'value' => $effect->value, 'rule' => $rule->id];
                 }
             }
         }
-
-        return [
-            'hidden' => $hidden,
-            'disabled' => $disabled,
-            'label_overrides' => $labelOverrides,
-            'value_overrides' => $valueOverrides,
-            'hints' => $hints,
-        ];
-    }
-
-    /**
-     * @return array<int, int[]>
-     */
-    protected function targetOptionIdsByAttribute(ConfigProfile $profile): array
-    {
-        $attributes = $profile->relationLoaded('attributes')
-            ? $profile->attributes
-            : $profile->attributes()->with('options')->get();
-
-        return $attributes
-            ->mapWithKeys(function (ConfigAttribute $attribute): array {
-                $options = $attribute->relationLoaded('options')
-                    ? $attribute->options
-                    : $attribute->options()->orderBy('sort_order')->get();
-
-                return [
-                    (int) $attribute->id => $options
-                        ->pluck('id')
-                        ->map(fn (mixed $id): int => (int) $id)
-                        ->values()
-                        ->all(),
-                ];
-            })
-            ->all();
-    }
-
-    /**
-     * @param  array<int, int[]>  $bucket
-     * @return array<int, int[]>
-     */
-    protected function normalizePresentationBucket(array $bucket): array
-    {
-        foreach ($bucket as $attributeId => $optionIds) {
-            $bucket[$attributeId] = $this->mergeOptionIds($optionIds);
+        foreach ($outcomes as $attributeId => $targets) {
+            foreach ($targets as $target => $fields) {
+                foreach ($fields as $field => $values) {
+                    $priority = max(array_column($values, 'priority'));
+                    $winners = array_values(array_filter($values, fn (array $value): bool => $value['priority'] === $priority));
+                    if (count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1) {
+                        $diagnostics[] = ['code' => 'presentation_priority_tie', 'message' => 'Conflicting presentation rules have the same priority; the base '.$field.' is shown.', 'attribute_id' => (string) $attributeId, 'rule_ids' => array_column($winners, 'rule')];
+                    } elseif ($target === 'attribute') {
+                        $states[$attributeId][$field] = $winners[0]['value'];
+                    } else {
+                        $states[$attributeId]['options'][$target][$field] = $winners[0]['value'];
+                    }
+                }
+            }
         }
-
-        return $bucket;
     }
 
-    /**
-     * @param  int[]  ...$optionGroups
-     * @return int[]
-     */
-    protected function mergeOptionIds(array ...$optionGroups): array
+    /** @param list<string> $options */
+    private function included(mixed $value, array $options): ?string
     {
-        return collect($optionGroups)
-            ->flatten()
-            ->map(fn (mixed $value): int => (int) $value)
-            ->filter(fn (int $value): bool => $value > 0)
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
+        return (is_string($value) || is_int($value)) && in_array((string) $value, $options, true) ? (string) $value : null;
+    }
+
+    /** @param array<string, mixed> $diagnostic */
+    private function diagnostic(ConfiguratorEvaluationResult $result, array $diagnostic): ConfiguratorEvaluationResult
+    {
+        return new ConfiguratorEvaluationResult($result->definition, $result->attributes, $result->selections, $result->remembered, $result->context, [...$result->diagnostics, $diagnostic], $result->isComplete, $result->configurationCode, $result->configuratorId);
     }
 }

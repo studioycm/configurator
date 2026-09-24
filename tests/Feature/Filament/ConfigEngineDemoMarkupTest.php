@@ -1,29 +1,34 @@
 <?php
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\View;
+
+beforeEach(function () {
+    View::addNamespace('legacy', base_path('tests/Fixtures/Legacy/resources/views'));
+});
 
 it('renders the config engine modal and preview partials without inline sprintf html builders', function () {
-    $pageSource = file_get_contents(app_path('Filament/Pages/ConfigEngineDemo.php'));
+    $pageSource = file_get_contents(base_path('tests/Fixtures/Legacy/Filament/Pages/ConfigEngineDemo.php'));
 
     expect($pageSource)
-        ->toContain('filament.pages.config-engine-demo.partials.modal-image')
-        ->toContain('filament.pages.config-engine-demo.partials.image-trigger')
-        ->toContain('filament.pages.config-engine-demo.partials.image-grid')
-        ->toContain('filament.pages.config-engine-demo.partials.file-links')
+        ->toContain('legacy::filament.pages.config-engine-demo.partials.modal-image')
+        ->toContain('legacy::filament.pages.config-engine-demo.partials.image-trigger')
+        ->toContain('legacy::filament.pages.config-engine-demo.partials.image-grid')
+        ->toContain('legacy::filament.pages.config-engine-demo.partials.file-links')
         ->toContain('->stickyModalHeader()')
         ->toContain('->stickyModalFooter()')
         ->not->toContain('->modalContent(fn (array $arguments): string => sprintf(');
 
-    $modalHtml = view('filament.pages.config-engine-demo.partials.modal-image', [
+    $modalHtml = view('legacy::filament.pages.config-engine-demo.partials.modal-image', [
         'url' => 'https://example.com/image.png',
     ])->render();
 
-    $triggerHtml = view('filament.pages.config-engine-demo.partials.image-trigger', [
+    $triggerHtml = view('legacy::filament.pages.config-engine-demo.partials.image-trigger', [
         'url' => 'https://example.com/image.png?x=1',
         'alt' => 'Main Image',
     ])->render();
 
-    $gridHtml = view('filament.pages.config-engine-demo.partials.image-grid', [
+    $gridHtml = view('legacy::filament.pages.config-engine-demo.partials.image-grid', [
         'urls' => Collection::make([
             'https://example.com/first.png',
             'https://example.com/second.png',
@@ -47,7 +52,7 @@ it('renders the config engine modal and preview partials without inline sprintf 
 });
 
 it('renders config engine file links from the blade partial', function () {
-    $html = view('filament.pages.config-engine-demo.partials.file-links', [
+    $html = view('legacy::filament.pages.config-engine-demo.partials.file-links', [
         'files' => Collection::make([
             (object) [
                 'file_path' => 'https://example.com/spec-sheet.pdf',
@@ -66,7 +71,7 @@ it('renders config engine file links from the blade partial', function () {
 });
 
 it('builds config engine option fields from reactive closures so hidden options disappear on the first rerender', function () {
-    $pageSource = file_get_contents(app_path('Filament/Pages/ConfigEngineDemo.php'));
+    $pageSource = file_get_contents(base_path('tests/Fixtures/Legacy/Filament/Pages/ConfigEngineDemo.php'));
 
     expect($pageSource)
         ->toContain("->options(fn (): array => \$this->optionLabelsForStage((int) \$stage['id']))")

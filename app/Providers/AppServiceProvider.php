@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::define('manage-catalog', fn (User $user): bool => $user->canAccessPanel(Filament::getPanel('admin')));
+
+        Action::configureUsing(function (Action $action): void {
+            $action->modalWidth(Width::SevenExtraLarge);
+        }, isImportant: true);
     }
 }

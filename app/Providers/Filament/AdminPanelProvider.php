@@ -2,15 +2,23 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\Attributes\AttributeResource;
+use App\Filament\Resources\Configurators\ConfiguratorResource;
+use App\Filament\Resources\Groups\GroupResource;
+use App\Filament\Resources\Options\OptionResource;
+use App\Filament\Resources\Products\ProductResource;
+use App\Filament\Resources\Values\ValueResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -43,8 +51,15 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => '#09c3aa',
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
+            ->navigationItems([
+                NavigationItem::make('Open public catalog')
+                    ->group('Catalog')
+                    ->sort(0)
+                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                    ->url(fn (): string => route('catalog.index'))
+                    ->openUrlInNewTab(),
+            ])
             ->pages([
                 Dashboard::class,
             ])

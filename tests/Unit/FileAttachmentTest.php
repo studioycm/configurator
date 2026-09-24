@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Models\FileAttachment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\Legacy\LoadsLegacyFixtures;
+use Tests\Fixtures\Legacy\Models\FileAttachment;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(LoadsLegacyFixtures::class, TestCase::class, RefreshDatabase::class);
 
 it('returns an absolute url for media stored on the public disk', function () {
     Storage::fake('public', ['url' => url('/storage')]);

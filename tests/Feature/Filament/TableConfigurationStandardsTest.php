@@ -1,21 +1,24 @@
 <?php
 
-use App\Filament\Resources\CatalogGroups\Pages\ListCatalogGroups;
-use App\Filament\Resources\ConfigAttributes\Pages\ListConfigAttributes;
-use App\Filament\Resources\ConfigOptions\Pages\ListConfigOptions;
-use App\Filament\Resources\ConfigProfiles\Pages\ListConfigProfiles;
-use App\Filament\Resources\ConfigurationParts\Pages\ListConfigurationParts;
-use App\Filament\Resources\ConfigurationSpecifications\Pages\ListConfigurationSpecifications;
-use App\Filament\Resources\OptionRules\Pages\ListOptionRules;
-use App\Filament\Resources\Parts\Pages\ListParts;
-use App\Filament\Resources\ProductConfigurations\Pages\ListProductConfigurations;
-use App\Filament\Resources\ProductProfiles\Pages\ListProductProfiles;
+use App\Filament\Resources\Attributes\Pages\ListAttributes;
+use App\Filament\Resources\Configurators\Pages\ListConfigurators;
+use App\Filament\Resources\Groups\Pages\ListGroups;
+use App\Filament\Resources\Options\Pages\ListOptions;
+use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Models\User;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\BaseFilter;
 use Livewire\Livewire;
+use Tests\Fixtures\Legacy\Filament\Resources\ConfigurationParts\Pages\ListConfigurationParts;
+use Tests\Fixtures\Legacy\Filament\Resources\ConfigurationSpecifications\Pages\ListConfigurationSpecifications;
+use Tests\Fixtures\Legacy\Filament\Resources\OptionRules\Pages\ListOptionRules;
+use Tests\Fixtures\Legacy\Filament\Resources\Parts\Pages\ListParts;
+use Tests\Fixtures\Legacy\Filament\Resources\ProductConfigurations\Pages\ListProductConfigurations;
+use Tests\Fixtures\Legacy\LoadsLegacyFixtures;
+
+uses(LoadsLegacyFixtures::class);
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create([
@@ -24,78 +27,29 @@ beforeEach(function () {
 });
 
 dataset('table-standards-pages', [
-    'catalog groups' => [
-        'page' => ListCatalogGroups::class,
-        'columns' => [
-            'id' => 'ID',
-            'name' => 'Name',
-            'slug' => 'Slug',
-            'parent.name' => 'Parent',
-            'is_active' => 'Active',
-            'sort_order' => 'Sort Order',
-            'path' => 'Path',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
-        'searchableColumns' => ['id', 'name', 'slug', 'parent.name', 'path'],
-        'filters' => [
-            'parent_id' => 'Parent',
-        ],
+    'groups' => [
+        'page' => ListGroups::class,
+        'columns' => ['id' => 'ID', 'name' => 'Name', 'legacy_id' => 'Legacy ID', 'parent.name' => 'Parent', 'configurator.name' => 'Configurator', 'sort_order' => 'Sort Order', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'searchableColumns' => ['id', 'name', 'legacy_id', 'parent.name'],
+        'filters' => ['parent_id' => 'Parent'],
     ],
     'config attributes' => [
-        'page' => ListConfigAttributes::class,
-        'columns' => [
-            'id' => 'ID',
-            'configProfile.name' => 'Configurator',
-            'label' => 'Name',
-            'input_type' => 'Input Type',
-            'sort_order' => 'Sort Order',
-            'is_required' => 'Required',
-            'segment_index' => 'Segment Index',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
-        'searchableColumns' => ['id', 'configProfile.name', 'label', 'input_type'],
-        'filters' => [
-            'config_profile_id' => 'Configurator',
-        ],
+        'page' => ListAttributes::class,
+        'columns' => ['id' => 'ID', 'key' => 'Key', 'label' => 'Label', 'options_count' => 'Options', 'configurator_attributes_count' => 'Used in configurators', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'searchableColumns' => ['id', 'key', 'label'],
+        'filters' => [],
     ],
     'config options' => [
-        'page' => ListConfigOptions::class,
-        'columns' => [
-            'id' => 'ID',
-            'label' => 'Name',
-            'code' => 'Code',
-            'attribute.label' => 'Attribute',
-            'configProfile.name' => 'Configurator',
-            'sort_order' => 'Sort Order',
-            'is_default' => 'Default',
-            'is_active' => 'Active',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
-        'searchableColumns' => ['id', 'label', 'code', 'attribute.label', 'configProfile.name'],
-        'filters' => [
-            'config_profile_id' => 'Configurator',
-            'attribute' => 'Attribute',
-        ],
+        'page' => ListOptions::class,
+        'columns' => ['id' => 'ID', 'code' => 'Code', 'attribute.label' => 'Attribute', 'value.label' => 'Value', 'configurator_options_count' => 'Local uses', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'searchableColumns' => ['id', 'code', 'attribute.label', 'value.label'],
+        'filters' => ['attribute_id' => 'Attribute'],
     ],
     'config profiles' => [
-        'page' => ListConfigProfiles::class,
-        'columns' => [
-            'id' => 'ID',
-            'productProfile.name' => 'Product',
-            'name' => 'Name',
-            'slug' => 'Slug',
-            'scope' => 'Scope',
-            'is_active' => 'Active',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
-        'searchableColumns' => ['id', 'productProfile.name', 'name', 'slug', 'scope'],
-        'filters' => [
-            'product_profile_id' => 'Product',
-        ],
+        'page' => ListConfigurators::class,
+        'columns' => ['id' => 'ID', 'name' => 'Name', 'groups_count' => 'Assigned groups', 'configurator_attributes_count' => 'Attributes', 'rules_count' => 'Rules', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'searchableColumns' => ['id', 'name'],
+        'filters' => [],
     ],
     'configuration parts' => [
         'page' => ListConfigurationParts::class,
@@ -188,24 +142,11 @@ dataset('table-standards-pages', [
             'product_profile_id' => 'Product',
         ],
     ],
-    'product profiles' => [
-        'page' => ListProductProfiles::class,
-        'columns' => [
-            'id' => 'ID',
-            'catalogGroup.name' => 'Category',
-            'name' => 'Name',
-            'product_code' => 'Product Code',
-            'slug' => 'Slug',
-            'short_label' => 'Short Label',
-            'is_active' => 'Active',
-            'sort_order' => 'Sort Order',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
-        'searchableColumns' => ['id', 'catalogGroup.name', 'name', 'product_code', 'slug', 'short_label'],
-        'filters' => [
-            'catalog_group_id' => 'Category',
-        ],
+    'products' => [
+        'page' => ListProducts::class,
+        'columns' => ['id' => 'ID', 'product_code' => 'Product Code', 'product_name' => 'Product Name', 'group.name' => 'Group', 'legacy_id' => 'Legacy ID', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'searchableColumns' => ['id', 'product_code', 'product_name', 'group.name', 'legacy_id'],
+        'filters' => ['group_id' => 'Group'],
     ],
 ]);
 

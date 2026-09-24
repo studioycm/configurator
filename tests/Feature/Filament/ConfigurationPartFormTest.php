@@ -1,12 +1,15 @@
 <?php
 
-use App\Filament\Resources\ConfigurationParts\Pages\CreateConfigurationPart;
-use App\Models\ConfigurationPart;
-use App\Models\Part;
-use App\Models\ProductConfiguration;
 use App\Models\User;
 use Filament\Forms\Components\Select;
 use Livewire\Livewire;
+use Tests\Fixtures\Legacy\Filament\Resources\ConfigurationParts\Pages\CreateConfigurationPart;
+use Tests\Fixtures\Legacy\LoadsLegacyFixtures;
+use Tests\Fixtures\Legacy\Models\ConfigurationPart;
+use Tests\Fixtures\Legacy\Models\Part;
+use Tests\Fixtures\Legacy\Models\ProductConfiguration;
+
+uses(LoadsLegacyFixtures::class);
 
 it('searches parts by name and saves the selected relationship', function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));

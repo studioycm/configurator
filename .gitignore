@@ -29,4 +29,7 @@ yarn-error.log
 /.blueprint
 
 /scripts/
-/docs/
+# Keep the catalog handoff trackable; other local documentation stays ignored.
+/docs/*
+!/docs/README.md
+!/docs/catalog/

@@ -1,13 +1,16 @@
 <?php
 
-use App\Filament\Pages\ConfigEngineDemo;
-use App\Models\ConfigAttribute;
-use App\Models\ConfigOption;
-use App\Models\ConfigProfile;
-use App\Models\OptionRule;
 use App\Models\User;
 use Filament\Forms\Components\Select;
 use Livewire\Livewire;
+use Tests\Fixtures\Legacy\Filament\Pages\ConfigEngineDemo;
+use Tests\Fixtures\Legacy\LoadsLegacyFixtures;
+use Tests\Fixtures\Legacy\Models\ConfigAttribute;
+use Tests\Fixtures\Legacy\Models\ConfigOption;
+use Tests\Fixtures\Legacy\Models\ConfigProfile;
+use Tests\Fixtures\Legacy\Models\OptionRule;
+
+uses(LoadsLegacyFixtures::class);
 
 it('recalculates dependent options across Livewire updates and context actions', function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));

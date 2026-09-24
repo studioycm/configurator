@@ -1,0 +1,103 @@
+<?php
+
+namespace Tests\Fixtures\Legacy\Filament\Resources\ConfigAttributes\Tables;
+
+use App\ConfigInputType;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Tests\Fixtures\Legacy\Models\ConfigAttribute;
+
+class ConfigAttributesTable
+{
+    public static function configure(Table $table): Table
+    {
+        return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('configProfile'))
+            ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->searchable(isIndividual: true, isGlobal: false),
+                TextColumn::make('configProfile.name')
+                    ->label('Configurator')
+                    ->searchable(isIndividual: true, isGlobal: false),
+                TextColumn::make('label')
+                    ->label('Name')
+                    ->description(fn (ConfigAttribute $record): string => collect([$record->name, $record->slug])->filter()->implode(' · '))
+                    ->searchable(isIndividual: true, isGlobal: false),
+                TextColumn::make('sort_order')
+                    ->label('Sort Order')
+                    ->numeric()
+                    ->sortable(),
+                IconColumn::make('is_required')
+                    ->label('Required')
+                    ->boolean(),
+                TextColumn::make('segment_index')
+                    ->label('Segment Index')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('input_type')
+                    ->label('Input Type')
+                    ->badge()
+                    ->formatStateUsing(fn (?ConfigInputType $state): string => $state?->getLabel() ?? 'Toggle')
+                    ->searchable(isIndividual: true, isGlobal: false),
+                TextColumn::make('ui_schema')
+                    ->label('UI Metadata')
+                    ->state(fn (ConfigAttribute $record): array => array_filter([
+                        $record->groupKey() ? 'Group: '.$record->groupKey() : null,
+                        $record->helpText() ? 'Help: '.$record->helpText() : null,
+                        'Auto select: '.($record->autoSelectFirstAllowed() ? 'Yes' : 'No'),
+                    ]))
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->limitList(3)
+                    ->expandableLimitedList(),
+                TextColumn::make('created_at')
+                    ->label('Created At')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')
+                    ->label('Updated At')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('config_profile_id')
+                    ->label('Configurator')
+                    ->relationship('configProfile', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('is_required')
+                    ->label('Required')
+                    ->options([
+                        '1' => 'Required',
+                        '0' => 'Optional',
+                    ]),
+                SelectFilter::make('input_type')
+                    ->label('Input Type')
+                    ->options(collect(ConfigInputType::cases())
+                        ->mapWithKeys(fn (ConfigInputType $case): array => [$case->value => $case->name])
+                        ->all())
+                    ->searchable(),
+            ])
+            ->filtersFormColumns(5)
+            ->deferFilters(false)
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->recordActions([
+                EditAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+}

@@ -1,5 +1,8 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
+@source '../../../../resources/views/components/catalog/**/*';
+@source '../../../../resources/views/livewire/catalog/**/*';
+
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 

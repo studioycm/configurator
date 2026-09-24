@@ -1,5 +1,8 @@
 <?php
 
+use App\Livewire\Catalog\GroupShow;
+use App\Livewire\Catalog\Index as CatalogIndex;
+use App\Livewire\Catalog\ProductShow;
 use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
@@ -8,6 +11,11 @@ use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
 Route::view('/', 'home')->name('home');
+
+Route::livewire('/catalog', CatalogIndex::class)->name('catalog.index');
+
+Route::livewire('/catalog/groups/{group}', GroupShow::class)->name('catalog.groups.show');
+Route::livewire('/catalog/products/{product}', ProductShow::class)->name('catalog.products.show');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])

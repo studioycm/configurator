@@ -1,15 +1,16 @@
 <?php
 
-use App\Models\CatalogGroup;
-use App\Models\ConfigProfile;
-use App\Models\ConfigurationPart;
-use App\Models\ConfigurationSpecification;
-use App\Models\Part;
-use App\Models\ProductConfiguration;
-use App\Models\ProductProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\Legacy\LoadsLegacyFixtures;
+use Tests\Fixtures\Legacy\Models\CatalogGroup;
+use Tests\Fixtures\Legacy\Models\ConfigProfile;
+use Tests\Fixtures\Legacy\Models\ConfigurationPart;
+use Tests\Fixtures\Legacy\Models\ConfigurationSpecification;
+use Tests\Fixtures\Legacy\Models\Part;
+use Tests\Fixtures\Legacy\Models\ProductConfiguration;
+use Tests\Fixtures\Legacy\Models\ProductProfile;
 
-uses(RefreshDatabase::class);
+uses(LoadsLegacyFixtures::class, RefreshDatabase::class);
 
 test('model relationships resolve correctly with explicit foreign/local keys', function () {
     $parentGroup = CatalogGroup::factory()->create();
