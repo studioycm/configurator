@@ -9,6 +9,7 @@ use App\Models\GroupFilter;
 use App\Models\Product;
 use App\Models\SubGroup;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -38,6 +39,7 @@ class CatalogDiscovery
                 return $preset->allowed_values !== [];
             });
             $settings = CatalogPolicy::resultSettings($group->result_settings);
+            $settings['card_properties'] = $settings['card_properties'] ?: $filters->keys()->all();
             $notices = [];
             $adjusted = array_diff(array_keys($raw), ['version', 'filters', 'precedence', 'subGroupId', 'page', 'perPage']) !== [];
             if (isset($raw['version']) && ! in_array($raw['version'], [1, '1'], true)) {
@@ -127,7 +129,7 @@ class CatalogDiscovery
                 }
             }
             $preset = $presets->get($presetId);
-            if ($preset && ($preset->force_hide || count($preset->allowed_values) === 1) && array_key_exists($preset->property_key, $selected)) {
+            if ($preset && count($preset->allowed_values) === 1 && array_key_exists($preset->property_key, $selected)) {
                 unset($selected[$preset->property_key]);
                 $precedence = array_values(array_diff($precedence, ['filter:'.$preset->property_key]));
                 $notices[] = 'The preset now controls '.$filters->get($preset->property_key)?->label.'.';
@@ -160,7 +162,7 @@ class CatalogDiscovery
             }
             $fields = [];
             foreach ($filters as $key => $filter) {
-                if ($vocabulary[$key] === [] || ($preset?->property_key === $key && ($preset->force_hide || count($preset->allowed_values) === 1))) {
+                if ($vocabulary[$key] === [] || ($preset?->property_key === $key && count($preset->allowed_values) === 1)) {
                     continue;
                 }
                 $others = $constraints;
@@ -180,10 +182,16 @@ class CatalogDiscovery
                 $notices[] = 'The requested page is no longer available. Showing page 1.';
                 $adjusted = true;
             }
-            $products = $query->orderBy('product_code')->orderBy('id')->paginate($perPage, ['id', 'product_code', 'properties'], page: $page, total: $total);
+            $showProducts = $settings['max_results'] === 'all' || $total <= $settings['max_results'];
+            $products = $showProducts
+                ? $query->orderBy('product_code')->orderBy('id')->paginate($perPage, ['id', 'product_code', 'properties'], page: $page, total: $total)
+                : new LengthAwarePaginator([], $total, $perPage, $page);
             $state = new CatalogDiscoveryState($selected, $replayed['kept'], $presetId, $page, $perPage);
 
-            return new CatalogDiscoveryResult($state, $fields, $presets->map(fn (SubGroup $item): array => ['id' => $item->id, 'label' => $item->label])->values()->all(), $products, array_values(array_unique($notices)), $settings, $adjusted || ($action === null && $raw !== [] && $raw != $state->toArray()));
+            return new CatalogDiscoveryResult($state, $fields, $presets->map(fn (SubGroup $item): array => [
+                'id' => $item->id, 'label' => $item->label,
+                'property_label' => $filters->get($item->property_key)?->label ?? str_replace('_', ' ', $item->property_key),
+            ])->values()->all(), $products, array_values(array_unique($notices)), $settings, $adjusted || ($action === null && $raw !== [] && $raw != $state->toArray()), $showProducts);
         });
     }
 

@@ -73,11 +73,25 @@ class GroupForm
                     Select::make('property_key')->label('Product property')->options($properties)->required()->searchable()->live(),
                     Select::make('allowed_values')->label('Allowed source values')->multiple()->required()->minItems(1)->searchable()
                         ->options(fn (Get $get, ?Group $record): array => self::valueOptions($record, $get('property_key')))
-                        ->helperText('A property can be used here without adding it as a visible filter.'),
-                    Toggle::make('force_hide')->label('Hide this property’s filter')->default(false)
-                        ->helperText('One allowed value hides the filter automatically. Multiple values keep it visible unless this is enabled. No effect if the property has no filter.'),
+                        ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
+                        ->helperText('One available option hides this property’s filter automatically; multiple options keep it visible. A preset can also use a property without a filter.')
+                        ->columnSpanFull(),
                 ])->columns(2)->columnSpanFull(),
             ])->columnSpanFull(),
+            Section::make('Product cards')->schema([
+                Select::make('catalog_settings.result_settings.card_properties')->label('Properties to display')->multiple()->searchable()
+                    ->options($properties)->default([])->placeholder('Use group filter properties')
+                    ->helperText('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Values appear inline, separated by commas.')
+                    ->columnSpanFull(),
+                Select::make('catalog_settings.result_settings.cards_per_row')->label('Cards per row')
+                    ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
+                    ->default(4)->required()->selectablePlaceholder(false)
+                    ->helperText('Desktop columns. Smaller screens use fewer columns.'),
+                Select::make('catalog_settings.result_settings.max_results')->label('Maximum results before showing cards')
+                    ->options(['all' => 'All'] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
+                    ->default('all')->required()->selectablePlaceholder(false)
+                    ->helperText('All shows cards immediately. A number shows cards only when the matching total is at or below that number.'),
+            ])->columns(2)->columnSpanFull(),
             Section::make('Results')->schema([
                 TextInput::make('catalog_settings.result_settings.default_page_size')->label('Default products per page')->integer()->required()->default(10)->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE),
                 Toggle::make('catalog_settings.result_settings.allow_page_size_change')->label('Let visitors change page size')->default(false)->live(),
@@ -120,7 +134,7 @@ class GroupForm
                 return ['id' => $filter->id, 'property_key' => $filter->property_key, 'label' => $filter->label,
                     'values' => array_map(fn (string $value): array => ['value' => $value, 'label' => $filter->value_labels[$value] ?? ''], $values)];
             })->all(),
-            'sub_groups' => $record->subGroups()->orderBy('sort_order')->orderBy('id')->get()->map(fn (SubGroup $preset): array => $preset->only(['id', 'label', 'property_key', 'allowed_values', 'force_hide']))->all(),
+            'sub_groups' => $record->subGroups()->orderBy('sort_order')->orderBy('id')->get()->map(fn (SubGroup $preset): array => $preset->only(['id', 'label', 'property_key', 'allowed_values']))->all(),
             'result_settings' => $settings,
         ];
     }

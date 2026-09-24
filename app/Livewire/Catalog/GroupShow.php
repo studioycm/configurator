@@ -44,7 +44,6 @@ class GroupShow extends Component
     public function selectSubGroup(?int $subGroupId): void
     {
         $this->settle('subgroup', $subGroupId);
-        $this->dispatch('catalog-focus-criteria');
     }
 
     public function clearFilters(): void

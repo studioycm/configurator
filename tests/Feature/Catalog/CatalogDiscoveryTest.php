@@ -58,17 +58,29 @@ test('preset is atomic in precedence and clears a hidden manual selection', func
     expect($result->products->pluck('product_code')->all())->toBe(['C'])->and($result->state->subGroupId)->toBe($preset->id);
 });
 
-test('visible multi value presets retain compatible choices while forced hiding clears them', function () {
+test('multi value presets keep their filter and compatible choices even with a legacy hide flag', function (bool $forceHide) {
     $group = discoveryFixture();
-    $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['16', '25'], 'force_hide' => false]);
+    $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['16', '25'], 'force_hide' => $forceHide]);
     $result = discover($group, [], 'filter', ['Working_Pressure', '16']);
     $result = discover($group, $result->state->toArray(), 'subgroup', $preset->id);
-    expect($result->state->filters)->toBe(['Working_Pressure' => '16']);
-    $preset->update(['force_hide' => true]);
+    expect($result->state->filters)->toBe(['Working_Pressure' => '16'])
+        ->and(array_column($result->fields, 'key'))->toContain('Working_Pressure')
+        ->and($result->products->pluck('product_code')->all())->toBe(['B']);
     $result = discover($group, $result->state->toArray());
-    expect($result->state->filters)->toBe([])->and($result->products->total())->toBe(3);
+    expect($result->state->filters)->toBe(['Working_Pressure' => '16'])
+        ->and(array_column($result->fields, 'key'))->toContain('Working_Pressure');
     $result = discover($group, $result->state->toArray(), 'reset');
     expect(array_column($result->fields, 'key'))->toContain('Working_Pressure')->and($result->state->filters)->toBe([]);
+})->with([false, true]);
+
+test('a preset with only one remaining source option hides its property filter', function () {
+    $group = discoveryFixture();
+    $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['25', 'removed']]);
+
+    $result = discover($group, [], 'subgroup', $preset->id);
+
+    expect(array_column($result->fields, 'key'))->not->toContain('Working_Pressure');
+    expect($result->products->pluck('product_code')->all())->toBe(['A', 'C']);
 });
 
 test('preset only properties, clear filters and toggling use distinct boundaries', function () {

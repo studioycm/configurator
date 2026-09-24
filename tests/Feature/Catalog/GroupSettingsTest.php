@@ -100,6 +100,42 @@ test('group settings authorize before accepting a submitted draft', function () 
     expect(fn () => app(SaveGroupSettings::class)->handle($outsider, $group, groupSettingsInput()))->toThrow(AuthorizationException::class);
 });
 
+test('card display settings save typed values and survive a pagination-only update', function (int|string $maximum) {
+    $group = Group::factory()->create();
+    $input = groupSettingsInput();
+    $input['result_settings'] = array_replace($input['result_settings'], ['card_properties' => ['Model', 'Working_Pressure'], 'cards_per_row' => '3', 'max_results' => $maximum]);
+
+    app(SaveGroupSettings::class)->handle($this->actor, $group, $input);
+    app(SaveGroupSettings::class)->handle($this->actor, $group, groupSettingsInput(['result_settings' => [
+        'default_page_size' => 2, 'allow_page_size_change' => false, 'page_size_options' => [1, 2, 10],
+    ]]));
+
+    expect($group->fresh()->result_settings)->toMatchArray([
+        'card_properties' => ['Model', 'Working_Pressure'], 'cards_per_row' => 3,
+        'max_results' => $maximum === 'all' ? 'all' : (int) $maximum, 'default_page_size' => 2,
+    ]);
+})->with(['all', '1', '24']);
+
+test('invalid card display settings reject the entire draft', function (string $key, mixed $value) {
+    $group = Group::factory()->create();
+    $original = $group->fresh()->getAttributes();
+    $input = groupSettingsInput();
+    $input['result_settings'][$key] = $value;
+
+    expect(fn () => app(SaveGroupSettings::class)->handle($this->actor, $group, $input))->toThrow(ValidationException::class);
+
+    expect($group->fresh()->getAttributes())->toBe($original);
+})->with([
+    'unknown property' => ['card_properties', ['parts->Part1']],
+    'duplicate property' => ['card_properties', ['Model', 'Model']],
+    'properties must be a list' => ['card_properties', 'Model'],
+    'zero columns' => ['cards_per_row', 0],
+    'too many columns' => ['cards_per_row', 7],
+    'zero threshold' => ['max_results', 0],
+    'threshold above 24' => ['max_results', 25],
+    'invalid threshold' => ['max_results', 'unlimited'],
+]);
+
 test('swapping filter properties keeps ids without transient unique conflicts', function () {
     $group = Group::factory()->create();
     Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10', 'Connection_Type' => 'Flange']]);

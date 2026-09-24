@@ -49,12 +49,16 @@ class SaveGroupSettings
                 'settings.sub_groups.*.property_key' => ['required', Rule::in($keys)],
                 'settings.sub_groups.*.allowed_values' => ['required', 'array', 'list', 'min:1'],
                 'settings.sub_groups.*.allowed_values.*' => ['required', 'string'],
-                'settings.sub_groups.*.force_hide' => ['required', 'boolean'],
-                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options'],
+                'settings.sub_groups.*.force_hide' => ['sometimes', 'boolean'],
+                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,cards_per_row,max_results'],
                 'settings.result_settings.default_page_size' => ['required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
                 'settings.result_settings.allow_page_size_change' => ['required', 'boolean'],
                 'settings.result_settings.page_size_options' => ['present', 'array', 'list'],
                 'settings.result_settings.page_size_options.*' => ['required', 'integer', 'distinct', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
+                'settings.result_settings.card_properties' => ['sometimes', 'array', 'list', 'max:'.count($keys)],
+                'settings.result_settings.card_properties.*' => ['required', 'string', 'distinct', Rule::in($keys)],
+                'settings.result_settings.cards_per_row' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_CARDS_PER_ROW],
+                'settings.result_settings.max_results' => ['sometimes', 'required', Rule::in(['all', ...range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)])],
             ])->validate()['settings'];
             if ($validated['filters'] !== [] || $validated['sub_groups'] !== []) {
                 $this->integrity->assertLeaf($record);
@@ -76,10 +80,12 @@ class SaveGroupSettings
                     }
                 }
             }
-            $results = $validated['result_settings'];
+            $results = array_replace(CatalogPolicy::resultSettings($record->result_settings), $validated['result_settings']);
             $results['default_page_size'] = (int) $results['default_page_size'];
             $results['allow_page_size_change'] = (bool) $results['allow_page_size_change'];
             $results['page_size_options'] = array_map('intval', $results['page_size_options']);
+            $results['cards_per_row'] = (int) $results['cards_per_row'];
+            $results['max_results'] = $results['max_results'] === 'all' ? 'all' : (int) $results['max_results'];
             if ($results['allow_page_size_change'] && ! in_array($results['default_page_size'], $results['page_size_options'], true)) {
                 $errors['settings.result_settings.page_size_options'] = 'Include the default page size in the available choices.';
             }
@@ -117,7 +123,7 @@ class SaveGroupSettings
             }
             foreach ($validated['sub_groups'] as $order => $row) {
                 $preset = isset($row['id']) ? $presets[$row['id']] : new SubGroup(['group_id' => $record->id]);
-                $preset->fill(['label' => $row['label'], 'property_key' => $row['property_key'], 'allowed_values' => $row['allowed_values'], 'force_hide' => (bool) $row['force_hide'], 'sort_order' => $order]);
+                $preset->fill(['label' => $row['label'], 'property_key' => $row['property_key'], 'allowed_values' => $row['allowed_values'], 'force_hide' => false, 'sort_order' => $order]);
                 if ($preset->isDirty()) {
                     $preset->save();
                 }

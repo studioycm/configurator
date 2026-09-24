@@ -34,6 +34,7 @@ class EditGroup extends EditRecord
 
     protected function afterSave(): void
     {
+        $this->getRecord()->refresh();
         $this->fillForm();
     }
 

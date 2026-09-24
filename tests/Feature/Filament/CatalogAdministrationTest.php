@@ -10,6 +10,7 @@ use App\Filament\Resources\Products\ProductResource;
 use App\Models\Group;
 use App\Models\GroupFilter;
 use App\Models\Product;
+use App\Models\SubGroup;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
@@ -71,6 +72,50 @@ test('new metadata rows keep their saved identities on a second editor save', fu
     $this->travel(1)->minutes();
     $editor->call('save')->assertHasNoFormErrors();
     expect($group->filters()->sole()->getAttributes())->toBe($saved);
+});
+
+test('the group editor saves card settings and automatically controls subgroup filter visibility', function () {
+    $group = Group::factory()->create();
+    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['10'], 'force_hide' => true]);
+
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id])
+        ->assertDontSee('Hide this property’s filter')
+        ->fillForm([
+            'catalog_settings.result_settings.card_properties' => ['Working_Pressure'],
+            'catalog_settings.result_settings.cards_per_row' => '3',
+            'catalog_settings.result_settings.max_results' => '24',
+        ])->call('save')->assertHasNoFormErrors();
+
+    expect($group->fresh()->result_settings)->toMatchArray([
+        'card_properties' => ['Working_Pressure'], 'cards_per_row' => 3, 'max_results' => 24,
+    ]);
+    expect($preset->fresh()->force_hide)->toBeFalse();
+    expect($preset->fresh()->allowed_values)->toBe(['10']);
+    $editor->assertSet('data.catalog_settings.result_settings.card_properties', ['Working_Pressure'])
+        ->assertSet('data.catalog_settings.result_settings.cards_per_row', 3)
+        ->assertSet('data.catalog_settings.result_settings.max_results', 24)
+        ->call('save')->assertHasNoFormErrors();
+    expect($group->fresh()->result_settings['card_properties'])->toBe(['Working_Pressure']);
+});
+
+test('saving default card settings keeps them linked to the group filters', function () {
+    $group = Group::factory()->create();
+    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10', 'Model' => 'D060']]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure']);
+
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id])
+        ->assertSet('data.catalog_settings.result_settings.card_properties', [])
+        ->call('save')->assertHasNoFormErrors();
+    expect($group->fresh()->result_settings['card_properties'])->toBe([]);
+
+    $editor->fillForm(['catalog_settings.result_settings.card_properties' => ['Model']])
+        ->call('save')->assertHasNoFormErrors();
+    expect($group->fresh()->result_settings['card_properties'])->toBe(['Model']);
+
+    $editor->fillForm(['catalog_settings.result_settings.card_properties' => []])
+        ->call('save')->assertHasNoFormErrors();
+    expect($group->fresh()->result_settings['card_properties'])->toBe([]);
 });
 
 test('metadata failure preserves the submitted draft and rolls back details too', function () {
