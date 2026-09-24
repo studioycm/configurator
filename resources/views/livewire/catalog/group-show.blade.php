@@ -7,13 +7,19 @@
     @else
         <section aria-label="Product filters" class="mt-6 rounded-xl border border-zinc-300 p-4 dark:border-zinc-700">
             @if ($result->subGroups !== [])
-                <fieldset class="mb-6 min-w-0">
-                    <legend class="mb-2 text-xs font-semibold">{{ __(':property sub-group', ['property' => implode(', ', array_unique(array_column($result->subGroups, 'property_label')))]) }}</legend>
+                <fieldset class="mb-6 min-w-0" aria-labelledby="catalog-subgroup-title-{{ $group->id }}">
+                    <legend class="mb-2 text-xs font-semibold">
+                        <span class="inline-flex items-center gap-2">
+                            <span id="catalog-subgroup-title-{{ $group->id }}">{{ __(':property sub-group', ['property' => implode(', ', array_unique(array_column($result->subGroups, 'property_label')))]) }}</span>
+                            <button type="button" wire:click="selectSubGroup(null)" aria-label="{{ __('Clear subgroup') }}" @disabled($result->state->subGroupId === null)
+                                class="min-h-6 shrink-0 rounded border border-zinc-300 px-1.5 py-0.5 text-xs font-normal leading-4 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:cursor-default disabled:opacity-40 dark:border-zinc-600 dark:hover:bg-zinc-800">{{ __('Clear') }}</button>
+                        </span>
+                    </legend>
                     <div class="flex flex-wrap gap-2">
-                        @foreach ([['id' => null, 'label' => __('All')], ...$result->subGroups] as $preset)
+                        @foreach ($result->subGroups as $preset)
                             @php($selected = $result->state->subGroupId === $preset['id'])
-                            <button type="button" wire:key="preset-{{ $group->id }}-{{ $preset['id'] ?? 'all' }}"
-                                wire:click="selectSubGroup({{ $selected || $preset['id'] === null ? 'null' : $preset['id'] }})"
+                            <button type="button" wire:key="preset-{{ $group->id }}-{{ $preset['id'] }}"
+                                wire:click="selectSubGroup({{ $selected ? 'null' : $preset['id'] }})"
                                 aria-pressed="{{ $selected ? 'true' : 'false' }}"
                                 @class(['inline-flex min-h-10 max-w-full items-center gap-2 rounded-full border px-4 py-2 text-left text-sm leading-5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600',
                                     'border-teal-700 bg-teal-700 text-white dark:border-teal-300 dark:bg-teal-300 dark:text-zinc-950' => $selected,

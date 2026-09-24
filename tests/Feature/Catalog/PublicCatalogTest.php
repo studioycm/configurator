@@ -124,7 +124,7 @@ test('default card properties follow the group filters and their order', functio
         ->assertSee('Card-only model, 25 bar')->assertDontSee('Flange');
 })->with(['unset' => [[]], 'empty selection' => [['card_properties' => []]]]);
 
-test('subgroup buttons expose one active choice and can return to all products', function () {
+test('subgroup buttons expose one active choice and a clear action returns to all products', function () {
     $group = Group::factory()->create();
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Pressure']);
     Product::factory()->count(2)->for($group)->sequence(
@@ -138,11 +138,12 @@ test('subgroup buttons expose one active choice and can return to all products',
         @$document->loadHTML($html);
         $xpath = new DOMXPath($document);
 
-        return array_map(fn (DOMNode $label): string => trim($label->textContent), iterator_to_array($xpath->query('//fieldset[legend="Pressure sub-group"]//button[@aria-pressed="true"]/span[1]')));
+        return array_map(fn (DOMNode $label): string => trim($label->textContent), iterator_to_array($xpath->query('//fieldset[legend//span[text()="Pressure sub-group"]]//button[@aria-pressed="true"]/span[1]')));
     };
 
-    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee('2 products')->assertSee('Filters')->assertDontSee('Find a product');
-    expect($activeButtons($page->html()))->toBe(['All']);
+    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee('2 products')->assertSee('Filters')->assertDontSee('Find a product')
+        ->assertSeeHtml('aria-label="Clear subgroup"');
+    expect($activeButtons($page->html()))->toBe([]);
 
     $page->call('selectSubGroup', $low->id)->assertSee('1 product');
     expect($activeButtons($page->html()))->toBe(['Low pressure']);
@@ -151,7 +152,7 @@ test('subgroup buttons expose one active choice and can return to all products',
     expect($activeButtons($page->html()))->toBe(['High pressure']);
 
     $page->call('selectSubGroup', null)->assertSee('2 products');
-    expect($activeButtons($page->html()))->toBe(['All']);
+    expect($activeButtons($page->html()))->toBe([]);
 });
 
 test('a result threshold reveals cards at the boundary and hides them again when filters are cleared', function () {
