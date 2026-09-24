@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\CatalogDiscovery;
 use Database\Seeders\D060FilterSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 test('mysql scalar json facets distinguish strings case blanks and json types', function () {
     $group = Group::factory()->create();
@@ -29,7 +30,7 @@ test('mysql scalar json facets distinguish strings case blanks and json types', 
     }
     expect(count($queries))->toBeLessThanOrEqual(10);
     foreach ($result->products->items() as $product) {
-        expect(array_keys($product->getAttributes()))->not->toContain('properties', 'parts', 'extra_data');
+        expect(array_keys($product->getAttributes()))->toBe(['id', 'product_code', 'properties']);
     }
 });
 
@@ -62,11 +63,12 @@ test('profiles the audited corpus with bounded queries selected card columns and
         $result = $service->prepare($group->id, $state);
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
-        $cardQuery = collect($queries)->first(fn (array $query): bool => str_contains($query['query'], 'as `pressure`'));
+        $cardQuery = collect($queries)->first(fn (array $query): bool => str_starts_with($query['query'], 'select `id`, `product_code`, `properties`'));
         expect($cardQuery)->not->toBeNull()->and(count($queries))->toBeLessThanOrEqual(32)->and($result->products->count())->toBe(min(10, $result->products->total()));
         $profile['samples'][$name] = ['query_count' => count($queries), 'sql_ms' => array_sum(array_column($queries, 'time')), 'elapsed_ms' => (hrtime(true) - $started) / 1e6, 'total' => $result->products->total(), 'card_json_bytes' => strlen($result->products->getCollection()->toJson()), 'explain' => DB::select('EXPLAIN '.$cardQuery['query'], $cardQuery['bindings'])];
     }
     $response = $this->get(route('catalog.groups.show', $group))->assertOk();
     $profile['initial_html_bytes'] = strlen($response->getContent());
-    file_put_contents(base_path('.superpowers/sdd/IMPLEMENTATION_PLAN/T06-mysql-profile.json'), json_encode($profile, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    File::ensureDirectoryExists(storage_path('framework/testing'));
+    File::put(storage_path('framework/testing/catalog-discovery-profile.json'), json_encode($profile, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 });

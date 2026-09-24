@@ -180,7 +180,7 @@ class CatalogDiscovery
                 $notices[] = 'The requested page is no longer available. Showing page 1.';
                 $adjusted = true;
             }
-            $products = $query->orderBy('product_code')->orderBy('id')->paginate($perPage, ['id', 'product_code', 'product_name', 'properties->Working_Pressure as pressure', 'properties->Connection_Type as connection'], page: $page, total: $total);
+            $products = $query->orderBy('product_code')->orderBy('id')->paginate($perPage, ['id', 'product_code', 'properties'], page: $page, total: $total);
             $state = new CatalogDiscoveryState($selected, $replayed['kept'], $presetId, $page, $perPage);
 
             return new CatalogDiscoveryResult($state, $fields, $presets->map(fn (SubGroup $item): array => ['id' => $item->id, 'label' => $item->label])->values()->all(), $products, array_values(array_unique($notices)), $settings, $adjusted || ($action === null && $raw !== [] && $raw != $state->toArray()));

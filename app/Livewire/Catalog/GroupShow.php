@@ -81,6 +81,6 @@ class GroupShow extends Component
             $this->settle();
         }
 
-        return view('livewire.catalog.group-show', ['group' => $group, 'children' => $children, 'result' => $this->prepared])->title($group->name);
+        return view('livewire.catalog.group-show', ['group' => $group, 'ancestors' => $group->ancestorTrail(), 'children' => $children, 'result' => $this->prepared])->title($group->name);
     }
 }

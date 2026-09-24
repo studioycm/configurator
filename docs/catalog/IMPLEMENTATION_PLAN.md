@@ -181,7 +181,7 @@ Five required failure cases: owned blanks/conflicting identities (T04); malforme
 - [x] Prepare and rehearse matching local code/database activation and reversal through process-only overrides, archive queue/storage data and restore-test backups while preserving the current installation.
 - [x] Finalize deployment write freeze/delta handling, queue/storage disposition and matching release revision after source inspection. The user authorized the development cutover on 2026-09-24: maintenance mode, site-specific worker stop, repeated retained-source check, separate database and Redis namespaces, immutable code, restored legacy copy, activation and live verification completed. Client production content and a fresh interactive sign-in remain unchecked above.
 
-**Exit M5:** release and rollback evidence, not automatic deployment. Forge deploy-on-push is disabled.
+**Exit M5:** release and rollback evidence. The subsequent user-authorized development workflow promotes `master` and uses Forge deploy-on-push, confirmed enabled on 2026-09-24.
 
 ## 5. Generators and cross-task interfaces
 
@@ -382,3 +382,11 @@ The user authorized reusing the actual preserved legacy library. A private read-
 Local apply created 13 Attributes, 25 Options and 25 Values; repeat review proposes zero new records. Local D060 remains unassigned. Targeted SQLite and isolated MySQL import/canonical tests: **14 passed / 98 assertions** on each. Full SQLite suite: **253 passed / 1428 assertions**. Pint, Vite build and diff checks passed. Private source exports and reports are excluded from Git.
 
 Application commit `92290a4` deployed as Forge release `78452711`, finished at 04:15:25 UTC; GitHub check `35954825976` passed. Remote import into `ari_configurator_rebuild` created the same 13/25/25 records, with zero new records on repeat review and ten Options pending. A fresh private pre-import dump is retained alongside the source export. Browser confirmed all seven public filter columns have full-width choices; the local admin shows the imported Attribute/Value/Option relationships. Remote admin requires sign-in in this browser, so its new rows were verified through the database. Remote D060 had a newer `test d060` Configurator assignment dated 03:47:03 UTC, before this import; it was preserved. No Configurator inclusions, defaults, rules or Group assignments were written by this import.
+
+### User amendment — Product Code cards and automatic deployment (2026-09-24)
+
+The user confirmed automatic deployment on push; a fresh Forge API read returned `quick_deploy: true`. Use the existing `master` push workflow without triggering an extra manual deployment.
+
+Group cards now use Product Code as the heading, then the real main/actual Group names and all populated registered property values without labels. Values follow the stable registry order and remain escaped; blanks/non-string values are omitted and literal zero survives. The paginated query selects only code, ID and properties; parts/extra data remain excluded, and public Livewire state still contains discovery criteria only. The Group trail is loaded once per page and shared by breadcrumb/cards.
+
+Verification: public/discovery SQLite tests **18 passed / 99 assertions**; isolated MySQL card/discovery tests **10 passed / 88 assertions**. Actual corpus query counts remain bounded at 13 initial / 22 filtered / 27 heavily filtered; ten initial cards contain 6,046 bytes of server-side JSON. Updated the historical MySQL profiling test to write under `storage/framework/testing/` so it works from the primary checkout. Pint, Vite build, diff check and local browser review passed. D060 currently lacks a parent; the question about adding Combination valves and optionally renaming D060 is pending. No Group metadata was invented or modified during the card implementation.

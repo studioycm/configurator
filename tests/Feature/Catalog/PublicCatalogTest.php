@@ -23,7 +23,7 @@ test('catalog navigation follows actual ancestors and branches without descendan
     $product = Product::factory()->for($leaf)->create(['product_name' => 'Actual product']);
     $this->get(route('catalog.index'))->assertSee('Actual root')->assertDontSee('Actual leaf');
     $this->get(route('catalog.groups.show', $root))->assertSee('Actual leaf')->assertDontSee('Actual product');
-    $this->get(route('catalog.groups.show', $leaf))->assertSeeInOrder(['Actual root', 'Actual leaf', 'Actual product']);
+    $this->get(route('catalog.groups.show', $leaf))->assertSeeInOrder(['Actual root', 'Actual leaf', $product->product_code]);
     $this->get(route('catalog.products.show', $product))->assertSeeInOrder(['Actual root', 'Actual leaf', 'Actual product']);
 });
 
@@ -54,13 +54,34 @@ test('unknown catalog records return not found', function () {
     $this->get('/catalog/products/999999')->assertNotFound();
 });
 
-test('product cards preserve literal zero values and distinguish blanks', function () {
-    $product = (object) ['id' => 1, 'product_code' => 'ZERO', 'product_name' => '0', 'pressure' => '0', 'connection' => '0'];
-    $html = view('components.catalog.product-card', compact('product'))->render();
-    expect($html)->toContain('<dd>0</dd>')->not->toContain('—')->not->toContain('Unnamed product');
-    $product->pressure = '';
-    $product->connection = null;
-    expect(view('components.catalog.product-card', compact('product'))->render())->toContain('<dd>—</dd>');
+test('product cards preserve literal zero values and omit blank or malformed properties', function () {
+    $group = Group::factory()->make(['name' => 'Actual leaf']);
+    $product = Product::factory()->make(['id' => 1, 'product_code' => 'ZERO', 'properties' => [
+        'Working_Pressure' => '0', 'Connection_Type' => '', 'Connection_Size' => null, 'Model' => ['invalid'],
+    ]]);
+    $html = view('components.catalog.product-card', compact('product', 'group'))->render();
+    expect($html)->toContain('>0</li>')->not->toContain('—')->not->toContain('invalid')->not->toContain('<dt>');
+});
+
+test('group cards lead with code then real Group hierarchy and all property values without labels', function () {
+    $root = Group::factory()->create(['name' => 'Main family']);
+    $leaf = Group::factory()->for($root, 'parent')->create(['name' => 'Product series']);
+    $product = Product::factory()->for($leaf)->create([
+        'product_code' => '000123', 'product_name' => 'Former card title',
+        'properties' => ['C' => '<final dimension>', 'Model' => 'Model 1', 'Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange'],
+        'parts' => ['Part1' => 'Private part'], 'extra_data' => ['internal' => 'Private extra'],
+    ]);
+    $response = $this->get(route('catalog.groups.show', $leaf))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $card = $xpath->query('//article')->item(0);
+    expect($xpath->evaluate('string(.//h3)', $card))->toBe('000123');
+    expect($card->textContent)->toContain('Main family', 'Product series', '25 bar', 'Flange', 'Model 1', '<final dimension>')
+        ->not->toContain('Former card title', 'Working_Pressure', 'Connection_Type', 'Private part', 'Private extra');
+    $response->assertSee('<final dimension>')->assertDontSee('<final dimension>', false);
+    expect($xpath->query('.//dt', $card)->length)->toBe(0);
+    expect($xpath->query('.//li', $card)->length)->toBe(4);
 });
 
 test('the running catalog does not load retired POC routes or schema', function () {

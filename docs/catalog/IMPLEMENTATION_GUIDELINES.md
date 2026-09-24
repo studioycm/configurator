@@ -18,7 +18,7 @@ Use these instructions with the [task plan](IMPLEMENTATION_PLAN.md) and the task
 | Group | A real tree node. Parents navigate; leaf Groups contain Products and may explicitly reference one Configurator. No ancestor inheritance. Several leaves can share a Configurator. |
 | SubGroup | Optional named preset of one Product property's allowed values, configured on the leaf Group. It is not a second tree or duplicated Products. |
 | Product | One source product-code row. New internal ID plus legacy identity/reference. Fixed data belongs in core columns and `properties`, `parts`, `extra_data`. |
-| Product labels | Public: `product_name`. Admin/SQL search/sort: `product_code`. `name` is an Eloquent accessor only; never query a nonexistent SQL `name` column. |
+| Product labels | Group cards lead with `product_code` (user amendment, 2026-09-24), then real main/actual Group names and unlabelled property values. The Product detail page still shows `product_name` and code separately. Admin/SQL search/sort: `product_code`. `name` is an Eloquent accessor only; never query a nonexistent SQL `name` column. |
 | Attribute / Value / Option | Canonical Attribute + Value is an Option. Its manual code is exactly two ASCII characters `[A-Za-z0-9]`, globally case-sensitive unique. Reuse the canonical Option across Configurators. |
 | ConfiguratorAttribute / ConfiguratorOption | Local inclusion, input type, labels/help, option order, stored default, visibility/availability flags. Canonical identity/code does not move into these rows. |
 | Orders and default | Attribute display order, code order and option display order are independent. First inclusion establishes the stored default once. Reordering never changes it. |

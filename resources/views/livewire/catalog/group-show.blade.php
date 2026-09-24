@@ -1,5 +1,5 @@
 <div data-catalog-state="{{ json_encode($result?->state->toArray()) }}" data-catalog-repair="{{ $result?->repaired ? '1' : '0' }}" data-catalog-url="{{ route('catalog.groups.show', ['group' => $group, 'd' => $result?->state->toArray()]) }}" x-data x-on:catalog-focus-criteria.window="$nextTick(() => $refs.criteria?.focus())">
-    <x-catalog.breadcrumbs :group="$group" />
+    <x-catalog.breadcrumbs :group="$group" :ancestors="$ancestors" />
     <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{{ $group->name }}</h1>
     @if ($group->description)<p class="mt-4 max-w-3xl leading-7 text-zinc-600 dark:text-zinc-400">{{ $group->description }}</p>@endif
     @if ($children->isNotEmpty())
@@ -45,7 +45,7 @@
                 <p>{{ $result->state->filters !== [] || $result->state->subGroupId !== null ? __('No products match these choices. Clear filters or Reset all to try again.') : __('There are no products in this group yet.') }}</p>
             @else
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    @foreach ($result->products as $product)<div wire:key="product-{{ $product->id }}"><x-catalog.product-card :product="$product" /></div>@endforeach
+                    @foreach ($result->products as $product)<div wire:key="product-{{ $product->id }}"><x-catalog.product-card :product="$product" :group="$group" :main-group="$ancestors->first()" /></div>@endforeach
                 </div>
                 <x-catalog.pagination :products="$result->products" />
             @endif

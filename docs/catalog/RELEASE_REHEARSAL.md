@@ -1,6 +1,6 @@
 # Catalog rebuild — deployment and rehearsal evidence
 
-Updated 2026-09-24. **The user-authorized development promotion is live.** Current application commit `92290a41f88c9a84d0be3093bd895eab7677acba` is deployed by Forge release `78452711` (finished 04:15:25 UTC), following the original promotion below. The original application and data remain recoverable. Preview & Test remains a placeholder. The actual legacy library is partially imported; ten conflicting-code Options and the real Configurator definition remain pending. Local D060 is unassigned; remote D060 has a newer `test d060` assignment created before the library import and preserved by it.
+Updated 2026-09-24. **The user-authorized development promotion is live.** The library-import baseline is application commit `92290a41f88c9a84d0be3093bd895eab7677acba`, Forge release `78452711` (finished 04:15:25 UTC), following the original promotion below. Subsequent UI updates use automatic deployment from primary `master`; the user confirmed this workflow and a fresh Forge read verified `quick_deploy: true`. The original application and data remain recoverable. Preview & Test remains a placeholder. The actual legacy library is partially imported; ten conflicting-code Options and the real Configurator definition remain pending. Local D060 is unassigned; remote D060 has a newer `test d060` assignment created before the library import and preserved by it.
 
 ## Full-width filters and legacy library update
 
@@ -81,4 +81,4 @@ Private evidence resides under Git-ignored `storage/app/imports/ari/rehearsal/` 
 3. Remote inspection, backup/restore verification, separate target migration/import, worker/storage disposition, immutable build and the explicitly authorized development switch are complete above. Future populated retained-package content requires a new reviewed retention map; the local transfer guard remains unchanged.
 4. Preserve old code/database/storage as a matching set. After new writes begin, rollback requires reviewed reconciliation of those writes, not an automatic switch back.
 
-Forge deploy-on-push is stated disabled in the handoff. No Forge configuration was changed or deployment performed during this rehearsal. Real parent metadata, initial SubGroups and approved canonical meanings/codes remain client content inputs.
+The original handoff/rehearsal had deploy-on-push disabled. The subsequent user-authorized primary development workflow now has it enabled. Real parent metadata, initial SubGroups and approved canonical meanings/codes remain client content inputs.
