@@ -192,7 +192,7 @@ dataset('table-standards-pages', [
         'page' => ListProductProfiles::class,
         'columns' => [
             'id' => 'ID',
-            'catalogGroup.name' => 'Category',
+            'catalogGroup.name' => 'Group',
             'name' => 'Name',
             'product_code' => 'Product Code',
             'slug' => 'Slug',
@@ -204,7 +204,7 @@ dataset('table-standards-pages', [
         ],
         'searchableColumns' => ['id', 'catalogGroup.name', 'name', 'product_code', 'slug', 'short_label'],
         'filters' => [
-            'catalog_group_id' => 'Category',
+            'catalog_group_id' => 'Group',
         ],
     ],
 ]);

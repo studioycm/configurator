@@ -1,0 +1,4 @@
+interface:
+  display_name: "UX Design Thinking"
+  short_description: "Discover evidence-led product and workflow designs"
+  default_prompt: "Use $ux-design-thinking to audit this product or workflow and produce a read-only, evidence-led design without importing another product's model."

@@ -20,7 +20,7 @@ class OptionRuleResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Configurator';
 
-    protected static ?string $navigationLabel = 'Rules & Dependencies';
+    protected static ?string $navigationLabel = 'Rules';
 
     protected static ?string $pluralModelLabel = 'Rules';
 

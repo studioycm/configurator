@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Action::configureUsing(function (Action $action): void {
+            $action->modalWidth(Width::SevenExtraLarge);
+        }, isImportant: true);
     }
 }

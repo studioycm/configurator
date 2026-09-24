@@ -29,6 +29,8 @@
         "filament-security-audit",
         "planning-filament",
         "reviewing-filament-plans",
-        "technical-debt-manager-php-laravel"
+        "technical-debt-manager-php-laravel",
+        "ux-design-thinking",
+        "laravel-simplifier"
     ]
 }

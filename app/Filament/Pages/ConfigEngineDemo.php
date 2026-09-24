@@ -26,7 +26,6 @@ use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
-use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
@@ -176,7 +175,6 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             ->visible(true)
             ->modalHeading('Configurator Context')
             ->modalSubmitActionLabel('Apply')
-            ->modalWidth(Width::TwoExtraLarge)
             ->fillForm(fn (): array => $this->context)
             ->schema($this->contextSchemaComponents())
             ->action(function (array $data): void {
@@ -194,7 +192,6 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             ->label('View image')
             ->visible(true)
             ->modalHeading('Image preview')
-            ->modalWidth(Width::FiveExtraLarge)
             ->stickyModalHeader()
             ->stickyModalFooter()
             ->modalContent(fn (array $arguments): View => view(
@@ -901,7 +898,6 @@ class ConfigEngineDemo extends Page implements HasInfolists, HasSchemas
             ->tooltip(fn (): ?HtmlString => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)->modalHeading($stage['label'])
             ->requiresConfirmation()
             ->modalAlignment(Alignment::Start)
-            ->modalWidth(Width::TwoExtraLarge)
             ->modalDescription(fn (): ?HtmlString => $this->stageHelperTextById((int) $stage['id']) ? new HtmlString($this->stageHelperTextById((int) $stage['id'])) : null)
             ->modalSubmitActionLabel('Ok')
             ->modalCancelAction(false)

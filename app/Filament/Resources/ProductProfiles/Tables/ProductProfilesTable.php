@@ -25,7 +25,7 @@ class ProductProfilesTable
                     ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('catalogGroup.name')
-                    ->label('Category')
+                    ->label('Group')
                     ->searchable(isIndividual: true, isGlobal: false)
                     ->toggleable(),
                 TextColumn::make('name')
@@ -66,7 +66,7 @@ class ProductProfilesTable
             ])
             ->filters([
                 SelectFilter::make('catalog_group_id')
-                    ->label('Category')
+                    ->label('Group')
                     ->relationship('catalogGroup', 'name')
                     ->searchable()
                     ->preload(),

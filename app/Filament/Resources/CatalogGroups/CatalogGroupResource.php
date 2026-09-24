@@ -26,11 +26,11 @@ class CatalogGroupResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $navigationLabel = 'Categories';
+    protected static ?string $navigationLabel = 'Groups';
 
-    protected static ?string $pluralModelLabel = 'Categories';
+    protected static ?string $pluralModelLabel = 'Groups';
 
-    protected static ?string $modelLabel = 'Category';
+    protected static ?string $modelLabel = 'Group';
 
     public static function form(Schema $schema): Schema
     {

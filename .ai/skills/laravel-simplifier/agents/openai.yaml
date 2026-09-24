@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Simplifier"
+  short_description: "Audit first, then simplify approved Laravel changes"
+  default_prompt: "Use $laravel-simplifier to run the mandatory Stage 1 dry-run audit for this Laravel change, report the smallest safe option, and stop for explicit approval before implementation."
