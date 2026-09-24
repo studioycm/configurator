@@ -25,16 +25,19 @@ class ConfiguratorDefinitionCompiler
      * @param  array<string, mixed>  $data
      * @param  array<int, array{key: string, label: string}>  $canonicalAttributes
      * @param  array<int, array{attribute_id: int, code: string, label: string}>  $canonicalOptions
+     * @param  array<string, list<array{value: string, label: string}>>  $globalContext
      */
-    public function compile(array $data, array $canonicalAttributes, array $canonicalOptions, bool $authoring = false): ConfiguratorDefinition
+    public function compile(array $data, array $canonicalAttributes, array $canonicalOptions, bool $authoring = false, array $globalContext = []): ConfiguratorDefinition
     {
-        $this->keys($data, ['name', 'description', 'context_schema', 'policy_overrides', 'attributes', 'rules'], 'definition');
+        $data += ['hidden_context_options' => ['territory' => [], 'application' => []]];
+        $this->keys($data, ['name', 'description', 'context_schema', 'hidden_context_options', 'policy_overrides', 'attributes', 'rules'], 'definition');
         $this->text($data['name'] ?? null, 'name', false);
         $this->text($data['description'] ?? null, 'description', true, 5000);
         $this->check(is_array($data['policy_overrides'] ?? null), 'policy_overrides', 'Provide a policy override object.');
         $policy = ConfiguratorPolicy::resolve($data['policy_overrides']);
-        $context = $this->context($data['context_schema'] ?? []);
-        $data['context_schema'] = $context;
+        $data['context_schema'] = $this->context($data['context_schema'] ?? []);
+        $data['hidden_context_options'] = $this->hiddenContext($data['hidden_context_options'] ?? []);
+        $context = $this->resolveContext($data['context_schema'], $data['hidden_context_options'], $globalContext);
         $data['policy_overrides'] = [];
         $data['description'] ??= null;
         $attributeRows = $this->rows($data['attributes'] ?? null, 'attributes');
@@ -164,8 +167,52 @@ class ConfiguratorDefinitionCompiler
         return new ConfiguratorDefinition($attributes, $rules, $this->topologicalOrder($attributes, $edges), $context, $data, $policy);
     }
 
-    /** @param array<string, mixed> $schema @return array<string, list<array{value: string, label: string}>> */
-    private function context(mixed $schema): array
+    /** @param array<string, mixed> $local @param array<string, mixed> $hidden @param array<string, mixed> $global @return array<string, list<array{value: string, label: string}>> */
+    public function resolveContext(array $local, array $hidden, array $global): array
+    {
+        $local = $this->context($local + ['territory' => [], 'application' => []]);
+        $global = $this->context($global + ['territory' => [], 'application' => []]);
+        $hidden = $this->hiddenContext($hidden);
+        $result = [];
+        foreach (['territory', 'application'] as $dimension) {
+            $choices = [];
+            foreach ($global[$dimension] as $choice) {
+                $choices[$choice['value']] = $choice;
+            }
+            foreach ($local[$dimension] as $choice) {
+                $choices[$choice['value']] = $choice;
+            }
+            $result[$dimension] = array_values(array_filter($choices, fn (array $choice): bool => ! in_array($choice['value'], $hidden[$dimension], true)));
+        }
+
+        return $result;
+    }
+
+    /** @return array{territory: list<string>, application: list<string>} */
+    private function hiddenContext(mixed $hidden): array
+    {
+        $this->check(is_array($hidden), 'hidden_context_options', 'Choose which global options to hide.');
+        $hidden += ['territory' => [], 'application' => []];
+        $this->keys($hidden, ['territory', 'application'], 'hidden_context_options');
+        $result = [];
+        foreach (['territory', 'application'] as $dimension) {
+            $path = 'hidden_context_options.'.$dimension;
+            $values = $hidden[$dimension] ?? [];
+            $this->check(is_array($values) && array_is_list($values) && count($values) <= 500, $path, 'Provide a list of global option values.');
+            $seen = [];
+            foreach ($values as $index => $value) {
+                $value = $this->text($value, $path.'.'.$index, false);
+                $this->check($value !== ConfiguratorPolicy::UNRESTRICTED_CONTEXT, $path, 'All is always available.');
+                $this->unique($value, $seen, $path, 'Choose each hidden option only once.');
+            }
+            $result[$dimension] = $values;
+        }
+
+        return $result;
+    }
+
+    /** @return array<string, list<array{value: string, label: string}>> */
+    public function context(mixed $schema): array
     {
         $this->check(is_array($schema), 'context_schema', 'Provide Territory and Application choices.');
         $this->keys($schema, ['territory', 'application'], 'context_schema');

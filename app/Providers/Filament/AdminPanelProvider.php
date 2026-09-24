@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\ContextSettings;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Groups\GroupResource;
@@ -46,7 +47,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->databaseNotifications()
             ->topbar(false)
-            ->navigationGroups(['Product configuration', 'Catalog'])
+            ->navigationGroups(['Product configuration', 'Catalog', 'Settings'])
 //            ->sidebarCollapsibleOnDesktop(true)
             ->login()
             ->passwordReset()
@@ -63,6 +64,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->pages([
                 Dashboard::class,
+                ContextSettings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

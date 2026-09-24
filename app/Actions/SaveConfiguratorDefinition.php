@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
@@ -31,9 +32,10 @@ class SaveConfiguratorDefinition
 
         return DB::transaction(function () use ($configurator, $data): Configurator {
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            $globalContext = CatalogContextSettings::current(lock: true)->choices;
             $current = $this->loader->draft($record);
             [$attributes, $options] = $this->loader->canonical($data, true);
-            $definition = $this->compiler->compile($data, $attributes, $options, authoring: true);
+            $definition = $this->compiler->compile($data, $attributes, $options, authoring: true, globalContext: $globalContext);
             $data = $definition->data;
             $this->assertOwnership($data, $current);
             $attributeMap = [];
@@ -68,8 +70,8 @@ class SaveConfiguratorDefinition
             }
             ConfiguratorOption::whereHas('configuratorAttribute', fn ($query) => $query->where('configurator_id', $record->id))->whereNotIn('id', array_values($optionMap))->delete();
             $record->attributes()->whereNotIn('id', array_values($attributeMap))->delete();
-            $settings = $this->only($data, ['name', 'description', 'context_schema', 'policy_overrides']);
-            foreach (['context_schema', 'policy_overrides'] as $key) {
+            $settings = $this->only($data, ['name', 'description', 'context_schema', 'hidden_context_options', 'policy_overrides']);
+            foreach (['context_schema', 'hidden_context_options', 'policy_overrides'] as $key) {
                 if ($record->$key !== null && $settings[$key] == $record->$key) {
                     $settings[$key] = $record->$key;
                 }

@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Configurators\Schemas;
 use App\ConditionOperator;
 use App\ConditionSource;
 use App\Filament\Forms\Components\MappingSetsField;
+use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\RuleEffectKind;
 use App\Services\CatalogImportParser;
+use App\Services\ConfiguratorDefinitionCompiler;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Hidden;
@@ -36,7 +38,8 @@ class ConfiguratorRuleForm
                 $options[$attribute->id][$option->id] = $option->option->code.' · '.($option->label_override ?? $option->option->value->label);
             }
         }
-        $predicate = fn (): array => self::predicate($attributes, $options, $owner->context_schema ?? []);
+        $context = app(ConfiguratorDefinitionCompiler::class)->resolveContext($owner->context_schema ?? [], $owner->hidden_context_options ?? [], CatalogContextSettings::current()->choices);
+        $predicate = fn (): array => self::predicate($attributes, $options, $context);
         $schema = [
             View::make('filament.forms.validation-summary'),
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
@@ -110,11 +113,13 @@ class ConfiguratorRuleForm
             TextInput::make('operand_text')->key('literal-text')->label('Exact text')->trim(false)->maxLength(5000)->default(null)
                 ->visible(fn (Get $get): bool => ! $contextSource($get) && ((! $selection($get) && ! $list($get)) || $get('operand_text') !== null))->dehydratedWhenHidden(),
             Select::make('operand_text')->key('context-value')->label('Context choice')->options($contextChoices)->default(null)
+                ->dehydrateStateUsing(fn (mixed $state): ?string => $state === null ? null : (string) $state)
                 ->visible(fn (Get $get): bool => $contextSource($get) && (! $list($get) || $get('operand_text') !== null))->dehydratedWhenHidden(false)
                 ->helperText(fn (Get $get): ?string => $list($get) ? 'Clear the previous single choice before saving a list condition.' : null),
             TagsInput::make('operand_list')->key('literal-values')->label('Exact text values')->default([])
                 ->visible(fn (Get $get): bool => ! $contextSource($get) && ((! $selection($get) && $list($get)) || ($get('operand_list') ?? []) !== []))->dehydratedWhenHidden(),
             Select::make('operand_list')->key('context-values')->label('Context choices')->multiple()->options($contextChoices)->default([])
+                ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
                 ->visible(fn (Get $get): bool => $contextSource($get) && ($list($get) || ($get('operand_list') ?? []) !== []))->dehydratedWhenHidden(false)
                 ->helperText(fn (Get $get): ?string => ! $list($get) ? 'Clear the previous choices before saving a single-value condition.' : null),
         ];

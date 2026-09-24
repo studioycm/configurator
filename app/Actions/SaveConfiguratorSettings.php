@@ -15,7 +15,7 @@ class SaveConfiguratorSettings
     public function handle(User $actor, Configurator $configurator, array $settings): Configurator
     {
         Gate::forUser($actor)->authorize('manage-catalog');
-        if (array_diff(array_keys($settings), ['name', 'description', 'context_schema']) !== []) {
+        if (array_diff(array_keys($settings), ['name', 'description', 'context_schema', 'hidden_context_options']) !== []) {
             throw ValidationException::withMessages(['settings' => 'Settings can change only the name, description and context choices.']);
         }
 

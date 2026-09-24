@@ -1,5 +1,5 @@
-<div class="grid gap-6 xl:grid-cols-3" x-data="{ savedDraft: JSON.stringify($wire.data) }" x-bind:data-draft-dirty="JSON.stringify($wire.data) !== savedDraft" x-on:catalog-overview-saved="savedDraft = JSON.stringify($wire.data)">
-    <div class="space-y-5 xl:col-span-2">
+<div class="grid gap-6" x-data="{ savedDraft: JSON.stringify($wire.data) }" x-bind:data-draft-dirty="JSON.stringify($wire.data) !== savedDraft" x-on:catalog-overview-saved="savedDraft = JSON.stringify($wire.data)">
+    <div class="space-y-5">
         {{ $this->form }}
         <x-filament::button wire:click="saveOverview" wire:loading.attr="disabled" wire:target="saveOverview">Save overview</x-filament::button>
     </div>

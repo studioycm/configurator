@@ -28,7 +28,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
     public function mount(int $configuratorId): void
     {
         $this->configuratorId = $configuratorId;
-        $this->form->fill($this->owner()->only(['name', 'description', 'context_schema']));
+        $this->form->fill($this->owner()->only(['name', 'description', 'context_schema', 'hidden_context_options']));
     }
 
     public function form(Schema $schema): Schema
@@ -46,7 +46,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
         } catch (\Throwable $exception) {
             ConfiguratorFormErrors::rethrow($exception, $this->form);
         }
-        $this->form->fill($record->only(['name', 'description', 'context_schema']));
+        $this->form->fill($record->only(['name', 'description', 'context_schema', 'hidden_context_options']));
         $this->dispatch('configurator-updated');
         $this->dispatch('catalog-overview-saved');
         Notification::make()->title('Overview saved')->success()->send();

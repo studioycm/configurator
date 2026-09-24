@@ -6,6 +6,7 @@ use App\DTO\ConfiguratorDefinition;
 use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorInteraction;
 use App\Models\Attribute;
+use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\Models\Option;
 use App\Models\Product;
@@ -42,7 +43,7 @@ class ConfiguratorDefinitionLoader
             try {
                 $data = $this->draft(Configurator::findOrFail($configuratorId));
                 [$attributes, $options] = $this->canonical($data);
-                $definition = $this->compiler->compile($data, $attributes, $options);
+                $definition = $this->compiler->compile($data, $attributes, $options, globalContext: CatalogContextSettings::current()->choices);
             } catch (ValidationException) {
                 $definition = null;
                 $diagnostics[] = ['code' => 'invalid_definition', 'message' => 'The assigned Configurator needs repair before it can be used.'];
@@ -85,7 +86,7 @@ class ConfiguratorDefinitionLoader
             $data = $this->draft(Configurator::findOrFail($configuratorId));
             [$attributes, $options] = $this->canonical($data);
 
-            return $this->compiler->compile($data, $attributes, $options);
+            return $this->compiler->compile($data, $attributes, $options, globalContext: CatalogContextSettings::current()->choices);
         });
     }
 
@@ -125,7 +126,7 @@ class ConfiguratorDefinitionLoader
             $rules[] = $row;
         }
 
-        return ['name' => $configurator->name, 'description' => $configurator->description, 'context_schema' => $configurator->context_schema ?? ['territory' => [], 'application' => []], 'policy_overrides' => $configurator->policy_overrides ?? [], 'attributes' => $attributes, 'rules' => $rules];
+        return ['name' => $configurator->name, 'description' => $configurator->description, 'context_schema' => $configurator->context_schema ?? ['territory' => [], 'application' => []], 'hidden_context_options' => $configurator->hidden_context_options ?? ['territory' => [], 'application' => []], 'policy_overrides' => $configurator->policy_overrides ?? [], 'attributes' => $attributes, 'rules' => $rules];
     }
 
     /** @param array<string, mixed> $data @return array{array<int, array{key: string, label: string}>, array<int, array{attribute_id: int, code: string, label: string}>} */
