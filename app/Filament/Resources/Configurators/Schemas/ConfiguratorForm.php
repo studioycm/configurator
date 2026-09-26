@@ -25,7 +25,7 @@ class ConfiguratorForm
     public static function overview(bool $withContext = true): array
     {
         $fields = [TextInput::make('name')->required()->maxLength(255), Textarea::make('description')->rows(3)->maxLength(5000)->columnSpanFull()];
-        $sections = [View::make('filament.forms.validation-summary'), Section::make('Configurator details')->columns(1)->schema($fields)];
+        $sections = [View::make('filament.forms.validation-summary')->columnSpanFull(), Section::make('Configurator details')->columns(2)->schema($fields)->columnSpanFull()];
         if ($withContext) {
             $global = CatalogContextSettings::current()->choices;
             foreach (['territory' => 'Territory', 'application' => 'Application'] as $dimension => $label) {

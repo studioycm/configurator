@@ -35,7 +35,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
     {
         Gate::authorize('manage-catalog');
 
-        return $schema->statePath('data')->columns(1)->components(ConfiguratorForm::overview());
+        return $schema->statePath('data')->columns(2)->components(ConfiguratorForm::overview());
     }
 
     public function saveOverview(): void
