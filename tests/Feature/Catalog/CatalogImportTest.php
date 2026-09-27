@@ -198,3 +198,25 @@ test('the command applies reviewed parent metadata with its reported hash', func
 
     expect(Product::query()->sole()->group->parent->legacy_id)->toBe('parent-a');
 });
+
+test('import revisions advance once per affected group and unchanged or dry batches do not advance', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $path = catalogFixtureCsv([catalogFixtureRow(), catalogFixtureRow('18', '0043')]);
+    applyCatalogFixture($actor, $path);
+    $group = Group::where('legacy_id', '2144')->sole();
+    $revision = (int) $group->catalog_revision;
+    app(ImportCatalogProducts::class)->handle($actor, $path);
+    applyCatalogFixture($actor, $path);
+    expect((int) $group->fresh()->catalog_revision)->toBe($revision);
+    $first = catalogFixtureRow();
+    $second = catalogFixtureRow('18', '0043');
+    $first[7] = '16';
+    $second[7] = '16';
+    applyCatalogFixture($actor, catalogFixtureCsv([$first, $second]));
+    expect((int) $group->fresh()->catalog_revision)->toBe($revision + 1);
+    $newGroup = Group::factory()->create(['legacy_id' => 'new-group', 'name' => 'New group']);
+    $first[1] = 'new-group';
+    $first[2] = 'New group';
+    applyCatalogFixture($actor, catalogFixtureCsv([$first]));
+    expect((int) $group->fresh()->catalog_revision)->toBe($revision + 2)->and((int) $newGroup->fresh()->catalog_revision)->toBe(2);
+});

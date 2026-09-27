@@ -16,7 +16,7 @@ class CatalogPolicy
         'page_size_options' => [1, 2, 10],
     ];
 
-    /** @return array{default_page_size: int, allow_page_size_change: bool, page_size_options: list<int>, card_properties: list<string>, cards_per_row: int, max_results: int|'all'} */
+    /** @return array{default_page_size: int, allow_page_size_change: bool, page_size_options: list<int>, card_properties: list<string>, cards_per_row: int, max_results: int|'all', products_debounce_ms: int} */
     public static function resultSettings(?array $settings): array
     {
         $settings ??= self::RESULT_SETTINGS;
@@ -29,6 +29,7 @@ class CatalogPolicy
             : [];
         $columns = $settings['cards_per_row'] ?? 4;
         $maximum = $settings['max_results'] ?? 'all';
+        $delay = $settings['products_debounce_ms'] ?? 0;
 
         return [
             'default_page_size' => $default,
@@ -36,6 +37,7 @@ class CatalogPolicy
             'page_size_options' => $options,
             'card_properties' => $cardProperties,
             'cards_per_row' => is_int($columns) && $columns >= 1 && $columns <= self::MAX_CARDS_PER_ROW ? $columns : 4,
+            'products_debounce_ms' => is_int($delay) && $delay >= 0 && $delay <= 2147483600 && $delay % 100 === 0 ? $delay : 0,
             'max_results' => is_int($maximum) && $maximum >= 1 && $maximum <= self::MAX_RESULT_THRESHOLD ? $maximum : 'all',
         ];
     }

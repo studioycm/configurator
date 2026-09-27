@@ -59,6 +59,9 @@ class GroupForm
                     ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
                     ->default(4)->required()->selectablePlaceholder(false)
                     ->helperText('Desktop columns. Smaller screens use fewer columns.'),
+                TextInput::make('catalog_settings.result_settings.products_debounce_ms')->label('Product update delay (ms)')
+                    ->integer()->minValue(0)->maxValue(2147483600)->step(100)->rules(['multiple_of:100'])->default(0)->required()
+                    ->helperText('0 requests products immediately. Use steps of 100 ms to wait between rapid choices. Filters always respond immediately.'),
                 Select::make('catalog_settings.result_settings.max_results')->label('Show cards when results are at most')
                     ->options(['all' => 'All'] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
                     ->default('all')->required()->selectablePlaceholder(false)
@@ -92,7 +95,7 @@ class GroupForm
                         ->columnSpanFull(),
                 ])->columns(2)->columnSpanFull(),
             ])->columnSpanFull(),
-            Section::make('Results')->schema([
+            Section::make('Results')->hidden()->schema([
                 TextInput::make('catalog_settings.result_settings.default_page_size')->label('Default products per page')->integer()->required()->default(10)->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE),
                 Toggle::make('catalog_settings.result_settings.allow_page_size_change')->label('Let visitors change page size')->default(false)->live(),
                 Repeater::make('catalog_settings.result_settings.page_size_options')->label('Available page sizes')->reorderableWithButtons()

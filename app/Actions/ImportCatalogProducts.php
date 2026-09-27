@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\CatalogImportParser;
 use App\Services\CatalogIntegrity;
+use App\Services\CatalogRevisions;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class ImportCatalogProducts
 {
-    public function __construct(private CatalogImportParser $parser, private CatalogIntegrity $integrity) {}
+    public function __construct(private CatalogImportParser $parser, private CatalogIntegrity $integrity, private CatalogRevisions $revisions) {}
 
     public static function lockName(): string
     {
@@ -89,6 +90,8 @@ class ImportCatalogProducts
             $planned[] = ['row' => $row['row'], 'product' => $product, 'group_key' => $sourceNodes[$data['legacy_group_id']]];
         }
         $totals = ['groups_created' => 0, 'groups_updated' => 0, 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'absent' => 0];
+        $changedGroups = [];
+        $hierarchyChanged = [];
         $remaining = $nodes;
         $resolved = [];
         while ($remaining !== []) {
@@ -104,7 +107,9 @@ class ImportCatalogProducts
                     $totals['groups_updated']++;
                 }
                 if ($apply && (! $group->exists || $group->isDirty())) {
+                    $oldParent = $group->getOriginal('parent_id');
                     $group->save();
+                    $hierarchyChanged = [...$hierarchyChanged, $group->id, $oldParent, $group->parent_id];
                 }
                 $resolved[$key] = $group->id;
                 unset($remaining[$key]);
@@ -118,11 +123,15 @@ class ImportCatalogProducts
             $fields = array_keys($product->getDirty());
             $totals[$outcome]++;
             if ($apply && $outcome !== 'unchanged') {
+                $changedGroups = [...$changedGroups, $product->getOriginal('group_id'), $product->group_id];
                 $product->save();
             }
             if (count($details) < 1000) {
                 $details[] = ['row' => $item['row'], 'legacy_id' => $product->legacy_id, 'internal_id' => $product->id, 'outcome' => $outcome, 'changed_fields' => $fields];
             }
+        }
+        if ($apply) {
+            $this->revisions->advance([...$changedGroups, ...$hierarchyChanged], descendants: $hierarchyChanged !== []);
         }
         $groupIds = array_map('strval', array_keys($batch['groups']));
         $totals['absent'] = $products->filter(fn (Product $product): bool => in_array($product->legacy_group_id, $groupIds, true) && ! in_array($product->legacy_id, $identities, true))->count();

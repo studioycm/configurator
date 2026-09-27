@@ -53,7 +53,7 @@ test('catalog resource access follows the existing admin admission gate', functi
 });
 
 test('the group editor saves staged metadata and preserves existing filter ids', function () {
-    $group = Group::factory()->create();
+    $group = Group::factory()->create(['result_settings' => ['default_page_size' => 2, 'allow_page_size_change' => true, 'page_size_options' => [1, 2, 10]]]);
     Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
     $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Before', 'value_order' => ['10'], 'value_labels' => []]);
     Livewire::test(EditGroup::class, ['record' => $group->id])
@@ -90,7 +90,7 @@ test('the group editor saves card settings and automatically controls subgroup f
     expect($group->fresh()->result_settings)->toMatchArray([
         'card_properties' => ['Working_Pressure'], 'cards_per_row' => 3, 'max_results' => 24,
     ]);
-    expect($preset->fresh()->force_hide)->toBeFalse();
+    expect(collect($editor->get('data.catalog_settings.sub_groups'))->sole())->not->toHaveKey('force_hide');
     expect($preset->fresh()->allowed_values)->toBe(['10']);
     $editor->assertSet('data.catalog_settings.result_settings.card_properties', ['Working_Pressure'])
         ->assertSet('data.catalog_settings.result_settings.cards_per_row', 3)
@@ -146,4 +146,14 @@ test('catalog administration links directly to the public catalog and each recor
         ->assertActionHasUrl('openCatalog', route('catalog.groups.show', $group));
     Livewire::test(ListProducts::class)
         ->assertTableActionHasUrl('openCatalog', route('catalog.products.show', $product), $product);
+});
+
+test('one editor save advances one revision for details and result settings together', function () {
+    $group = Group::factory()->create(['name' => 'Before']);
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id])
+        ->fillForm(['name' => 'After', 'catalog_settings.result_settings.products_debounce_ms' => 300])
+        ->call('save')->assertHasNoFormErrors();
+    expect((string) $group->fresh()->catalog_revision)->toBe('2');
+    $editor->call('save')->assertHasNoFormErrors();
+    expect((string) $group->fresh()->catalog_revision)->toBe('2');
 });

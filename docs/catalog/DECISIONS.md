@@ -1,5 +1,8 @@
 # Catalog and Configurator — Decisions and History
 
+**2026-09-27 superseding discovery decision:** implement Local computation + Medium freshness + independent `#[Json]` cards. Card-only debounce defaults to 0 and accepts 100 ms steps. Islands and browser-test infrastructure are deferred; pagination UI/flow is inactive with legacy storage preserved. The [current public contract](contracts/PUBLIC_CATALOG.md) governs over historical Light/island/joint-rendering/pagination entries below. Snapshot revisions belong to committing writers; clicks do no filter-state SQL/network work.
+
+
 **Updated:** 2026-09-23
 
 **Project:** `/Users/studioycm/Herd/configurator`
@@ -19,7 +22,7 @@
 | Source files, legacy data, current models/engine | Reviewed | Sections 3 and 11 |
 | Real browser interaction with both client sketches and the existing app | Completed for the reviewed flows | Section 11; this does not mean the sketches are production-ready |
 | Product storage approach | Confirmed | Core columns + three JSON collections |
-| Public filter/result behavior | Confirmed | Immediate product cards; configurable pagination; default 10 per page |
+| Public filter/result behavior | Updated 2026-09-26 | Filter responsiveness first; exact matching total only; cards after the configured threshold, with delay allowed; omit pagination from the forthcoming experiment |
 | Core engine decisions | Confirmed, including latest corrections | Section 6; exceptions and remaining structural details are explicit |
 | Follow-up decision batches | 10 choices settled; item 10 was an explanation request and its assessment is complete | Fresh database selected in 11-A; whole-output conditions are not an accepted new requirement; section 9.2 |
 | Example research and final implementation planning | Research and cross-annex evaluation complete; technical proposal ready for review; selected skills settled | [Research index](research/README.md) · [YouTube extension](research/YOUTUBE.md) · [Skill provenance/import](research/SKILL_PROVENANCE.md) · [Implementation proposal](IMPLEMENTATION_PLAN.md) |
@@ -140,13 +143,17 @@ Each configurator manages its own configuration-code order. There is no global d
 - Visitors can switch SubGroups or reset them.
 - A SubGroup is a filter preset, not a fixed navigation boundary. When the newest ordinary filter choice cannot coexist with that preset, clear the conflicting SubGroup, explain the change and restore the corresponding field's ordinary visibility. The actual leaf Group remains the scope. Preserve still-compatible choices under the reference reconciliation behavior.
 - Hide the corresponding property filter when the selected SubGroup supplies only one allowed value. Keep it available for a multi-value preset, such as Working Pressure 10 or 16.
-- Provide a SubGroup setting to force-hide that field's filter.
+- Force-hiding multi-value preset fields is canceled (2026-09-26). Their ordinary filter remains visible. The legacy storage flag has no behavior or admin control.
 - SubGroup presets do not duplicate Product records. Their constraints and reset behavior must be tested with the ordinary filters.
-- Show product cards with useful comparison facts **immediately**, with a count and pagination; initial page size **10**.
-- Admin/code settings determine page size and whether visitors may change it. A page size of 1 means one card per page, not a requirement to narrow the result set to one product.
-- Do not implement a hardcoded single-result threshold, single-result-only NEXT flow, or mandatory result-count threshold.
-- Working page defaults accompanying 8-A: cards show product name/code, pressure and connection facts; initially sort by product code; show filter-value counts; keep SubGroup/filter/page state in the URL so Back restores it. These are catalog-discovery controls, not session persistence for configurator context.
-- "Clear filters" clears ordinary filters while preserving the selected SubGroup. "Reset all" clears both. Reconcile filter visibility/results and reset pagination when criteria change.
+- Filter-button and option-state responsiveness takes priority over Product cards. Cards appear only when the configured result threshold is satisfied and may arrive after the filters settle (2026-09-26).
+- Omit pagination from the forthcoming performance experiment. Current page-size settings and deployed pagination remain until that experiment is implemented; this is not approval for unrelated data removal.
+- The sketch is a responsiveness benchmark only. Its algorithm is not a requirement or implementation prescription. Evaluate a design suited to the current requirements and data.
+- Numeric filter-option counts are canceled. Keep only the total number of matching Products. Preserve filter/preset URL restoration as the baseline, with pagination excluded from the forthcoming experiment. Compatibility previews and alternative evaluation were explicitly retained in the 2026-09-26 follow-up; automatic-removal feedback and usable controls during card updates remain required.
+- The user selected local filter computation from a compact Group dataset, separate server card delivery and keeping the dataset out of repeated Livewire state. The slim server alternative is retained for comparison only; the sketch algorithm does not constrain the new engine. This is a selected design direction, not a completed implementation.
+- Move whole-group stored-type diagnostics from the interaction path to import/write validation and an existing-data audit; retain validation of incoming server requests. Keep the supported write paths and cached snapshot construction consistent.
+- Add a per-Group Product request debounce setting: `0` for none and increments of 100 ms. It affects card requests only. The proposed default is `0`; local filters, compatibility and total remain immediate.
+- Adopt revision changes after relevant catalog writes, freshness checks during card requests and checks on tab return. The [public contract](contracts/PUBLIC_CATALOG.md#simple-dataset-freshness-plans) compares a Light policy with no periodic polling and an optional Medium policy with visible-page checks. Exact timing and island rendering details are recommendations pending integration proof.
+- "Clear filters" clears ordinary filters while preserving the selected SubGroup. "Reset all" clears both. Reconcile filter visibility/results and invalidate pending cards when criteria change.
 
 ### 4.3 Configurator management and deferred UI
 
@@ -596,7 +603,7 @@ These are planned acceptance cases, **not tests already written or passing**. Ad
 | Mapping authoring | Unmapped source; set missing sources or targets; duplicate source membership within a rule | Partial coverage accepted; incomplete sets/duplicate membership rejected; unmapped source adds no restriction from this rule |
 | MySQL code uniqueness | Insert `Aa`, `aa`, `00`, then duplicate `Aa`; try invalid lengths/non-ASCII | Three distinct valid codes; duplicate rejected by DB and validation; invalid input rejected |
 | Pagination | 23 matches at page sizes 10, 2 and 1 | All matches accessible through pages; never require exactly one total match |
-| SubGroups | One-value preset, 10/16 preset, force-hide, switch/reset | Correct product scope and filter visibility; no duplicated products or stale page index |
+| SubGroups | One-value preset, visible 10/16 preset, ignored legacy hide flag, switch/reset | Correct product scope and filter visibility; no duplicated products |
 | Filter interaction | Incompatible newest choice after several prior filters, including a conflicting SubGroup | Newest choice wins within the actual Group; conflicting preset clears with feedback and field visibility is restored; configurator behavior unaffected |
 | Reset and navigation | Clear filters, Reset all and browser Back after changing page/criteria | Clear filters preserves SubGroup; Reset all clears it; URL restores discovery filters/preset/page and selection precedence in one coherent history step; changed criteria reset pagination |
 | Empty intersection | One rule allows only option A, another only B | Empty allowed set, target cleared, incomplete result, no valid final code, contributing-rule diagnostic |

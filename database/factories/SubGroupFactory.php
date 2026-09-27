@@ -12,6 +12,6 @@ class SubGroupFactory extends Factory
     /** @return array<string, mixed> */
     public function definition(): array
     {
-        return ['group_id' => Group::factory(), 'label' => 'Test preset', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10 bar'], 'force_hide' => false, 'sort_order' => 0];
+        return ['group_id' => Group::factory(), 'label' => 'Test preset', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10 bar'], 'sort_order' => 0];
     }
 }

@@ -6,6 +6,7 @@ use App\Actions\SaveCatalogGroup;
 use App\Actions\SaveGroupSettings;
 use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Groups\Schemas\GroupForm;
+use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -45,17 +46,19 @@ class EditGroup extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         try {
-            return DB::transaction(function () use ($record, $data): Model {
+            return DB::transaction(fn (): Model => app(CatalogRevisions::class)->batch(function () use ($record, $data): Model {
                 $settings = $data['catalog_settings'] ?? null;
                 unset($data['catalog_settings']);
                 $group = app(SaveCatalogGroup::class)->handle(auth()->user(), $record, $data);
                 if ($settings !== null) {
-                    $settings['result_settings']['page_size_options'] = array_column($settings['result_settings']['page_size_options'], 'size');
+                    if (isset($settings['result_settings']['page_size_options'])) {
+                        $settings['result_settings']['page_size_options'] = array_column($settings['result_settings']['page_size_options'], 'size');
+                    }
                     $group = app(SaveGroupSettings::class)->handle(auth()->user(), $group, $settings);
                 }
 
                 return $group;
-            }, attempts: 3);
+            }), attempts: 3);
         } catch (ValidationException $exception) {
             $errors = [];
             foreach ($exception->errors() as $key => $messages) {

@@ -10,6 +10,7 @@ use App\Services\CatalogDiscovery;
 use App\Services\CatalogImportParser;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogPolicy;
+use App\Services\CatalogRevisions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -18,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class SaveGroupSettings
 {
-    public function __construct(private CatalogIntegrity $integrity, private CatalogDiscovery $discovery) {}
+    public function __construct(private CatalogIntegrity $integrity, private CatalogDiscovery $discovery, private CatalogRevisions $revisions) {}
 
     /** @param array<string, mixed> $data */
     public function handle(User $actor, Group $group, array $data): Group
@@ -43,18 +44,18 @@ class SaveGroupSettings
                 'settings.filters.*.values.*.value' => ['required', 'string'],
                 'settings.filters.*.values.*.label' => ['nullable', 'string', 'max:255'],
                 'settings.sub_groups' => ['present', 'array', 'list'],
-                'settings.sub_groups.*' => ['array:id,label,property_key,allowed_values,force_hide'],
+                'settings.sub_groups.*' => ['array:id,label,property_key,allowed_values'],
                 'settings.sub_groups.*.id' => ['nullable', 'integer', 'distinct'],
                 'settings.sub_groups.*.label' => ['required', 'string', 'max:255'],
                 'settings.sub_groups.*.property_key' => ['required', Rule::in($keys)],
                 'settings.sub_groups.*.allowed_values' => ['required', 'array', 'list', 'min:1'],
                 'settings.sub_groups.*.allowed_values.*' => ['required', 'string'],
-                'settings.sub_groups.*.force_hide' => ['sometimes', 'boolean'],
-                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,cards_per_row,max_results'],
-                'settings.result_settings.default_page_size' => ['required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
-                'settings.result_settings.allow_page_size_change' => ['required', 'boolean'],
-                'settings.result_settings.page_size_options' => ['present', 'array', 'list'],
+                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,cards_per_row,max_results,products_debounce_ms'],
+                'settings.result_settings.default_page_size' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
+                'settings.result_settings.allow_page_size_change' => ['sometimes', 'required', 'boolean'],
+                'settings.result_settings.page_size_options' => ['sometimes', 'array', 'list'],
                 'settings.result_settings.page_size_options.*' => ['required', 'integer', 'distinct', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
+                'settings.result_settings.products_debounce_ms' => ['sometimes', 'required', 'integer', 'min:0', 'multiple_of:100', 'max:2147483600'],
                 'settings.result_settings.card_properties' => ['sometimes', 'array', 'list', 'max:'.count($keys)],
                 'settings.result_settings.card_properties.*' => ['required', 'string', 'distinct', Rule::in($keys)],
                 'settings.result_settings.cards_per_row' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_CARDS_PER_ROW],
@@ -84,6 +85,7 @@ class SaveGroupSettings
             $results['default_page_size'] = (int) $results['default_page_size'];
             $results['allow_page_size_change'] = (bool) $results['allow_page_size_change'];
             $results['page_size_options'] = array_map('intval', $results['page_size_options']);
+            $results['products_debounce_ms'] = (int) $results['products_debounce_ms'];
             $results['cards_per_row'] = (int) $results['cards_per_row'];
             $results['max_results'] = $results['max_results'] === 'all' ? 'all' : (int) $results['max_results'];
             if ($results['allow_page_size_change'] && ! in_array($results['default_page_size'], $results['page_size_options'], true)) {
@@ -94,8 +96,8 @@ class SaveGroupSettings
             }
             $retainedFilters = array_filter(array_column($validated['filters'], 'id'));
             $retainedPresets = array_filter(array_column($validated['sub_groups'], 'id'));
-            $record->filters()->whereNotIn('id', $retainedFilters)->delete();
-            $record->subGroups()->whereNotIn('id', $retainedPresets)->delete();
+            $changed = $record->filters()->whereNotIn('id', $retainedFilters)->delete() > 0;
+            $changed = $record->subGroups()->whereNotIn('id', $retainedPresets)->delete() > 0 || $changed;
             foreach ($validated['filters'] as $row) {
                 if (isset($row['id']) && $filters[$row['id']]->property_key !== $row['property_key']) {
                     GroupFilter::whereKey($row['id'])->update(['property_key' => '__moving_'.$row['id']]);
@@ -119,20 +121,28 @@ class SaveGroupSettings
                 $filter->fill(['property_key' => $row['property_key'], 'label' => $row['label'], 'sort_order' => $order, 'value_order' => $orderValues, 'value_labels' => $this->sameMap($filter->value_labels ?? [], $labels) ? ($filter->value_labels ?? []) : $labels]);
                 if ($filter->isDirty()) {
                     $filter->save();
+                    $changed = true;
                 }
             }
             foreach ($validated['sub_groups'] as $order => $row) {
                 $preset = isset($row['id']) ? $presets[$row['id']] : new SubGroup(['group_id' => $record->id]);
-                $preset->fill(['label' => $row['label'], 'property_key' => $row['property_key'], 'allowed_values' => $row['allowed_values'], 'force_hide' => false, 'sort_order' => $order]);
+                $preset->fill(['label' => $row['label'], 'property_key' => $row['property_key'], 'allowed_values' => $row['allowed_values'], 'sort_order' => $order]);
                 if ($preset->isDirty()) {
                     $preset->save();
+                    $changed = true;
                 }
             }
+            $settingsChanged = ! $this->sameMap(CatalogPolicy::resultSettings($record->result_settings), $results);
             if (! $this->sameMap($record->result_settings ?? [], $results)) {
                 $record->result_settings = $results;
             }
             if ($record->isDirty()) {
                 $record->save();
+                $changed = $changed || $settingsChanged;
+            }
+
+            if ($changed) {
+                $this->revisions->advance([$record->id]);
             }
 
             return $record;

@@ -1,10 +1,32 @@
 # Public catalog and Livewire research
 
+**2026-09-27 governing decision:** islands are deferred. The implemented candidate is class-based GroupShow with a renderless `#[Json]` card action, Alpine-owned ignored DOM, protected boot injection, small locked Group identity, current-revision response guards, and Medium freshness. The earlier island/Light/joint-rendering/pagination recommendations below are research history, not implementation instructions. See the [current public contract](../contracts/PUBLIC_CATALOG.md). Installed Livewire 4.4.6's JSON handler invokes actions directly, maps validation/error metadata into rejected promises, and does not report unexpected exceptions itself; the component handles these boundaries explicitly.
+
+
 > Historical research evidence. Execute the [final plan](../IMPLEMENTATION_PLAN.md) and [guidelines](../IMPLEMENTATION_GUIDELINES.md); their contracts supersede earlier alternatives here. Dates, versions, access and test observations are snapshots, not fresh verification.
 
 **Researched:** 2026-09-23. **Status:** research and technical recommendations only; no application implementation, database write, dependency change, or deployment.
 
 This document supports W1/W4 in [the living plan](../DECISIONS.md). Confirmed business decisions in that plan remain authoritative. The latest conversation additionally accepts a fresh MySQL database (item 11-A) and treats whole-configuration-code conditions as a legacy capability to assess, not an agreed new business requirement. Neither clarification changes the public discovery policies below.
+
+## 2026-09-26 local filters and product islands
+
+The user selected a compact browser dataset for local filter computation and separate server card delivery, retained compatibility previews/alternative evaluation, and requested per-Group card debounce (`0` for none, positive values in 100 ms increments). This amendment and the [public contract](../contracts/PUBLIC_CATALOG.md) supersede the historical recommendations below that require every interaction, count and card to finish in one server result. It is a researched design, not a completed runtime change.
+
+`composer show livewire/livewire --format=json` reconfirmed **v4.4.6**, source reference `c6b7db7a92103ac2738e8fdc926cecc93eb67853`. Version-scoped Boost documentation and the [official islands documentation](https://livewire.laravel.com/docs/4.x/islands) support named islands, targeted Alpine calls through `$wire.$island(name).method(...)`, skipped/lazy/deferred initial rendering and the shared-state/asynchronous caveat.
+
+Installed source checked:
+
+- `vendor/livewire/livewire/src/Features/SupportIslands/SupportIslands.php::call()` invokes the requested action and schedules an implicit island render; it does not bypass work inside the action.
+- `HandlesIslands.php::triggerImplicitIslandRender()` calls `skipRender()`, so ordinary targeted updates can avoid the full parent render. `renderIslandView()` renders the compiled island with component properties/runtime data rather than the parent's render variables. A missing compiled island may invoke the parent render during cache regeneration, so expensive unconditional preparation must also leave the parent render path.
+- `HandleComponents.php::dehydrateProperties()` still serializes public component properties. Islands do not remove a large public dataset from request/response state.
+- Official documentation warns that concurrent island/root requests can mutate shared state and arrive out of order. Rendering isolation does not establish latest-selection correctness.
+
+Recommended candidate: Alpine owns local filter state, compatibility, total and selection history; one named products island owns server-rendered cards. Use a dedicated card operation rather than the current `GroupShow::settle()`/`CatalogDiscovery::prepare()` pipeline. Keep the compact dataset in browser memory outside Livewire snapshots, pass small criteria/revision/request identifiers, and reject obsolete responses before replacing newer card content. Loading/failure feedback belongs to the card region while filters remain usable.
+
+The app has not yet implemented or browser-tested this island integration. Required proof includes delayed/reordered card replies, no filter DOM replacement/focus loss, no full dataset in repeated payloads, threshold transitions, URL Back/reset and freshness replacement during a request. A child results component remains a fallback if it establishes a simpler independently verified state boundary; do not build both mechanisms or two server-driven filter/result islands by default.
+
+Freshness recommendation: one Group revision, coherent cached snapshots, invalidation after committed relevant writes/batch import, revision comparison during existing card requests and conditional revalidation on tab return. The [Light/Medium comparison](../contracts/PUBLIC_CATALOG.md#simple-dataset-freshness-plans) proposes no periodic polling initially and an optional visible-page check after 60 seconds without a successful check. [ETag conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/ETag) can avoid an unchanged response body, not the request itself. Full small snapshot replacement is simpler than a delta/push protocol at the currently measured scale.
 
 ## 1. Conclusion for the implementation plan
 
@@ -15,7 +37,7 @@ Two domain operations must remain separate:
 - A discovery reconciler finds existing Products and preserves the newest choice by removing incompatible older constraints. It does not evaluate configurator rules.
 - The shared configuration engine evaluates options on the Product page and in admin Preview & Test. Disabled configurator options stay unclickable; they do not use discovery's conflict-clearing interaction.
 
-The libraries supply rendering, state transport, URL binding and pagination. Neither the examples nor Filament's filter system supplies the agreed newest-choice/SubGroup policy. Implement that policy once in a small independently testable domain operation, with one reusable query predicate used for existence checks, results and facet counts.
+The libraries supply rendering, state transport, URL binding and pagination. Neither the examples nor Filament's filter system supplies the application's selection policy. The 2026-09-26 requirements review considers local filter computation and deferred Product results; the reference sketch is only a responsiveness benchmark. Keep selection behavior independently testable. Numeric per-option counts are canceled.
 
 ## 2. Evidence and provenance
 
@@ -74,7 +96,7 @@ An ordinary choice action should:
 
 **SubGroup adaptation to validate in examples:** represent a selected preset as one ordered constraint containing an OR set of values for its configured property. The preset remains distinct from an ordinary selection: it does not populate that field with an invented manual choice. Selecting/switching a preset is a new discovery action; replay remaining constraints with the same reconciler. A conflicting newer ordinary selection can remove the preset. This is a proposed extension of the observed algorithm, not a claim that the existing sketch implements preset ordering. Specifically demonstrate three-way conflicts involving a preset during design review so that any business interpretation is visible.
 
-Single-value preset hides its field; multi-value preset leaves it available unless force-hide is set. Removing the preset restores ordinary visibility. An ordinary constraint on the same property intersects the preset's allowed values while both survive. Never allow preset removal to broaden the actual Group scope.
+Current clarification (2026-09-26): a single-value preset hides its field; a multi-value preset always leaves it available. Force-hiding is canceled. Removing the preset restores ordinary visibility. An ordinary constraint on the same property intersects the preset's allowed values while both survive. Never allow preset removal to broaden the actual Group scope.
 
 Use explicit actions for `selectFilter`, preset change, Clear filters and Reset all. Clear filters removes ordinary choices and their precedence entries while retaining the preset. Reset all clears both. Pagination actions only change the page. This avoids a blanket `updated()` hook resetting pagination during URL restoration or unrelated state changes.
 
@@ -109,15 +131,15 @@ Use a complete snapshot on every state-changing action. A Product link should re
 
 Define one query contract: leaf Group scope + optional preset + validated ordinary constraints. Ordinary fields use equality; a preset with several allowed scalar values uses `whereIn` on that JSON path. `whereJsonContains` is for JSON arrays and is not a substitute for matching one string against a preset's alternatives. Apply AND between independent property constraints.
 
-**Proposed count meaning:** for each visible field, count Products under all active constraints **except that field's ordinary selection**. Preserve the preset while computing these compatibility counts, even when it references the same property. Group by the candidate scalar value across the whole matching scope, not the ten displayed cards. This combines the reference's compatibility test with LaravelDaily's self-excluding count pattern.
+**Compatibility retained by the user, 2026-09-26:** for each visible field, determine whether a Product exists under all active constraints **except that field's ordinary selection**, plus the candidate value. Preserve the preset even when it references the same property. This covers the entire Group. No numeric count is required for an option; only the total matching-product count is needed.
 
-This means a value can display zero for the current combination and still be clickable. Its click may clear older choices or the preset and produce results. The count is not a forecast of the reconciled result. Hiding all zero-count choices or disabling them would break the approved interaction. A short contextual explanation should make this understandable without technical language.
+An incompatible value remains clickable under the current behavior. Its click may clear older choices or the preset and produce results. Compatibility describes coexistence before that adjustment. The user retained this preview and alternative evaluation independently of the sketch's implementation.
 
 Build the value vocabulary from actual Products in the leaf Group. Use configured value order first and append existing data values omitted from that ordering, matching the reference's protection against stale configuration. Values absent from data should be diagnosed in admin rather than shown as meaningful choices. Reconcile metadata against the agreed import mapping; no new generic EAV store is needed.
 
 For scalar strings, grouped SQL can use the same unquoted JSON extraction expression as the predicates. Keep unknown/missing keys, JSON null, empty strings and legitimate values distinct until the import/field contract specifies their treatment. The sketch skips missing/null/empty values; preserve that as the initial candidate, without silently converting meaningful source blanks to false.
 
-Prefer one aggregate per configured field, or a measured equivalent, over a count query per value. Use existence checks during the bounded recency replay. Do not load all Product models and filter the paginator in PHP. Select card facts only and eager-load any necessary relationships; avoid loading `parts`, `extra_data`, media or configurator definitions merely to list cards. Cache derived results per request; any longer-lived facet cache needs invalidation for imports, product changes and group metadata changes.
+The original per-field aggregate/existence-query approach is subject to the 2026-09-26 performance redesign. Numeric per-option counts are canceled. Evaluate a compact dataset of only filter/preset properties and Product identifiers, or a slim server computation, independently of card queries. Fetch card facts only when the threshold is satisfied; avoid loading `parts`, `extra_data`, media or configurator definitions for filtering. Any reusable dataset/cache needs a revision policy for imports, Product changes and group metadata changes.
 
 Start by measuring the resulting queries on the fresh MySQL rehearsal. A Group/product-code index can support scoping and stable ordering; use Product ID as a deterministic tie-breaker where needed. JSON itself is not directly indexed; generated scalar columns or supported expression indexes are available for demonstrated hot paths. Generated-column expression type and unquoting must match the queries; inspect the actual `EXPLAIN` result before claiming improvement. Index decisions here do not introduce the deferred physical Product `name` column.
 
@@ -128,8 +150,8 @@ Record representative cold/warm query duration, query count, result correctness 
 | Surface | Suggested boundary | Reason |
 | --- | --- | --- |
 | Group navigation | Server-rendered page/Blade tree or a small page component if interaction requires it | Parent nodes navigate; filtering and configurator inheritance do not happen there. Load a bounded hierarchy deliberately. |
-| Leaf discovery | One Livewire page owning the complete discovery state | Filters, facet counts, results and recency are tightly coupled. Reduces event synchronisation and stale sibling state. |
-| Filter groups, count labels and Product cards | Blade components receiving prepared data | Reuse markup without one reactive component/snapshot per value or Product. Use stable keys for moving/replaced rows. |
+| Leaf discovery | Historical recommendation: one Livewire page owning the complete discovery state | Under redesign review since 2026-09-26: filters should respond before Product cards; numeric per-option counts are canceled. This research does not mandate joint computation or rendering. |
+| Filter groups, total label and Product cards | Historical recommendation: Blade components receiving prepared data | Separate filter and result delivery is being evaluated. Stable option/Product identity and protection from stale responses remain necessary. |
 | Product page | Independent route/page, selected Product resolved server-side | Fixed product facts and group assignment come from the actual record, not the POC slug or first stored configuration. |
 | Product configurator | Reusable adapter/component around the shared engine result | Public configuration and admin preview use the same engine. Product facts remain trusted server inputs. |
 
@@ -162,7 +184,7 @@ These are proposed acceptance cases, not newly written/passing tests. Use featur
 | History atomicity | A choice that removes two old fields and a preset is one coherent history step. One Back restores the previous complete choices, order, preset, visibility and page. |
 | Valid restored page | Browse to page 2, change filters (page 1), then Back. Restore page 2 when still valid; URL hydration itself must not erase it. |
 | Ordinary toggle | Clicking a selected value clears it with no replacement; its precedence entry disappears. |
-| Preset interaction | Single-value preset hides its field; multi-value preset leaves it available; force-hide works; conflicting newest choice clears preset, restores field and stays in Group. Include a three-way conflict. |
+| Preset interaction | Single-value preset hides its field; multi-value preset leaves it available; legacy hide flags have no effect; conflicting newest choice clears preset, restores field and stays in Group. Include a three-way conflict. |
 | Reset distinction | Clear filters preserves preset; Reset all clears preset; both reset page. |
 | Facet meaning | Self-selection excluded from its own counts; other ordinary constraints and preset retained. Zero candidate remains clickable. Counts include all pages. |
 | Pagination | 23 records, sizes 10/2/1, every record accessible in deterministic order. Size 1 does not require one total result. |

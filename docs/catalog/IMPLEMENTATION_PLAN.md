@@ -1,5 +1,7 @@
 # Catalog and configurator implementation plan
 
+> **Current local-filter implementation, 2026-09-27:** the primary checkout is `/Users/studioycm/Herd/configurator` on `master`; the earlier isolated-checkout status below is historical. The governing local-filter contract is the current section of [PUBLIC_CATALOG.md](contracts/PUBLIC_CATALOG.md). Local computation, Medium freshness, independent JSON cards and card-only debounce replace the former server discovery/pagination flow. This work is uncommitted and has not been released remotely. See the implementation evidence at the end of this document.
+
 > Updated 2026-09-24: T01–T12 are implemented in the isolated rebuild checkout. T13 local rehearsal is complete; production inspection/content and release authorization remain outstanding. Maintain the checkboxes and evidence log when continuing.
 
 **Goal:** deliver a visible catalog from imported D060 Products, then the rebuilt shared configurator engine and Filament management.
@@ -112,7 +114,7 @@ Five required failure cases: owned blanks/conflicting identities (T04); malforme
 
 - [x] Manage ordered filters/labels/value order and one-property preset sets as a single validated Group-settings transaction, preserving IDs and T06's canonical source setup.
 - [x] Implement shared result-setting keys/defaults/cap and visitor allowlist. Preset-only properties work without visible filters. Do not infer presets from source `sub_group` text.
-- [x] Verify singleton, 10/16, force-hide, newest-conflict, clear/reset, unchanged save and stale metadata. Twenty-three Products at10 produce10/10/3; sizes2/1 preserve access to all records. Admin changes affect the next public evaluation.
+- [x] Verify singleton, visible 10/16 preset, ignored legacy hide flag, newest-conflict, clear/reset, unchanged save and stale metadata. Existing pagination checks cover twenty-three Products at10 producing10/10/3 and sizes2/1 preserving access. The 2026-09-26 [requirements clarification](contracts/PUBLIC_CATALOG.md) excludes pagination from the forthcoming performance experiment and cancels force-hiding and numeric per-option counts.
 
 **Exit M2:** complete managed discovery independent of configurator rules.
 
@@ -394,3 +396,72 @@ Verification: public/discovery SQLite tests **18 passed / 99 assertions**; isola
 ### User amendment — public favicon and login link (2026-09-24)
 
 The public head now references the same `images/favicon-aquestia.png` asset as Filament, replacing the starter favicon declarations. The shared public header adds Log in after the theme toggle, using `filament.admin.auth.login`. Desktop navigation remains exactly centered; at 390px the controls sit above it with no document overflow or overlap. Home, catalog, Group and Product pages share this shell. Existing Home/public catalog tests: **9 passed / 58 assertions**. Pint, Vite build and diff checks passed; browser verified the favicon URL, login destination and desktop/mobile geometry. This update changes presentation only and follows automatic deployment on push.
+
+### Local filter implementation and measured evidence — 2026-09-27
+
+**Status:** implemented in the primary checkout on `master`, uncommitted and **not deployed**. Only the additive `groups.catalog_revision` migration was applied to local `configurator_catalog_dev`. Database-writing tests used the existing isolated test configuration and guarded `configurator_catalog_test`; no production test data was created. Existing unrelated workspace changes remain intact. The current contract at the beginning of [PUBLIC_CATALOG.md](contracts/PUBLIC_CATALOG.md) governs over the historical discovery/pagination design below it.
+
+The browser now owns ordinary selections, preset reconciliation, boolean compatibility, exact total and versioned URL/history state. The pure integer-code engine consumes one compact Group snapshot outside both Alpine's reactive proxy and repeated Livewire snapshots. `GroupShow` retains only a locked Group ID publicly and uses a dedicated `#[Json] loadCards` operation. Cards bypass `CatalogDiscovery::prepare()`, its repeated vocabulary/type-diagnostic queries and SQL counts. Product JSON storage and existing indexes were retained; pagination, numeric option counts, force-hide controls and islands are absent from this flow.
+
+Revisions cover the supported import, Group/detail/settings and filter-seeding aggregate boundaries, including old/new Groups, descendants, no-op detection, coalesced batches and rollback. The replaceable persistent cache stores plain arrays, validates schema/revision, and rebuilds under a bounded Group lock outside card transactions. Both snapshots and cards use the default MySQL connection's explicit REPEATABLE READ isolation. Conditional dataset GETs, a shared 60-second freshness clock, current-choice reconciliation, request identity checks, card-only debounce and bounded revision-mismatch recovery are implemented.
+
+The independent final Laravel/Livewire review found two correctness issues and both were fixed with failing-then-passing regressions: isolation had initially been configured on the source connection rather than the default application connection; an expired rebuild lease could otherwise begin a second build after a concurrent revision change. Real browser testing found a separate Alpine lifecycle error: `$el` resolves to the element invoking an expression, so the controller now captures its initialized root for dataset requests and identities. Its child-button retry regression passes. Option objects remain stable between ordinary selections, and superseded card chunks are hidden immediately and retired between frames.
+
+#### Browser results
+
+The reference browser was Chrome 152 on macOS, reporting 8 logical cores, a 1837 × 856 CSS viewport and device-pixel ratio 1.6. The local browser used the existing Vite development server with real assets; the production build was separately compiled successfully. These are local development measurements, not a post-release production result.
+
+The final fixed **501-Product, 100-real-click** run used the restored Group settings (`max_results = 1`, `products_debounce_ms = 0`). All 100 interactions produced timing samples:
+
+| Measurement | p50 | p95 | Maximum |
+| --- | ---: | ---: | ---: |
+| Local computation and synchronous state publication | 0.9 ms | 1.6 ms | 2.0 ms |
+| DOM feedback measured after Alpine's next tick | 15.7 ms | 19.5 ms | 28.3 ms |
+| Two-animation-frame paint estimate | 47.1 ms | 48.1 ms | 49.7 ms |
+
+The paint column is an estimate, not a browser paint-event measurement. The run made **25 HTTP card POSTs and 25 `loadCards` executions**, with **zero filter-state requests**, no dataset GET during the run, and no application errors or unhandled promise rejections. Card responses transferred 46,270 bytes in total, with recorded request durations of 24–53 ms. Repeated Livewire public data contained only `{"groupId":"1"}`.
+
+The `all` setting was also exercised: all 501 Products appeared in 21 chunks (20 × 24 plus 21), without pagination or reparsing previously inserted chunks. Replacing a partially inserted 501-card result stopped the old insertion and produced the correct 68 six-bar Products. **The large-card stress case remains above the 50 ms target:** a final ten-interaction run at `all`/100 ms debounce measured DOM p50 56.3 ms, p95 146.4 ms, and paint-estimate p95 229.3 ms, despite computation of 1.4–6.3 ms. No application errors occurred. Do not generalize the thresholded reference result to this heavier rendering case; further large-result rendering work remains a performance follow-up. A temporary CSS containment experiment did not help and was not shipped.
+
+The remote baseline at `ari.data4.work` used the old server-driven flow: ten real selections produced ten HTTP requests and ten `selectFilter` executions, with selected-button feedback p50 **370 ms** and p95 **434.9 ms**. Remote settings were threshold 6 with no presets, so this is contextual baseline evidence rather than an identical local/remote A/B comparison. No updated remote result exists until an authorized release and repeat measurement.
+
+Direct browser verification covered:
+
+- Ordinary select/replace/toggle, incompatible selectable choices, precedence removal notices, own-field alternatives, exact totals and no numeric option counts.
+- Singleton and multivalue presets, active-preset no-op, manual-choice eviction of a preset, Clear preserving a preset, Reset and explicit preset removal. The existing local Low/High presets were used; no synthetic production data was added.
+- Direct URL restoration, valid precedence with obsolete pagination parameters, preservation of unrelated parameters, Back/Forward without filter-state requests, and keyboard focus moving to Reset when a preset hides the focused field.
+- Card debounce at 0, 100 and 300 ms. A three-click burst completed in 79.4 ms and produced one card request 308.7 ms after the last click at the 300 ms setting. The active-preset no-op produced no request.
+- Delayed card responses with Reset and Back/Forward, threshold exit, partial card insertion cancellation, offline card failure and successful retry. Superseded responses did not replace current results.
+- Changed snapshot after an admin settings save, preservation of current choices, actual `304` checks, and coincident refresh calls sharing one request. Offline freshness failure retained usable filters, and the visible child Retry update button recovered after reconnection.
+- Navigation away/back with restored choices, desktop layout, and an actual 390 × 844 viewport with no horizontal overflow. Temporary network, viewport and profiling overrides were cleared.
+
+Native browser-cache restoration (`pageshow.persisted`), a reliably hidden tab's full polling interval, expired-session interaction, schema-change reload, and deleted/branch Group transitions were not all induced in the browser. Their implemented guards and relevant PHP/engine checks are not equivalent to direct browser proof. Keep these cases in the release checklist. The independent A/B/C precedence fixture and exact string/escaping edge cases are covered by focused automated checks rather than invented catalog data.
+
+Local Group 1 settings were restored after testing to threshold **1**, debounce **0**, and three card columns, with legacy pagination storage preserved; its revision is **5**. No Product records were changed by browser verification.
+
+#### Catalog query and payload evidence
+
+| Operation on the local 501-Product dataset | Observed catalog work | SQL time | Service elapsed |
+| --- | --- | ---: | ---: |
+| Snapshot builder | 5 SELECTs, exactly 1 projected Product read, zero SQL counts | 8.08 ms | 16.35 ms |
+| Warm one-card operation | 2 SELECTs: current revision plus 1 scoped Product read; zero SQL counts | 0.79 ms | 5.88 ms |
+| Warm all-501-card operation | 2 SELECTs, 21 rendered HTML chunks, zero SQL counts | 6.86 ms | 84.39 ms |
+| Unchanged dataset GET | Revision lookup; no Product read or rebuild, including expired snapshot-cache case | Covered by endpoint query assertion | HTTP `304` verified |
+
+These timings measure the service, not authentication/session work or the full HTTP round trip. Transaction begin/commit pairs are additional protocol work not counted as SELECTs. Rendering runs after the database transaction ends. The final revision-5 snapshot is **14,118 JSON bytes / 3,045 gzip bytes**, with zero malformed-cell diagnostics. The all-card response was 486,304 raw bytes / 11,306 gzip bytes. The examined scoped ID query used a primary-key range and required a bounded filesort; no new column/index migration was justified by the measured card path.
+
+#### Regression and delivery checks
+
+- Final focused catalog/admin/reconciler checks: **161 passed / 833 assertions**, including the expired-lease regression.
+- Guarded MySQL suite: **22 passed / 100 assertions**, including committed fixtures with two real connections for coherent concurrent reads. It verified the default application's REPEATABLE READ setting and exact MySQL JSON string behavior.
+- Lightweight Node engine/transport checks: **8 passed**. No browser automation package or test-only Vite/timer framework was installed.
+- Complete existing default suite: **332 passed, 2 failed / 1909 assertions**. The two failures concern unchanged admin labels: `ContextSettingsTest.php:23` expects lowercase `application`, while the existing title is `Territory & Application`; `TableConfigurationStandardsTest.php:157` expects `Used in configurators`, while the existing Attributes column says `Configurators`. Both test files and implementation files have no diff from HEAD. They were not silently skipped or changed as part of this filter work.
+- `vendor/bin/pint --dirty --format agent`, `npm run build`, and `git diff --check` passed. The generated app bundle was 12.51 kB / 4.67 kB gzip.
+
+#### Release handoff
+
+Release remains unauthorised in this implementation turn. Before release, apply the additive migration on the intended target, ensure every supported writer uses the new revision boundaries, drain old writer processes and rebuild/reload application configuration as appropriate. Then warm each affected leaf Group with `php artisan catalog:snapshot GROUP_ID --no-interaction`. Do not run a destructive database reset or switch databases.
+
+After a database restore or an out-of-band catalog change, run targeted `php artisan catalog:snapshot GROUP_ID --invalidate --no-interaction` before reusing its cache; this advances the Group revision and replaces that Group's snapshot. A plain warm without invalidation is insufficient if external data changed without a revision advance. Restarted/old workers must not resume writing with pre-revision code.
+
+Repeat the comparable browser/server matrix on the authorized remote release, record authentication/session/cache/transaction overhead separately, and investigate the remaining large-`all` frames. Reconsider islands only if those measurements identify a specific benefit. Pest browser construction remains a separate deferred task with the preserved version/Vite/clock/concurrency guidance in the current public contract.

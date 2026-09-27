@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Width;
@@ -16,7 +17,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(CatalogRevisions::class);
     }
 
     /**

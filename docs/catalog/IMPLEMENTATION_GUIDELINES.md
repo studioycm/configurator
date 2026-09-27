@@ -45,20 +45,19 @@ The source contains no parent identity. Import D060 without inventing one; colle
 
 ## 4. Public discovery
 
-The owner is `Catalog\GroupShow`; filters, counts, cards and pagination render one prepared result. Use the [public contract](contracts/PUBLIC_CATALOG.md) for the exact `discovery` URL shape, predicates and independent fixtures.
+The governing [public contract](contracts/PUBLIC_CATALOG.md) uses Alpine local computation, Medium freshness and a dedicated Livewire JSON card action. GroupShow is the class-based shell; its locked string Group ID is the only public state. Do not reintroduce the former `CatalogDiscovery::prepare()` pipeline, public filter actions, pagination, URL repair adapter or islands into this path.
 
-- Show immediate cards, initially 10 per page. Page size 1 still paginates the complete result set; there is no single-result NEXT gate or match-count threshold.
-- One ordinary selected value per property. Clicking it clears it. A new choice wins; replay older constraints newest-first against the entire leaf Group and retain compatible ones. Zero-count choices remain clickable with useful feedback.
-- A SubGroup is one atomic ordered OR constraint on one property. A conflicting newer filter may clear it. Clear filters preserves the preset; Reset all removes both.
-- Singleton or force-hidden preset: clear any ordinary selection for that property so a hidden choice cannot narrow results. Visible multi-value preset: retain a compatible ordinary choice. Reset restores visibility without inventing a selection.
-- Vocabulary uses the union of configured filter keys and SubGroup property keys, bounded by the registered Product-property map. A preset-only property need not gain a visible filter. Omitted known values remain available; missing/null/empty values create no buttons, while string `"0"` does.
-- Persist filters, preset, **precedence**, page and per-page together in one versioned URL property. Use explicit Eloquent pagination and custom pagination markup; **no `WithPagination`** or second Filament Table state owner.
-- One logical action creates one history entry. Restore valid pages with Back; criteria/page-size changes reset to 1. Test malformed/stale URL repair and Back during delayed requests in a real browser. Use native Livewire first; add only the contract's scoped replacement adapter if its documented proof fails.
-- Count each value against all other ordinary filters, retaining the active preset even on the same property. Counts cover all pages and describe compatibility before newest-choice reconciliation.
-- Use one registered, bound, Group-scoped SQL predicate for results/replay/counts. Preset alternatives are scalar JSON `whereIn`, not array `whereJsonContains`. Verify actual MySQL string/null behavior.
-- Aggregate per configured property, not per button. Select only card fields. Do not place whole Product models, full properties, parts or extras into Livewire public state. Keep caching request-local initially.
+- Preserve newest-choice reconciliation, self-excluding boolean compatibility, atomic presets, singleton cleanup, visible multivalue filters and clear/reset semantics. Exact Product total only; no numeric option counts or force-hide.
+- Keep canonical strings and code zero intact. Build vocabulary/encoded rows in one Product projection and diagnose stored types during preparation/write validation. Keep JSON storage/indexes.
+- Cache plain arrays in one replaceable Group key with schema/revision validation and a 24-hour TTL. Wait/rebuild outside database transactions, recheck after acquiring the lock, and bound retries. Consistent snapshot/card reads use nonlocking REPEATABLE READ and finish before rendering/publication.
+- Advance revisions inside aggregate writer transactions, once per affected Group/batch, including old/new Groups, relevant descendants and definition seeds. Coalesce the Group editor's nested actions; preserve no-op/rollback behavior.
+- Own `d[...]` filters/preset/precedence locally. Push once per effective choice, replace canonical repairs, preserve unrelated URL/history state, and remove obsolete pagination without losing valid precedence.
+- Threshold/`all` remains server-enforced. Debounce defaults to zero in 100 ms steps and affects cards only. Validate request shape/scope and reject stale response identities; never accept browser IDs/totals as authority.
+- Explicit Alpine DOM ownership, bundled Alpine only, raw dataset outside reactive state, escaped labels/Blade HTML, chunks of at most 24, keyboard/focus and lifecycle cleanup are required.
+- Medium freshness shares one confirmation clock/in-flight refresh, checks only visible eligible pages, and never confirms stale responses. Recover from offline/errors without false empty results. One automatic revision/card retry is allowed.
+- Browser verification is primary; keep focused PHP/Node checks and named MySQL guards. Automated browser harness construction is deferred. Preserve its research notes in the public contract. Record local and remote measurements separately.
 
-Shared result settings are `default_page_size=10`, `allow_page_size_change=false`, `page_size_options=[1,2,10]`. The handoff's technical cap is 100, held in one validation policy so it can change without changing result semantics. Visitor choices must use the admin allowlist; forged overrides are ignored when disabled.
+Legacy page-size settings stay stored but inactive. `products_debounce_ms` is the active Product update delay; UI filtering never waits for it. See the public contract for the complete failure, race, cache and rollout requirements.
 
 ## 5. Engine: E00–E16 execution summary
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatalogDatasetController;
 use App\Livewire\Catalog\GroupShow;
 use App\Livewire\Catalog\Index as CatalogIndex;
 use App\Livewire\Catalog\ProductShow;
@@ -15,6 +16,7 @@ Route::redirect('/', '/dashboard')->name('home');
 Route::middleware(['auth'])->group(function () {
     Route::redirect('/dashboard', '/dashboard/catalog')->name('dashboard');
     Route::livewire('/dashboard/catalog', CatalogIndex::class)->name('catalog.index');
+    Route::get('/dashboard/catalog/groups/{group}/dataset', CatalogDatasetController::class)->whereNumber('group')->name('catalog.groups.dataset');
     Route::livewire('/dashboard/catalog/groups/{group}', GroupShow::class)->name('catalog.groups.show');
     Route::livewire('/dashboard/catalog/products/{product}', ProductShow::class)->name('catalog.products.show');
     Route::redirect('/catalog', '/dashboard/catalog');

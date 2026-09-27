@@ -1,1 +1,1 @@
-import './catalog-url-repair';
+import './catalog-filters';

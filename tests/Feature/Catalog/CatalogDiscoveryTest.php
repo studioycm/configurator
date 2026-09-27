@@ -118,15 +118,14 @@ test('untrusted url inputs are bounded normalized and cannot widen the group', f
     expect($result->state->filters)->toBe([])->and($result->state->subGroupId)->toBeNull()->and($result->state->page)->toBe(1)->and($result->state->perPage)->toBe(10)->and($result->products->total())->toBe(3)->and($result->notices)->not->toBeEmpty();
     $result = discover($group, ['version' => 99, 'filters' => ['Working_Pressure' => '25']]);
     expect($result->state->filters)->toBe([])->and($result->repaired)->toBeTrue();
-    Livewire::test(GroupShow::class, ['group' => $group])->call('selectFilter', 'foreign', 'x')->assertSet('discovery.filters', []);
+    Livewire::test(GroupShow::class, ['group' => $group])->assertSet('groupId', (string) $group->id);
 });
 
-test('livewire restores one complete valid snapshot including page and precedence', function () {
+test('livewire keeps only group identity while the browser owns discovery state', function () {
     $group = discoveryFixture();
-    $group->update(['result_settings' => ['default_page_size' => 1, 'allow_page_size_change' => false, 'page_size_options' => [1]]]);
-    Livewire::test(GroupShow::class, ['group' => $group])->call('selectFilter', 'Working_Pressure', '25')->call('goToPage', 2)
-        ->assertSet('discovery.page', 2)->assertSet('discovery.precedence', ['filter:Working_Pressure'])
-        ->call('clearFilters')->assertSet('discovery.page', 1)->assertSet('discovery.filters', []);
+    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSet('groupId', (string) $group->id);
+    expect(array_keys($page->snapshot['data']))->toBe(['groupId']);
+    $page->assertDontSee('Product pagination');
 });
 
 test('audited source filter metadata reproduces the observed 36 versus 9 outcomes', function () {
@@ -149,7 +148,7 @@ test('audited source filter metadata reproduces the observed 36 versus 9 outcome
 
 test('malformed scalar snapshots render a repairable page instead of a server error', function () {
     $group = discoveryFixture();
-    $this->actingAs(User::factory()->create())->get(route('catalog.groups.show', $group).'?d=invalid')->assertOk()->assertSee('data-catalog-repair="1"', false);
+    $this->actingAs(User::factory()->create())->get(route('catalog.groups.show', $group).'?d=invalid')->assertOk()->assertSee('data-catalog-snapshot', false);
 });
 
 test('filtered discovery calculates only the total count and skips card fetching above the threshold', function () {

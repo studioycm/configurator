@@ -23,7 +23,7 @@ class Group extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['parent_id' => 'integer', 'configurator_id' => 'integer', 'sort_order' => 'integer', 'result_settings' => 'array'];
+        return ['catalog_revision' => 'string', 'parent_id' => 'integer', 'configurator_id' => 'integer', 'sort_order' => 'integer', 'result_settings' => 'array'];
     }
 
     public function parent(): BelongsTo

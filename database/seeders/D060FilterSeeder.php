@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Group;
+use App\Services\CatalogRevisions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -26,8 +27,13 @@ class D060FilterSeeder extends Seeder
             if ($group === null) {
                 return;
             }
+            $changed = false;
             foreach (self::FILTERS as $order => [$key, $label, $values]) {
-                $group->filters()->firstOrCreate(['property_key' => $key], ['label' => $label, 'value_order' => $values, 'value_labels' => [], 'sort_order' => $order]);
+                $filter = $group->filters()->firstOrCreate(['property_key' => $key], ['label' => $label, 'value_order' => $values, 'value_labels' => [], 'sort_order' => $order]);
+                $changed = $filter->wasRecentlyCreated || $changed;
+            }
+            if ($changed) {
+                app(CatalogRevisions::class)->advance([$group->id]);
             }
         });
     }

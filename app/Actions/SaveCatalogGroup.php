@@ -5,13 +5,14 @@ namespace App\Actions;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\CatalogIntegrity;
+use App\Services\CatalogRevisions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 
 class SaveCatalogGroup
 {
-    public function __construct(private CatalogIntegrity $integrity) {}
+    public function __construct(private CatalogIntegrity $integrity, private CatalogRevisions $revisions) {}
 
     /** @param array<string, mixed> $data */
     public function handle(User $actor, ?Group $group, array $data): Group
@@ -30,9 +31,14 @@ class SaveCatalogGroup
                 'group.sort_order' => ['sometimes', 'integer'],
                 'group.configurator_id' => ['nullable', 'integer', 'exists:configurators,id'],
             ])->validate()['group'];
+            $oldParentId = $record->parent_id;
             $record->fill($validated);
             $this->integrity->validateGroup($record, $groups);
+            $changed = $record->isDirty();
             $record->save();
+            if ($changed) {
+                $this->revisions->advance([$record->id, $oldParentId, $record->parent_id], descendants: true);
+            }
 
             return $record;
         }, attempts: 3);

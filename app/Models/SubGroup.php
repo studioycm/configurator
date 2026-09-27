@@ -13,12 +13,12 @@ class SubGroup extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['group_id', 'label', 'property_key', 'allowed_values', 'force_hide', 'sort_order'];
+    protected $fillable = ['group_id', 'label', 'property_key', 'allowed_values', 'sort_order'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['group_id' => 'integer', 'sort_order' => 'integer', 'allowed_values' => 'array', 'force_hide' => 'boolean'];
+        return ['group_id' => 'integer', 'sort_order' => 'integer', 'allowed_values' => 'array'];
     }
 
     public function group(): BelongsTo

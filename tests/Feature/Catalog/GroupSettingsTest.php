@@ -23,7 +23,7 @@ test('group metadata saves atomically with stable identities and no writes on un
     $group = Group::factory()->create();
     Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10', 'Connection_Type' => 'Flange']]);
     Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '16', 'Connection_Type' => 'Threaded']]);
-    $input = groupSettingsInput(['filters' => [['property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => [['value' => '16', 'label' => 'High'], ['value' => '10', 'label' => '']]]], 'sub_groups' => [['label' => '10 or 16', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10', '16'], 'force_hide' => false]]]);
+    $input = groupSettingsInput(['filters' => [['property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => [['value' => '16', 'label' => 'High'], ['value' => '10', 'label' => '']]]], 'sub_groups' => [['label' => '10 or 16', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10', '16']]]]);
     app(SaveGroupSettings::class)->handle($this->actor, $group, $input);
     $filter = $group->filters()->sole();
     $preset = $group->subGroups()->sole();
@@ -42,10 +42,26 @@ test('invalid presets reject the whole metadata change while leaving the previou
     $group = Group::factory()->create();
     Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
     $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Original']);
-    $input = groupSettingsInput(['filters' => [['id' => $filter->id, 'property_key' => 'Working_Pressure', 'label' => 'Changed', 'values' => []]], 'sub_groups' => [['label' => 'Stale', 'property_key' => 'Working_Pressure', 'allowed_values' => ['999'], 'force_hide' => false]]]);
+    $input = groupSettingsInput(['filters' => [['id' => $filter->id, 'property_key' => 'Working_Pressure', 'label' => 'Changed', 'values' => []]], 'sub_groups' => [['label' => 'Stale', 'property_key' => 'Working_Pressure', 'allowed_values' => ['999']]]]);
     expect(fn () => app(SaveGroupSettings::class)->handle($this->actor, $group, $input))->toThrow(ValidationException::class);
     expect($filter->fresh()->label)->toBe('Original')->and($group->subGroups()->count())->toBe(0);
 });
+
+test('removed preset hide setting is rejected without saving group changes', function (bool $forceHide) {
+    $group = Group::factory()->create();
+    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    $input = groupSettingsInput(['sub_groups' => [[
+        'label' => 'Pressure preset',
+        'property_key' => 'Working_Pressure',
+        'allowed_values' => ['10'],
+        'force_hide' => $forceHide,
+    ]]]);
+
+    expect(fn () => app(SaveGroupSettings::class)->handle($this->actor, $group, $input))
+        ->toThrow(ValidationException::class);
+
+    $this->assertDatabaseMissing('sub_groups', ['group_id' => $group->id]);
+})->with([false, true]);
 
 test('metadata rejects forged identities duplicate fields arbitrary paths and invalid result sizes', function (string $case) {
     $group = Group::factory()->create();
@@ -147,3 +163,16 @@ test('swapping filter properties keeps ids without transient unique conflicts', 
     ]]));
     expect($pressure->fresh()->property_key)->toBe('Connection_Type')->and($connection->fresh()->property_key)->toBe('Working_Pressure');
 });
+
+test('card delay accepts nonnegative steps of one hundred and rejects other values', function (mixed $delay, bool $valid) {
+    $group = Group::factory()->create();
+    $data = groupSettingsInput(['result_settings' => ['products_debounce_ms' => $delay]]);
+    if (! $valid) {
+        expect(fn () => app(SaveGroupSettings::class)->handle($this->actor, $group, $data))->toThrow(ValidationException::class);
+        expect((string) $group->fresh()->catalog_revision)->toBe('1');
+
+        return;
+    }
+    app(SaveGroupSettings::class)->handle($this->actor, $group, $data);
+    expect($group->fresh()->result_settings['products_debounce_ms'])->toBe((int) $delay);
+})->with([[0, true], [100, true], [300, true], [-100, false], [50, false], [100.5, false], ['invalid', false]]);
