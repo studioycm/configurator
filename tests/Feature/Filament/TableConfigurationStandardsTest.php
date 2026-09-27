@@ -35,7 +35,7 @@ dataset('table-standards-pages', [
     ],
     'config attributes' => [
         'page' => ListAttributes::class,
-        'columns' => ['id' => 'ID', 'key' => 'Key', 'label' => 'Label', 'options_count' => 'Options', 'configurator_attributes_count' => 'Used in configurators', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id' => 'ID', 'key' => 'Key', 'label' => 'Label', 'options_count' => 'Options', 'configurator_attributes_count' => 'Configurators', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
         'searchableColumns' => ['id', 'key', 'label'],
         'filters' => [],
     ],

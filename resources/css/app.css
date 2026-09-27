@@ -61,6 +61,24 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+.catalog-card-grid[data-cards-visible='false'] {
+    display: none;
+}
+
+/* Avoid rebuilding the whole card layout when stale chunks are hidden and retired. */
+@supports (content-visibility: hidden) {
+    .catalog-card-grid[data-cards-visible='false'] {
+        display: grid;
+        content-visibility: hidden;
+        contain-intrinsic-size: 0px;
+    }
+
+    .catalog-card-grid [data-product-id] {
+        content-visibility: auto;
+        contain-intrinsic-block-size: auto 16rem;
+    }
+}
+
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */

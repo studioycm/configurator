@@ -73,7 +73,7 @@
                     <span x-text="cardError"></span>
                     <button type="button" @click="retryCards()" class="ml-2 underline">{{ __('Retry products') }}</button>
                 </div>
-                <div x-show.immediate="cardsVisible" class="grid grid-cols-1 gap-4" :class="{'sm:grid-cols-2': columns >= 2, 'lg:grid-cols-3': columns >= 3, 'xl:grid-cols-4': columns === 4, 'xl:grid-cols-5': columns === 5, 'xl:grid-cols-6': columns === 6}">
+                <div data-cards-visible="false" :data-cards-visible="cardsVisible ? 'true' : 'false'" :aria-hidden="cardsVisible ? null : 'true'" class="catalog-card-grid grid grid-cols-1 gap-4" :class="{'sm:grid-cols-2': columns >= 2, 'lg:grid-cols-3': columns >= 3, 'xl:grid-cols-4': columns === 4, 'xl:grid-cols-5': columns === 5, 'xl:grid-cols-6': columns === 6}">
                     <template x-for="chunk in cardChunks" :key="chunk.key"><div class="contents" :data-card-chunk="chunk.key" x-html="chunk.html"></div></template>
                 </div>
             </section>

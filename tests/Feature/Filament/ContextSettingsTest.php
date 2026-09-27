@@ -20,7 +20,7 @@ beforeEach(function () {
 
 test('administrators manage global context choices on the settings page', function () {
     $configurator = Configurator::factory()->create();
-    $this->get(ContextSettings::getUrl())->assertOk()->assertSee('Territory &amp; application', false);
+    $this->get(ContextSettings::getUrl())->assertOk()->assertSee('Territory &amp; Application', false);
     $choices = ['territory' => [['value' => 'eu', 'label' => 'European Union']], 'application' => [['value' => 'water', 'label' => 'Drinking water']]];
     Livewire::test(ContextSettings::class)->fillForm(['context_schema' => $choices])->call('save')->assertHasNoFormErrors()->assertNotified('Global choices saved');
     expect(CatalogContextSettings::current()->choices)->toEqual($choices);
