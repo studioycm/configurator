@@ -81,7 +81,7 @@
 .fi-body { background: #f4f6f9; }
 .fi-sidebar { background: #17212c; color: #d6dce4; }
 .fi-sidebar-header { background: #17212c; box-shadow: none; }
-.fi-sidebar-header .fi-logo { background: white; padding: .4rem; border-radius: .4rem; height: 3rem; }
+.fi-sidebar-header .fi-logo { background: transparent; padding: 0; margin: 0; border-radius: .4rem; height: 3rem; }
 .fi-sidebar .fi-sidebar-item-label, .fi-sidebar .fi-sidebar-item-icon { color: #c9d3de; }
 .fi-sidebar .fi-sidebar-group-label { color: #8e9eaf; }
 .fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn { background: #294762; }

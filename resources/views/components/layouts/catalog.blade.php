@@ -8,10 +8,10 @@
     <a href="#catalog-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:p-3 focus:text-zinc-900">{{ __('Skip to catalog') }}</a>
     <button x-cloak x-show="navigationOpen" x-on:click="navigationOpen = false" class="fixed inset-0 z-30 bg-black/40 lg:hidden" aria-label="{{ __('Close navigation') }}"></button>
     <aside id="dashboard-navigation" class="fixed inset-y-0 left-0 z-40 flex w-[13.625rem] flex-col overflow-y-auto bg-[#17212c] px-4 py-3 text-slate-200 transition-transform lg:translate-x-0" x-bind:class="navigationOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible'" x-on:keydown.escape.window="navigationOpen = false">
-        <a href="{{ route('dashboard') }}" aria-label="{{ __('Aquestia dashboard') }}" class="mb-2 rounded-lg bg-white px-2 py-1.5">
-            <img src="{{ asset('images/logo-ari.png') }}" alt="Aquestia" width="269" height="56" class="h-auto w-full" />
+        <a href="{{ route('dashboard') }}" aria-label="{{ __('Aquestia dashboard') }}">
+            <img src="{{ asset('images/logo-ari_dark.png') }}" alt="Aquestia" width="269" height="56" class="h-auto w-full" />
         </a>
-        <p class="mb-4 px-3 text-sm text-slate-400">{{ __('Product dashboard') }}</p>
+        <p class="mb-4 text-sm text-slate-400">{{ __('Product dashboard') }}</p>
         <nav class="space-y-2" aria-label="{{ __('Main navigation') }}">
             <a href="{{ route('catalog.index') }}" @if (request()->routeIs('catalog.*')) aria-current="page" @endif class="block rounded-lg px-2 py-1.5 font-medium hover:bg-slate-700 aria-[current=page]:bg-[#294762]">{{ __('Product catalog') }}</a>
             @can('manage-catalog')
