@@ -14,5 +14,7 @@ final readonly class ConfiguratorOptionDTO
         public ?string $hint,
         public bool $hidden,
         public bool $disabled,
+        public bool $active = true,
+        public bool $lifecycleHidden = false,
     ) {}
 }

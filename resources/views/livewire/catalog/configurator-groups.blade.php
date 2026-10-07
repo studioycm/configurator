@@ -1,10 +1,9 @@
 <div class="space-y-2">
     {{ $this->membershipAction }}
     <x-filament-actions::modals />
-    <div class="space-y-2">
-        <h2 class="text-lg font-semibold">Group assignments</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Each leaf Group can use one Configurator. This Configurator can serve several Groups; changes to its definition apply to every assigned Group.</p>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Groups assigned elsewhere are excluded from the available list. Change those assignments explicitly from their Group.</p>
+    <div class="flex items-center gap-2">
+        <h2 class="text-base font-semibold">Group assignments</h2>
+        {{ \App\Filament\Resources\FormHints::make('Each leaf Group can use one Configurator. Its definition applies to every assigned Group. Groups assigned elsewhere are excluded; change those assignments from their Group.') }}
     </div>
     @if ($errors->any())
         <div role="alert" tabindex="-1" x-data x-init="$nextTick(() => $el.focus())" class="rounded-lg border border-danger-300 p-4 text-sm">

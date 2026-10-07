@@ -60,7 +60,6 @@ class OptionsRelationManager extends RelationManager
         $default = $this->owner()->default_configurator_option_id;
 
         return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('option.value'))
-            ->description('Options for this attribute in this configurator. Shared definitions stay unchanged.')
             ->columns([
                 TextColumn::make('label_override')->label('Local label')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('display_value_override')->label('Display value')->searchable()->toggleable(isToggledHiddenByDefault: true),
@@ -115,6 +114,7 @@ class OptionsRelationManager extends RelationManager
             View::make('filament.forms.validation-summary'),
             Select::make('option_id')->label('Shared option')->required()->rules(['integer'])->searchable()->disabled($option !== null)->dehydrated()
                 ->options(fn (): array => Option::where('attribute_id', $owner->attribute_id)
+                    ->when($option === null, fn ($query) => $query->where('is_active', true)->where('is_hidden', false))
                     ->whereNotIn('id', $owner->options()->when($option, fn ($query) => $query->whereKeyNot($option->id))->pluck('option_id'))
                     ->with('value')->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->code.' · '.$row->value->label])->all()),
             TextInput::make('label_override')->label('Local option label')->maxLength(255),

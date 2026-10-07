@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
+use App\Services\ConfiguratorEngine;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -85,7 +86,7 @@ test('public identity and accepted runtime state are locked against direct clien
     expect(fn () => Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->set('runtime.selections', []))->toThrow(CannotUpdateLockedPropertyException::class);
 });
 
-test('context choices update configuration and reject choices outside the current schema', function () {
+test('dashboard and saved Preview ignore public context while preserving its stored definition', function () {
     [$configurator, $product, $draft] = publicConfigurationFixture(function (array &$draft): void {
         $draft['context_schema'] = [
             'territory' => [['value' => 'eu', 'label' => 'European Union']],
@@ -97,14 +98,40 @@ test('context choices update configuration and reject choices outside the curren
         ]], 'B', 'DisableOptions', ['new:B0'])];
     });
 
-    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])
-        ->assertSeeLivewire(ContextSelector::class)->assertSee('A0-B0-C0')
-        ->call('changeContext', 'territory', 'eu')->assertSet('runtime.context.territory', 'eu')->assertSee('A0-B1-C0')
-        ->call('changeContext', 'application', 'water')->assertSet('runtime.context.application', 'water')->assertSee('A0-B1-C0')
-        ->call('changeContext', 'territory', 'unavailable')->assertSet('runtime.context.territory', 'eu')
-        ->assertSee('That context choice is not available.')->assertSee('A0-B1-C0')
-        ->call('changeContext', 'territory', 'All')->assertSet('runtime.context.territory', 'All')
-        ->call('selectOption', $draft['attributes'][1]['id'], $draft['attributes'][1]['options'][0]['id'])->assertSee('A0-B0-C0');
+    $before = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    foreach ([Livewire::test(ProductConfigurator::class, ['productId' => $product->id]), Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)] as $component) {
+        $component->assertDontSeeLivewire(ContextSelector::class)->assertSee('A0-B0-C0')
+            ->call('changeContext', 'territory', 'eu')->assertSet('runtime.context.territory', 'All')->assertSee('A0-B0-C0')
+            ->call('changeContext', 'application', 'water')->assertSet('runtime.context.application', 'All')->assertSee('A0-B0-C0');
+    }
+    $public = app(ConfiguratorEngine::class)->evaluate(app(ConfiguratorDefinitionLoader::class)->forProduct($product->id, intent: ['kind' => 'ChangeContext', 'dimension' => 'territory', 'choice' => 'eu']));
+    expect($public->configurationCode)->toBe('A0-B1-C0')
+        ->and(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
+});
+
+test('dashboard drops complete context gated rules even with nested predicates and stale saved context', function () {
+    [$configurator, $product] = publicConfigurationFixture(function (array &$draft): void {
+        $draft['context_schema']['territory'] = [['value' => 'eu', 'label' => 'Europe']];
+        $draft['attributes'][0]['label_override'] = 'Territory';
+        $draft['rules'] = [fixtureAdvanced('public-context', [[
+            'id' => 'new:any', 'operator' => 'Any', 'conditions' => [
+                ['id' => 'new:territory', 'source_kind' => 'Territory', 'source_configurator_attribute_id' => null, 'property_key' => null, 'context_dimension' => 'territory', 'operator' => 'NotEquals', 'operand' => 'eu', 'option_ids' => []],
+                fixtureCondition('a0', 'A', 'A0'),
+            ],
+        ]], 'B', 'DisableOptions', ['new:B0'])];
+    });
+    $loader = app(ConfiguratorDefinitionLoader::class);
+    $before = $loader->draft($configurator->fresh());
+    $input = $loader->forDashboardProduct($product->id, ['version' => 1, 'configurator_id' => $configurator->id, 'context' => ['territory' => 'eu', 'application' => 'All']]);
+    $result = app(ConfiguratorEngine::class)->evaluate($input);
+    expect($result->configurationCode)->toBe('A0-B0-C0')->and($result->context['territory'])->toBe('All')
+        ->and($result->definition->contextSchema)->toBe(['territory' => [], 'application' => []])
+        ->and($result->definition->rules)->toBe([])
+        ->and($loader->draft($configurator->fresh()))->toBe($before);
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('Territory')
+        ->call('selectOption', $before['attributes'][0]['id'], $before['attributes'][0]['options'][1]['id'])->assertSee('A1-B0-C0');
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id);
+    expect($preview->instance()->form->getComponent('formState.context.territory'))->toBeNull();
 });
 
 test('Preview reauthorizes and rejects a Product outside its currently assigned Groups', function () {

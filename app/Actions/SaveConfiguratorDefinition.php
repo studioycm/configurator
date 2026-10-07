@@ -28,9 +28,15 @@ class SaveConfiguratorDefinition
     /** @param array<string, mixed> $data */
     public function handle(User $actor, Configurator $configurator, array $data): Configurator
     {
+        return $this->save($actor, $configurator, $data);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function save(User $actor, Configurator $configurator, array $data, bool $preserveInactiveReferences = false): Configurator
+    {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($configurator, $data): Configurator {
+        return DB::transaction(function () use ($configurator, $data, $preserveInactiveReferences): Configurator {
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
             $globalContext = CatalogContextSettings::current(lock: true)->choices;
             $current = $this->loader->draft($record);
@@ -38,10 +44,21 @@ class SaveConfiguratorDefinition
             $definition = $this->compiler->compile($data, $attributes, $options, authoring: true, globalContext: $globalContext);
             $data = $definition->data;
             $this->assertOwnership($data, $current);
+            foreach ($data['attributes'] as $index => $row) {
+                if (! $preserveInactiveReferences && str_starts_with((string) $row['id'], 'new:') && ! $attributes[$row['attribute_id']]['is_active']) {
+                    throw ValidationException::withMessages(['attributes.'.$index.'.attribute_id' => 'Disabled Attributes cannot be newly included. Re-enable the shared Attribute first.']);
+                }
+                foreach ($row['options'] as $optionIndex => $option) {
+                    $canonical = $options[$option['option_id']];
+                    if (! $preserveInactiveReferences && str_starts_with((string) $option['id'], 'new:') && (! $canonical['is_active'] || $canonical['is_hidden'])) {
+                        throw ValidationException::withMessages(['attributes.'.$index.'.options.'.$optionIndex.'.option_id' => 'Disabled or hidden Options cannot be newly included.']);
+                    }
+                }
+            }
             $attributeMap = [];
             $optionMap = [];
             foreach ($data['attributes'] as $row) {
-                $attribute = $this->persist(ConfiguratorAttribute::class, $row['id'], ['configurator_id' => $record->id, ...$this->only($row, ['attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text'])]);
+                $attribute = $this->persist(ConfiguratorAttribute::class, $row['id'], ['configurator_id' => $record->id, ...$this->only($row, ['attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'is_active'])]);
                 $attributeMap[(string) $row['id']] = $attribute->id;
                 foreach ($row['options'] as $optionRow) {
                     $option = $this->persist(ConfiguratorOption::class, $optionRow['id'], ['configurator_attribute_id' => $attribute->id, ...$this->only($optionRow, ['option_id', 'display_order', 'label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'])]);
@@ -201,9 +218,9 @@ class SaveConfiguratorDefinition
                 unset($set);
             }
             unset($rule);
-            $copy = Configurator::create(['name' => $name]);
+            $copy = Configurator::create(['name' => $name, 'is_active' => $source->is_active, 'disabled_group_behavior' => $source->disabled_group_behavior]);
 
-            return $this->handle($actor, $copy, $data);
+            return $this->save($actor, $copy, $data, preserveInactiveReferences: true);
         });
     }
 

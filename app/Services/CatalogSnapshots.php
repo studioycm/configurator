@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\DTO\CatalogSnapshot;
-use App\Models\Group;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +22,7 @@ class CatalogSnapshots
 
     public function revision(int $groupId): string
     {
-        $group = Group::query()->select(['id', 'catalog_revision'])->withExists('children')->findOrFail($groupId);
+        $group = app(CatalogAvailability::class)->group($groupId);
         abort_if($group->children_exists, 409, 'This Group is now a branch.');
 
         return (string) $group->catalog_revision;

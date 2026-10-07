@@ -56,7 +56,7 @@ class ProductConfigurator extends Component
     {
         abort_if($this->productId === null, 404);
 
-        return app(ConfiguratorDefinitionLoader::class)->forProduct($this->productId, $this->runtime, $intent);
+        return app(ConfiguratorDefinitionLoader::class)->forDashboardProduct($this->productId, $this->runtime, $intent);
     }
 
     protected function result(): ConfiguratorEvaluationResult

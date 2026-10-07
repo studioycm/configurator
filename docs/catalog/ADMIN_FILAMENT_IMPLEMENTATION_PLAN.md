@@ -10,7 +10,7 @@
 
 **Spec:** The consolidated requirements and decision register in this document. It incorporates the original request and sketch, all subsequent corrections, the three previous research responses, and the current code. Written user instructions take precedence over the sketch and earlier recommendations. This extends the existing [admin contract](contracts/FILAMENT_ADMIN.md) and [navigation/header work](NAVIGATION_IMPLEMENTATION_PLAN.md); it does not restart the catalog rebuild.
 
-**Status:** Scope-complete plan for review. The required-Attribute runtime decision in G1 remains open. The recommended policies in G2 and the optional work in section 14 are explicit proposals, not silently settled business rules. Non-status phases are independent of G1.
+**Status:** Core administration phases implemented; P8 and the dedicated Configurator review are now authorized and implemented under the decisions below. The execution record contains verification and publication evidence. Section 14 remains deferred, including the Preview & Test evaluator workspace.
 
 **Later implementation handoff, 2026-10-07:** Before implementing Group forms/batch presentation, global appearance or shared frontend changes, read the [card appearance handoff for “Research Filament 5 admin UX”](CARD_APPEARANCE_ADMIN_UX_HANDOFF.md). It records the locally implemented Group controls, aggregate-save/runtime contracts, phase reconciliation and verification limits added after this plan. It does not mark P0–P12 complete or authorize another phase.
 
@@ -116,11 +116,16 @@ Preview & Test remains a placeholder by an earlier explicit decision. This plan 
 2. Omit that Attribute and its code segment, explicitly accepting changed code structure.
 3. Retain a valid stored default as read-only, defining what happens if its shared Option is also disabled.
 
-G1 is approved. G2 remains intentionally undecided at the user’s request; revisit it when P8 is ready to begin. Other authorized phases continue independently.
+G1 is approved and implemented.
 
-**G2 — proposed availability policies to review with the status phase.** These were recommendations, not explicit user decisions: a Disabled Configurator leaves its Product visible but unavailable for configuration; a Disabled Group makes its catalog branch effectively unavailable while retaining descendants' own flags; direct routes follow the same effective availability as discovery; imports retain local statuses. Adopt them only as part of approving the final status contract. Do not silently cascade status writes to children or replace selections/defaults.
+**G2 — final availability contract, decided 2026-10-07.** The initial deferral and single Configurator recommendation are superseded by the user's answers:
 
-Also settle the runtime response to a disabled selected/default shared Option in that status contract. Recommended: retain the saved reference, explain why the current configuration is unavailable, and require a valid active choice; never rewrite the stored default automatically. Existing rule-driven temporary availability and its selection-repair behavior remain a separate contract.
+- Disabled Products disappear from discovery and direct catalog routes.
+- A Disabled Group hides its entire branch without changing descendant flags. A visible parent with no visible children stays a branch and shows an empty state.
+- Disabling a Configurator requires a choice, with no silent default: **keep assigned Groups and Products visible without configuration**, **hide its assigned branch while disabled**, or **unassign its Groups and keep Products visible without configuration**. Hiding preserves flags and assignments; re-enabling follows those flags. Unassignment is retained on re-enable.
+- Shared Options have independent `is_active` and `is_hidden` flags. Disabled **and** Hidden both prevent selection. Hidden removes the choice from presentation; Disabled can remain visibly unavailable. Saved inclusions, rules, defaults and code references remain intact.
+- An inactive required shared Attribute/local inclusion, or a lifecycle Disabled/Hidden stored default, makes configuration unavailable until repaired/re-enabled; emit no shortened/generated code. A nondefault inactive Option is rejected as a selection and the ordinary legal selection repair applies. Local initial and rule-driven temporary unavailability retains the existing fallback contract.
+- Discovery and direct routes share effective availability. Imports preserve admin lifecycle flags. Existing inactive references can be edited/duplicated; new inactive/hidden shared inclusions are rejected. Ordinary rules cannot override hard lifecycle unavailability.
 
 **Technical spike gates:** one-row table composition, state-preserving dialog resizing, and widths-only column resizing need application prototypes. Their success criteria are specified below. These are engineering checks, not invented user permission flows.
 
@@ -131,8 +136,8 @@ Also settle the runtime response to a disabled selected/default shared Option in
 | Model/table | Planned lifecycle change | Reason/boundary |
 | --- | --- | --- |
 | `App\Models\Attribute` / `attributes` | Add `is_active` | Shared availability affects existing inclusions |
-| `App\Models\Option` / `options` | Add `is_active` | Shared availability; preserve code and usage references |
-| `App\Models\Configurator` / `configurators` | Add `is_active` | Owner-level configuration availability |
+| `App\Models\Option` / `options` | Add `is_active` and `is_hidden` | Independent lifecycle/visibility; both block selection, preserve references |
+| `App\Models\Configurator` / `configurators` | Add `is_active` and `disabled_group_behavior` | Explicit visible/hide/unassign decision on disable |
 | `App\Models\Product` / `products` | Add `is_active` | Status-only admin mutation; imported facts remain read-only |
 | `App\Models\Group` / `groups` | Add `is_active` | Catalog availability; G2 defines ancestor effects |
 | `App\Models\ConfiguratorAttribute` / `configurator_attributes` | Add `is_active` | User-selected local inclusion status; G1 defines runtime effect |
@@ -587,15 +592,15 @@ Acceptance: fewer long independent sections, useful counts, no blanket deferral 
 
 ### P8 — Selected status schema and runtime
 
-Prerequisite: record G1's answer and review G2 in this document before implementation. Modify the six Models/factories, Rule presentation, schema/forms/tables, relevant save/import actions, `ConfiguratorDefinition{Loader,Compiler}.php`, Configurator DTOs/engine, `Catalog{Discovery,Cards,Snapshots,Revisions}.php`/snapshot builder as required, and frontend route/state handling. Create status migration and `app/Actions/ChangeCatalogRecordStatus.php`; test `tests/Feature/Filament/CatalogStatusesTest.php` plus existing Runtime/Integration/Import/PublicCatalog suites.
+Prerequisite: record G1's answer and review G2 in this document before implementation. Modify the six Models/factories, Rule presentation, schema/forms/tables, relevant save/import actions, `ConfiguratorDefinition{Loader,Compiler}.php`, Configurator DTOs/engine, `Catalog{Discovery,Cards,Snapshots,Revisions}.php`/snapshot builder as required, and frontend route/state handling. Create status migration and `app/Actions/ChangeCatalogStatus.php`; test `tests/Feature/Catalog/CatalogStatusTest.php` and guarded `tests/Feature/Catalog/MySql/CatalogStatusConcurrencyTest.php` plus existing Runtime/Integration/Import/PublicCatalog suites.
 
-- [ ] Derive one availability truth table from the agreed G1/G2 policy: shared active × local active × owner active × default Option active × ordinary rule state. State exact generated-code/diagnostic outcomes.
-- [ ] Add independently derived tests before schema/runtime changes: disabling affects existing definitions; re-enabling restores availability; a rule cannot re-enable hard-disabled shared data; disabled defaults have the agreed outcome; imports retain flags.
-- [ ] Generate migration for six true-default flags; update model casts/allowlists/draft serialization/compile/persist/duplicate paths. Keep existing Rule `is_active`.
-- [ ] Implement one hard-availability source reused by loader/runtime/admin/customer-facing evaluation. Keep stored references and local initial-disabled semantics distinct; expose diagnostics/repair lists.
-- [ ] Add icon status actions, All/Active/Disabled filters, bulk status and impact confirmation. For aggregate records, never use a default per-cell relationship save.
-- [ ] Invalidate affected catalog revisions/snapshots/count caches and protect discovery/direct-route consistency. Do not use active-only queries that hide references from authoring diagnostics.
-- [ ] Run status + affected Runtime/Integration/Import/PublicCatalog tests and guarded MySQL cases when lock/import behavior warrants them.
+- [x] Derive one availability truth table from the agreed G1/G2 policy: shared active × local active × owner active × default Option active × ordinary rule state. State exact generated-code/diagnostic outcomes.
+- [x] Add independently derived tests before schema/runtime changes: disabling affects existing definitions; re-enabling restores availability; a rule cannot re-enable hard-disabled shared data; disabled defaults have the agreed outcome; imports retain flags.
+- [x] Generate migration for six true-default flags; update model casts/allowlists/draft serialization/compile/persist/duplicate paths. Keep existing Rule `is_active`.
+- [x] Implement one hard-availability source reused by loader/runtime/admin/customer-facing evaluation. Keep stored references and local initial-disabled semantics distinct; expose diagnostics/repair lists.
+- [x] Add icon status actions, All/Active/Disabled filters, bulk status and impact confirmation. For aggregate records, never use a default per-cell relationship save.
+- [x] Invalidate affected catalog revisions/snapshots/count caches and protect discovery/direct-route consistency. Do not use active-only queries that hide references from authoring diagnostics.
+- [x] Run status + affected Runtime/Integration/Import/PublicCatalog tests and guarded MySQL cases when lock/import behavior warrants them.
 
 Acceptance: the approved truth table holds on save, reload, duplication, preview evaluator and catalog use; no accidental code shortening, reference loss, or imported-status reset.
 
@@ -744,4 +749,30 @@ These direct user corrections supersede earlier presentation choices: retain the
 
 Preserve all resource record actions when composing the split editor; hide a bulk-only More menu until selection, and keep frequent actions direct. Keep row actions visible during horizontal table scrolling, with compact padding and mobile touch targets. This is fixed action-cell presentation, not a new data-column pinning feature.
 
-The current visual-review pass covers non-Configurator admin pages and their working dialogs. Configurator tables/edit forms remain assigned to the dedicated session; shared shell/dialog infrastructure still applies. P8 remains deferred pending G2. The user's subsequent commit/push request supplies publication authorization beyond this plan's original planning-only boundary.
+The initial visual-review pass covered non-Configurator admin pages and their working dialogs. The user subsequently selected the dedicated Configurator review and P8; section 17 supersedes the earlier exclusions. The user's subsequent commit/push request supplies publication authorization beyond this plan's original planning-only boundary.
+
+
+## 17. Configurator review, dashboard context and lifecycle implementation, 2026-10-07
+
+The user's follow-up selects the Configurator review and status phase. The three Configurator disable choices and Hidden Option selection rule above are authoritative.
+
+| Effective state | Catalog/evaluator result | Stored data |
+| --- | --- | --- |
+| Product or ancestor Group disabled; Configurator policy hide | Discovery omitted; direct route 404 | Own/descendant flags and references retained |
+| Configurator disabled, policy visible | Product visible; configuration unavailable | Assignments retained |
+| Configurator disabled, policy unassign | Product visible without assigned configuration | Groups detached; definitions retained; no automatic reassignment |
+| Required shared Attribute or local inclusion disabled | `inactive_attribute`; unavailable, no code | Inclusion, defaults, rules and order retained |
+| Shared default Option disabled or hidden | `inactive_default`; unavailable, no code | Stored default retained until explicit repair |
+| Nondefault shared Option disabled or hidden | Not legal; attempted selection rejected/repaired | Inclusion/reference retained |
+| Ordinary inactive Rule | Existing rule skipped | Rule definition retained |
+| Rule/local initial availability changes | Existing legal-set/fallback logic | Does not override lifecycle status or rewrite stored default |
+
+- `ChangeCatalogStatus` owns lifecycle writes. Single and selected actions authorize `manage-catalog`, lock Groups/owners/records before impact validation, use atomic aggregate saves for inclusions/rules, and coalesce affected descendant revisions. Review tokens include fresh selected state, Configurator assignments/revisions and Product membership/status; stale dialogs keep flags and inputs intact. No Group/Product deletion was added.
+- Additive migration `2026_10_07_132817_add_admin_status_to_catalog_models.php` supplies six true-default flags, Option false-default visibility and Configurator policy. It was applied locally to verified `configurator_catalog_dev`; existing rows remain active/visible. Production migration is not performed. Rolling it back would discard new status choices, so deployment/rollback remains an explicit operation.
+- Status icons/quick filters and batch status are available on selected resource/owner tables; Option visibility is independent. Disabling Configurators offers affected Group/Product drawers and a required three-choice policy.
+- Logged-in dashboard uses `forDashboardProduct`; restored or forged context is ignored, separate context selectors/teleports are removed, and complete rules containing any Territory/Application condition are omitted in memory. Removing only a condition could change Boolean semantics. Stored context and generic future-public evaluator support remain. Actual Configurator Attributes, including ones named Territory or Application, remain ordinary Attributes.
+- Admin global Context settings is removed from navigation and its authorized direct page remains. Configurator context settings are collapsed under Future public catalog context; rule source choices separate Agent dashboard from Future public catalog. Preview's dormant component uses the same dashboard evaluation boundary, but Preview & Test remains a placeholder.
+- Overview and general inclusion/rule fields are flat; advanced Conditions/Effects keep two useful tabs; mapping checkboxes stay inline. Static guidance becomes circled-question hints. Overview summary uses a responsive side column. Configurator tables now use compact sticky row-action cells, readable mobile Attribute width and the same Columns rows/width steps as other admin tables.
+- macOS/Finder resource-fork and metadata patterns are ignored at any depth; no tracked metadata needed removal.
+
+Current checks and exact limits are in the kickoff execution record. These changes preserve the completed Cards handoff: local filtering, independent card requests and the warm two-SELECT/no-count contract remain under regression coverage; no new browser performance benchmark is claimed.

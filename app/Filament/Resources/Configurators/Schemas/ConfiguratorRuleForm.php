@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Configurators\Schemas;
 use App\ConditionOperator;
 use App\ConditionSource;
 use App\Filament\Forms\Components\MappingSetsField;
+use App\Filament\Resources\FormHints;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\RuleEffectKind;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -46,11 +48,11 @@ class ConfiguratorRuleForm
             View::make('filament.forms.validation-summary'),
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
             Hidden::make('kind')->default($kind), Hidden::make('priority')->default(0),
-            Section::make($kind === 'Mapping' ? 'Allowed-option mapping' : 'Advanced rule')->columns(2)->schema([
+            Grid::make(2)->schema([
                 TextInput::make('label')->required()->maxLength(255),
                 Toggle::make('is_active')->label('Enabled')->default(true),
             ]),
-            Builder::make('condition_blocks')->searchable()->label('All conditions')->helperText('An empty root is unconditional. Groups allow one level of All or Any predicates.')
+            Builder::make('condition_blocks')->searchable()->label('All conditions')->hintAction(FormHints::make('An empty root is unconditional. Groups allow one level of All or Any predicates.'))
                 ->blocks([
                     Block::make('predicate')->label('Condition')->schema($predicate())->columns(2),
                     Block::make('group')->label('All / Any group')->schema([
@@ -61,11 +63,12 @@ class ConfiguratorRuleForm
                 ])->default([])->columnSpanFull(),
         ];
         if ($kind === 'Mapping') {
-            $schema[] = Section::make('Driver and target')->description('Changing either Attribute preserves existing set references. Remove or replace incompatible references explicitly.')->columns(2)->schema([
+            $schema[] = Section::make('Driver and target')->afterHeader([FormHints::make('Changing either Attribute preserves existing set references. Remove or replace incompatible references explicitly.')])->columns(2)->schema([
                 Select::make('driver_configurator_attribute_id')->label('Driver Attribute')->options($attributes)->required()->searchable()->live(),
                 Select::make('target_configurator_attribute_id')->label('Target Attribute')->options($attributes)->required()->searchable()->live(),
             ]);
             $schema[] = MappingSetsField::make('sets')->label('Allowed-option sets')->required()->default([])->columnSpanFull()
+                ->hintAction(FormHints::make('Unmapped driver options add no restriction. Each source can belong to one set; allowed targets may overlap.'))
                 ->sourceChoices(fn (Get $get): array => $options[$get('driver_configurator_attribute_id')] ?? [])
                 ->targetChoices(fn (Get $get): array => $options[$get('target_configurator_attribute_id')] ?? []);
             $schema[] = Hidden::make('effects')->default([]);
@@ -75,7 +78,7 @@ class ConfiguratorRuleForm
             $schema[] = Hidden::make('sets')->default([]);
             $schema[] = Repeater::make('effects')->label('Effects')->minItems(1)->defaultItems(1)->columnSpanFull()->columns(2)->schema([
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
-                Select::make('kind')->label('Effect')->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => Str::headline($kind->value)])->all())->required()->live()->helperText('Exclusion is an advanced restriction. Use a mapping for ordinary allowed-option sets.'),
+                Select::make('kind')->label('Effect')->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => Str::headline($kind->value)])->all())->required()->live()->hintAction(FormHints::make('Exclusion is an advanced restriction. Use a mapping for ordinary allowed-option sets.')),
                 Select::make('target_configurator_attribute_id')->label('Target Attribute')->options($attributes)->required()->searchable()->live(),
                 Select::make('target_scope')->label('Applies to')->options(['Attribute' => 'Whole Attribute', 'Options' => 'Selected Options'])->required()->default('Options')->live(),
                 Select::make('option_ids')->label('Target Options')->options(fn (Get $get): array => self::withStale($options[$get('target_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))->multiple()->searchable()->default([])
@@ -108,7 +111,10 @@ class ConfiguratorRuleForm
 
         return [
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
-            Select::make('source_kind')->label('Source')->options(collect(ConditionSource::cases())->mapWithKeys(fn (ConditionSource $source): array => [$source->value => Str::headline($source->value)])->all())->required()->live()
+            Select::make('source_kind')->label('Source')->options([
+                'Agent dashboard' => collect(ConditionSource::cases())->reject(fn (ConditionSource $source): bool => in_array($source->value, ['Territory', 'Application'], true))->mapWithKeys(fn (ConditionSource $source): array => [$source->value => Str::headline($source->value)])->all(),
+                'Future public catalog' => ['Territory' => 'Territory', 'Application' => 'Application'],
+            ])->hintAction(FormHints::make('Separate Territory and Application conditions apply only to the future public catalog. Use Selection Option or Selection Code for actual Configurator Attributes in the agent dashboard.'))->required()->live()
                 ->afterStateUpdated(fn (mixed $state, Set $set) => $set('context_dimension', match ($state) {
                     'Territory' => 'territory', 'Application' => 'application', default => null
                 })),

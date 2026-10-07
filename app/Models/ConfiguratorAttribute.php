@@ -14,12 +14,15 @@ class ConfiguratorAttribute extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['configurator_id', 'attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'default_configurator_option_id'];
+    protected $fillable = ['configurator_id', 'attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'default_configurator_option_id', 'is_active'];
+
+    /** @var array<string, mixed> */
+    protected $attributes = ['is_active' => true];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['display_order' => 'integer', 'code_order' => 'integer'];
+        return ['is_active' => 'boolean', 'display_order' => 'integer', 'code_order' => 'integer'];
     }
 
     public function configurator(): BelongsTo

@@ -23,6 +23,14 @@ final class ConfiguratorEngine
         if ($input->definition === null) {
             return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], $input->diagnostics === [] ? [['code' => 'unassigned', 'message' => 'This Product does not have an assigned Configurator.']] : $input->diagnostics, false, null, $input->configuratorId);
         }
+        foreach ($input->definition->attributes as $attribute) {
+            $default = $attribute->options[$attribute->defaultOptionId];
+            if (! $attribute->active || ! $default->active || $default->lifecycleHidden) {
+                $inactiveAttribute = ! $attribute->active;
+
+                return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], [...$input->diagnostics, ['code' => $inactiveAttribute ? 'inactive_attribute' : 'inactive_default', 'message' => $inactiveAttribute ? 'A required Attribute is disabled. Repair or re-enable it before configuring this Product.' : 'A stored default Option is disabled or hidden. Repair or re-enable it before configuring this Product.', 'attribute_id' => $attribute->id]], false, null, $input->configuratorId);
+            }
+        }
         $context = [];
         $diagnostics = $input->diagnostics;
         foreach (['territory', 'application'] as $dimension) {
@@ -71,8 +79,8 @@ final class ConfiguratorEngine
         foreach ($definition->evaluationOrder as $id) {
             $attribute = $definition->attributes[$id];
             $all = array_map('strval', array_keys($attribute->options));
-            $hidden = array_map('strval', array_keys(array_filter($attribute->options, fn (ConfiguratorOptionDTO $option): bool => $option->hidden)));
-            $disabled = array_map('strval', array_keys(array_filter($attribute->options, fn (ConfiguratorOptionDTO $option): bool => $option->disabled)));
+            $hidden = array_map('strval', array_keys(array_filter($attribute->options, fn (ConfiguratorOptionDTO $option): bool => $option->hidden || $option->lifecycleHidden)));
+            $disabled = array_map('strval', array_keys(array_filter($attribute->options, fn (ConfiguratorOptionDTO $option): bool => $option->disabled || ! $option->active)));
             $legal = array_values(array_diff($all, $hidden, $disabled));
             $applicable = true;
             $contributors = [];

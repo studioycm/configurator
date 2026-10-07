@@ -39,7 +39,7 @@ class CatalogCards
                 if ($response['status'] !== 'ready') {
                     return ['response' => $response];
                 }
-                $products = Product::query()->where('group_id', $groupId)->whereIn('id', $ids)->orderBy('product_code')->orderBy('id')->get(['id', 'product_code', 'properties']);
+                $products = Product::query()->where('group_id', $groupId)->where('is_active', true)->whereIn('id', $ids)->orderBy('product_code')->orderBy('id')->get(['id', 'product_code', 'properties']);
 
                 return ['response' => $response, 'products' => $products, 'snapshot' => $snapshot, 'settings' => $settings];
             });

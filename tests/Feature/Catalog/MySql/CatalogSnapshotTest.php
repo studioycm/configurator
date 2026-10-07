@@ -46,7 +46,8 @@ test('repeatable read keeps revisions and product data coherent across concurren
         $product = Product::factory()->for($group)->create(['product_code' => 'BEFORE', 'properties' => ['Working_Pressure' => '25']]);
         $phase = 'snapshot';
         DB::listen(function (QueryExecuted $query) use (&$phase, $writer, $group, $product): void {
-            if ($query->connectionName !== 'mysql' || $phase === null || ! str_contains($query->sql, 'from `groups`') || ! str_contains($query->sql, 'limit 1')) {
+            if ($query->connectionName !== 'mysql' || $phase === null || ! str_contains($query->sql, 'from `groups`')
+                || ! str_contains($query->sql, $phase === 'cards' ? 'catalog_revision' : 'limit 1')) {
                 return;
             }
             $currentPhase = $phase;

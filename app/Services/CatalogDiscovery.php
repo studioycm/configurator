@@ -21,6 +21,7 @@ class CatalogDiscovery
     public function prepare(int $groupId, array $raw, ?string $action = null, mixed $argument = null): CatalogDiscoveryResult
     {
         return DB::transaction(function () use ($groupId, $raw, $action, $argument): CatalogDiscoveryResult {
+            app(CatalogAvailability::class)->assertGroup($groupId);
             $group = Group::with(['filters' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'), 'subGroups' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')])->findOrFail($groupId);
             $registry = CatalogImportParser::propertyKeys();
             $filters = $group->filters->filter(fn (GroupFilter $filter): bool => in_array($filter->property_key, $registry, true))->keyBy('property_key');
@@ -224,7 +225,7 @@ class CatalogDiscovery
     /** @param array<string, array{property: string, values: list<string>}> $constraints */
     public function predicate(int $groupId, array $constraints): Builder
     {
-        $query = Product::query()->where('group_id', $groupId);
+        $query = Product::query()->where('group_id', $groupId)->where('is_active', true);
         foreach ($constraints as $constraint) {
             [$value, $type] = $this->expressions($constraint['property']);
             $query->whereRaw($type)->whereIn(DB::raw($value), $constraint['values']);

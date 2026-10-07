@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Configurators\Schemas;
 
+use App\Filament\Resources\FormHints;
 use App\Models\CatalogContextSettings;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
@@ -25,12 +26,13 @@ class ConfiguratorForm
     public static function overview(bool $withContext = true): array
     {
         $fields = [TextInput::make('name')->required()->maxLength(255), Textarea::make('description')->rows(3)->maxLength(5000)->columnSpanFull()];
-        $sections = [View::make('filament.forms.validation-summary')->columnSpanFull(), Section::make('Configurator details')->columns(2)->schema($fields)->columnSpanFull()];
+        $sections = [View::make('filament.forms.validation-summary')->columnSpanFull(), ...$fields];
         if ($withContext) {
             $global = CatalogContextSettings::current()->choices;
+            $contextSections = [];
             foreach (['territory' => 'Territory', 'application' => 'Application'] as $dimension => $label) {
-                $sections[] = Section::make($label.' choices')
-                    ->description('All global options are available by default. Change only the exceptions for this configurator.')
+                $contextSections[] = Section::make($label.' choices')
+                    ->afterHeader([FormHints::make('All global options are available by default. Change only the exceptions for this Configurator.')])
                     ->schema([
                         CheckboxList::make('hidden_context_options.'.$dimension)->label('Hide global options')
                             ->options(function (Get $get) use ($global, $dimension): array {
@@ -42,11 +44,14 @@ class ConfiguratorForm
                                 return $choices;
                             })->columns(['default' => 1, 'sm' => 2])->default([])
                             ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
-                            ->helperText('Checked options are hidden here only. All remains available.'),
+                            ->hintAction(FormHints::make('Checked options are hidden here only. All remains available.')),
                         self::contextChoices($dimension, 'Local options')
-                            ->helperText('Add choices for this configurator only. Using a global stable value customizes its label locally. Existing rules must be repaired before a used choice can be removed.'),
+                            ->hintAction(FormHints::make('Add choices for this Configurator only. Using a global stable value customizes its label locally. Repair rules before removing a used choice.')),
                     ]);
             }
+            $sections[] = Section::make('Future public catalog context')->key('public-context')->collapsed()->columns(['default' => 1, 'lg' => 2])->columnSpanFull()
+                ->afterHeader([FormHints::make('Territory and Application are reserved for the future public catalog. The agent dashboard and saved Preview use Configurator Attributes instead and ignore separate context rules.')])
+                ->schema($contextSections);
         }
 
         return $sections;
@@ -59,6 +64,6 @@ class ConfiguratorForm
                 TextInput::make('label')->required()->maxLength(255),
                 TextInput::make('value')->label('Stable value')->required()->maxLength(255)->distinct(),
             ])->defaultItems(0)->reorderableWithButtons()->columnSpanFull()->addActionLabel('Add option')
-            ->helperText('Stable values are used by rules. Keep them unchanged when renaming labels.');
+            ->hintAction(FormHints::make('Stable values are used by rules. Keep them unchanged when renaming labels.'));
     }
 }

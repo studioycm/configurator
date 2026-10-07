@@ -29,6 +29,7 @@ class TablePresentation
         if (in_array($key, ['values', 'attributes', 'options', 'attribute-options', 'configurators', 'groups', 'configurator-attributes', 'configurator-options', 'configurator-rules'], true)) {
             $table->toolbarActions([BatchEditActions::group($key)]);
         }
+        StatusActions::configure($table, $key);
         $component = $table->getLivewire();
         if (! method_exists($component, 'scopedSearchColumns')) {
             $table->pushFilters([Filter::make('workspaceSearch')->schema([Hidden::make('scope')->default('all')])]);

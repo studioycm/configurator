@@ -12,13 +12,14 @@ class BuildCatalogSnapshot
     public function build(int $groupId): CatalogSnapshot
     {
         $snapshot = DB::transaction(function () use ($groupId): CatalogSnapshot {
+            app(CatalogAvailability::class)->assertGroup($groupId);
             $group = Group::query()->withExists('children')->findOrFail($groupId);
             abort_if($group->children_exists, 409, 'This Group is now a branch.');
             $registered = CatalogImportParser::propertyKeys();
             $filters = $group->filters()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($filter) => in_array($filter->property_key, $registered, true));
             $presets = $group->subGroups()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($preset) => in_array($preset->property_key, $registered, true));
             $keys = array_values(array_unique([...$filters->pluck('property_key')->all(), ...$presets->pluck('property_key')->all()]));
-            $query = DB::table('products')->where('group_id', $groupId)->orderBy('id')->select('id');
+            $query = DB::table('products')->where('group_id', $groupId)->where('is_active', true)->orderBy('id')->select('id');
             foreach ($keys as $column => $key) {
                 $expression = DB::getDriverName() === 'sqlite' ? 'json_quote(json_extract(properties, ?))' : 'json_extract(properties, ?)';
                 $query->selectRaw($expression.' as cell_'.$column, ['$."'.$key.'"']);

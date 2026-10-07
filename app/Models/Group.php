@@ -15,15 +15,15 @@ class Group extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['legacy_id', 'parent_id', 'name', 'description', 'sort_order', 'configurator_id', 'result_settings'];
+    protected $fillable = ['legacy_id', 'parent_id', 'name', 'description', 'sort_order', 'configurator_id', 'result_settings', 'is_active'];
 
     /** @var array<string, mixed> */
-    protected $attributes = ['sort_order' => 0, 'result_settings' => '{"default_page_size":10,"allow_page_size_change":false,"page_size_options":[1,2,10]}'];
+    protected $attributes = ['is_active' => true, 'sort_order' => 0, 'result_settings' => '{"default_page_size":10,"allow_page_size_change":false,"page_size_options":[1,2,10]}'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['catalog_revision' => 'string', 'parent_id' => 'integer', 'configurator_id' => 'integer', 'sort_order' => 'integer', 'result_settings' => 'array'];
+        return ['is_active' => 'boolean', 'catalog_revision' => 'string', 'parent_id' => 'integer', 'configurator_id' => 'integer', 'sort_order' => 'integer', 'result_settings' => 'array'];
     }
 
     public function parent(): BelongsTo

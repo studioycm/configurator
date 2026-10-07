@@ -8,6 +8,7 @@ use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\StatusActions;
 use App\Livewire\Catalog\ConfiguratorGroups;
 use App\Livewire\Catalog\ConfiguratorOverview;
 use App\Models\Configurator;
@@ -96,6 +97,7 @@ class EditConfigurator extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            StatusActions::make(Action::make('changeStatus')->record(fn (): Model => $this->getRecord()), Configurator::class),
             Action::make('duplicate')->label('Duplicate')->authorize('manage-catalog')->schema([TextInput::make('name')->required()->maxLength(255)])
                 ->fillForm(fn (): array => ['name' => $this->getRecord()->name.' copy'])
                 ->action(function (array $data): void {

@@ -13,12 +13,15 @@ class Configurator extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'description', 'context_schema', 'hidden_context_options', 'policy_overrides'];
+    protected $fillable = ['name', 'description', 'context_schema', 'hidden_context_options', 'policy_overrides', 'is_active', 'disabled_group_behavior'];
+
+    /** @var array<string, mixed> */
+    protected $attributes = ['is_active' => true, 'disabled_group_behavior' => 'visible'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['context_schema' => 'array', 'hidden_context_options' => 'array', 'policy_overrides' => 'array'];
+        return ['is_active' => 'boolean', 'context_schema' => 'array', 'hidden_context_options' => 'array', 'policy_overrides' => 'array'];
     }
 
     public function groups(): HasMany

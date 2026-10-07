@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Gate;
 
 class ContextSettings extends Page
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $title = 'Territory & Application';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
@@ -42,7 +44,7 @@ class ContextSettings extends Page
 
     protected function getHeaderActions(): array
     {
-        return [FormHints::make('Global choices inherited by every configurator. All is always available. Stable values are used by rules; keep them unchanged when renaming labels.')];
+        return [FormHints::make('Reserved for the future public catalog. These choices do not affect the agent dashboard. All is always available. Keep stable values unchanged when renaming labels.')];
     }
 
     public function form(Schema $schema): Schema

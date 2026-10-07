@@ -36,6 +36,8 @@ test('legacy library dry run is read only and exact repeat preserves separate Va
     expect(Attribute::count())->toBe(0);
     expect(Value::count())->toBe(0);
     $applied = $import->handle($actor, $path, true, $review['source_hash']);
+    Attribute::query()->first()->update(['is_active' => false]);
+    Option::query()->first()->update(['is_active' => false, 'is_hidden' => true]);
     $original = Option::with('value')->orderBy('id')->get()->toArray();
     expect($applied['mode'])->toBe('applied');
     expect(Value::count())->toBe(2);
@@ -43,6 +45,7 @@ test('legacy library dry run is read only and exact repeat preserves separate Va
     expect($import->handle($actor, $path, true, $review['source_hash'])['totals'])
         ->toMatchArray(['attributes_created' => 0, 'options_created' => 0, 'values_created' => 0, 'options_existing' => 2]);
     expect(Option::with('value')->orderBy('id')->get()->toArray())->toBe($original);
+    expect(Attribute::query()->first()->is_active)->toBeFalse();
 });
 
 test('every member of a duplicated legacy code is held only when explicitly requested', function () {

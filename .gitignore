@@ -23,6 +23,25 @@ yarn-error.log
 /.vscode
 /.zed
 
+# macOS and Finder metadata (at any directory depth)
+.DS_Store
+.AppleDouble
+.AppleDB
+.AppleDesktop
+.LSOverride
+._*
+Icon[[:cntrl:]]
+.localized
+.VolumeIcon.icns
+.apdisk
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+.TemporaryItems/
+.DocumentRevisions-V100/
+Network Trash Folder/
+Temporary Items/
+
 # Project exclude paths
 /storage/app/
 /storage/framework//draft.yaml

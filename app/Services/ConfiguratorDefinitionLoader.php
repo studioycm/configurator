@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\ConfiguratorIntentType;
 use App\DTO\ConfiguratorDefinition;
 use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorInteraction;
@@ -23,11 +24,29 @@ class ConfiguratorDefinitionLoader
     /** @param array<string, mixed> $state @param array<string, mixed> $intent */
     public function forProduct(int $productId, array $state = [], array $intent = []): ConfiguratorEvaluationInput
     {
-        return DB::transaction(function () use ($productId, $state, $intent): ConfiguratorEvaluationInput {
+        return $this->productInput($productId, $state, $intent, withPublicContext: true);
+    }
+
+    /** @param array<string, mixed> $state @param array<string, mixed> $intent */
+    public function forDashboardProduct(int $productId, array $state = [], array $intent = []): ConfiguratorEvaluationInput
+    {
+        return $this->productInput($productId, $state, $intent, withPublicContext: false);
+    }
+
+    /** @param array<string, mixed> $state @param array<string, mixed> $intent */
+    private function productInput(int $productId, array $state, array $intent, bool $withPublicContext): ConfiguratorEvaluationInput
+    {
+        return DB::transaction(function () use ($productId, $state, $intent, $withPublicContext): ConfiguratorEvaluationInput {
             $this->assertSnapshotIsolation();
             $product = Product::with('group')->findOrFail($productId);
+            if (! app(CatalogAvailability::class)->productIsVisible($product)) {
+                return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'product_unavailable', 'message' => 'This Product is no longer available in the catalog.']]);
+            }
             $configuratorId = $product->group->configurator_id;
             $interaction = ConfiguratorInteraction::fromUntrusted($intent === [] ? ['kind' => 'Initialize'] : $intent);
+            if (! $withPublicContext && $interaction->kind === ConfiguratorIntentType::ChangeContext) {
+                $interaction = new ConfiguratorInteraction(ConfiguratorIntentType::Reevaluate);
+            }
             if ($configuratorId === null) {
                 return new ConfiguratorEvaluationInput(null, properties: $product->properties, intent: $interaction);
             }
@@ -40,10 +59,22 @@ class ConfiguratorDefinitionLoader
             foreach (['context', 'selections', 'remembered'] as $key) {
                 $safeState[$key] = $sameDefinition && is_array($state[$key] ?? null) && count($state[$key]) <= 500 ? $state[$key] : [];
             }
+            if (! $withPublicContext) {
+                $safeState['context'] = [];
+            }
             try {
-                $data = $this->draft(Configurator::findOrFail($configuratorId));
+                $configurator = Configurator::findOrFail($configuratorId);
+                if (! $configurator->is_active) {
+                    return new ConfiguratorEvaluationInput(null, properties: $product->properties, configuratorId: $configuratorId, diagnostics: [['code' => 'inactive_configurator', 'message' => 'The assigned Configurator is disabled.']]);
+                }
+                $data = $this->draft($configurator);
+                if (! $withPublicContext) {
+                    $data['context_schema'] = ['territory' => [], 'application' => []];
+                    $data['hidden_context_options'] = ['territory' => [], 'application' => []];
+                    $data['rules'] = array_values(array_filter($data['rules'], fn (array $rule): bool => ! $this->hasPublicContextCondition($rule['conditions'])));
+                }
                 [$attributes, $options] = $this->canonical($data);
-                $definition = $this->compiler->compile($data, $attributes, $options, globalContext: CatalogContextSettings::current()->choices);
+                $definition = $this->compiler->compile($data, $attributes, $options, globalContext: $withPublicContext ? CatalogContextSettings::current()->choices : []);
             } catch (ValidationException) {
                 $definition = null;
                 $diagnostics[] = ['code' => 'invalid_definition', 'message' => 'The assigned Configurator needs repair before it can be used.'];
@@ -65,8 +96,23 @@ class ConfiguratorDefinitionLoader
                 return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_unavailable', 'message' => 'This Product is no longer assigned to the previewed Configurator. Choose another Product.']]);
             }
 
-            return $this->forProduct($productId, $state, $intent);
+            return $this->forDashboardProduct($productId, $state, $intent);
         });
+    }
+
+    /** @param list<array<string, mixed>> $conditions */
+    private function hasPublicContextCondition(array $conditions): bool
+    {
+        foreach ($conditions as $condition) {
+            if (in_array($condition['source_kind'] ?? null, ['Territory', 'Application'], true)) {
+                return true;
+            }
+            if (isset($condition['conditions']) && $this->hasPublicContextCondition($condition['conditions'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function assertSnapshotIsolation(): void
@@ -96,7 +142,7 @@ class ConfiguratorDefinitionLoader
         $configurator->load(['attributes.options', 'rules.conditionGroups', 'rules.conditions.optionReferences', 'rules.effects.optionReferences', 'rules.mappingSets.sources', 'rules.mappingSets.targets']);
         $attributes = [];
         foreach ($configurator->attributes->sortBy(['display_order', 'id']) as $attribute) {
-            $row = $attribute->only(['attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text']);
+            $row = $attribute->only(['attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'is_active']);
             $row['id'] = (string) $attribute->id;
             $row['default_configurator_option_id'] = $attribute->default_configurator_option_id === null ? null : (string) $attribute->default_configurator_option_id;
             $row['options'] = [];
@@ -153,8 +199,8 @@ class ConfiguratorDefinitionLoader
             $attributeQuery->lockForUpdate();
             $optionQuery->lockForUpdate();
         }
-        $attributes = $attributeQuery->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->only(['key', 'label'])])->all();
-        $options = $optionQuery->get()->mapWithKeys(fn (Option $option): array => [$option->id => ['attribute_id' => $option->attribute_id, 'code' => $option->code, 'label' => $option->value->label]])->all();
+        $attributes = $attributeQuery->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->only(['key', 'label', 'is_active'])])->all();
+        $options = $optionQuery->get()->mapWithKeys(fn (Option $option): array => [$option->id => ['attribute_id' => $option->attribute_id, 'code' => $option->code, 'label' => $option->value->label, 'is_active' => $option->is_active, 'is_hidden' => $option->is_hidden]])->all();
 
         return [$attributes, $options];
     }

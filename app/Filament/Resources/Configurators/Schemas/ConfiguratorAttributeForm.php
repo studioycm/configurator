@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Configurators\Schemas;
 
 use App\ConfigInputType;
+use App\Filament\Resources\FormHints;
 use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
@@ -15,7 +16,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
-use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
@@ -39,8 +40,9 @@ class ConfiguratorAttributeForm
             View::make('filament.forms.validation-summary'),
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
             Hidden::make('canonical_drafts')->default([])->dehydrated(false),
-            Section::make('Local inclusion')->description('These settings change this Configurator only. Canonical identity and codes stay in the shared library.')->columns(2)->schema([
+            Grid::make(2)->schema([
                 Select::make('attribute_id')->label('Canonical Attribute')->required()->rules(['integer'])->searchable()->live()->disabled($inclusion !== null || ! $chooseCanonical)->dehydrated()
+                    ->hintAction(FormHints::make('These settings change this Configurator only. Canonical identity and codes stay in the shared library.'))
                     ->afterStateUpdated(function (Get $get, Set $set, mixed $state, mixed $old): void {
                         $drafts = $get('canonical_drafts') ?? [];
                         $fields = ['options', 'default_configurator_option_id', 'label_override', 'help_text', 'input_type'];
@@ -55,9 +57,9 @@ class ConfiguratorAttributeForm
                             }
                         }
                     })
-                    ->options(fn (): array => Attribute::whereNotIn('id', $owner->attributes()->when($inclusion, fn ($query) => $query->whereKeyNot($inclusion->id))->pluck('attribute_id'))->orderBy('label')->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all()),
+                    ->options(fn (): array => Attribute::where(fn ($query) => $query->where('is_active', true)->when($inclusion, fn ($query) => $query->orWhereKey($inclusion->attribute_id)))->whereNotIn('id', $owner->attributes()->when($inclusion, fn ($query) => $query->whereKeyNot($inclusion->id))->pluck('attribute_id'))->orderBy('label')->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all()),
                 Select::make('input_type')->required()->options(ConfigInputType::class)->default('toggle'),
-                TextInput::make('label_override')->label('Local label')->maxLength(255)->helperText('Leave empty to use the shared Attribute label.'),
+                TextInput::make('label_override')->label('Local label')->maxLength(255)->hintAction(FormHints::make('Leave empty to use the shared Attribute label.')),
                 Textarea::make('help_text')->label('Local help')->maxLength(1000)->rows(3),
             ]),
             ...($withOptions ? [Repeater::make('options')->label('Included Options')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
@@ -76,7 +78,7 @@ class ConfiguratorAttributeForm
                 TextInput::make('hint')->label('Local hint')->maxLength(1000),
                 Toggle::make('hidden_by_default')->label('Initially hidden')->default(false),
                 Toggle::make('disabled_by_default')->label('Initially disabled')->default(false),
-            ])->helperText('Reordering does not change the stored default. Repair defaults and rule references before removing an Option.')] : []),
+            ])->hintAction(FormHints::make('Reordering does not change the stored default. Repair defaults and rule references before removing an Option.'))] : []),
             Select::make('default_configurator_option_id')->label('Stored default')->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
                 if (! $withOptions) {
                     return $inclusion->options()->with('option.value')->orderBy('display_order')->get()
@@ -95,7 +97,7 @@ class ConfiguratorAttributeForm
                 }
 
                 return $options;
-            })->helperText('A hidden or disabled runtime default may fall back temporarily. This stored choice changes only when you edit it.'),
+            })->hintAction(FormHints::make('Local initial or rule-driven unavailability may fall back temporarily. A Disabled or Hidden shared default requires repair or re-enabling. The stored choice changes only when you edit it.')),
         ];
     }
 }

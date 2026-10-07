@@ -18,5 +18,6 @@ final readonly class ConfiguratorAttributeDTO
         public int $codeOrder,
         public string $defaultOptionId,
         public array $options,
+        public bool $active = true,
     ) {}
 }

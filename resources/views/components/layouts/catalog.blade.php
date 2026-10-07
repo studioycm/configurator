@@ -39,7 +39,6 @@
                         </flux:tooltip>
                     @endcan
                 </nav>
-                <div id="catalog-product-context"></div>
             </div>
             @auth
                 <div class="catalog-navigation-footer">

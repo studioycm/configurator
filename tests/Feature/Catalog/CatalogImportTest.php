@@ -36,10 +36,10 @@ test('reimport keeps ids and app metadata while owned blanks win and absent prod
     $actor = User::factory()->create(['email' => 'ycm@data4.work']);
     applyCatalogFixture($actor, catalogFixtureCsv([catalogFixtureRow(), catalogFixtureRow('18', '0043')]));
     $product = Product::query()->where('legacy_id', '00017')->firstOrFail();
-    $product->update(['properties' => [...$product->properties, 'app_note' => 'keep'], 'parts' => [...$product->parts, 'app_slot_note' => 'keep'], 'extra_data' => [...$product->extra_data, 'app_note' => 'keep']]);
+    $product->update(['is_active' => false, 'properties' => [...$product->properties, 'app_note' => 'keep'], 'parts' => [...$product->parts, 'app_slot_note' => 'keep'], 'extra_data' => [...$product->extra_data, 'app_note' => 'keep']]);
     $parent = Group::factory()->create(['name' => 'Reviewed test parent']);
     $configurator = Configurator::factory()->create();
-    $product->group->update(['parent_id' => $parent->id, 'configurator_id' => $configurator->id]);
+    $product->group->update(['is_active' => false, 'parent_id' => $parent->id, 'configurator_id' => $configurator->id]);
     $row = catalogFixtureRow();
     $row[4] = '';
     $row[7] = '';
@@ -59,6 +59,7 @@ test('reimport keeps ids and app metadata while owned blanks win and absent prod
     expect($product->fresh()->extra_data)->toMatchArray(['Indc' => '', 'app_note' => 'keep']);
     expect($product->group->fresh()->parent_id)->toBe($parent->id);
     expect($product->group->fresh()->configurator_id)->toBe($configurator->id);
+    expect($product->fresh()->is_active)->toBeFalse()->and($product->group->fresh()->is_active)->toBeFalse();
     $this->assertDatabaseCount('products', 2);
 });
 

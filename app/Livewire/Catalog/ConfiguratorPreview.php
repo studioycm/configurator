@@ -69,7 +69,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
 
     protected function evaluated(): void
     {
-        $this->formState = ['product' => $this->productId, 'context' => $this->runtime['context'], 'choices' => $this->runtime['selections']];
+        $this->formState = ['product' => $this->productId, 'choices' => $this->runtime['selections']];
         $this->cachedSchemas = [];
     }
 
@@ -82,10 +82,6 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
             ->live()->afterStateUpdated(fn ($state) => $this->chooseProduct($state))->columnSpanFull()];
         if ($this->productId !== null) {
             $result = $this->preparedResult ?? app(ConfiguratorEngine::class)->evaluate($this->input(['kind' => 'Reevaluate']));
-            foreach ($result->definition === null ? [] : ['territory', 'application'] as $dimension) {
-                $fields[] = Select::make('context.'.$dimension)->label(ucfirst($dimension))->options(['All' => 'All', ...array_column($result->definition->contextSchema[$dimension], 'label', 'value')])->selectablePlaceholder(false)->live()
-                    ->afterStateUpdated(fn ($state) => $this->changeContext($dimension, (string) $state));
-            }
             $attributes = $result->definition?->attributes ?? [];
             uasort($attributes, fn ($a, $b): int => [$a->displayOrder, $a->id] <=> [$b->displayOrder, $b->id]);
             foreach ($attributes as $attribute) {

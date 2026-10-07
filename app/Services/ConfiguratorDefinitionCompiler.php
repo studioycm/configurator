@@ -49,7 +49,9 @@ class ConfiguratorDefinitionCompiler
         $codes = [];
         foreach ($attributeRows as $index => &$row) {
             $path = 'attributes.'.$index;
-            $this->keys($row, ['id', 'attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'default_configurator_option_id', 'options'], $path);
+            $row += ['is_active' => true];
+            $this->keys($row, ['id', 'attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'default_configurator_option_id', 'options', 'is_active'], $path);
+            $row['is_active'] = $this->boolean($row['is_active'] ?? true, $path.'.is_active');
             $id = $this->claim($row, 'attribute', $seen, $path);
             $canonicalId = $this->integer($row['attribute_id'] ?? null, $path.'.attribute_id', 1);
             $this->check(isset($canonicalAttributes[$canonicalId]), $path.'.attribute_id', 'Select an existing canonical Attribute.');
@@ -82,7 +84,8 @@ class ConfiguratorDefinitionCompiler
                     $this->text($option['display_value_override'] ?? null, $optionPath.'.display_value_override') ?? $canonical['label'],
                     $this->text($option['hint'] ?? null, $optionPath.'.hint', true, 5000),
                     $this->boolean($option['hidden_by_default'] ?? false, $optionPath.'.hidden_by_default'),
-                    $this->boolean($option['disabled_by_default'] ?? false, $optionPath.'.disabled_by_default'));
+                    $this->boolean($option['disabled_by_default'] ?? false, $optionPath.'.disabled_by_default'),
+                    $canonical['is_active'] ?? true, $canonical['is_hidden'] ?? false);
             }
             uasort($options, fn (ConfiguratorOptionDTO $a, ConfiguratorOptionDTO $b): int => [$a->displayOrder, $a->id] <=> [$b->displayOrder, $b->id]);
             $default = $row['default_configurator_option_id'] ?? null;
@@ -91,7 +94,7 @@ class ConfiguratorDefinitionCompiler
             }
             $this->check((is_int($default) || is_string($default)) && isset($options[(string) $default]), $path.'.default_configurator_option_id', 'Choose a default from this inclusion. Repair the default before removing its Option.');
             $row['default_configurator_option_id'] = (string) $default;
-            $attributes[$id] = new ConfiguratorAttributeDTO($id, $canonicalId, $canonicalAttributes[$canonicalId]['key'], $label ?? $canonicalAttributes[$canonicalId]['label'], $input->value, $help, $display, $codeOrder, (string) $default, $options);
+            $attributes[$id] = new ConfiguratorAttributeDTO($id, $canonicalId, $canonicalAttributes[$canonicalId]['key'], $label ?? $canonicalAttributes[$canonicalId]['label'], $input->value, $help, $display, $codeOrder, (string) $default, $options, $row['is_active'] && ($canonicalAttributes[$canonicalId]['is_active'] ?? true));
         }
         unset($row);
         $data['attributes'] = $attributeRows;

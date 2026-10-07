@@ -3,8 +3,12 @@
 </x-slot:breadcrumbs>
 
 <div wire:key="catalog-group-{{ $group->id }}">
-    @if ($children->isNotEmpty())
-        <x-catalog.group-tree :groups="$children" />
+    @if ($isBranch)
+        @if ($children->isNotEmpty())
+            <x-catalog.group-tree :groups="$children" />
+        @else
+            <p role="status" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{{ __('There are no available groups in this branch.') }}</p>
+        @endif
     @else
         <div wire:ignore x-data="catalogFilters" data-catalog-filters data-group-id="{{ $group->id }}" data-dataset-url="{{ route('catalog.groups.dataset', $group) }}">
             <script type="application/json" data-catalog-snapshot>{!! \Illuminate\Support\Js::encode($snapshot?->data) !!}</script>

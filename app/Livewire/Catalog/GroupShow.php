@@ -3,6 +3,7 @@
 namespace App\Livewire\Catalog;
 
 use App\Models\Group;
+use App\Services\CatalogAvailability;
 use App\Services\CatalogCards;
 use App\Services\CatalogSnapshots;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -63,9 +64,13 @@ class GroupShow extends Component
     public function render(): View
     {
         $group = Group::findOrFail($this->groupId);
-        $children = $group->children()->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'description']);
+        $availability = app(CatalogAvailability::class)->visibleGroups();
+        $availableGroup = $availability->firstWhere('id', $group->id);
+        abort_if($availableGroup === null, 404);
+        $isBranch = (bool) $availableGroup->children_exists;
+        $children = $group->children()->whereKey($availability->modelKeys())->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'description']);
         $snapshot = null;
-        if ($children->isEmpty()) {
+        if (! $isBranch) {
             try {
                 $snapshot = app(CatalogSnapshots::class)->get((int) $this->groupId);
             } catch (Throwable $exception) {
@@ -75,7 +80,7 @@ class GroupShow extends Component
             }
         }
 
-        return view('livewire.catalog.group-show', ['group' => $group, 'ancestors' => $group->ancestorTrail(), 'children' => $children, 'snapshot' => $snapshot])
+        return view('livewire.catalog.group-show', ['group' => $group, 'ancestors' => $group->ancestorTrail(), 'children' => $children, 'isBranch' => $isBranch, 'snapshot' => $snapshot])
             ->title($group->name)->layoutData(['subtitle' => $group->description]);
     }
 }

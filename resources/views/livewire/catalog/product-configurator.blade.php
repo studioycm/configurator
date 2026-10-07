@@ -1,8 +1,4 @@
 <section class="min-w-0" aria-label="{{ __('Product configuration') }}" wire:loading.attr="aria-busy" x-data="{ tab: 'configurator' }">
-    @if ($result->definition)
-        <livewire:catalog.context-selector :context="$result->context" :schema="$result->definition->contextSchema"
-            @context-changed="changeContext($event.detail.dimension, $event.detail.choice)" :key="'product-context-'.$product->id" />
-    @endif
     <div class="min-w-0 flex-1 space-y-3">
         <div class="space-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-blue-950 dark:text-blue-100">

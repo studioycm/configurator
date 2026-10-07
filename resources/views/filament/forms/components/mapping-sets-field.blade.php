@@ -14,7 +14,6 @@
         }"
         class="space-y-4"
     >
-        <p class="text-sm text-gray-600 dark:text-gray-300">Unmapped driver options add no restriction. Each source can belong to one set; allowed targets may overlap.</p>
         <p class="text-sm font-medium" x-text="sets.length + ' sets · ' + sets.reduce((count, set) => count + set.source_option_ids.length, 0) + ' source memberships'"></p>
         <template x-for="(set, index) in sets" :key="set.id">
             <fieldset class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">

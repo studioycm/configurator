@@ -13,7 +13,16 @@ class Attribute extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['key', 'label'];
+    protected $fillable = ['key', 'label', 'is_active'];
+
+    /** @var array<string, mixed> */
+    protected $attributes = ['is_active' => true];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
 
     public function options(): HasMany
     {
