@@ -24,6 +24,7 @@ use App\Models\Value;
 use App\Services\CanonicalUsage;
 use App\Services\ConfiguratorDefinitionLoader;
 use Filament\Actions\Action;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -165,6 +166,25 @@ test('attribute options use canonical saves and reject duplicate codes', functio
     expect($attribute->options()->sole()->value_id)->toBe($value->id);
     $manager->callTableAction('create', data: ['value_id' => Value::factory()->create()->id, 'code' => 'Z9'])->assertHasTableActionErrors(['code']);
     expect($attribute->options()->count())->toBe(1);
+});
+
+test('attribute option deletion exposes exact dependencies and disables only blocked submissions', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
+    $used = Option::findOrFail($data['attributes'][0]['options'][0]['option_id']);
+    $unused = Option::factory()->for($used->attribute)->create(['code' => 'Z9']);
+    $manager = Livewire\Livewire::test(OptionsRelationManager::class, [
+        'ownerRecord' => $used->attribute, 'pageClass' => EditAttribute::class,
+    ]);
+    $manager->mountAction(TestAction::make('remove')->table($used));
+    $action = $manager->instance()->getMountedAction();
+    expect($action->getModalSubmitAction()->isDisabled())->toBeTrue()
+        ->and(collect($action->getExtraModalFooterActions())->map(fn (Action $action): string => $action->getLabel())->all())->toContain('View inclusions (1)');
+    $manager->call('unmountAction')->mountAction(TestAction::make('remove')->table($unused));
+    $action = $manager->instance()->getMountedAction();
+    expect($action->getModalSubmitAction()->isDisabled())->toBeFalse()
+        ->and($action->getExtraModalFooterActions())->toBe([]);
+    expect($used->fresh())->not->toBeNull()->and($unused->fresh())->not->toBeNull();
 });
 
 test('master value search finds specification text and combines with selected tags', function () {

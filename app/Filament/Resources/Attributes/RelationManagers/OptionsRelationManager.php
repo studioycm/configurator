@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Attributes\RelationManagers;
 use App\Actions\DeleteCanonicalDefinition;
 use App\Actions\SaveCanonicalOption;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\TablePresentation;
 use App\Models\Attribute;
@@ -44,7 +45,7 @@ class OptionsRelationManager extends RelationManager
                 $this->optionAction('create')->label('Add option'),
             ])->recordActions([
                 $this->optionAction('edit')->label('Edit')->fillForm(fn (Option $record): array => $record->only('value_id', 'code')),
-                Action::make('remove')->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                DependencyActions::canonical(Action::make('remove'))->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription('Used options cannot be deleted. Repair their dependencies first.')
                     ->action(function (Option $record): void {

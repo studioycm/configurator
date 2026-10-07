@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -55,14 +56,19 @@ abstract class SplitListRecords extends ListRecords
 
     protected function makeTable(): Table
     {
-        return parent::makeTable()
+        $table = parent::makeTable();
+        $hasEditPage = static::getResource()::hasPage('edit');
+        $otherActions = array_filter($table->getRecordActions(), fn (Action|ActionGroup $action): bool => ! ($action instanceof Action && in_array($action->getName(), ['edit', 'view'], true)));
+
+        return $table
             ->recordUrl(null)
             ->recordAction('select')
             ->recordClasses(fn (Model $record): ?string => (string) $record->getKey() === $this->selectedRecord ? 'catalog-selected-row' : null)
             ->recordActions([
-                Action::make('select')->label(static::getResource()::hasPage('edit') ? 'Edit' : 'View')
-                    ->iconButton()->icon(Heroicon::OutlinedPencilSquare)->tooltip(static::getResource()::hasPage('edit') ? 'Edit' : 'View')
+                Action::make('select')->label($hasEditPage ? 'Edit' : 'View')
+                    ->iconButton()->icon($hasEditPage ? Heroicon::OutlinedPencilSquare : Heroicon::OutlinedEye)->tooltip($hasEditPage ? 'Edit' : 'View')
                     ->action(fn (Model $record) => $this->selectRecord((string) $record->getKey())),
+                ...$otherActions,
             ]);
     }
 

@@ -34,6 +34,30 @@ test('product lookup searches the physical product code and shows read only esca
         ->and(Action::make('probe')->getModalWidth())->toBe(Width::FourExtraLarge);
 });
 
+test('split lists preserve catalog links alongside their inline record editor', function (string $page, string $model, string $route, string $label) {
+    $record = $model::factory()->create();
+    $list = Livewire::test($page);
+    $list->assertSee('Open catalog page');
+    $link = $list->instance()->getTable()->getAction('openCatalog');
+
+    expect($link)->not->toBeNull();
+    expect($link->record($record)->getUrl())->toBe(route($route, $record));
+    expect($list->instance()->getTable()->getAction('select')->getLabel())->toBe($label);
+    $list->callTableAction('select', $record)->assertSet('selectedRecord', (string) $record->getKey());
+})->with([
+    [ListProducts::class, Product::class, 'catalog.products.show', 'View'],
+    [ListGroups::class, Group::class, 'catalog.groups.show', 'Edit'],
+]);
+
+test('a bulk only header menu follows native selection visibility and keeps batch actions registered', function () {
+    $list = Livewire::test(ListGroups::class);
+    $table = $list->instance()->getTable();
+    $menu = $table->getHeaderActions()[0];
+
+    expect($menu->getExtraAttributes())->toMatchArray(['x-cloak' => true, 'x-show' => 'getSelectedRecordsCount()']);
+    expect($table->getFlatBulkActions())->not->toBeEmpty();
+});
+
 test('group editing uses the domain boundary and rejects a cycle without saving partial fields', function () {
     $parent = Group::factory()->create(['name' => 'Original']);
     $child = Group::factory()->for($parent, 'parent')->create();

@@ -13,15 +13,21 @@ use Filament\Actions\Action;
 
 class DependencyActions
 {
-    public static function canonical(Action $action, Attribute|Value|Option $record): Action
+    public static function canonical(Action $action, Attribute|Value|Option|null $record = null): Action
     {
-        $type = match (true) {
-            $record instanceof Attribute => 'attribute', $record instanceof Value => 'value', default => 'option'
-        };
+        $resolveRecord = fn (): Attribute|Value|Option => $record ?? $action->getRecord();
 
-        return $action->modalContent(fn () => view('filament.resources.canonical-usage', ['usage' => app(CanonicalUsage::class)->report($record)]))
-            ->modalSubmitAction(fn (Action $action): Action => $action->disabled($record instanceof Option ? $record->inclusions()->exists() : ($record->options()->exists() || ($record instanceof Attribute && $record->inclusions()->exists()))))
-            ->extraModalFooterActions(function () use ($type, $record): array {
+        return $action->modalContent(fn () => view('filament.resources.canonical-usage', ['usage' => app(CanonicalUsage::class)->report($resolveRecord())]))
+            ->modalSubmitAction(function (Action $action) use ($resolveRecord): Action {
+                $record = $resolveRecord();
+
+                return $action->disabled($record instanceof Option ? $record->inclusions()->exists() : ($record->options()->exists() || ($record instanceof Attribute && $record->inclusions()->exists())));
+            })
+            ->extraModalFooterActions(function () use ($resolveRecord): array {
+                $record = $resolveRecord();
+                $type = match (true) {
+                    $record instanceof Attribute => 'attribute', $record instanceof Value => 'value', default => 'option'
+                };
                 $counts = app(CanonicalUsage::class)->report($record)['counts'];
                 $actions = [];
                 foreach ($counts as $category => $count) {

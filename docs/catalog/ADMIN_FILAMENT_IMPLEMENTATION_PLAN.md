@@ -74,7 +74,7 @@ Preview & Test remains a placeholder by an earlier explicit decision. This plan 
 | R01 | Compact administration and fewer screens/clicks; written instructions outrank sketch | All phases |
 | R02 | Page/main and sidebar brand headers align; logo fits; dark sidebar and transparent logo wrappers stay | P1 |
 | R03 | Cell padding 4–8px vertical / 8–12px horizontal; workspace gaps 6–12px | P1, P9 |
-| R04 | Zero outer `.fi-page-main` padding; components own internal spacing | P1 |
+| R04 | Minimal outer `.fi-page-main` padding of 4–6px, now 6px; components own internal spacing | P1 |
 | R05 | Compact rows, headings, table headings, controls, navigation, and gaps | P1, P2, P10 |
 | R06 | One table-heading row: search/filter/column controls precede header actions | P2 |
 | R07 | Narrow tables use `Search · Filters · Columns · Actions`; static PHP grouping is preferred | P2 |
@@ -100,7 +100,7 @@ Preview & Test remains a placeholder by an earlier explicit decision. This plan 
 | R27 | Resource and suitable Configurator-tab badges; deferral evaluated per component | P7 |
 | R28 | Tabs for forms only where they reduce long independent sections | P7 |
 | R29 | Native heading/context APIs first; heading hooks only where needed | P1, P7 |
-| R30 | Modal header width/maximize controls and slide-over resize | P10 |
+| R30 | Modal/slide-over header Narrower, Wider and Reset width controls with durable bounded steps | P10 |
 | R31 | Column resize: minimal own implementation preferred for evaluation; plugin acceptable | P11 |
 | R32 | Admin Appearance shared settings, preview, Save/Reset and cache | P9 |
 | R33 | Personal appearance and live sidebar/modal drag ideas are retained separately | Section 14 |
@@ -187,7 +187,7 @@ Use the existing `resources/css/shell.css` tokens. Keep currently implemented 48
 | Logo | 28px high, proportional width | Fit inside header; transparent wrappers; existing dark-logo asset |
 | Desktop controls/navigation | 32px minimum target | Compact padding; wrapped text expands naturally |
 | Touch navigation/controls | Existing 44px targets | Preserve touch and mobile drawer usability |
-| Filament outer page-main inset | 0 | Separate token from editor/card internal padding |
+| Filament outer page-main inset | 6px | User correction: retain a minimal 4–6px inset, separate from editor/card internal padding |
 | Internal editor/card padding | 10px starting point | Required local breathing room; do not zero every component |
 | Table rows | Content-driven, approximately 32–40px for a single line | No forced clipping of wrapped labels or validation messages |
 
@@ -442,11 +442,11 @@ Preview renders a representative header, sidebar, narrow/wide table and dialog s
 - Remove/reconcile `Action::configureUsing(... modalWidth(SevenExtraLarge), isImportant: true)` so specific actions can choose appropriate initial widths.
 - Ordinary destructive confirmations remain appropriately small; selection/edit drawers can start larger. Shared default width does not force every tiny confirmation to 1280px.
 - Use native `modalWidth()`, `slideOver()`, `slideOverPosition(Filament\Support\Enums\SlideOverPosition::End)`, `stickyModalHeader()` and `stickyModalFooter()` where applicable. Verify enum namespace in installed source before implementation.
-- Modal header controls: Small / Medium / Large and Maximize/Restore, with accessible names. Keep temporary maximization local to the mounted dialog; restore its previous width.
-- Slide-over: same presets plus bounded edge drag. Resize only the window presentation; keep the same Livewire component, form state, selection, validation errors and draft.
-- Add keyboard-operable width controls. Clamp persisted widths to the viewport; mobile uses available width and disables desktop-only handles.
+- Modal and slide-over header controls: Narrower / Wider / Reset width, using 640px, 960px, 1280px and available viewport width as bounded steps. This supersedes the earlier drag/maximize proposal following the user's reliability correction.
+- Resize only the window presentation; keep the same Livewire component, form state, selection, validation errors and draft. Reapply the chosen width after native Livewire window-style or header updates without replacing form content.
+- Keep width controls keyboard-operable. Clamp persisted widths to the viewport; mobile uses available width and disables steps that cannot change its width.
 - Use a small scoped application dialog adapter and `extraModalWindowAttributes(..., merge: true)` plus custom heading content/native hooks where sufficient. Do not replace Filament's whole modal lifecycle or override an existing Alpine owner.
-- Save drag width on completion, not each pointer movement. Initial browser persistence is namespaced by user/panel/dialog purpose; reset and malformed-storage handling are required.
+- Save each completed width step. Browser persistence is namespaced by user/panel/dialog purpose; Reset removes only that purpose's preference and returns to the shared default. Malformed-storage handling and listener cleanup are required.
 - No corner-drag modal or live sidebar-drag baseline is implied. Those remain optional ideas in section 14.
 
 ### Column widths
@@ -496,7 +496,7 @@ Modify: `resources/css/{shell,app}.css`, `resources/css/filament/admin/theme.css
 
 Consumes existing shell tokens/native navigation; produces distinct outer-page and internal-card spacing plus application table/dialog classes.
 
-- [ ] Split outer page inset from card/editor padding; set `.fi-page-main` to zero across responsive overrides.
+- [ ] Split outer page inset from card/editor padding; keep `.fi-page-main` at the user's minimal 4–6px across responsive overrides.
 - [ ] Apply 6/10px cells and 8px gaps; align 48px matching headers/logo; compact navigation/headings/controls without fixed row clipping.
 - [ ] Apply/review final resource icons while retaining group flyouts, dark sidebar, transparent branding, native search and persisted collapse.
 - [ ] Build with `npm run build`; visually inspect wide/narrow resource and nested-editor pages plus existing catalog/account shell in light/dark.
@@ -608,20 +608,20 @@ Interface: `AdminAppearance::defaults(): array`, `AdminAppearance::current(): ar
 - [ ] Test defaults, boundaries/cross-field logo fit, unauthorized mutation, reload persistence, no-change save, and cache invalidation after actual save.
 - [ ] Generate singleton/table/page/classes through available Artisan commands; no need to generate new resource navigation for a singleton.
 - [ ] Implement Density/Navigation/Dialogs tabs and a persistent unsaved preview; Reset stages defaults, Save persists.
-- [ ] Drive escaped numeric/enum CSS variables/native sidebar widths, preserving zero Filament page inset and frontend component ownership.
+- [ ] Drive escaped numeric/enum CSS variables/native sidebar widths, preserving the minimal Filament page inset and frontend component ownership.
 - [ ] Run `php artisan test --compact tests/Feature/Filament/AdminAppearanceTest.php`; visually compare preview and actual wide/narrow pages.
 
 Acceptance: durable shared defaults with working cache refresh, no stylesheet rebuild per edit, no change to account authentication or existing theme selection.
 
-### P10 — Dialog presets/maximize and slide-over drag
+### P10 — Durable dialog width steps
 
 Create `resources/js/workspace-dialogs.js`, application dialog-heading/width-control view in existing `resources/views/filament/resources/`; modify `resources/js/app.js`, theme, AppServiceProvider and application action configuration. No new PHP test merely to mirror CSS; extend Workspace tests if action/state hooks change.
 
 - [ ] Prototype header controls using native action/modal extension points; preserve action ownership/one Alpine lifecycle and the native focus trap.
-- [ ] Reconcile the important global width override; apply suitable per-purpose presets and Maximize/Restore.
-- [ ] Add bounded slide-over handle and keyboard presets; persist completed widths, clamp on viewport changes, clean up listeners on teardown/navigation.
-- [ ] Verify typed unsaved text, selection, validation errors and scroll survive resize/maximize/restore and closing/returning from a managed child list.
-- [ ] Build assets; use real-browser pointer and keyboard checks plus current Boost browser logs. Run affected action tests only if hooks/state changed.
+- [ ] Reconcile the important global width override; apply suitable per-purpose defaults and Narrower/Wider/Reset width controls.
+- [ ] Persist completed steps, clamp on viewport changes, restore after native morphs and clean up listeners on teardown/navigation.
+- [ ] Verify typed unsaved text, selection, validation errors and scroll survive width changes and closing/returning from a managed child list.
+- [ ] Build assets; use real-browser button and keyboard checks plus recent browser logs. Test persistence, morphs, invalid storage and cleanup with the actual controller.
 
 Acceptance: width changes do not remount/refill/save forms; mobile/focus/Escape/Cancel behavior remains native and usable.
 
@@ -664,7 +664,7 @@ No application tests were run to write this plan. These are future checks, not c
 | Editor roundtrip | A→B→A; rule-kind change; hidden-tab validation; badge event and drawer refresh retain unrelated draft | P5/P7 |
 | Status consistency | Approved truth table; shared/local/owner/default combinations; restore; import; direct route/discovery parity | P8 |
 | Appearance cache | Save/reload/new request/Reset/no change; malformed/out-of-range inputs; panel versus ordinary user | P9 |
-| Resize | Typed text/errors/selection remain; cancel/maximize/restore; hide/show/order/rerender; listener cleanup | P10/P11 |
+| Resize | Typed text/errors/selection remain; narrower/wider/reset; column hide/show/order/rerender; listener cleanup | P10/P11 |
 
 Browser matrix: wide resource table; two-column/narrow Configurator workspace; stacked layout around its existing 1200px transition; 390px mobile; light/dark content; collapsed/expanded sidebars and native group flyouts; search/filter/columns/action keyboard flow; long labels/breadcrumbs; nested count/blocker lists; account `wire:navigate`; reload/history/back; open mobile navigation while a dialog exists; unsaved editor while another table refreshes; two independent tables' resize state.
 
@@ -703,7 +703,7 @@ The user requested that all thoughts remain visible while later additional impro
 | Personal density/default-width preferences with cache | Later option; define shared-default → personal override precedence and user-only save scope before adding user storage |
 | Cross-device column order/visibility/width | Later option; native session visibility/order and browser widths are baseline; no DB preference migration silently added |
 | Live sidebar drag | Later option; native collapse/configured widths already solve baseline; if selected, use bounded drag, keyboard settings and existing native state |
-| Modal corner drag | Later option; header presets/maximize first; slide-over drag is selected scope |
+| Modal/slide-over edge or corner drag | Later option; reliable header width steps are the selected baseline |
 | Column pinning/header drag reordering | Pinning not selected; header reordering explicitly excluded |
 | Official paid Compact Theme | Alternative comparison only; no purchase/install, and it would not solve bespoke table/header controls |
 | `asmit/resized-column` | Acceptable evaluated fallback; dependency/version approval and integration test required |
@@ -736,4 +736,12 @@ Primary implementation authority is the installed source plus version-scoped Boo
 
 Earlier measured header/row/toolbar heights were historical observations. Do not reuse them as current benchmark results. No exact FilamentExamples implementation was found for the proposed generic count helper, combined scoped-search control, or bulk find/replace; these are small application designs based on native APIs, not copied examples.
 
-This plan is the only repository artifact created by this planning task. No application implementation, schema migration, database mutation, dependency change, test execution, commit, push, or deployment is represented as completed here.
+This document describes the implementation contract. Execution, verification and publication evidence is recorded in [ADMIN_FILAMENT_KICKOFF_PROMPT.md](ADMIN_FILAMENT_KICKOFF_PROMPT.md).
+
+## 16. Visual review corrections, 2026-10-07
+
+These direct user corrections supersede earlier presentation choices: retain the 6px page inset; use reliable dialog width steps; convert explanatory descriptions/helpers to native circled-question hints; remove a lone Section wrapper from a tab and omit a tab strip when only one useful tab exists. Keep validation, dependency failures and staged-save warnings visible. Preserve multiple meaningful sections such as the three Group Presentation sections.
+
+Preserve all resource record actions when composing the split editor; hide a bulk-only More menu until selection, and keep frequent actions direct. Keep row actions visible during horizontal table scrolling, with compact padding and mobile touch targets. This is fixed action-cell presentation, not a new data-column pinning feature.
+
+The current visual-review pass covers non-Configurator admin pages and their working dialogs. Configurator tables/edit forms remain assigned to the dedicated session; shared shell/dialog infrastructure still applies. P8 remains deferred pending G2. The user's subsequent commit/push request supplies publication authorization beyond this plan's original planning-only boundary.

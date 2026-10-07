@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Groups\Schemas;
 
+use App\Filament\Resources\FormHints;
 use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\GroupFilter;
@@ -29,24 +30,29 @@ class GroupForm
     public static function configure(Schema $schema): Schema
     {
 
+        $details = [
+            TextInput::make('name')->required()->maxLength(255)->hintAction(FormHints::make('Imported names are replaced by the source name on reimport.')),
+            Textarea::make('description')->maxLength(5000)->columnSpanFull(),
+            Select::make('parent_id')->label('Parent')->searchable()->placeholder('Root group')
+                ->options(fn (?Group $record): array => self::parentOptions($record)),
+            Select::make('configurator_id')->label('Configurator')->searchable()->placeholder('Unassigned')
+                ->getSearchResultsUsing(fn (string $search): array => Configurator::where('name', 'like', '%'.$search.'%')->orderBy('name')->limit(50)->pluck('name', 'id')->all())
+                ->getOptionLabelUsing(fn (mixed $value): ?string => Configurator::find($value)?->name)
+                ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
+                ->hintAction(FormHints::make('Leaf groups can share one configurator. Changes to it affect every assigned group.')),
+            TextInput::make('sort_order')->label('Sort Order')->integer()->default(0)->required(),
+        ];
+        $record = $schema->getRecord();
+        if (! $record instanceof Group || $record->children()->exists()) {
+            return $schema->columns(2)->components($details);
+        }
         $sections = self::settingsSections();
         $leaf = fn (?Group $record): bool => $record !== null && ! $record->children()->exists();
 
         return $schema->columns(1)->components([Tabs::make('Group settings')->key('group-settings')->columnSpanFull()->tabs([
-            Tab::make('Details')->schema([Section::make('Details')->schema([
-                TextInput::make('name')->required()->maxLength(255)->helperText('Imported names are replaced by the source name on reimport.'),
-                Textarea::make('description')->maxLength(5000)->columnSpanFull(),
-                Select::make('parent_id')->label('Parent')->searchable()->placeholder('Root group')
-                    ->options(fn (?Group $record): array => self::parentOptions($record)),
-                Select::make('configurator_id')->label('Configurator')->searchable()->placeholder('Unassigned')
-                    ->getSearchResultsUsing(fn (string $search): array => Configurator::where('name', 'like', '%'.$search.'%')->orderBy('name')->limit(50)->pluck('name', 'id')->all())
-                    ->getOptionLabelUsing(fn (mixed $value): ?string => Configurator::find($value)?->name)
-                    ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
-                    ->helperText('Leaf groups can share one configurator. Changes to it affect every assigned group.'),
-                TextInput::make('sort_order')->label('Sort Order')->integer()->default(0)->required(),
-            ])->columns(2)->columnSpanFull()]),
-            Tab::make('Filters')->schema([$sections[3]])->visible($leaf),
-            Tab::make('Presets')->schema([$sections[4]])->visible($leaf),
+            Tab::make('Details')->columns(2)->schema($details),
+            Tab::make('Filters')->schema($sections[3]->getDefaultChildComponents())->visible($leaf),
+            Tab::make('Presets')->schema($sections[4]->getDefaultChildComponents())->visible($leaf),
             Tab::make('Presentation')->schema([$sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
         ])]);
     }
@@ -60,28 +66,28 @@ class GroupForm
             Section::make('Product cards')->schema([
                 Select::make('catalog_settings.result_settings.card_properties')->label('Properties to display')->multiple()->searchable()
                     ->options($properties)->default([])->placeholder('Use group filter properties')
-                    ->helperText('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Each property has a consistent position across matching cards.')
+                    ->hintAction(FormHints::make('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Each property has a consistent position across matching cards.'))
                     ->columnSpanFull(),
                 Select::make('catalog_settings.result_settings.cards_per_row')->label('Cards per row')
                     ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
                     ->default(4)->required()->selectablePlaceholder(false)
-                    ->helperText('Desktop columns. Smaller screens use fewer columns.'),
+                    ->hintAction(FormHints::make('Desktop columns. Smaller screens use fewer columns.')),
                 TextInput::make('catalog_settings.result_settings.products_debounce_ms')->label('Product update delay (ms)')
                     ->integer()->minValue(0)->maxValue(2147483600)->step(100)->rules(['multiple_of:100'])->default(0)->required()
-                    ->helperText('0 requests products immediately. Use steps of 100 ms to wait between rapid choices. Filters always respond immediately.'),
+                    ->hintAction(FormHints::make('0 requests products immediately. Use steps of 100 ms to wait between rapid choices. Filters always respond immediately.')),
                 Select::make('catalog_settings.result_settings.max_results')->label('Show cards when results are at most')
                     ->options(['all' => 'All'] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
                     ->default('all')->required()->selectablePlaceholder(false)
-                    ->helperText('All shows cards immediately. A number shows cards only when the matching total is at or below that number.'),
+                    ->hintAction(FormHints::make('All shows cards immediately. A number shows cards only when the matching total is at or below that number.')),
             ])->columns(2)->columnSpanFull(),
             Section::make('Card appearance')->schema([
                 Toggle::make('catalog_settings.result_settings.card_only_differences')->label('Only differing properties')->default(true)
-                    ->helperText('Compare the complete matching set and hide shared properties. One matching product has no differing properties.'),
+                    ->hintAction(FormHints::make('Compare the complete matching set and hide shared properties. One matching product has no differing properties.')),
                 Toggle::make('catalog_settings.result_settings.card_show_labels')->label('Show property labels')->default(false)
-                    ->helperText('Property names remain accessible when their labels are visually hidden.'),
+                    ->hintAction(FormHints::make('Property names remain accessible when their labels are visually hidden.')),
                 Select::make('catalog_settings.result_settings.card_property_layout')->label('Label and value layout')
                     ->options(CatalogPolicy::CARD_LAYOUTS)->default('inline_space_between')->required()->selectablePlaceholder(false)
-                    ->helperText('Applies when labels are shown. Your choice is kept when labels are hidden.'),
+                    ->hintAction(FormHints::make('Applies when labels are shown. Your choice is kept when labels are hidden.')),
                 Select::make('catalog_settings.result_settings.card_property_columns')->label('Property columns')
                     ->options([1 => '1', 2 => '2'])->default(2)->required()->selectablePlaceholder(false),
             ])->columns(2)->columnSpanFull(),
@@ -91,9 +97,9 @@ class GroupForm
                 TextInput::make('catalog_settings.result_settings.card_padding_inline')->label('Inline padding')
                     ->integer()->minValue(0)->maxValue(20)->step(1)->suffix('px')->default(6)->required(),
             ])->columns(2)->columnSpanFull(),
-            Section::make('Catalog filters')->description('Only these properties appear as discovery filters. Omitted source values remain available.')->schema([
+            Section::make('Catalog filters')->schema([
                 Select::make('filter_properties_to_add')->label('Add filter properties')->multiple()->searchable()->options($properties)->dehydrated(false)->live()
-                    ->helperText('Choose several properties to add. Existing filter labels, value order and row identities are kept; save the Group once when ready.')
+                    ->hintAction(FormHints::make('Choose several properties to add. Existing filter labels, value order and row identities are kept; save the Group once when ready.'))
                     ->afterStateUpdated(function (Get $get, Set $set, ?Group $record, mixed $state) use ($properties): void {
                         $rows = $get('catalog_settings.filters') ?? [];
                         $existing = array_column($rows, 'property_key');
@@ -109,7 +115,7 @@ class GroupForm
                         $set('catalog_settings.filters', $rows);
                         $set('filter_properties_to_add', []);
                     })->columnSpanFull(),
-                Repeater::make('catalog_settings.filters')->label('Filters')->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
+                Repeater::make('catalog_settings.filters')->label('Filters')->hintAction(FormHints::make('Only these properties appear as discovery filters. Omitted source values remain available.'))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
                     Select::make('property_key')->label('Product property')->options($properties)->required()->searchable()->live()
                         ->afterStateUpdated(function (Set $set, mixed $state, ?Group $record): void {
@@ -117,22 +123,22 @@ class GroupForm
                         }),
                     TextInput::make('label')->label('Filter label')->required()->maxLength(255),
                     Repeater::make('values')->label('Value order and labels')->defaultItems(0)->addable(false)->reorderableWithButtons()->columnSpanFull()
-                        ->helperText('Canonical values are read-only. Remove stale values to repair the draft; omitted current values still appear after your ordered values.')
+                        ->hintAction(FormHints::make('Canonical values are read-only. Remove stale values to repair the draft; omitted current values still appear after your ordered values.'))
                         ->schema([
                             TextInput::make('value')->label('Source value')->readOnly()->required(),
                             TextInput::make('label')->label('Display label')->maxLength(255)->placeholder('Use source value'),
                         ])->columns(2),
                 ])->columns(2),
             ])->columnSpanFull(),
-            Section::make('SubGroups')->description('Named presets select an allowed set for one property. They do not create child Groups or duplicate Products.')->schema([
-                Repeater::make('catalog_settings.sub_groups')->label('Presets')->defaultItems(0)->reorderableWithButtons()->schema([
+            Section::make('SubGroups')->schema([
+                Repeater::make('catalog_settings.sub_groups')->label('Presets')->hintAction(FormHints::make('Named presets select an allowed set for one property. They do not create child Groups or duplicate Products.'))->defaultItems(0)->reorderableWithButtons()->schema([
                     Hidden::make('id'),
                     TextInput::make('label')->label('Preset label')->required()->maxLength(255),
                     Select::make('property_key')->label('Product property')->options($properties)->required()->searchable()->live(),
                     Select::make('allowed_values')->label('Allowed source values')->multiple()->required()->minItems(1)->searchable()
                         ->options(fn (Get $get, ?Group $record): array => self::valueOptions($record, $get('property_key')))
                         ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
-                        ->helperText('One available option hides this property’s filter automatically; multiple options keep it visible. A preset can also use a property without a filter.')
+                        ->hintAction(FormHints::make('One available option hides this property’s filter automatically; multiple options keep it visible. A preset can also use a property without a filter.'))
                         ->columnSpanFull(),
                 ])->columns(2)->columnSpanFull(),
             ])->columnSpanFull(),
@@ -140,7 +146,7 @@ class GroupForm
                 TextInput::make('catalog_settings.result_settings.default_page_size')->label('Default products per page')->integer()->required()->default(10)->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE),
                 Toggle::make('catalog_settings.result_settings.allow_page_size_change')->label('Let visitors change page size')->default(false)->live(),
                 Repeater::make('catalog_settings.result_settings.page_size_options')->label('Available page sizes')->reorderableWithButtons()
-                    ->helperText('Include the default size when visitor changes are enabled. These choices are kept when the visitor control is disabled.')
+                    ->hintAction(FormHints::make('Include the default size when visitor changes are enabled. These choices are kept when the visitor control is disabled.'))
                     ->schema([TextInput::make('size')->label('Products per page')->integer()->required()->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE)])
                     ->default([['size' => 1], ['size' => 2], ['size' => 10]])->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),

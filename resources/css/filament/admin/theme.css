@@ -112,7 +112,7 @@
 .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header .fi-breadcrumbs { margin: 0; }
 .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-header .fi-header-subheading { flex-basis: 100%; }
 .catalog-related-workspace .space-y-5 > :not(:last-child), .catalog-related-workspace .space-y-6 > :not(:last-child) { margin-block-end: var(--aquestia-shell-gap); }
-.fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 0; }
+.fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 6px; }
 .catalog-split-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--aquestia-shell-gap); align-items: start; }
 .catalog-record-editor { background: white; border: 1px solid #dce3eb; border-radius: .75rem; padding: var(--aquestia-shell-content-padding); }
 .catalog-record-editor .fi-page-header-main-ctn { padding-block: 0; gap: var(--aquestia-shell-gap); }
@@ -120,6 +120,30 @@
 .catalog-record-editor .fi-header-heading { font-size: 1.25rem; }
 .catalog-record-editor .fi-breadcrumbs { display: none; }
 .catalog-selected-row { background: #eff6ff; }
+.catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-cell:has(> .fi-ta-actions),
+.catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-actions-header-cell {
+    position: sticky;
+    inset-inline-end: 0;
+    z-index: 1;
+    background: white;
+    box-shadow: -1px 0 #dce3eb;
+    padding: var(--aquestia-cell-padding-block) var(--aquestia-cell-padding-inline);
+}
+.catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-actions .fi-icon-btn {
+    width: var(--aquestia-shell-desktop-target);
+    height: var(--aquestia-shell-desktop-target);
+    margin: 0;
+}
+.catalog-workspace-table:not([data-workspace-table^='configurator']) .catalog-selected-row .fi-ta-cell:has(> .fi-ta-actions) { background: #eff6ff; }
+.dark .catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-cell:has(> .fi-ta-actions),
+.dark .catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-actions-header-cell { background: #182231; box-shadow: -1px 0 #334155; }
+.dark .catalog-workspace-table:not([data-workspace-table^='configurator']) .catalog-selected-row .fi-ta-cell:has(> .fi-ta-actions) { background: #243b53; }
+.catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-col-manager-item { padding-top: 6px; gap: 8px; }
+.catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-col-manager-label { min-height: 32px; gap: 8px; }
+@media (max-width: 639px) {
+    .catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-actions .fi-icon-btn { width: 44px; height: 44px; }
+    .catalog-workspace-table:not([data-workspace-table^='configurator']) .fi-ta-col-manager-label { min-height: 44px; }
+}
 .catalog-editor-placeholder { color: #64748b; padding: 2rem 1rem; text-align: center; }
 .catalog-related-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.65fr); gap: var(--aquestia-shell-gap); align-items: start; }
 .dark .fi-body { background: #111827; }
@@ -207,9 +231,12 @@
 .catalog-dialog-width-controls { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .catalog-dialog-width-controls button { font-size: 11px; padding: 4px 6px; min-height: 28px; border-radius: 4px; background: #64748b12; }
 .catalog-dialog-width-controls button:hover, .catalog-dialog-width-controls button:focus-visible { background: #0877e825; outline: 1px solid #0877e8; }
-.catalog-dialog-resize-handle { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; touch-action: none; z-index: 2; }
-.catalog-dialog-resize-handle:hover, .catalog-dialog-resize-handle:focus-visible { background: #0877e825; outline: 1px solid #0877e8; }
-@media (max-width: 639px) { .catalog-dialog-width-controls button { min-height: 44px; } }
+.catalog-dialog-width-controls button:disabled { opacity: .4; cursor: default; }
+.catalog-help-trigger.fi-icon-btn { margin: 0; width: 24px; height: 24px; }
+@media (max-width: 639px) {
+    .catalog-dialog-width-controls button { min-height: 44px; }
+    .catalog-help-trigger.fi-icon-btn { width: 44px; height: 44px; }
+}
 .catalog-workspace-table th[data-width-column] { position: relative; }
 .catalog-column-resize { position: absolute; inset-inline-end: 0; top: 0; bottom: 0; width: 8px; cursor: col-resize; touch-action: none; z-index: 2; }
 .catalog-column-resize:hover, .catalog-column-resize:focus-visible { background: #0877e833; outline: 1px solid #0877e8; }

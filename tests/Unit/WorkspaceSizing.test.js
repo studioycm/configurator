@@ -12,6 +12,7 @@ class Element {
         this.listeners = new Map();
         this.style = {
             setProperty(name, value) { this[name] = value; },
+            getPropertyValue(name) { return this[name] ?? ''; },
             removeProperty(name) { delete this[name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())]; },
         };
         this.classList = { toggle() {} };
@@ -36,6 +37,7 @@ class Element {
     matches(selector) {
         if (selector === '[data-width-column]' || selector === 'th[data-width-column]') return Boolean(this.dataset.widthColumn);
         if (selector === '[data-maximize]') return Object.hasOwn(this.dataset, 'maximize');
+        if (selector === '[data-width-step]') return Object.hasOwn(this.dataset, 'widthStep');
         return selector.startsWith('.') && this.className.split(' ').includes(selector.slice(1));
     }
     querySelectorAll(selector) { return this.children.flatMap(child => [...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector)]); }
@@ -84,6 +86,48 @@ function dialog(user = 1, purpose = 'columns') {
     const controller = workspaceDialog({ user, purpose, width: 960, slideOver: true }); controller.$el = root; controller.$nextTick = callback => callback(); controller.init();
     return { controller, root, handle: root.querySelector('.catalog-dialog-resize-handle'), button: label => root.querySelector('.catalog-dialog-width-controls').children.find(child => child.textContent === label) };
 }
+
+test('dialog widths use bounded steps and survive a server morph without replacing the form', t => {
+    const { observers } = environment(t);
+    const modal = dialog();
+    const field = new Element(); field.value = 'unsaved draft'; modal.root.append(field);
+    modal.button('Wider').fire('click');
+    assert.equal(modal.root.style.width, '1280px');
+    modal.root.style.width = '';
+    observers[0].callback([{ type: 'attributes', target: modal.root, attributeName: 'style' }]);
+    assert.equal(modal.root.style.width, '1280px');
+    assert.equal(field.value, 'unsaved draft');
+    assert.equal(dialog().root.style.width, '1280px');
+    modal.button('Narrower').fire('click');
+    assert.equal(modal.root.style.width, '960px');
+    modal.button('Reset width').fire('click');
+    assert.equal(dialog().root.style.width, '960px');
+});
+
+test('a replaced dialog header gets one width toolbar and retains the current width', t => {
+    const { observers } = environment(t);
+    const modal = dialog(); modal.button('Wider').fire('click');
+    modal.root.querySelector('.fi-modal-header').remove();
+    modal.root.append(new Element('fi-modal-header'));
+    observers[0].callback([{ type: 'childList', target: modal.root }]);
+    observers[0].callback([{ type: 'childList', target: modal.root }]);
+    assert.equal(modal.root.querySelectorAll('.catalog-dialog-width-controls').length, 1);
+    assert.equal(modal.root.style.width, '1280px');
+    modal.button('Narrower').fire('click');
+    assert.equal(modal.root.style.width, '960px');
+});
+
+test('invalid saved dialog widths fall back to the default while valid widths restore', t => {
+    environment(t, { saved: [
+        ['aquestia:dialog:1:admin:columns:v1', '{broken'],
+        ['aquestia:dialog:2:admin:columns:v1', '"1280"'],
+        ['aquestia:dialog:3:admin:columns:v1', '20'],
+        ['aquestia:dialog:4:admin:columns:v1', '5000'],
+        ['aquestia:dialog:5:admin:columns:v1', '1280'],
+    ] });
+    for (const user of [1, 2, 3, 4]) assert.equal(dialog(user).root.style.width, '960px');
+    assert.equal(dialog(5).root.style.width, '1280px');
+});
 
 test('column drag persists only on release and cancellation restores the previous width', t => {
     const { writes, values } = environment(t);
@@ -139,25 +183,29 @@ test('denied storage does not break either resize controller', t => {
     environment(t, { denied: true });
     const table = columns(); const modal = dialog();
     assert.doesNotThrow(() => table.handle.fire('keydown', { key: 'End' }));
-    assert.doesNotThrow(() => modal.button('Large').fire('click'));
+    assert.doesNotThrow(() => modal.button('Wider').fire('click'));
     assert.equal(table.header.style.width, '320px');
     assert.equal(modal.root.style.width, '1280px');
 });
 
-test('dialog presets restore after maximize, cancel without saving and remain isolated', t => {
+test('dialog steps remain isolated and clamp on mobile without overwriting the saved desktop width', t => {
     const { values, writes, window } = environment(t);
-    const modal = dialog(); modal.button('Large').fire('click');
-    modal.button('Maximize').fire('click'); assert.equal(modal.root.style.width, '1408px');
-    modal.button('Restore').fire('click'); assert.equal(modal.root.style.width, '1280px');
-    modal.handle.fire('pointerdown'); modal.handle.fire('pointermove', { clientX: 50 });
+    const modal = dialog(); modal.button('Wider').fire('click');
     assert.equal(writes.length, 1);
-    modal.handle.fire('pointercancel'); assert.equal(modal.root.style.width, '1280px');
     assert.equal(dialog().root.style.width, '1280px');
     assert.equal(dialog(2).root.style.width, '960px');
     assert.equal(dialog(1, 'filters').root.style.width, '960px');
-    modal.handle.fire('keydown', { key: 'Home' }); assert.equal(values.get('aquestia:dialog:1:admin:columns:v1'), '640');
+    modal.button('Wider').fire('click'); assert.equal(modal.root.style.width, '1408px');
+    assert.equal(modal.button('Wider').disabled, true);
+    modal.button('Narrower').fire('click'); modal.button('Narrower').fire('click'); modal.button('Narrower').fire('click');
+    assert.equal(modal.button('Narrower').disabled, true);
+    assert.equal(values.get('aquestia:dialog:1:admin:columns:v1'), '640');
     window.innerWidth = 390; window.fire('resize');
-    assert.equal(modal.root.style.width, '390px'); assert.equal(modal.handle.hidden, true);
+    assert.equal(modal.root.style.width, '390px');
+    assert.equal(modal.button('Wider').disabled, true);
+    assert.equal(modal.button('Narrower').disabled, true);
+    assert.equal(values.get('aquestia:dialog:1:admin:columns:v1'), '640');
+    window.innerWidth = 1440; window.fire('resize'); assert.equal(modal.root.style.width, '640px');
 });
 
 test('destroy removes observers, scheduled column hydration, dialog controls and global listeners', t => {

@@ -39,17 +39,17 @@ class BatchEditActions
                 Toggle::make('value')->label('Enabled')->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'boolean' && $get('mode') === 'set'),
                 Select::make('value')->label('New value')->options(fn (Get $get): array => $fields[$get('field')]['options'] ?? [])->multiple(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'multiple')->visible(fn (Get $get): bool => in_array($fields[$get('field')]['type'] ?? '', ['select', 'multiple'], true) && $get('mode') === 'set'),
                 TagsInput::make('value')->label('Tags')->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'tags' && in_array($get('mode'), ['set', 'add', 'remove'], true)),
-            ])->helperText('Values may differ across the selection. Only fields explicitly set or cleared are changed.'),
+            ])->hintAction(FormHints::make('Values may differ across the selection. Only fields explicitly set or cleared are changed.')),
             View::make('filament.resources.batch-preview'),
         ]), self::base('batchReplace', 'Find and replace', $table)->schema([
             Hidden::make('operation')->default('replace'),
             Select::make('field')->options(array_intersect_key($labels, array_filter($fields, fn (array $field): bool => $field['type'] === 'text')))->required(),
             Select::make('mode')->label('Match')->options(['literal' => 'Literal text', 'regex' => 'Regular expression'])->default('literal')->required(),
             Textarea::make('search')->label('Find / pattern')->required()->rows(2),
-            Textarea::make('replacement')->label('Replace with')->default('')->rows(2)->helperText('Regex captures: $1 or ${1}. Empty replacement removes matched text; null fields stay null.'),
+            Textarea::make('replacement')->label('Replace with')->default('')->rows(2)->hintAction(FormHints::make('Regex captures: $1 or ${1}. Empty replacement removes matched text; null fields stay null.')),
             Toggle::make('case_sensitive')->default(true),
             Select::make('occurrences')->options(['all' => 'All matches', 'first' => 'First match'])->default('all')->required(),
-            TextInput::make('flags')->label('Regex flags')->default('')->helperText('Optional: m, s, u, x. Patterns are bounded; invalid or expensive patterns block Apply.'),
+            TextInput::make('flags')->label('Regex flags')->default('')->hintAction(FormHints::make('Optional: m, s, u, x. Patterns are bounded; invalid or expensive patterns block Apply.')),
             View::make('filament.resources.batch-preview'),
         ])];
         if (app(BatchCatalogChanges::class)->canRemove($table)) {

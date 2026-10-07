@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Actions\SaveCatalogContextSettings;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorForm;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\FormHints;
 use App\Models\CatalogContextSettings;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -39,9 +40,9 @@ class ContextSettings extends Page
         $this->form->fill(['context_schema' => CatalogContextSettings::current()->choices]);
     }
 
-    public function getSubheading(): ?string
+    protected function getHeaderActions(): array
     {
-        return 'Global choices inherited by every configurator. All is always available.';
+        return [FormHints::make('Global choices inherited by every configurator. All is always available. Stable values are used by rules; keep them unchanged when renaming labels.')];
     }
 
     public function form(Schema $schema): Schema
@@ -49,8 +50,8 @@ class ContextSettings extends Page
         return $schema->statePath('data')->columns(1)->components([
             View::make('filament.forms.validation-summary')->columnSpanFull(),
             Tabs::make('Context choices')->key('context-choices')->columnSpanFull()->tabs([
-                Tab::make('Territories')->schema([ConfiguratorForm::contextChoices('territory', 'Territory options')]),
-                Tab::make('Applications')->schema([ConfiguratorForm::contextChoices('application', 'Application options')]),
+                Tab::make('Territories')->schema([ConfiguratorForm::contextChoices('territory', 'Territory options')->helperText(null)->hintAction(FormHints::make('Stable values are used by rules. Keep them unchanged when renaming labels.'))]),
+                Tab::make('Applications')->schema([ConfiguratorForm::contextChoices('application', 'Application options')->helperText(null)->hintAction(FormHints::make('Stable values are used by rules. Keep them unchanged when renaming labels.'))]),
             ]),
         ]);
     }

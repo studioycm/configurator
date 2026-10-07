@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\QueryBuilder\Constraints\NumberConstraint;
@@ -79,7 +80,7 @@ class TablePresentation
         if ($constraints !== []) {
             $table->pushFilters([QueryBuilder::make('constraints')->label('Combined constraints')->constraints($constraints)->maxRules(20)->maxNestingDepth(3)
                 ->schema(fn (QueryBuilder $filter): array => [RuleBuilder::make('rules')->label($filter->getLabel())
-                    ->helperText('Combine field conditions using AND or OR.')
+                    ->hintAction(FormHints::make('Combine field conditions using AND or OR.'))
                     ->constraints($filter->getConstraints())->blockPickerColumns($filter->getConstraintPickerColumns())->blockPickerWidth($filter->getConstraintPickerWidth())
                     ->maxRules($filter->getMaxRules())->maxNestingDepth($filter->getMaxNestingDepth())])]);
         }
@@ -115,7 +116,11 @@ class TablePresentation
                 $remainingActions[] = $table->getReorderRecordsTriggerAction(false)->label('Reorder rows')->visible(fn (): bool => $table->isReorderable());
             }
             if ($remainingActions !== []) {
-                $directActions[] = ActionGroup::make($remainingActions)->label('More actions')->icon(Heroicon::OutlinedEllipsisHorizontal)->iconButton()->tooltip('More actions');
+                $menu = ActionGroup::make($remainingActions)->label('More actions')->icon(Heroicon::OutlinedEllipsisHorizontal)->iconButton()->tooltip('More actions');
+                if (collect($menu->getFlatActions())->every(fn (Action $action): bool => $action instanceof BulkAction)) {
+                    $menu->extraAttributes(['x-cloak' => true, 'x-show' => 'getSelectedRecordsCount()']);
+                }
+                $directActions[] = $menu;
             }
             $table->headerActions($directActions);
         }
