@@ -10,17 +10,20 @@ use App\Filament\Resources\Attributes\Pages\EditAttribute;
 use App\Filament\Resources\Attributes\Pages\ListAttributes;
 use App\Filament\Resources\Attributes\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\Configurators\ConfiguratorResource;
+use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\Options\OptionResource;
 use App\Filament\Resources\Options\Pages\CreateOption;
 use App\Filament\Resources\Values\Pages\CreateValue;
 use App\Filament\Resources\Values\Pages\ListValues;
 use App\Filament\Resources\Values\ValueResource;
 use App\Models\Attribute;
+use App\Models\ConfiguratorOption;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
 use App\Services\CanonicalUsage;
 use App\Services\ConfiguratorDefinitionLoader;
+use Filament\Actions\Action;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +33,31 @@ require_once dirname(__DIR__, 2).'/ConfiguratorFixtures.php';
 beforeEach(function () {
     $this->actor = User::factory()->create(['email' => 'ycm@data4.work']);
     $this->actingAs($this->actor);
+});
+
+test('Option usage reports only rules that reference that exact local Option', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $data['rules'][] = fixtureMapping();
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
+    $referenced = Option::findOrFail($data['attributes'][0]['options'][0]['option_id']);
+    $sibling = Option::findOrFail($data['attributes'][0]['options'][1]['option_id']);
+    expect(app(CanonicalUsage::class)->report($referenced)['rules'])->toHaveCount(1)
+        ->and(app(CanonicalUsage::class)->report($sibling)['rules'])->toBe([]);
+});
+
+test('blocked confirmations disable only the submit action and keep the diagnostic trigger usable', function () {
+    $attribute = Attribute::factory()->create();
+    Option::factory()->for($attribute)->create();
+    $component = Livewire\Livewire::test(EditAttribute::class, ['record' => $attribute->id]);
+    $local = ConfiguratorOption::factory()->create();
+    $local->configuratorAttribute->update(['default_configurator_option_id' => $local->id]);
+    foreach ([
+        DependencyActions::canonical(Action::make('delete')->requiresConfirmation()->livewire($component->instance())->record($attribute), $attribute),
+        DependencyActions::local(Action::make('remove')->requiresConfirmation()->livewire($component->instance())->record($local)),
+    ] as $action) {
+        $submit = $action->getModalSubmitAction();
+        expect($submit)->not->toBe($action)->and($submit->isDisabled())->toBeTrue()->and($action->isDisabled())->toBeFalse();
+    }
 });
 
 test('shared label edits preserve local overrides while used canonical identities and deletions require repair', function () {

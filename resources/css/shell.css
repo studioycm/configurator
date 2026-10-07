@@ -1,0 +1,23 @@
+:root {
+    --aquestia-shell-sidebar-width: 13.5rem;
+    --aquestia-shell-rail-width: 3.625rem;
+    --aquestia-shell-header-padding-block: 6px;
+    --aquestia-shell-header-padding-inline: 10px;
+    --aquestia-shell-gap: 8px;
+    --aquestia-shell-content-padding: 12px;
+    --aquestia-cell-padding-block: 6px;
+    --aquestia-cell-padding-inline: 10px;
+    --aquestia-shell-brand-height: 48px;
+    --aquestia-shell-logo-height: 1.75rem;
+    --aquestia-shell-header-min-height: 48px;
+    --aquestia-shell-heading-size: 20px;
+    --aquestia-shell-heading-line-height: 24px;
+    --aquestia-shell-text-size: 12px;
+    --aquestia-shell-text-line-height: 16px;
+    --aquestia-shell-text-row-gap: 2px;
+    --aquestia-shell-desktop-target: 32px;
+    --aquestia-shell-mobile-target: 44px;
+    --aquestia-shell-sidebar-surface: #17212c;
+    --aquestia-shell-sidebar-active: #294762;
+    --aquestia-shell-sidebar-hover: #22374a;
+}

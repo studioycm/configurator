@@ -8,6 +8,7 @@ use App\Filament\Resources\Values\Pages\ListValues;
 use App\Filament\Resources\Values\Schemas\ValueForm;
 use App\Filament\Resources\Values\Tables\ValuesTable;
 use App\Models\Value;
+use App\Services\AdminNavigationCounts;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,13 +25,23 @@ class ValueResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedListBullet;
 
     protected static ?string $modelLabel = 'Master value';
 
     protected static ?string $pluralModelLabel = 'Master values';
 
     protected static ?string $recordTitleAttribute = 'label';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return app(AdminNavigationCounts::class)->total(static::getModel());
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'All administrative records';
+    }
 
     public static function canViewAny(): bool
     {

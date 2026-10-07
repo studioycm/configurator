@@ -8,7 +8,8 @@ use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Models\CatalogContextSettings;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -47,8 +48,10 @@ class ContextSettings extends Page
     {
         return $schema->statePath('data')->columns(1)->components([
             View::make('filament.forms.validation-summary')->columnSpanFull(),
-            Section::make('Territories')->schema([ConfiguratorForm::contextChoices('territory', 'Territory options')]),
-            Section::make('Applications')->schema([ConfiguratorForm::contextChoices('application', 'Application options')]),
+            Tabs::make('Context choices')->key('context-choices')->columnSpanFull()->tabs([
+                Tab::make('Territories')->schema([ConfiguratorForm::contextChoices('territory', 'Territory options')]),
+                Tab::make('Applications')->schema([ConfiguratorForm::contextChoices('application', 'Application options')]),
+            ]),
         ]);
     }
 

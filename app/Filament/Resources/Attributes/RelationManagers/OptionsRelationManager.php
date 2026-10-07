@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Attributes\RelationManagers;
 use App\Actions\DeleteCanonicalDefinition;
 use App\Actions\SaveCanonicalOption;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\InteractsWithScopedTableSearch;
+use App\Filament\Resources\TablePresentation;
 use App\Models\Attribute;
 use App\Models\Option;
 use App\Models\Value;
@@ -21,6 +23,8 @@ use Illuminate\Support\Facades\Gate;
 
 class OptionsRelationManager extends RelationManager
 {
+    use InteractsWithScopedTableSearch;
+
     protected static string $relationship = 'options';
 
     protected static bool $isLazy = false;
@@ -32,10 +36,10 @@ class OptionsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table->modifyQueryUsing(fn ($query) => $query->with('value'))
+        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('value'))
             ->columns([
                 TextColumn::make('value.label')->label('Master value')->searchable(),
-                TextColumn::make('code')->label('Code'),
+                TextColumn::make('code')->label('Code')->searchable()->toggleable(),
             ])->headerActions([
                 $this->optionAction('create')->label('Add option'),
             ])->recordActions([
@@ -48,7 +52,7 @@ class OptionsRelationManager extends RelationManager
                         ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $record), $this->getMountedActionSchema());
                         $this->dispatch('catalog-record-saved');
                     }),
-            ]);
+            ]), 'attribute-options', true, ['create']);
     }
 
     private function optionAction(string $name): Action

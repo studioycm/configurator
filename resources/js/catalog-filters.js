@@ -13,6 +13,9 @@ function catalogFilters() {
     let cardTimer;
     let freshnessTimer;
     let insertionFrame;
+    let headingFrame;
+    let headingObserver;
+    let observedWidth;
     let cleanupFrame;
     let cleanupPromise;
     let resolveCleanup;
@@ -31,6 +34,7 @@ function catalogFilters() {
         clearTimeout(cardTimer);
         clearTimeout(freshnessTimer);
         cancelAnimationFrame(insertionFrame);
+        cancelAnimationFrame(headingFrame);
         cancelAnimationFrame(cleanupFrame);
         resolveCleanup?.();
         cleanupPromise = null;
@@ -42,12 +46,44 @@ function catalogFilters() {
     const errorText = error => [401,403,419].includes(Number(error?.status))
         ? 'Your session has expired or access changed. Reload this page to continue.'
         : 'Products could not be loaded. Please retry.';
+    const measureHeadings = () => {
+        if (!alive || suspended) return;
+        const grid = root.querySelector('.catalog-filter-grid');
+        const legend = grid?.querySelector?.('legend');
+        const fieldset = grid?.querySelector?.('fieldset');
+        if (!legend || !fieldset) return;
+        const columnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns);
+        const fieldStyle = getComputedStyle(fieldset);
+        const width = columnWidth - parseFloat(fieldStyle.paddingLeft) - parseFloat(fieldStyle.paddingRight)
+            - parseFloat(fieldStyle.borderLeftWidth) - parseFloat(fieldStyle.borderRightWidth);
+        if (!Number.isFinite(width) || width <= 0) return;
+        // Include hidden fields without changing visibility, focus or Alpine-owned labels.
+        const probe = document.createElement('span');
+        probe.className = legend.className;
+        probe.setAttribute('aria-hidden', 'true');
+        Object.assign(probe.style, {position:'absolute', visibility:'hidden', pointerEvents:'none',
+            display:'block', insetBlockStart:'0', insetInlineStart:'0', inlineSize:`${width}px`, minBlockSize:'0', maxInlineSize:'none'});
+        grid.appendChild(probe);
+        let height = 20;
+        try {
+            for (const field of snapshot.fields) {
+                if (field.options.length === 0) continue;
+                probe.textContent = field.label;
+                height = Math.max(height, Math.ceil(probe.getBoundingClientRect().height));
+            }
+            grid.style.setProperty('--catalog-filter-heading-height', `${height}px`);
+        } finally { probe.remove(); }
+    };
+    const scheduleHeadings = () => {
+        cancelAnimationFrame(headingFrame);
+        if (alive && !suspended) headingFrame = requestAnimationFrame(measureHeadings);
+    };
 
     return {
         state: {version:1, filters:{}, subGroupId:null, precedence:[]},
         fields: [], presets: [], notices: [], total: null, columns: 4, maximum: 'all',
         available: false, unavailable: '', reloadRequired: false, freshnessError: '', refreshing: false,
-        cardStatus: 'idle', cardError: '', cardChunks: [], cardsVisible: false,
+        cardStatus: 'idle', cardError: '', cardChunks: [], cardsVisible: false, cardPropertiesNotice: null,
 
         init() {
             if (initialized) return;
@@ -76,18 +112,41 @@ function catalogFilters() {
             listen(window, 'focus', () => this.checkFreshness());
             listen(document, 'visibilitychange', () => this.checkFreshness());
             listen(window, 'online', () => this.checkFreshness());
-            listen(window, 'pagehide', () => { suspended = true; stopWork(); });
+            listen(window, 'pagehide', () => {
+                suspended = true;
+                stopWork();
+                this.cardsVisible = false;
+                this.cardPropertiesNotice = null;
+            });
             listen(window, 'pageshow', () => {
                 if (!suspended || !alive) return;
                 suspended = false;
                 this.refreshing = false;
                 if (engine) this.publish(engine.normalize(readDiscovery(location.href)), 'replace');
+                this.$nextTick(scheduleHeadings);
                 this.checkFreshness();
             });
+            const grid = root.querySelector('.catalog-filter-grid');
+            if (grid && typeof ResizeObserver !== 'undefined') {
+                headingObserver = new ResizeObserver(entries => {
+                    const width = entries[0]?.contentRect.width;
+                    if (width === observedWidth) return;
+                    observedWidth = width;
+                    scheduleHeadings();
+                });
+                headingObserver.observe(grid);
+            }
+            document.fonts?.ready.then(scheduleHeadings);
             this.armFreshness();
         },
 
-        destroy() { alive = false; stopWork(); listeners.splice(0).forEach(remove=>remove()); },
+        destroy() {
+            alive = false;
+            stopWork();
+            this.cardPropertiesNotice = null;
+            headingObserver?.disconnect();
+            listeners.splice(0).forEach(remove=>remove());
+        },
 
         choose(type, key = null, value = null) {
             if (!this.available || suspended) return;
@@ -116,6 +175,7 @@ function catalogFilters() {
                     options:field.options.map(option=>({value:option.value,label:option.label,code:option.code,
                         identity:JSON.stringify([snapshot.groupId,field.key,option.value]),selected:false,compatible:false}))}));
                 displayedRevision = snapshot.revision;
+                this.$nextTick(scheduleHeadings);
             }
             for (const field of this.fields) {
                 field.hidden = field.key === computed.hiddenKey || field.options.length === 0;
@@ -142,6 +202,7 @@ function catalogFilters() {
 
         clearCards() {
             this.cardsVisible = false;
+            this.cardPropertiesNotice = null;
             if (cleanupPromise) return cleanupPromise;
             if (this.cardChunks.length === 0) return Promise.resolve();
             cleanupPromise = new Promise(resolve => { resolveCleanup = resolve; });
@@ -194,6 +255,7 @@ function catalogFilters() {
                 if (response.status !== 'ready') { this.cardStatus = response.status; return; }
                 await this.clearCards();
                 if (!current(id, revision)) return;
+                this.cardPropertiesNotice = typeof response.propertiesNotice === 'string' ? response.propertiesNotice : null;
                 let index = 0;
                 const insert = () => {
                     if (!current(id, revision)) return;
@@ -302,6 +364,8 @@ function catalogFilters() {
         exitLeaf(status) {
             stopWork();
             this.available = false;
+            this.cardsVisible = false;
+            this.cardPropertiesNotice = null;
             this.cardChunks = [];
             this.cardStatus = 'idle';
             this.refreshing = false;

@@ -4,13 +4,17 @@ namespace App\Filament\Resources;
 
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 
 abstract class SplitListRecords extends ListRecords
 {
+    use InteractsWithScopedTableSearch;
+
     protected string $view = 'filament.resources.split-list';
 
     #[Url(as: 'record')]
@@ -22,6 +26,15 @@ abstract class SplitListRecords extends ListRecords
         $model = $resource::getEloquentQuery()->findOrFail($record);
         abort_unless($resource::hasPage('edit') ? $resource::canEdit($model) : $resource::canView($model), 403);
         $this->selectedRecord = (string) $model->getKey();
+    }
+
+    /** @param list<int> $ids */
+    public function reconcileBatchChanges(array $ids, bool $removed): void
+    {
+        Gate::authorize('manage-catalog');
+        if ($removed && $this->selectedRecord !== null && in_array((int) $this->selectedRecord, $ids, true)) {
+            $this->selectedRecord = null;
+        }
     }
 
     public function editorComponent(): ?string
@@ -48,6 +61,7 @@ abstract class SplitListRecords extends ListRecords
             ->recordClasses(fn (Model $record): ?string => (string) $record->getKey() === $this->selectedRecord ? 'catalog-selected-row' : null)
             ->recordActions([
                 Action::make('select')->label(static::getResource()::hasPage('edit') ? 'Edit' : 'View')
+                    ->iconButton()->icon(Heroicon::OutlinedPencilSquare)->tooltip(static::getResource()::hasPage('edit') ? 'Edit' : 'View')
                     ->action(fn (Model $record) => $this->selectRecord((string) $record->getKey())),
             ]);
     }

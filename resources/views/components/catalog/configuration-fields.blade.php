@@ -14,7 +14,7 @@
                         @if (! isset($result->selections[$attribute->id]))<option value="" selected disabled>{{ __('No available choice') }}</option>@endif
                         @foreach ($attribute->options as $option)
                             @if (! in_array($option->id, $state['hidden'], true))
-                                <option value="{{ $option->id }}" @selected(($result->selections[$attribute->id] ?? null) === $option->id) @disabled(! in_array($option->id, $state['legal'], true))>{{ $state['options'][$option->id]['label'] }} · {{ $option->code }}</option>
+                                <option value="{{ $option->id }}" @selected(($result->selections[$attribute->id] ?? null) === $option->id) @disabled(! in_array($option->id, $state['legal'], true))>{{ $state['options'][$option->id]['label'] }}</option>
                             @endif
                         @endforeach
                     </select>
@@ -30,7 +30,7 @@
                                 @php($presentation = $state['options'][$option->id])
                                 <label @class(['relative flex max-w-full cursor-pointer items-start rounded-lg border px-3 py-1.5 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-blue-600 dark:has-focus-visible:outline-blue-400', 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950 dark:text-blue-100' => ($result->selections[$attribute->id] ?? null) === $option->id, 'border-zinc-300' => ($result->selections[$attribute->id] ?? null) !== $option->id, 'opacity-50' => ! in_array($option->id, $state['legal'], true)]) wire:key="option-{{ $option->id }}">
                                     <input class="sr-only" type="radio" name="configuration-{{ $this->getId() }}-{{ $attribute->id }}" value="{{ $option->id }}" wire:click="selectOption('{{ $attribute->id }}', '{{ $option->id }}')" @checked(($result->selections[$attribute->id] ?? null) === $option->id) @disabled(! in_array($option->id, $state['legal'], true)) />
-                                    <span class="min-w-0 break-words"><span class="block text-sm font-medium">{{ $presentation['label'] }} <span class="font-mono">{{ $option->code }}</span></span>
+                                    <span class="min-w-0 break-words"><span class="block text-sm font-medium">{{ $presentation['label'] }}</span>
                                         @if ($presentation['display_value'] !== $presentation['label'])<span class="block text-sm">{{ $presentation['display_value'] }}</span>@endif
                                         @if ($presentation['hint'])<span class="block text-sm text-zinc-600 dark:text-zinc-300">{{ $presentation['hint'] }}</span>@endif
                                     </span>

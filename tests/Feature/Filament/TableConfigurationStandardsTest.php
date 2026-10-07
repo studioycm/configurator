@@ -159,8 +159,14 @@ it('applies the requested Filament table standards', function (string $page, arr
         });
     }
 
+    $isCurrent = str_starts_with($page, 'App\\Filament\\');
+
     foreach ($searchableColumns as $name) {
-        $component->assertTableColumnExists($name, function (TextColumn $column): bool {
+        $component->assertTableColumnExists($name, function (TextColumn $column) use ($isCurrent): bool {
+            if ($isCurrent) {
+                return $column->isGloballySearchable() && ! $column->isIndividuallySearchable();
+            }
+
             return $column->isSearchable()
                 && $column->isIndividuallySearchable()
                 && ! $column->isGloballySearchable();
@@ -175,7 +181,22 @@ it('applies the requested Filament table standards', function (string $page, arr
 
     $table = $component->instance()->getTable();
 
+    if ($isCurrent) {
+        expect($table->getFiltersLayout())->toBe(FiltersLayout::Modal)
+            ->and($table->hasDeferredFilters())->toBeTrue()
+            ->and($table->hasReorderableColumns())->toBeTrue();
+
+        return;
+    }
+
     expect($table->getFiltersLayout())->toBe(FiltersLayout::AboveContent)
         ->and($table->getFiltersFormColumns())->toBe(5)
         ->and($table->hasDeferredFilters())->toBeFalse();
 })->with('table-standards-pages');
+
+test('the compact Columns drawer retains native Apply Reset and width-only Reset', function () {
+    $page = Livewire::test(ListOptions::class);
+    $actions = $page->instance()->getTable()->getColumnManagerTriggerAction()->getExtraModalFooterActions();
+    expect(array_map(fn ($action): string => $action->getName(), $actions))->toContain('applyTableColumnManager', 'resetColumnManager', 'resetWidths');
+    $page->call('resetTableColumnManager')->assertDispatched('table-widths-reset');
+});

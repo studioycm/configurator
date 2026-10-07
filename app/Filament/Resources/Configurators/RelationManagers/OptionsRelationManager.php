@@ -4,12 +4,18 @@ namespace App\Filament\Resources\Configurators\RelationManagers;
 
 use App\Actions\SaveConfiguratorDefinition;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\DependencyActions;
+use App\Filament\Resources\InteractsWithScopedTableSearch;
+use App\Filament\Resources\OptionSelectionTable;
+use App\Filament\Resources\TablePresentation;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
 use App\Models\Option;
+use App\Services\ConfiguratorInclusionDrafts;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TableSelect;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -21,12 +27,15 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 
 class OptionsRelationManager extends RelationManager
 {
+    use InteractsWithScopedTableSearch;
+
     protected static string $relationship = 'options';
 
     protected static ?string $title = 'Included options';
@@ -50,27 +59,51 @@ class OptionsRelationManager extends RelationManager
     {
         $default = $this->owner()->default_configurator_option_id;
 
-        return $table->modifyQueryUsing(fn ($query) => $query->with('option.value'))
+        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('option.value'))
             ->description('Options for this attribute in this configurator. Shared definitions stay unchanged.')
             ->columns([
-                TextColumn::make('option.code')->label('Code'),
-                TextColumn::make('option.value.label')->label('Option')->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
+                TextColumn::make('label_override')->label('Local label')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('display_value_override')->label('Display value')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('hint')->label('Hint')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('option.code')->label('Code')->searchable(),
+                TextColumn::make('option.value.label')->label('Option')->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
                 IconColumn::make('stored_default')->label('Default')->boolean()->state(fn (ConfiguratorOption $record): bool => $record->id === $default),
                 IconColumn::make('hidden_by_default')->label('Hidden')->boolean()->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('disabled_by_default')->label('Disabled')->boolean()->toggleable(isToggledHiddenByDefault: true),
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)->recordAction('edit')
             ->headerActions([
+                Action::make('includeMany')->label('Include Options')->authorize('manage-catalog')->slideOver()
+                    ->schema([TableSelect::make('selected')->label('Shared Options')->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
+                    ->action(fn (array $data) => $this->includeOptions($data['selected'])),
                 Action::make('include')->label('Include option')->authorize('manage-catalog')->schema(fn (): array => $this->optionFields())
                     ->action(fn (array $data) => $this->saveOption(null, $data)),
             ])->recordActions([
                 Action::make('edit')->label('Edit')->authorize('manage-catalog')->schema(fn (ConfiguratorOption $record): array => $this->optionFields($record))
                     ->fillForm(fn (ConfiguratorOption $record): array => $record->only(['option_id', 'label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default']))
                     ->action(fn (ConfiguratorOption $record, array $data) => $this->saveOption($record->id, $data)),
-                Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                DependencyActions::local(Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription('Choose another stored default and repair rule references before removing an option.')
-                    ->action(fn (ConfiguratorOption $record) => $this->removeOption($record->id)),
-            ]);
+                    ->action(fn (ConfiguratorOption $record) => $this->removeOption($record->id))),
+            ]), 'configurator-options', true, ['includeMany']);
+    }
+
+    /** @param list<int|string> $ids */
+    public function includeOptions(array $ids): void
+    {
+        $ids = Validator::make(['selected' => $ids], ['selected' => ['required', 'array', 'list', 'min:1'], 'selected.*' => ['required', 'integer', 'distinct', 'min:1']])->validate()['selected'];
+        $this->changeOptions(function (array $attribute) use ($ids): array {
+            $existing = array_column($attribute['options'], 'option_id');
+            foreach ($ids as $id) {
+                $option = Option::where('attribute_id', $attribute['attribute_id'])->find($id);
+                if (! $option || in_array((int) $id, $existing, true)) {
+                    throw ValidationException::withMessages(['selected' => 'Choose current, not already included Options belonging to this Attribute.']);
+                }
+                $attribute['options'][] = app(ConfiguratorInclusionDrafts::class)->option($option);
+            }
+
+            return $attribute;
+        });
     }
 
     /** @return array<Component> */

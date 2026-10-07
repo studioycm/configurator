@@ -13,6 +13,14 @@ Manage uses Overview / Groups / Attributes / Rules / Preview & Test. Preview & T
 
 [Decisions](catalog/DECISIONS.md) retains the full discussion, corrections and E00–E16/O identifiers. Consult it for provenance or a conflict; do not restart its historical decision questionnaire. [Research](catalog/research/README.md) is supporting evidence, not another task list. Reading every tutorial or research report again is unnecessary.
 
+The [compact navigation and page-header plan](catalog/NAVIGATION_IMPLEMENTATION_PLAN.md) (2026-10-06) records the local implementation of native Filament collapse, a shared Livewire shell, compact headers and transparent branding on an always-dark sidebar. Focused tests and the main authenticated browser flows pass; the document identifies remaining browser acceptance checks.
+
+The [Admin and shared Filament UX implementation plan](catalog/ADMIN_FILAMENT_IMPLEMENTATION_PLAN.md) (2026-10-06) consolidates the later table, search, count-drawer, batch-action, status, form, appearance and resizing decisions across admin and shared components. It contains the complete surface inventory, per-table allowlists, phased file changes and acceptance checks. It is planning only; required-Attribute runtime behavior remains an explicit decision gate.
+
+The [Product card appearance implementation plan](catalog/CARD_APPEARANCE_IMPLEMENTATION_PLAN.md) records the 2026-10-07 local implementation of compact whole-card links, all-match differing-property comparison, native Group appearance/spacing controls and guarded result notices. Its evidence section includes focused checks, 100-click local/remote baseline measurements, all-501 completion and remaining verification gaps. Publication and verification of the new appearance remotely remain pending.
+
+For the next “Research Filament 5 admin UX” session, read the [Group/card appearance handoff](catalog/CARD_APPEARANCE_ADMIN_UX_HANDOFF.md) before applying the earlier admin plan. It maps the new controls, save/revision rules and runtime ownership to the affected admin phases.
+
 ## Authority and working state
 
 Later user instructions override these documents. Confirmed business decisions control the implementation. The plan and contracts select technical defaults to make execution concrete; those defaults are identified separately from user decisions. Change a technical mechanism when installed behavior requires it, preserving the contract and recording the reason. Escalate an actual behavior, retention or access conflict rather than silently inventing a requirement.

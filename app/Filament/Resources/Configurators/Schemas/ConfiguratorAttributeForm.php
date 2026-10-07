@@ -7,6 +7,7 @@ use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\Option;
+use App\Services\ConfiguratorInclusionDrafts;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -23,7 +24,7 @@ use Illuminate\Support\Str;
 class ConfiguratorAttributeForm
 {
     /** @return array<Component> */
-    public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true): array
+    public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true, bool $chooseCanonical = true): array
     {
         $labels = [];
         $optionLabels = function (mixed $attributeId) use (&$labels): array {
@@ -37,8 +38,23 @@ class ConfiguratorAttributeForm
         return [
             View::make('filament.forms.validation-summary'),
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
+            Hidden::make('canonical_drafts')->default([])->dehydrated(false),
             Section::make('Local inclusion')->description('These settings change this Configurator only. Canonical identity and codes stay in the shared library.')->columns(2)->schema([
-                Select::make('attribute_id')->label('Canonical Attribute')->required()->rules(['integer'])->searchable()->live()->disabled($inclusion !== null)->dehydrated()
+                Select::make('attribute_id')->label('Canonical Attribute')->required()->rules(['integer'])->searchable()->live()->disabled($inclusion !== null || ! $chooseCanonical)->dehydrated()
+                    ->afterStateUpdated(function (Get $get, Set $set, mixed $state, mixed $old): void {
+                        $drafts = $get('canonical_drafts') ?? [];
+                        $fields = ['options', 'default_configurator_option_id', 'label_override', 'help_text', 'input_type'];
+                        if (is_numeric($old)) {
+                            $drafts[(int) $old] = array_combine($fields, array_map(fn (string $field): mixed => $get($field), $fields));
+                            $set('canonical_drafts', $drafts);
+                        }
+                        if (is_numeric($state)) {
+                            $row = $drafts[(int) $state] ?? app(ConfiguratorInclusionDrafts::class)->attribute((int) $state);
+                            foreach ($fields as $field) {
+                                $set($field, $row[$field]);
+                            }
+                        }
+                    })
                     ->options(fn (): array => Attribute::whereNotIn('id', $owner->attributes()->when($inclusion, fn ($query) => $query->whereKeyNot($inclusion->id))->pluck('attribute_id'))->orderBy('label')->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all()),
                 Select::make('input_type')->required()->options(ConfigInputType::class)->default('toggle'),
                 TextInput::make('label_override')->label('Local label')->maxLength(255)->helperText('Leave empty to use the shared Attribute label.'),

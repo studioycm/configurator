@@ -22,11 +22,37 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 
 class EditConfigurator extends EditRecord
 {
     protected static string $resource = ConfiguratorResource::class;
+
+    #[Locked]
+    public ?int $initialAttributeId = null;
+
+    #[Locked]
+    public ?int $initialRuleId = null;
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+        $this->initialAttributeId = $this->initialSelection('attribute', 'attributes');
+        $this->initialRuleId = $this->initialSelection('rule', 'rules');
+    }
+
+    private function initialSelection(string $parameter, string $relationship): ?int
+    {
+        $value = request()->query($parameter);
+        if ($value === null) {
+            return null;
+        }
+        $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        abort_unless($id !== false && $this->getRecord()->{$relationship}()->whereKey($id)->exists(), 404);
+
+        return $id;
+    }
 
     public function getTitle(): string
     {
@@ -43,9 +69,9 @@ class EditConfigurator extends EditRecord
         return $schema->columns(1)->components([
             Tabs::make('Configurator')->key('configurator-editor')->persistTabInQueryString('tab')->columnSpanFull()->tabs([
                 Tab::make('Overview')->schema([Livewire::make(ConfiguratorOverview::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('overview-'.$this->getRecord()->id)]),
-                Tab::make('Groups')->schema([Livewire::make(ConfiguratorGroups::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('groups-'.$this->getRecord()->id)]),
-                Tab::make('Attributes')->schema([Livewire::make(AttributesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class])->key('attributes-'.$this->getRecord()->id)]),
-                Tab::make('Rules')->schema([Livewire::make(RulesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class])->key('rules-'.$this->getRecord()->id)]),
+                Tab::make('Groups')->badge(fn (): int => $this->getRecord()->groups_count ?? $this->getRecord()->groups()->count())->schema([Livewire::make(ConfiguratorGroups::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('groups-'.$this->getRecord()->id)->lazy()]),
+                Tab::make('Attributes')->badge(fn (): int => $this->getRecord()->attributes_count ?? $this->getRecord()->attributes()->count())->schema([Livewire::make(AttributesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialAttributeId' => $this->initialAttributeId])->key('attributes-'.$this->getRecord()->id)->lazy()]),
+                Tab::make('Rules')->badge(fn (): int => $this->getRecord()->rules_count ?? $this->getRecord()->rules()->count())->schema([Livewire::make(RulesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialRuleId' => $this->initialRuleId])->key('rules-'.$this->getRecord()->id)->lazy()]),
                 Tab::make('Preview & Test')->schema([Text::make('Preview and testing tools will be added here later.')]),
             ]),
         ]);
@@ -78,6 +104,8 @@ class EditConfigurator extends EditRecord
                 }),
             Action::make('remove')->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->schema([View::make('filament.forms.validation-summary')])
+                ->extraModalFooterActions(fn (): array => $this->getRecord()->groups()->exists() ? [Action::make('blockingGroups')->label('View assigned Groups')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => 'configurator-groups', 'parentId' => $this->getRecord()->id]))] : [])
+                ->modalSubmitAction(fn (Action $action): Action => $action->disabled($this->getRecord()->groups()->exists()))
                 ->modalDescription('Unassign Groups before deleting this Configurator. Local inclusions and rules will be removed; shared canonical records remain available.')
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteConfigurator::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());
@@ -90,6 +118,6 @@ class EditConfigurator extends EditRecord
     public function refreshConfigurator(): void
     {
         Gate::authorize('manage-catalog');
-        $this->record = Configurator::findOrFail($this->getRecord()->id);
+        $this->record = Configurator::withCount(['groups', 'attributes', 'rules'])->findOrFail($this->getRecord()->id);
     }
 }

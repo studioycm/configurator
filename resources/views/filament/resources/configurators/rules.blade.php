@@ -3,6 +3,12 @@
     @if ($editorKind !== null)
         <x-filament::section :heading="$selectedRuleId === null ? 'New '.strtolower($editorKind).' rule' : 'Edit rule'" wire:key="rule-editor-{{ $selectedRuleId ?? $editorKind }}">
             <div class="space-y-5">
+                @if ($selectedRuleId !== null && isset($editorStaleRows['rule:'.$selectedRuleId]))
+                    <div role="alert" class="text-sm text-warning-600">
+                        <p>Batch changes were saved. Your draft was kept. Reload before editing again; reloading discards this record's draft.</p>
+                        <x-filament::button color="warning" wire:click="reloadEditor">Reload saved record</x-filament::button>
+                    </div>
+                @endif
                 {{ $this->editorForm }}
                 <div class="flex flex-wrap gap-3">
                     <x-filament::button wire:click="saveEditor" wire:loading.attr="disabled" wire:target="saveEditor">Save rule</x-filament::button>

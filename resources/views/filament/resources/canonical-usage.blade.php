@@ -12,15 +12,15 @@
         </ul>
     </section>
     <section>
-        <h3 class="font-semibold">Stored defaults</h3>
+        <h3 class="font-semibold">Stored defaults ({{ $usage['counts']['defaults'] }})</h3>
         <ul class="mt-2 space-y-1">@forelse ($usage['defaults'] as $default)<li>{{ $default['configurator'] }} · {{ $default['attribute'] }} · {{ $default['code'] }}</li>@empty<li>No stored defaults use these Options.</li>@endforelse</ul>
     </section>
     <section>
-        <h3 class="font-semibold">Rules involving these inclusions</h3>
+        <h3 class="font-semibold">Rules referencing this definition ({{ $usage['counts']['rules'] }})</h3>
         <ul class="mt-2 space-y-1">@forelse ($usage['rules'] as $rule)<li>{{ $rule['configurator'] }} · {{ $rule['label'] }} · {{ $rule['kind'] }}</li>@empty<li>No related rules.</li>@endforelse</ul>
     </section>
     <section>
-        <h3 class="font-semibold">Canonical Options</h3>
+        <h3 class="font-semibold">Canonical Options ({{ $usage['counts']['options'] }})</h3>
         <ul class="mt-2 space-y-1">@forelse ($usage['options'] as $option)<li>{{ $option['code'] }} · {{ $option['attribute']['label'] }} · {{ $option['value']['label'] }}</li>@empty<li>No Options use this definition.</li>@endforelse</ul>
     </section>
     <p class="text-sm">Each list shows up to 100 references. Repair local defaults and rules before removing shared definitions.</p>

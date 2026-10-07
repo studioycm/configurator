@@ -24,14 +24,14 @@ test('product lookup searches the physical product code and shows read only esca
     $product = Product::factory()->create(['product_code' => '000ABC', 'product_name' => 'Public caption',
         'parts' => ['Part10' => 'ten', 'Part2' => '<unsafe>', 'Part1' => 'one'],
         'extra_data' => ['opaque' => 'a:1:{serialized}']]);
-    $other = Product::factory()->create(['product_code' => '999OTHER']);
-    Livewire::test(ListProducts::class)->searchTableColumns(['product_code' => '000ABC'])
+    $other = Product::factory()->create(['product_code' => '999OTHER', 'product_name' => '000ABC']);
+    Livewire::test(ListProducts::class)->set('tableSearchScope', 'product_code')->searchTable('000ABC')
         ->assertCanSeeTableRecords([$product])->assertCanNotSeeTableRecords([$other]);
     Livewire::test(ViewProduct::class, ['record' => $product->id])->assertSee('000ABC')->assertSee('Public caption')
         ->assertSeeInOrder(['Part1', 'one', 'Part2', '&lt;unsafe&gt;', 'Part10', 'ten'], false)
         ->assertDontSee('<unsafe>', false)->assertSee('Part28')->assertSee('a:1:{serialized}');
     expect(ProductResource::canCreate())->toBeFalse()->and(ProductResource::canEdit($product))->toBeFalse()
-        ->and(Action::make('probe')->getModalWidth())->toBe(Width::SevenExtraLarge);
+        ->and(Action::make('probe')->getModalWidth())->toBe(Width::FourExtraLarge);
 });
 
 test('group editing uses the domain boundary and rejects a cycle without saving partial fields', function () {
@@ -156,4 +156,35 @@ test('one editor save advances one revision for details and result settings toge
     expect((string) $group->fresh()->catalog_revision)->toBe('2');
     $editor->call('save')->assertHasNoFormErrors();
     expect((string) $group->fresh()->catalog_revision)->toBe('2');
+});
+
+test('group appearance saves through the editor and keeps its layout when labels are hidden', function () {
+    $group = Group::factory()->create(['name' => 'Before appearance']);
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id])
+        ->fillForm([
+            'name' => 'After appearance',
+            'catalog_settings.result_settings.card_only_differences' => false,
+            'catalog_settings.result_settings.card_show_labels' => true,
+            'catalog_settings.result_settings.card_property_layout' => 'above_center',
+            'catalog_settings.result_settings.card_property_columns' => '1',
+            'catalog_settings.result_settings.card_padding_block' => '2',
+            'catalog_settings.result_settings.card_padding_inline' => '3',
+        ])->call('save')->assertHasNoFormErrors();
+
+    expect((string) $group->fresh()->catalog_revision)->toBe('2');
+    expect($group->fresh()->result_settings)->toMatchArray([
+        'card_only_differences' => false, 'card_show_labels' => true,
+        'card_property_layout' => 'above_center', 'card_property_columns' => 1,
+        'card_padding_block' => 2, 'card_padding_inline' => 3,
+    ]);
+    Livewire::test(EditGroup::class, ['record' => $group->id])
+        ->assertSet('data.catalog_settings.result_settings.card_property_layout', 'above_center')
+        ->fillForm(['catalog_settings.result_settings.card_show_labels' => false])
+        ->call('save')->assertHasNoFormErrors()
+        ->assertSet('data.catalog_settings.result_settings.card_property_layout', 'above_center');
+    expect($group->fresh()->result_settings['card_property_layout'])->toBe('above_center');
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id]);
+    $revision = (string) $group->fresh()->catalog_revision;
+    $editor->call('save')->assertHasNoFormErrors();
+    expect((string) $group->fresh()->catalog_revision)->toBe($revision);
 });

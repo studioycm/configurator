@@ -8,6 +8,7 @@ use App\Filament\Resources\Configurators\Pages\ListConfigurators;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorForm;
 use App\Filament\Resources\Configurators\Tables\ConfiguratorsTable;
 use App\Models\Configurator;
+use App\Services\AdminNavigationCounts;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,13 +25,23 @@ class ConfiguratorResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
 
     protected static ?string $modelLabel = 'Configurator';
 
     protected static ?string $pluralModelLabel = 'Configurators';
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return app(AdminNavigationCounts::class)->total(static::getModel());
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'All administrative records';
+    }
 
     public static function canViewAny(): bool
     {

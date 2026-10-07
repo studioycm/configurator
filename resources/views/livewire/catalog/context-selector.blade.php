@@ -1,14 +1,14 @@
 <div>
     @teleport($summaryTarget)
-        <div class="my-3 flex items-start gap-2 rounded-lg border border-slate-600/60 bg-[#203448] px-3 py-2" role="group" aria-label="{{ __('Product context') }}">
-            <dl class="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 text-xs" aria-live="polite">
+        <div class="catalog-context-summary" role="group" aria-label="{{ __('Product context') }}">
+            <dl class="catalog-context-labels grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 text-xs" aria-live="polite">
                 @foreach (['territory' => 'Territory', 'application' => 'Application'] as $dimension => $label)
                     <dt class="text-slate-400">{{ __($label) }}</dt>
                     <dd class="break-words font-medium text-slate-100">{{ $selectedLabels[$dimension] }}</dd>
                 @endforeach
             </dl>
             <flux:modal.trigger :name="'product-context-'.$this->getId()">
-                <button type="button" class="-m-1 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-slate-600/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400" aria-label="{{ __('Edit territory and application') }}" aria-haspopup="dialog">
+                <button type="button" class="catalog-shell-control inline-flex shrink-0" aria-label="{{ __('Edit territory and application') }}" title="{{ __('Edit territory and application') }}" aria-haspopup="dialog">
                     <flux:icon.cog-6-tooth class="size-4" />
                 </button>
             </flux:modal.trigger>

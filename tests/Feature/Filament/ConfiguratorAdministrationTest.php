@@ -49,6 +49,14 @@ test('assignment mutation rejects an unauthorized direct caller', function () {
     expect(fn () => app(AssignConfiguratorGroups::class)->handle(User::factory()->create(), Configurator::factory()->create(), []))->toThrow(AuthorizationException::class);
 });
 
+test('stale full membership cannot silently discard a newer assignment', function () {
+    $owner = Configurator::factory()->create();
+    $original = Group::factory()->create(['configurator_id' => $owner->id]);
+    $newer = Group::factory()->create(['configurator_id' => $owner->id]);
+    expect(fn () => app(AssignConfiguratorGroups::class)->handle($this->actor, $owner, [$original->id], [$original->id]))->toThrow(ValidationException::class);
+    expect($newer->fresh()->configurator_id)->toBe($owner->id);
+});
+
 require_once dirname(__DIR__, 2).'/ConfiguratorFixtures.php';
 
 test('Overview save preserves unvisited local inclusions and rules and the workspace has five focused tabs', function () {

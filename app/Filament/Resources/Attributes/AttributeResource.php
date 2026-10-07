@@ -9,6 +9,7 @@ use App\Filament\Resources\Attributes\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\Attributes\Schemas\AttributeForm;
 use App\Filament\Resources\Attributes\Tables\AttributesTable;
 use App\Models\Attribute;
+use App\Services\AdminNavigationCounts;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -25,13 +26,23 @@ class AttributeResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
 
     protected static ?string $modelLabel = 'Attribute';
 
     protected static ?string $pluralModelLabel = 'Attributes';
 
     protected static ?string $recordTitleAttribute = 'label';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return app(AdminNavigationCounts::class)->total(static::getModel());
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'All administrative records';
+    }
 
     public static function canViewAny(): bool
     {

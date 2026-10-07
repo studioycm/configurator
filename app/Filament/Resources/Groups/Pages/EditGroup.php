@@ -6,6 +6,7 @@ use App\Actions\SaveCatalogGroup;
 use App\Actions\SaveGroupSettings;
 use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Groups\Schemas\GroupForm;
+use App\Filament\Resources\InteractsWithBatchEditor;
 use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
@@ -15,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class EditGroup extends EditRecord
 {
+    use InteractsWithBatchEditor;
+
     protected string $view = 'filament.resources.record-editor';
 
     protected static string $resource = GroupResource::class;

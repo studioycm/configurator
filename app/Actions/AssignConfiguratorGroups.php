@@ -41,14 +41,23 @@ class AssignConfiguratorGroups
     }
 
     /** @param list<int|string> $groupIds */
-    public function handle(User $actor, Configurator $configurator, array $groupIds): void
+    public function handle(User $actor, Configurator $configurator, array $groupIds, ?array $expectedIds = null): void
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         $ids = Validator::make(['groups' => $groupIds], ['groups' => ['present', 'array', 'list'], 'groups.*' => ['required', 'integer', 'distinct', 'min:1']])->validate()['groups'];
         $ids = array_map('intval', $ids);
-        DB::transaction(function () use ($configurator, $ids): void {
+        DB::transaction(function () use ($configurator, $ids, $expectedIds): void {
             $groups = $this->integrity->lockGroups();
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            if ($expectedIds !== null) {
+                $currentIds = $groups->where('configurator_id', $record->id)->modelKeys();
+                $expectedIds = array_map('intval', $expectedIds);
+                sort($currentIds);
+                sort($expectedIds);
+                if ($currentIds !== $expectedIds) {
+                    throw ValidationException::withMessages(['selected' => 'Assignments changed elsewhere. Reopen this selection before applying; your choices have been kept.']);
+                }
+            }
             foreach ($ids as $id) {
                 $group = $groups->get($id);
                 if ($group === null || ($group->configurator_id !== null && $group->configurator_id !== $record->id)) {

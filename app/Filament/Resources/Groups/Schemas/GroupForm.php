@@ -15,18 +15,25 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Group as SchemaGroup;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class GroupForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Details')->schema([
+
+        $sections = self::settingsSections();
+        $leaf = fn (?Group $record): bool => $record !== null && ! $record->children()->exists();
+
+        return $schema->columns(1)->components([Tabs::make('Group settings')->key('group-settings')->columnSpanFull()->tabs([
+            Tab::make('Details')->schema([Section::make('Details')->schema([
                 TextInput::make('name')->required()->maxLength(255)->helperText('Imported names are replaced by the source name on reimport.'),
                 Textarea::make('description')->maxLength(5000)->columnSpanFull(),
                 Select::make('parent_id')->label('Parent')->searchable()->placeholder('Root group')
@@ -37,11 +44,11 @@ class GroupForm
                     ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
                     ->helperText('Leaf groups can share one configurator. Changes to it affect every assigned group.'),
                 TextInput::make('sort_order')->label('Sort Order')->integer()->default(0)->required(),
-            ])->columns(2)->columnSpanFull(),
-            SchemaGroup::make(self::settingsSections())
-                ->visible(fn (?Group $record): bool => $record !== null && ! $record->children()->exists())
-                ->columnSpanFull(),
-        ]);
+            ])->columns(2)->columnSpanFull()]),
+            Tab::make('Filters')->schema([$sections[3]])->visible($leaf),
+            Tab::make('Presets')->schema([$sections[4]])->visible($leaf),
+            Tab::make('Presentation')->schema([$sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
+        ])]);
     }
 
     /** @return list<Section> */
@@ -53,7 +60,7 @@ class GroupForm
             Section::make('Product cards')->schema([
                 Select::make('catalog_settings.result_settings.card_properties')->label('Properties to display')->multiple()->searchable()
                     ->options($properties)->default([])->placeholder('Use group filter properties')
-                    ->helperText('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Values appear inline, separated by commas.')
+                    ->helperText('Leave empty to use the group’s filter properties in their configured order. Select properties to override this default. Each property has a consistent position across matching cards.')
                     ->columnSpanFull(),
                 Select::make('catalog_settings.result_settings.cards_per_row')->label('Cards per row')
                     ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
@@ -67,7 +74,41 @@ class GroupForm
                     ->default('all')->required()->selectablePlaceholder(false)
                     ->helperText('All shows cards immediately. A number shows cards only when the matching total is at or below that number.'),
             ])->columns(2)->columnSpanFull(),
+            Section::make('Card appearance')->schema([
+                Toggle::make('catalog_settings.result_settings.card_only_differences')->label('Only differing properties')->default(true)
+                    ->helperText('Compare the complete matching set and hide shared properties. One matching product has no differing properties.'),
+                Toggle::make('catalog_settings.result_settings.card_show_labels')->label('Show property labels')->default(false)
+                    ->helperText('Property names remain accessible when their labels are visually hidden.'),
+                Select::make('catalog_settings.result_settings.card_property_layout')->label('Label and value layout')
+                    ->options(CatalogPolicy::CARD_LAYOUTS)->default('inline_space_between')->required()->selectablePlaceholder(false)
+                    ->helperText('Applies when labels are shown. Your choice is kept when labels are hidden.'),
+                Select::make('catalog_settings.result_settings.card_property_columns')->label('Property columns')
+                    ->options([1 => '1', 2 => '2'])->default(2)->required()->selectablePlaceholder(false),
+            ])->columns(2)->columnSpanFull(),
+            Section::make('Card spacing')->schema([
+                TextInput::make('catalog_settings.result_settings.card_padding_block')->label('Block padding')
+                    ->integer()->minValue(0)->maxValue(16)->step(1)->suffix('px')->default(4)->required(),
+                TextInput::make('catalog_settings.result_settings.card_padding_inline')->label('Inline padding')
+                    ->integer()->minValue(0)->maxValue(20)->step(1)->suffix('px')->default(6)->required(),
+            ])->columns(2)->columnSpanFull(),
             Section::make('Catalog filters')->description('Only these properties appear as discovery filters. Omitted source values remain available.')->schema([
+                Select::make('filter_properties_to_add')->label('Add filter properties')->multiple()->searchable()->options($properties)->dehydrated(false)->live()
+                    ->helperText('Choose several properties to add. Existing filter labels, value order and row identities are kept; save the Group once when ready.')
+                    ->afterStateUpdated(function (Get $get, Set $set, ?Group $record, mixed $state) use ($properties): void {
+                        $rows = $get('catalog_settings.filters') ?? [];
+                        $existing = array_column($rows, 'property_key');
+                        foreach ($state ?? [] as $key) {
+                            if (isset($properties[$key]) && ! in_array($key, $existing, true)) {
+                                $rows[Str::uuid()->toString()] = ['id' => null, 'property_key' => $key, 'label' => $properties[$key], 'values' => array_map(fn (string $value): array => ['value' => $value, 'label' => ''], self::values($record, $key))];
+                                $existing[] = $key;
+                            }
+                        }
+                        if (count($rows) > 18) {
+                            throw ValidationException::withMessages(['data.filter_properties_to_add' => 'A Group supports up to 18 filters. Remove a filter before adding more.']);
+                        }
+                        $set('catalog_settings.filters', $rows);
+                        $set('filter_properties_to_add', []);
+                    })->columnSpanFull(),
                 Repeater::make('catalog_settings.filters')->label('Filters')->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
                     Select::make('property_key')->label('Product property')->options($properties)->required()->searchable()->live()

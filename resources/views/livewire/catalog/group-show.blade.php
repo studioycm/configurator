@@ -1,5 +1,8 @@
+<x-slot:breadcrumbs>
+    <x-catalog.breadcrumbs :group="$group" :ancestors="$ancestors" compact />
+</x-slot:breadcrumbs>
+
 <div wire:key="catalog-group-{{ $group->id }}">
-    <x-catalog.breadcrumbs :group="$group" :ancestors="$ancestors" />
     @if ($children->isNotEmpty())
         <x-catalog.group-tree :groups="$children" />
     @else
@@ -41,10 +44,10 @@
                     <h2 class="text-lg font-semibold">{{ __('Filters') }}</h2>
                     <button type="button" @click="choose('clear')" aria-label="{{ __('Clear filters') }}" :disabled="Object.keys(state.filters).length === 0" class="min-h-6 shrink-0 rounded border border-zinc-300 px-1.5 py-0.5 text-xs font-normal leading-4 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:cursor-default disabled:opacity-40 dark:border-zinc-600 dark:hover:bg-zinc-800">{{ __('Clear') }}</button>
                 </div>
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+                <div class="catalog-filter-grid grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
                     <template x-for="field in fields" :key="field.key">
                         <fieldset x-show="!field.hidden" :data-filter-key="field.key" class="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900">
-                            <legend class="px-2 text-sm font-semibold leading-5" x-text="field.label"></legend>
+                            <legend class="catalog-filter-heading px-2 text-sm font-semibold leading-5" x-text="field.label"></legend>
                             <div class="grid grid-cols-1 gap-1">
                                 <template x-for="option in field.options" :key="option.identity">
                                     <button type="button" @click="choose('filter', field.key, option.value)" :aria-pressed="option.selected" :data-availability="option.compatible ? 'available' : 'empty'"
@@ -73,7 +76,8 @@
                     <span x-text="cardError"></span>
                     <button type="button" @click="retryCards()" class="ml-2 underline">{{ __('Retry products') }}</button>
                 </div>
-                <div data-cards-visible="false" :data-cards-visible="cardsVisible ? 'true' : 'false'" :aria-hidden="cardsVisible ? null : 'true'" class="catalog-card-grid grid grid-cols-1 gap-4" :class="{'sm:grid-cols-2': columns >= 2, 'lg:grid-cols-3': columns >= 3, 'xl:grid-cols-4': columns === 4, 'xl:grid-cols-5': columns === 5, 'xl:grid-cols-6': columns === 6}">
+                <p x-show="cardsVisible && cardPropertiesNotice" role="status" aria-live="polite" class="mb-2 text-sm text-zinc-600 dark:text-zinc-400" x-text="cardPropertiesNotice"></p>
+                <div data-cards-visible="false" :data-cards-visible="cardsVisible ? 'true' : 'false'" :aria-hidden="cardsVisible ? null : 'true'" class="catalog-card-grid" :style="{'--catalog-cards-max-columns': columns}">
                     <template x-for="chunk in cardChunks" :key="chunk.key"><div class="contents" :data-card-chunk="chunk.key" x-html="chunk.html"></div></template>
                 </div>
             </section>

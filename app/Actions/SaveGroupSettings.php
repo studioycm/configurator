@@ -50,7 +50,7 @@ class SaveGroupSettings
                 'settings.sub_groups.*.property_key' => ['required', Rule::in($keys)],
                 'settings.sub_groups.*.allowed_values' => ['required', 'array', 'list', 'min:1'],
                 'settings.sub_groups.*.allowed_values.*' => ['required', 'string'],
-                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,cards_per_row,max_results,products_debounce_ms'],
+                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,cards_per_row,max_results,products_debounce_ms,card_only_differences,card_show_labels,card_property_layout,card_property_columns,card_padding_block,card_padding_inline'],
                 'settings.result_settings.default_page_size' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
                 'settings.result_settings.allow_page_size_change' => ['sometimes', 'required', 'boolean'],
                 'settings.result_settings.page_size_options' => ['sometimes', 'array', 'list'],
@@ -60,6 +60,12 @@ class SaveGroupSettings
                 'settings.result_settings.card_properties.*' => ['required', 'string', 'distinct', Rule::in($keys)],
                 'settings.result_settings.cards_per_row' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_CARDS_PER_ROW],
                 'settings.result_settings.max_results' => ['sometimes', 'required', Rule::in(['all', ...range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)])],
+                'settings.result_settings.card_only_differences' => ['sometimes', 'required', 'boolean'],
+                'settings.result_settings.card_show_labels' => ['sometimes', 'required', 'boolean'],
+                'settings.result_settings.card_property_layout' => ['sometimes', 'required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))],
+                'settings.result_settings.card_property_columns' => ['sometimes', 'required', 'integer', Rule::in([1, 2])],
+                'settings.result_settings.card_padding_block' => ['sometimes', 'required', 'integer', 'between:0,16'],
+                'settings.result_settings.card_padding_inline' => ['sometimes', 'required', 'integer', 'between:0,20'],
             ])->validate()['settings'];
             if ($validated['filters'] !== [] || $validated['sub_groups'] !== []) {
                 $this->integrity->assertLeaf($record);
@@ -88,6 +94,11 @@ class SaveGroupSettings
             $results['products_debounce_ms'] = (int) $results['products_debounce_ms'];
             $results['cards_per_row'] = (int) $results['cards_per_row'];
             $results['max_results'] = $results['max_results'] === 'all' ? 'all' : (int) $results['max_results'];
+            $results['card_only_differences'] = (bool) $results['card_only_differences'];
+            $results['card_show_labels'] = (bool) $results['card_show_labels'];
+            $results['card_property_columns'] = (int) $results['card_property_columns'];
+            $results['card_padding_block'] = (int) $results['card_padding_block'];
+            $results['card_padding_inline'] = (int) $results['card_padding_inline'];
             if ($results['allow_page_size_change'] && ! in_array($results['default_page_size'], $results['page_size_options'], true)) {
                 $errors['settings.result_settings.page_size_options'] = 'Include the default page size in the available choices.';
             }

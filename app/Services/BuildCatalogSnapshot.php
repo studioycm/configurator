@@ -71,7 +71,7 @@ class BuildCatalogSnapshot
             if ($settings['card_properties'] === []) {
                 $settings['card_properties'] = $filters->pluck('property_key')->all();
             }
-            $settings = array_intersect_key($settings, array_flip(['card_properties', 'cards_per_row', 'max_results', 'products_debounce_ms']));
+            $settings = array_intersect_key($settings, array_flip(['card_properties', 'cards_per_row', 'max_results', 'products_debounce_ms', 'card_only_differences', 'card_show_labels', 'card_property_layout', 'card_property_columns', 'card_padding_block', 'card_padding_inline']));
             $ancestors = $group->ancestorTrail();
 
             return new CatalogSnapshot([

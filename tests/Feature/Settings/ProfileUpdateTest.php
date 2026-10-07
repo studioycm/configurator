@@ -4,6 +4,20 @@ use App\Livewire\Settings\Profile;
 use App\Models\User;
 use Livewire\Livewire;
 
+test('account settings use one shared page header and a page specific browser title', function () {
+    $this->actingAs(User::factory()->create());
+
+    $html = $this->get(route('profile.edit'))->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($html);
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//h1')->length)->toBe(1);
+    expect(trim($xpath->evaluate('string(//header//h1)')))->toBe('Settings');
+    expect(trim($xpath->evaluate('string(//title)')))->toBe('Profile');
+    expect(trim($xpath->evaluate('string(//h2)')))->toBe('Profile');
+});
+
 test('profile page is displayed', function () {
     $this->actingAs($user = User::factory()->create());
 

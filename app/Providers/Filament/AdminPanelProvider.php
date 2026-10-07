@@ -9,17 +9,21 @@ use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Options\OptionResource;
 use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\Values\ValueResource;
+use App\Services\AdminAppearance;
+use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -40,21 +44,29 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('images/favicon-aquestia.png'))
             ->brandName('Aquestia')
             ->brandLogo(asset('images/logo-ari_dark.png'))
-            ->brandLogoHeight('2rem')
-            ->sidebarWidth('16rem')
+            ->brandLogoHeight(fn (): string => app(AdminAppearance::class)->current()['logo_height'].'px')
+            ->sidebarWidth(fn (): string => app(AdminAppearance::class)->current()['sidebar_width'].'px')
+            ->collapsedSidebarWidth(fn (): string => app(AdminAppearance::class)->current()['collapsed_sidebar_width'].'px')
+            ->sidebarCollapsibleOnDesktop()
             ->darkModeBrandLogo(asset('images/logo-ari_dark.png'))
             ->defaultThemeMode(ThemeMode::Light)
             ->maxContentWidth(Width::Full)
             ->databaseNotifications()
             ->topbar(false)
-            ->navigationGroups(['Product configuration', 'Catalog', 'Settings'])
-//            ->sidebarCollapsibleOnDesktop(true)
+            ->globalSearch(position: GlobalSearchPosition::Sidebar)
+            ->navigationGroups([
+                NavigationGroup::make()->label('Product configuration')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
+                NavigationGroup::make()->label('Catalog')->icon(Heroicon::OutlinedCube),
+                NavigationGroup::make()->label('Settings')->icon(Heroicon::OutlinedCog6Tooth),
+            ])
             ->login()
             ->passwordReset()
             ->colors([
                 'primary' => '#0877e8',
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => view('filament.resources.appearance-variables'))
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.resources.workspace-assets'))
             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
             ->navigationItems([
                 NavigationItem::make('Open dashboard catalog')
@@ -65,6 +77,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
                 ContextSettings::class,
+                \App\Filament\Pages\AdminAppearance::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

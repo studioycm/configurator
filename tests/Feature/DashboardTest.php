@@ -26,3 +26,10 @@ test('catalog pages require login and ordinary users cannot administer the catal
     $this->get(route('catalog.products.show', $product))->assertOk();
     $this->get('/admin/groups')->assertForbidden();
 });
+
+test('ordinary users do not see admin navigation in account settings', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->get(route('profile.edit'))
+        ->assertDontSee(route('filament.admin.pages.dashboard'), false);
+});

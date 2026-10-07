@@ -1,45 +1,84 @@
+@props(['title' => null, 'heading' => null, 'subtitle' => null])
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     @include('partials.head', ['title' => $title ?? __('Product catalog')])
+    @include('filament.resources.appearance-variables')
     @livewireStyles
 </head>
-<body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100" x-data="{ navigationOpen: false }">
-    <a href="#catalog-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:p-3 focus:text-zinc-900">{{ __('Skip to catalog') }}</a>
-    <button x-cloak x-show="navigationOpen" x-on:click="navigationOpen = false" class="fixed inset-0 z-30 bg-black/40 lg:hidden" aria-label="{{ __('Close navigation') }}"></button>
-    <aside id="dashboard-navigation" class="fixed inset-y-0 left-0 z-40 flex w-[13.625rem] flex-col overflow-y-auto bg-[#17212c] px-4 py-3 text-slate-200 transition-transform lg:translate-x-0" x-bind:class="navigationOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible'" x-on:keydown.escape.window="navigationOpen = false">
-        <a href="{{ route('dashboard') }}" aria-label="{{ __('Aquestia dashboard') }}">
-            <img src="{{ asset('images/logo-ari_dark.png') }}" alt="Aquestia" width="269" height="56" class="h-auto w-full" />
-        </a>
-        <p class="mb-4 text-sm text-slate-400">{{ __('Product dashboard') }}</p>
-        <nav class="space-y-2" aria-label="{{ __('Main navigation') }}">
-            <a href="{{ route('catalog.index') }}" @if (request()->routeIs('catalog.*')) aria-current="page" @endif class="block rounded-lg px-2 py-1.5 font-medium hover:bg-slate-700 aria-[current=page]:bg-[#294762]">{{ __('Product catalog') }}</a>
-            @can('manage-catalog')
-                <a href="{{ route('filament.admin.pages.dashboard') }}" class="block rounded-lg px-2 py-1.5 font-medium hover:bg-slate-700">{{ __('Administration') }}</a>
-            @endcan
-        </nav>
-        <div id="catalog-product-context"></div>
-        @auth
-            <div class="mt-auto space-y-2 border-t border-slate-700 pt-2">
-                <p class="truncate px-3 text-sm">{{ auth()->user()->name }}</p>
-                <a href="{{ route('profile.edit') }}" class="block px-3 text-sm hover:text-white">{{ __('Account settings') }}</a>
-                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="px-3 py-2 text-sm hover:text-white">{{ __('Log out') }}</button></form>
+<body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+    <div class="catalog-shell" x-data="catalogShell" x-bind:class="{ 'catalog-shell-collapsed': collapsed, 'catalog-shell-mobile-open': mobileOpen }" x-on:keydown.escape.window="if (mobileOpen && !hasOpenDialog()) closeMobile()">
+        <a href="#catalog-content" x-bind:inert="mobileOpen && !isDesktop" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:p-3 focus:text-zinc-900">{{ __('Skip to content') }}</a>
+        <div x-cloak x-show="mobileOpen && !isDesktop" x-on:click="closeMobile()" class="catalog-navigation-backdrop" aria-hidden="true"></div>
+        <aside id="dashboard-navigation" x-ref="navigation" class="catalog-navigation" x-bind:inert="!isDesktop && !mobileOpen" x-bind:role="isDesktop ? 'complementary' : 'dialog'" x-bind:aria-modal="mobileOpen && !isDesktop ? 'true' : null" x-bind:aria-hidden="!isDesktop && !mobileOpen ? 'true' : null" aria-label="{{ __('Main navigation') }}" x-on:keydown="trapFocus($event)">
+            <div class="catalog-brand-row">
+                <a href="{{ route('dashboard') }}" class="catalog-brand-link" aria-label="{{ __('Aquestia dashboard') }}">
+                    <img src="{{ asset('images/logo-ari_dark.png') }}" alt="Aquestia" width="269" height="56" />
+                </a>
+                <button type="button" class="catalog-shell-control hidden lg:inline-flex" x-on:click="toggleDesktop()" x-bind:aria-label="collapsed ? @js(__('Expand navigation')) : @js(__('Collapse navigation'))" x-bind:title="collapsed ? @js(__('Expand navigation')) : @js(__('Collapse navigation'))" x-bind:aria-expanded="!collapsed" aria-controls="dashboard-navigation">
+                    <flux:icon.chevron-left class="size-5" x-show="!collapsed" />
+                    <flux:icon.chevron-right class="size-5" x-cloak x-show="collapsed" />
+                </button>
+                <button type="button" x-ref="closeNavigation" class="catalog-shell-control inline-flex lg:hidden" x-on:click="closeMobile()" aria-label="{{ __('Close navigation') }}" aria-controls="dashboard-navigation">
+                    <flux:icon.x-mark class="size-5" />
+                </button>
             </div>
-        @endauth
-    </aside>
-    <div class="min-w-0 lg:pl-[13.625rem]">
-        <header class="flex min-h-15 items-center gap-4 border-b border-slate-200 bg-white px-3 py-2 sm:px-6 dark:border-zinc-700 dark:bg-zinc-900">
-            <button type="button" x-on:click="navigationOpen = ! navigationOpen" x-bind:aria-expanded="navigationOpen" aria-controls="dashboard-navigation" class="rounded border px-3 py-2 lg:hidden">{{ __('Menu') }}</button>
-            <div class="min-w-0 flex-1">
-                {{ $breadcrumbs ?? '' }}
-                <h1 class="text-xl font-semibold tracking-tight">{{ $title ?? __('Product catalog') }}</h1>
-                @if (! empty($subtitle))<p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">{{ $subtitle }}</p>@endif
+            <div class="catalog-navigation-content">
+                <nav class="grid gap-1" aria-label="{{ __('Main navigation') }}">
+                    <flux:tooltip :content="__('Product catalog')" position="right">
+                        <a href="{{ route('catalog.index') }}" aria-label="{{ __('Product catalog') }}" @if (request()->routeIs('catalog.*')) aria-current="page" @endif class="catalog-navigation-item">
+                            <flux:icon.cube class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('Product catalog') }}</span>
+                        </a>
+                    </flux:tooltip>
+                    @can('manage-catalog')
+                        <flux:tooltip :content="__('Administration')" position="right">
+                            <a href="{{ route('filament.admin.pages.dashboard') }}" aria-label="{{ __('Administration') }}" class="catalog-navigation-item">
+                                <flux:icon.adjustments-horizontal class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('Administration') }}</span>
+                            </a>
+                        </flux:tooltip>
+                    @endcan
+                </nav>
+                <div id="catalog-product-context"></div>
             </div>
-            <flux:button x-on:click="$flux.dark = ! $flux.dark" variant="subtle" square aria-label="{{ __('Toggle dark mode') }}">
-                <flux:icon.sun variant="mini" class="hidden dark:block" /><flux:icon.moon variant="mini" class="dark:hidden" />
-            </flux:button>
-        </header>
-        <main id="catalog-content" class="min-w-0 px-3 py-3 sm:px-6" tabindex="-1">{{ $slot }}</main>
+            @auth
+                <div class="catalog-navigation-footer">
+                    <p class="catalog-navigation-label truncate px-2 text-xs text-slate-400">{{ auth()->user()->name }}</p>
+                    <flux:tooltip :content="__('Account settings')" position="right">
+                        <a href="{{ route('profile.edit') }}" wire:navigate aria-label="{{ __('Account settings') }}" @if (request()->routeIs('profile.edit', 'user-password.edit', 'appearance.edit', 'two-factor.show')) aria-current="page" @endif class="catalog-navigation-item">
+                            <flux:icon.cog-6-tooth class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('Account settings') }}</span>
+                        </a>
+                    </flux:tooltip>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <flux:tooltip :content="__('Log out')" position="right">
+                            <button type="submit" aria-label="{{ __('Log out') }}" class="catalog-navigation-item">
+                                <flux:icon.arrow-right-start-on-rectangle class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('Log out') }}</span>
+                            </button>
+                        </flux:tooltip>
+                    </form>
+                </div>
+            @endauth
+        </aside>
+        <div class="catalog-shell-main" x-bind:inert="mobileOpen && !isDesktop">
+            <x-page-header :heading="$heading ?? $title ?? __('Product catalog')" :subtitle="$subtitle">
+                <x-slot:leading>
+                    <button type="button" class="catalog-shell-control inline-flex lg:hidden" x-on:click="openMobile()" x-bind:aria-expanded="mobileOpen" aria-controls="dashboard-navigation" aria-label="{{ __('Open navigation') }}">
+                        <flux:icon.bars-3 class="size-5" />
+                    </button>
+                </x-slot:leading>
+                @isset($breadcrumbs)
+                    <x-slot:breadcrumbs>{{ $breadcrumbs }}</x-slot:breadcrumbs>
+                @endisset
+                <x-slot:actions>
+                    {{ $headerActions ?? '' }}
+                    <flux:button x-on:click="$flux.dark = ! $flux.dark" variant="subtle" square size="sm" aria-label="{{ __('Toggle dark mode') }}">
+                        <flux:icon.sun variant="mini" class="hidden dark:block" /><flux:icon.moon variant="mini" class="dark:hidden" />
+                    </flux:button>
+                </x-slot:actions>
+            </x-page-header>
+            <main id="catalog-content" class="catalog-main-content" tabindex="-1">{{ $slot }}</main>
+        </div>
     </div>
     @fluxScripts
 </body>

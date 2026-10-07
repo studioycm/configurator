@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\SubGroup;
 use App\Models\User;
 use App\Services\BuildCatalogSnapshot;
+use App\Services\CatalogCardDisplay;
 use App\Services\CatalogCards;
 use App\Services\CatalogPolicy;
 use App\Services\CatalogRevisions;
@@ -198,4 +199,64 @@ test('an expired rebuild lease cannot start another build after a concurrent rev
         $this->travelBack();
         File::deleteDirectory($directory);
     }
+});
+
+test('card comparison preserves canonical strings and one shared field order', function () {
+    $products = collect([
+        Product::factory()->make(['properties' => ['Model' => '01', 'Working_Pressure' => '0', 'Connection_Type' => 'Case', 'C' => '']]),
+        Product::factory()->make(['properties' => ['Model' => '1', 'Working_Pressure' => '0', 'Connection_Type' => 'case', 'C' => false]]),
+        Product::factory()->make(['properties' => ['Model' => null, 'Working_Pressure' => '0', 'Connection_Type' => 'עברית "quoted"', 'C' => ['invalid']]]),
+    ]);
+    $display = app(CatalogCardDisplay::class)->compare($products, ['Model', 'Working_Pressure', 'Connection_Type', 'C'], ['Model' => 'Model label'], true);
+
+    expect($display)->toBe(['fields' => [
+        ['key' => 'Model', 'label' => 'Model label'],
+        ['key' => 'Connection_Type', 'label' => 'Connection Type'],
+    ], 'noticeReason' => null]);
+    $all = app(CatalogCardDisplay::class)->compare($products, ['Model', 'Working_Pressure', 'Connection_Type', 'C'], [], false);
+    expect(array_column($all['fields'], 'key'))->toBe(['Model', 'Working_Pressure', 'Connection_Type']);
+});
+
+test('card comparison explains single shared or unpopulated facts once', function (array $rows, bool $onlyDifferences, ?string $reason) {
+    $products = collect($rows)->map(fn (array $properties) => Product::factory()->make(['properties' => $properties]));
+    $display = app(CatalogCardDisplay::class)->compare($products, ['Model'], [], $onlyDifferences);
+
+    expect($display)->toBe(['fields' => [], 'noticeReason' => $reason]);
+})->with([
+    'empty set' => [[], true, null],
+    'single populated match' => [[['Model' => '0']], true, 'single_match'],
+    'duplicate populated combinations' => [[['Model' => '0'], ['Model' => '0']], true, 'shared_properties'],
+    'single unpopulated match' => [[['Model' => '']], true, 'no_populated_properties'],
+    'invalid cells in all mode' => [[['Model' => 0], ['Model' => true]], false, 'no_populated_properties'],
+]);
+
+test('new snapshots contain appearance metadata but no card-only row values', function () {
+    $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model'], 'card_show_labels' => true, 'card_property_columns' => 1]]);
+    Product::factory()->for($group)->create(['properties' => ['Model' => 'Keep outside dataset']]);
+
+    $snapshot = app(BuildCatalogSnapshot::class)->build($group->id)->data;
+
+    expect($snapshot['schema'])->toBe(1)->and($snapshot['settings'])->toMatchArray([
+        'card_show_labels' => true, 'card_property_columns' => 1, 'card_only_differences' => true,
+    ]);
+    expect(json_encode($snapshot))->not->toContain('Keep outside dataset');
+});
+
+test('old cached appearance metadata receives safe defaults without a snapshot rebuild', function () {
+    $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model']]]);
+    Product::factory()->for($group)->create(['product_code' => 'OLD-CACHE', 'properties' => ['Model' => 'One']]);
+    $snapshots = app(CatalogSnapshots::class);
+    $cached = $snapshots->get($group->id)->data;
+    $cached['settings'] = ['card_properties' => ['Model'], 'cards_per_row' => 4, 'max_results' => 'all', 'products_debounce_ms' => 0];
+    Cache::put($snapshots->key($group->id), $cached, 300);
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $response = app(CatalogCards::class)->get($group->id, ['version' => 1, 'filters' => [], 'subGroupId' => null, 'precedence' => []], '1', 'old-cache');
+    $queries = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    expect($response)->toMatchArray(['status' => 'ready', 'propertiesNotice' => 'Only one product matches, so there are no differing properties to show.']);
+    expect(implode('', $response['htmlChunks']))->toContain('OLD-CACHE')->not->toContain('>One<');
+    expect($queries->filter(fn ($query) => preg_match('/from ["`]products["`]/i', $query['query'])))->toHaveCount(1);
+    expect($queries)->toHaveCount(2);
 });

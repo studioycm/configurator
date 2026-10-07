@@ -8,6 +8,7 @@ use App\Filament\Resources\Options\Pages\ListOptions;
 use App\Filament\Resources\Options\Schemas\OptionForm;
 use App\Filament\Resources\Options\Tables\OptionsTable;
 use App\Models\Option;
+use App\Services\AdminNavigationCounts;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,13 +25,23 @@ class OptionResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
     protected static ?string $modelLabel = 'Option';
 
     protected static ?string $pluralModelLabel = 'Options';
 
     protected static ?string $recordTitleAttribute = 'code';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return app(AdminNavigationCounts::class)->total(static::getModel());
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'All administrative records';
+    }
 
     public static function canViewAny(): bool
     {

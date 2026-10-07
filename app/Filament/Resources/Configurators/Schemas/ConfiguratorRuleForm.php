@@ -20,6 +20,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
@@ -48,7 +50,7 @@ class ConfiguratorRuleForm
                 TextInput::make('label')->required()->maxLength(255),
                 Toggle::make('is_active')->label('Enabled')->default(true),
             ]),
-            Builder::make('condition_blocks')->label('All conditions')->helperText('An empty root is unconditional. Groups allow one level of All or Any predicates.')
+            Builder::make('condition_blocks')->searchable()->label('All conditions')->helperText('An empty root is unconditional. Groups allow one level of All or Any predicates.')
                 ->blocks([
                     Block::make('predicate')->label('Condition')->schema($predicate())->columns(2),
                     Block::make('group')->label('All / Any group')->schema([
@@ -83,7 +85,17 @@ class ConfiguratorRuleForm
             ]);
         }
 
-        return $schema;
+        if ($kind !== 'Mapping') {
+            $conditions = $schema[5];
+            $effects = array_pop($schema);
+            unset($schema[5]);
+            $schema[] = Tabs::make('Rule logic')->key('rule-logic')->columnSpanFull()->tabs([
+                Tab::make('Conditions')->schema([$conditions]),
+                Tab::make('Effects')->schema([$effects]),
+            ]);
+        }
+
+        return array_values($schema);
     }
 
     /** @param array<int, string> $attributes @param array<int, array<int, string>> $options @param array<string, mixed> $context @return array<\Filament\Schemas\Components\Component> */

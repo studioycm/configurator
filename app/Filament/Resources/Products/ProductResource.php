@@ -7,6 +7,7 @@ use App\Filament\Resources\Products\Pages\ViewProduct;
 use App\Filament\Resources\Products\Schemas\ProductInfolist;
 use App\Filament\Resources\Products\Tables\ProductsTable;
 use App\Models\Product;
+use App\Services\AdminNavigationCounts;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,13 +23,23 @@ class ProductResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
 
     protected static ?string $modelLabel = 'Product';
 
     protected static ?string $pluralModelLabel = 'Products';
 
     protected static ?string $recordTitleAttribute = 'product_code';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return app(AdminNavigationCounts::class)->total(static::getModel());
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'All administrative records';
+    }
 
     public static function canViewAny(): bool
     {

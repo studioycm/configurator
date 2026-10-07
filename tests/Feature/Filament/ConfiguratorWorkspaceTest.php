@@ -12,6 +12,7 @@ use App\Models\Configurator;
 use App\Models\Option;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
+use App\Services\ConfiguratorInclusionDrafts;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Repeater;
@@ -22,6 +23,42 @@ require_once dirname(__DIR__, 2).'/ConfiguratorFixtures.php';
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+});
+
+test('batch Attributes require explicit defaults and persist one complete ordered definition', function () {
+    $configurator = Configurator::factory()->create();
+    $first = Option::factory()->create(['code' => 'Q1']);
+    $second = Option::factory()->create(['code' => 'Q2']);
+    $rows = array_map(fn ($id) => app(ConfiguratorInclusionDrafts::class)->attribute($id), [$first->attribute_id, $second->attribute_id]);
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
+    $manager->call('includeAttributes', [$first->attribute_id, $second->attribute_id], $rows)->assertHasErrors();
+    expect($configurator->attributes()->count())->toBe(0);
+    foreach ($rows as &$row) {
+        $row['default_configurator_option_id'] = $row['options'][0]['id'];
+    }
+    unset($row);
+    $manager->call('includeAttributes', [$first->attribute_id, $second->attribute_id], $rows)->assertHasNoErrors();
+    expect($configurator->attributes()->count())->toBe(2);
+    foreach ($configurator->attributes()->get() as $attribute) {
+        expect($attribute->defaultOption->configurator_attribute_id)->toBe($attribute->id)
+            ->and($attribute->options()->pluck('display_order')->all())->toBe([0]);
+    }
+});
+
+test('batch inclusion preserves existing Options and defaults and rejects a foreign Option atomically', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->first();
+    $default = $attribute->default_configurator_option_id;
+    $a = Option::factory()->create(['attribute_id' => $attribute->attribute_id, 'code' => 'AX']);
+    $b = Option::factory()->create(['attribute_id' => $attribute->attribute_id, 'code' => 'AY']);
+    $foreign = Option::factory()->create(['code' => 'ZZ']);
+    $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
+    $manager->call('includeOptions', [$a->id, $foreign->id])->assertHasErrors();
+    expect($attribute->options()->where('option_id', $a->id)->exists())->toBeFalse();
+    $manager->call('includeOptions', [$a->id, $b->id])->assertHasNoErrors();
+    expect($attribute->options()->whereIn('option_id', [$a->id, $b->id])->count())->toBe(2)
+        ->and($attribute->fresh()->default_configurator_option_id)->toBe($default);
 });
 
 test('configurator list links to the full edit page without embedding an editor', function () {
@@ -66,7 +103,9 @@ test('related options can be included reordered and removed while preserving the
     expect($attribute->fresh()->default_configurator_option_id)->toBe($default);
     $manager->callTableAction('remove', $included)->assertHasNoTableActionErrors();
     expect($included->fresh())->toBeNull();
-    $manager->callTableAction('remove', $attribute->options()->findOrFail($default))->assertHasTableActionErrors();
+    $manager->mountTableAction('remove', $attribute->options()->findOrFail($default));
+    expect($manager->instance()->getMountedAction()->getModalSubmitAction()->isDisabled())->toBeTrue();
+    $manager->call('removeOption', $default)->assertHasErrors();
     expect($attribute->options()->whereKey($default)->exists())->toBeTrue();
 });
 
@@ -146,6 +185,86 @@ test('switching attributes replaces the canonical attribute and stored default c
         ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => array_keys($field->getOptions()) === $choices);
 });
 
+test('Attribute A to B to A retains the unsaved local editor draft', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attributes = $configurator->attributes()->orderBy('display_order')->get();
+    Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attributes[0]->id)->fillForm(['label_override' => 'Keep my draft'], 'editorForm')
+        ->call('selectAttribute', $attributes[1]->id)->call('selectAttribute', $attributes[0]->id)
+        ->assertSet('editorData.label_override', 'Keep my draft');
+    expect($attributes[0]->fresh()->label_override)->toBeNull();
+});
+
+test('batch removal closes only the deleted Attribute editor and keeps other staged drafts', function () {
+    [$owner, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
+    $attributes = $owner->attributes()->orderBy('display_order')->get();
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attributes[1]->id)->fillForm(['help_text' => 'Keep another draft'], 'editorForm')
+        ->call('selectAttribute', $attributes[0]->id)->selectTableRecords([$attributes[0]])
+        ->mountAction(TestAction::make('batchRemove')->table()->bulk())
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->assertSet('selectedAttributeId', null);
+    expect($attributes[0]->fresh())->toBeNull();
+    $manager->call('selectAttribute', $attributes[1]->id)->assertSet('editorData.help_text', 'Keep another draft');
+});
+
+test('clean Attribute editors reconcile successful batches and dirty editors cannot undo them', function () {
+    [$owner, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
+    $attribute = $owner->attributes()->first();
+    $data = ['operation' => 'edit', 'changes' => [['field' => 'label_override', 'mode' => 'set', 'value' => 'Batch label']]];
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->selectTableRecords([$attribute])
+        ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm($data)
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->assertSet('editorData.label_override', 'Batch label');
+    $manager->fillForm(['help_text' => 'Unsaved help'], 'editorForm')->selectTableRecords([$attribute])
+        ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'label_override', 'mode' => 'set', 'value' => 'New batch label']]])
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->assertSet('editorData.help_text', 'Unsaved help')->call('saveEditor')->assertHasErrors();
+    expect($attribute->fresh()->label_override)->toBe('New batch label')->and($attribute->fresh()->help_text)->toBeNull();
+    $manager->call('reloadEditor')->assertSet('editorData.label_override', 'New batch label');
+});
+
+test('Rule batch reconciliation preserves new-kind drafts and protects a dirty saved rule', function () {
+    [$owner, $draft] = canonicalDefinitionFixture();
+    $draft['rules'] = [fixtureMapping()];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
+    $rule = $owner->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])
+        ->call('createRule', 'Advanced')->fillForm(['label' => 'Keep new draft'], 'editorForm')
+        ->call('selectRule', $rule->id)->selectTableRecords([$rule])
+        ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'is_active', 'mode' => 'set', 'value' => false]]])
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()->assertSet('editorData.is_active', false);
+    $manager->fillForm(['label' => 'Keep dirty saved rule'], 'editorForm')->selectTableRecords([$rule])
+        ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'label', 'mode' => 'set', 'value' => 'Batch rule']]])
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->call('saveEditor')->assertHasErrors();
+    expect($rule->fresh()->label)->toBe('Batch rule')->and($rule->fresh()->is_active)->toBeFalse();
+    $manager->selectTableRecords([$rule])->mountAction(TestAction::make('batchRemove')->table()->bulk())
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()->assertSet('editorKind', null);
+    expect($rule->fresh())->toBeNull();
+    $manager->call('createRule', 'Advanced')->assertSet('editorData.label', 'Keep new draft');
+});
+
+test('new inclusion canonical A to B to A keeps staged Options and the explicit default', function () {
+    $owner = Configurator::factory()->create();
+    $a = Option::factory()->create(['code' => 'Q1']);
+    $b = Option::factory()->create(['code' => 'Q2']);
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])
+        ->mountAction(TestAction::make('include')->table())
+        ->set('mountedActions.0.data.attribute_id', $a->attribute_id);
+    $rows = $manager->get('mountedActions.0.data.options');
+    $key = array_key_first($rows);
+    $manager->set('mountedActions.0.data.options.'.$key.'.hint', 'Keep staged hint')->set('mountedActions.0.data.default_configurator_option_id', $rows[$key]['id']);
+    $manager->set('mountedActions.0.data.attribute_id', $b->attribute_id)->set('mountedActions.0.data.attribute_id', $a->attribute_id);
+    $returned = array_values($manager->get('mountedActions.0.data.options'));
+    expect($returned[0]['hint'])->toBe('Keep staged hint')->and($manager->get('mountedActions.0.data.default_configurator_option_id'))->toBe($rows[$key]['id']);
+    expect($owner->attributes()->count())->toBe(0);
+});
+
 test('switching rule kinds replaces mapping fields with advanced effects and back again', function () {
     [$configurator, $draft] = canonicalDefinitionFixture();
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
@@ -154,9 +273,30 @@ test('switching rule kinds replaces mapping fields with advanced effects and bac
         ->call('createRule', 'Mapping');
     $manager->instance()->editorForm->getComponents();
     $manager->instance()->createRule('Advanced');
-    $manager->assertFormFieldExists('effects', 'editorForm', fn (Field $field): bool => $field instanceof Repeater);
+    $manager->assertFormFieldExists('rule-logic.effects', 'editorForm', fn (Field $field): bool => $field instanceof Repeater);
     $manager->instance()->createRule('Mapping');
     $manager->assertFormFieldExists('sets', 'editorForm', fn (Field $field): bool => $field instanceof MappingSetsField);
+});
+
+test('new rule kind drafts retain their independent unsaved fields', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('createRule', 'Mapping')->fillForm(['label' => 'Mapping draft'], 'editorForm')
+        ->call('createRule', 'Advanced')->fillForm(['label' => 'Advanced draft'], 'editorForm')
+        ->call('createRule', 'Mapping')->assertSet('editorData.label', 'Mapping draft')
+        ->call('createRule', 'Advanced')->assertSet('editorData.label', 'Advanced draft');
+    expect($configurator->rules()->count())->toBe(0);
+    $manager->call('closeEditor')->assertSet('editorDrafts', [])->assertSet('editorKind', null);
+});
+
+test('viewing different unchanged Attributes does not create unsaved drafts', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attributes = $configurator->attributes()->orderBy('display_order')->get();
+    Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attributes[0]->id)->call('selectAttribute', $attributes[1]->id)
+        ->call('selectAttribute', $attributes[0]->id)->assertSet('editorDrafts', []);
 });
 
 test('saving an attribute refreshes the related default marker without discarding an option draft', function () {
