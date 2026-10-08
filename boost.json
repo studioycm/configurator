@@ -29,7 +29,17 @@
         "filament-security-audit",
         "planning-filament",
         "reviewing-filament-plans",
+        "filament-forms-ux-audit",
+        "filament-performance-audit",
         "laravel-simplifier",
+        "laraveldaily-api-audit",
+        "laraveldaily-eloquent-audit",
+        "laraveldaily-permissions-audit",
+        "laraveldaily-production-readiness-audit",
+        "laraveldaily-queues-audit",
+        "laraveldaily-structure-audit",
+        "laraveldaily-testing-audit",
+        "starter-kit-upgrade",
         "technical-debt-manager-php-laravel",
         "ux-design-thinking"
     ]

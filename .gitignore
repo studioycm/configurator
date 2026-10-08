@@ -7,6 +7,7 @@
 /storage/pail
 /vendor
 .env
+.env.testing
 .env.backup
 .env.production
 .phpactor.json
@@ -53,3 +54,7 @@ Temporary Items/
 /docs/*
 !/docs/README.md
 !/docs/catalog/
+
+# Locally installed FilamentExamples member skills
+/*/skills/filament-forms-ux-audit
+/*/skills/filament-performance-audit

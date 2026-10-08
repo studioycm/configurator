@@ -10,7 +10,6 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,13 +27,7 @@ class ValuesTable
             TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('updated_at')->label('Updated At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
         ])->filters([
-            Filter::make('tags')->schema(function (): array {
-                $options = Value::tagOptions();
-
-                return [count($options) <= 6
-                    ? ToggleButtons::make('values')->label('Filter by tags')->multiple()->inline()->extraAttributes(['class' => 'catalog-tag-filters'])->options($options)
-                    : Select::make('values')->label('Filter by tags')->multiple()->searchable()->options($options)];
-            })->query(function (Builder $query, array $data): Builder {
+            Filter::make('tags')->schema(fn (): array => [self::tagFilterField()->extraFieldWrapperAttributes(['class' => 'catalog-modal-tag-filter'])])->query(function (Builder $query, array $data): Builder {
                 $tags = array_values(array_filter($data['values'] ?? [], 'is_string'));
 
                 return $query->when($tags !== [], fn (Builder $query): Builder => $query->where(function (Builder $query) use ($tags): void {
@@ -43,7 +36,17 @@ class ValuesTable
                     }
                 }));
             }),
-        ])->filtersFormColumns(1)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
+        ])
             ->searchPlaceholder('Search master values')->defaultSort('label')->recordActions([Action::make('edit')->label('Edit')->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]), 'values', true);
+    }
+
+    public static function tagFilterField(): Select|ToggleButtons
+    {
+        $options = Value::tagOptions();
+
+        return (count($options) <= 6
+            ? ToggleButtons::make('values')->inline()->extraAttributes(['class' => 'catalog-tag-filters'])
+            : Select::make('values')->searchable())
+            ->label('Filter by tags')->multiple()->options($options)->default([]);
     }
 }

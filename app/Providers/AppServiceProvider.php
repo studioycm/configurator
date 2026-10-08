@@ -45,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         FilamentView::registerRenderHook(TablesRenderHook::TOOLBAR_START, fn () => view('filament.resources.table-toolbar-heading'));
         FilamentView::registerRenderHook(TablesRenderHook::TOOLBAR_SEARCH_BEFORE, fn () => view('filament.resources.table-toolbar-search'));
         FilamentView::registerRenderHook(TablesRenderHook::TOOLBAR_END, fn () => view('filament.resources.table-toolbar-actions'));
+        FilamentView::registerRenderHook(TablesRenderHook::TOOLBAR_AFTER, fn () => view('filament.resources.table-toolbar-tags'));
         Gate::define('manage-catalog', fn (User $user): bool => $user->canAccessPanel(Filament::getPanel('admin')));
 
         Action::configureUsing(function (Action $action): void {

@@ -114,7 +114,7 @@
 .catalog-related-workspace .space-y-5 > :not(:last-child), .catalog-related-workspace .space-y-6 > :not(:last-child) { margin-block-end: var(--aquestia-shell-gap); }
 .fi-main > .fi-page > .fi-page-header-main-ctn > .fi-page-main { padding: 6px; }
 .catalog-split-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--aquestia-shell-gap); align-items: start; }
-.catalog-record-editor { background: white; border: 1px solid #dce3eb; border-radius: .75rem; padding: var(--aquestia-shell-content-padding); }
+.catalog-record-editor { background: white; border: 1px solid #dce3eb; border-radius: .75rem; padding: var(--aquestia-shell-content-padding); scroll-margin-top: 64px; }
 .catalog-record-editor .fi-page-header-main-ctn { padding-block: 0; gap: var(--aquestia-shell-gap); }
 .catalog-record-editor .fi-header { flex-wrap: wrap; gap: var(--aquestia-shell-gap); }
 .catalog-record-editor .fi-header-heading { font-size: 1.25rem; }
@@ -176,6 +176,9 @@
 .catalog-workspace-table .fi-ta-header-toolbar .fi-icon-btn { margin: 0; flex-shrink: 0; min-width: var(--aquestia-shell-desktop-target); min-height: var(--aquestia-shell-desktop-target); }
 .catalog-item-preview { position: fixed; z-index: 100; pointer-events: none; max-width: 280px; padding: 8px 10px; white-space: pre-line; font-size: 12px; line-height: 18px; border-radius: 6px; background: #17212c; color: white; box-shadow: 0 4px 16px #0003; }
 .catalog-workspace-table .fi-ta-header-ctn { border: 0; }
+.catalog-inline-tag-filter { padding: 0 10px 6px; }
+.catalog-inline-tag-filter .fi-fo-field { gap: 4px; }
+.fi-modal-window .catalog-modal-tag-filter { display: none; }
 .catalog-workspace-table { container-type: inline-size; }
 .catalog-narrow-table[data-reordering="0"] .fi-ta-header-toolbar > .fi-ta-actions > .catalog-reorder-trigger { display: none; }
 @container (max-width: 650px) {

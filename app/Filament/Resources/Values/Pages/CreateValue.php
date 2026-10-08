@@ -3,13 +3,13 @@
 namespace App\Filament\Resources\Values\Pages;
 
 use App\Actions\SaveCanonicalDefinition;
+use App\Filament\Resources\SplitCreateRecord;
 use App\Filament\Resources\Values\ValueResource;
 use App\Models\Value;
-use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
-class CreateValue extends CreateRecord
+class CreateValue extends SplitCreateRecord
 {
     protected static string $resource = ValueResource::class;
 

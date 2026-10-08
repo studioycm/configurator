@@ -4,12 +4,12 @@ namespace App\Filament\Resources\Options\Pages;
 
 use App\Actions\SaveCanonicalOption;
 use App\Filament\Resources\Options\OptionResource;
+use App\Filament\Resources\SplitCreateRecord;
 use App\Models\Option;
-use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
-class CreateOption extends CreateRecord
+class CreateOption extends SplitCreateRecord
 {
     protected static string $resource = OptionResource::class;
 
