@@ -13,12 +13,12 @@ use Throwable;
 
 class ConfiguratorFormErrors
 {
-    public static function run(Closure $save, ?Schema $schema = null): mixed
+    public static function run(Closure $save, ?Schema $schema = null, ?string $removePrefix = null): mixed
     {
         try {
             return $save();
         } catch (Throwable $exception) {
-            self::rethrow($exception, $schema);
+            self::rethrow($exception, $schema, $removePrefix);
         }
     }
 

@@ -63,6 +63,16 @@ test('embedded record selection supports the same scoped search without altering
     $table->set('tableFilters.workspaceSearch.scope', ['untrusted'])->assertCanNotSeeTableRecords([$a, $b])->assertSet('state', []);
 });
 
+test('Option picker filters inherited tags immediately while retaining native checkbox selection', function () {
+    $inclusion = ConfiguratorAttribute::factory()->create();
+    $tagged = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'value_id' => Value::factory()->create(['tags' => ['metal']])->id]);
+    $other = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'value_id' => Value::factory()->create(['tags' => ['polymer']])->id]);
+    $foreign = Option::factory()->create(['value_id' => Value::factory()->create(['tags' => ['metal']])->id]);
+    Livewire::test(TableSelectLivewireComponent::class, ['tableConfiguration' => base64_encode(OptionSelectionTable::class), 'tableArguments' => ['owner_id' => $inclusion->id], 'state' => [$other->id]])
+        ->set('tableFilters.tags.values', ['metal'])->assertCanSeeTableRecords([$tagged])->assertCanNotSeeTableRecords([$other, $foreign])
+        ->assertSet('state', [$other->id]);
+});
+
 test('quick relationship choices combine with advanced constraints and All clears only the quick choice', function () {
     $parent = Attribute::factory()->create();
     $flange = Value::factory()->create(['label' => 'Flange']);

@@ -20,5 +20,6 @@ final readonly class ConfiguratorEvaluationInput
         public ConfiguratorInteraction $intent = new ConfiguratorInteraction,
         public ?int $configuratorId = null,
         public array $diagnostics = [],
+        public bool $trace = false,
     ) {}
 }

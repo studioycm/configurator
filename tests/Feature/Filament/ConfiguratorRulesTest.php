@@ -62,6 +62,19 @@ test('matrix saves complete sets preserves identities and accepts partial covera
     expect($rule->mappingSets()->count())->toBe(2)->and($rule->mappingSets()->orderBy('sort_order')->first()->id)->toBe($originalSet);
 });
 
+test('mapping-set labels preserve the complete text through editor save and reload', function (string $label) {
+    [$configurator] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $set = $rule->mappingSets()->sole();
+
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectRule', $rule->id)->set('editorData.sets.0.label', $label)
+        ->call('saveEditor')->assertHasNoErrors()->call('reloadEditor');
+
+    $this->assertDatabaseHas('mapping_sets', ['id' => $set->id, 'label' => $label]);
+    $manager->assertSet('editorData.sets.0.label', $label);
+})->with(['spaces' => 'DIN16 disable EPDM', 'punctuation' => 'DIN16->BunaN+Viton']);
+
 test('invalid matrix leaves the entire saved aggregate unchanged and keeps the submitted draft', function (string $failure) {
     [$configurator, $before] = ruleEditorFixture();
     $rule = $configurator->rules()->sole();
@@ -139,11 +152,12 @@ test('a forged unknown Builder block cannot be discarded by schema dehydration i
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
 });
 
-test('reordering clears search and exposes the complete owner list', function () {
+test('ordering visibility preserves the filtered list and never enters exclusive reorder mode', function () {
     [$configurator, $data] = ruleEditorFixture();
     Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->set('tableSearch', 'not a matching rule')->call('toggleTableReordering')
-        ->assertSet('tableSearch', '')->assertCanSeeTableRecords($configurator->rules);
+        ->assertSet('tableSearch', 'not a matching rule')->assertSet('showOrderControls', false)->assertSet('isTableReordering', false)
+        ->assertCanNotSeeTableRecords($configurator->rules);
 });
 
 test('context operator changes keep the previous operand visible until explicitly cleared', function (string $operator, mixed $operand, string $nextOperator, string $staleField, mixed $cleared, string $nextField, mixed $nextValue, string $staleKey) {

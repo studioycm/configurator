@@ -11,6 +11,7 @@ use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\StatusActions;
 use App\Livewire\Catalog\ConfiguratorGroups;
 use App\Livewire\Catalog\ConfiguratorOverview;
+use App\Livewire\Catalog\ConfiguratorPreview;
 use App\Models\Configurator;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -18,7 +19,6 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
@@ -73,7 +73,7 @@ class EditConfigurator extends EditRecord
                 Tab::make('Groups')->badge(fn (): int => $this->getRecord()->groups_count ?? $this->getRecord()->groups()->count())->schema([Livewire::make(ConfiguratorGroups::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('groups-'.$this->getRecord()->id)->lazy()]),
                 Tab::make('Attributes')->badge(fn (): int => $this->getRecord()->attributes_count ?? $this->getRecord()->attributes()->count())->schema([Livewire::make(AttributesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialAttributeId' => $this->initialAttributeId])->key('attributes-'.$this->getRecord()->id)->lazy()]),
                 Tab::make('Rules')->badge(fn (): int => $this->getRecord()->rules_count ?? $this->getRecord()->rules()->count())->schema([Livewire::make(RulesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialRuleId' => $this->initialRuleId])->key('rules-'.$this->getRecord()->id)->lazy()]),
-                Tab::make('Preview & Test')->schema([Text::make('Preview and testing tools will be added here later.')]),
+                Tab::make('Preview & Test')->schema([Livewire::make(ConfiguratorPreview::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('preview-'.$this->getRecord()->id)->lazy()]),
             ]),
         ]);
     }

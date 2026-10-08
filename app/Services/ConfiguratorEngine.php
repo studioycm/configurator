@@ -12,6 +12,7 @@ use App\DTO\ConfiguratorDefinition;
 use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorEvaluationResult;
 use App\DTO\ConfiguratorOptionDTO;
+use App\MappingTargetBehavior;
 use App\RuleEffectKind;
 use App\RuleKind;
 use App\RuleTargetScope;
@@ -76,6 +77,7 @@ final class ConfiguratorEngine
         $states = [];
         $selections = [];
         $remembered = [];
+        $trace = [];
         foreach ($definition->evaluationOrder as $id) {
             $attribute = $definition->attributes[$id];
             $all = array_map('strval', array_keys($attribute->options));
@@ -85,20 +87,40 @@ final class ConfiguratorEngine
             $applicable = true;
             $contributors = [];
             foreach ($definition->rules as $rule) {
+                $affects = $input->trace && ($rule->kind === RuleKind::Mapping ? $rule->targetId === $id
+                    : count(array_filter($rule->effects, fn ($effect): bool => $effect->attributeId === $id && ! in_array($effect->kind, [RuleEffectKind::SetLabel, RuleEffectKind::SetDisplayValue, RuleEffectKind::SetHint], true))) > 0);
                 if (! $rule->active || ! $this->matches($rule->conditions, $definition, $selections, $input->properties, $context)) {
+                    if ($input->trace && $affects) {
+                        $trace[] = ['type' => 'rule', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.($rule->active ? ': conditions did not match' : ': disabled Rule skipped')];
+                    }
+
                     continue;
                 }
                 if ($rule->kind === RuleKind::Mapping) {
                     if ($rule->targetId !== $id || ! isset($selections[$rule->driverId])) {
                         continue;
                     }
+                    $matchedSet = false;
                     foreach ($rule->sets as $set) {
                         if (in_array($selections[$rule->driverId], $set->sources, true)) {
+                            $matchedSet = true;
                             $legal = array_values(array_intersect($legal, $set->targets));
-                            $disabled = [...$disabled, ...array_diff($all, $set->targets)];
+                            if ($set->disallowedTargetBehavior === MappingTargetBehavior::Hide) {
+                                $hidden = [...$hidden, ...array_diff($all, $set->targets)];
+                            } else {
+                                $disabled = [...$disabled, ...array_diff($all, $set->targets)];
+                            }
                             $contributors[] = $rule->id;
+                            if ($input->trace) {
+                                $trace[] = ['type' => 'mapping', 'attribute_id' => $id, 'rule_id' => $rule->id, 'set_id' => $set->id,
+                                    'message' => $rule->label.': set '.$set->id.' · '.$set->disallowedTargetBehavior->value.' disallowed targets',
+                                    'excluded' => array_values(array_diff($all, $set->targets)), 'legal' => $legal];
+                            }
                             break;
                         }
+                    }
+                    if ($input->trace && ! $matchedSet) {
+                        $trace[] = ['type' => 'mapping', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.': unmapped source, no added restriction'];
                     }
 
                     continue;
@@ -106,6 +128,9 @@ final class ConfiguratorEngine
                 foreach ($rule->effects as $effect) {
                     if ($effect->attributeId !== $id) {
                         continue;
+                    }
+                    if ($input->trace && ! in_array($effect->kind, [RuleEffectKind::SetLabel, RuleEffectKind::SetDisplayValue, RuleEffectKind::SetHint], true)) {
+                        $trace[] = ['type' => 'effect', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.': '.$effect->kind->value, 'options' => $effect->optionIds];
                     }
                     if ($effect->kind === RuleEffectKind::HideAttribute) {
                         $applicable = false;
@@ -141,6 +166,16 @@ final class ConfiguratorEngine
                 continue;
             }
             $choice = $definition->policy->selection($legal, $current, $rememberedChoice, $attribute->defaultOptionId);
+            if ($input->trace) {
+                $reason = match (true) {
+                    $choice === null => 'No legal choice remains',
+                    $choice === $current => 'Current choice retained',
+                    $current === null && $choice === $rememberedChoice => 'Remembered choice restored',
+                    $choice === $attribute->defaultOptionId => 'Stored default used',
+                    default => 'Temporary fallback to the first legal Option',
+                };
+                $trace[] = ['type' => 'selection', 'attribute_id' => $id, 'message' => $reason, 'choice_id' => $choice];
+            }
             if ($choice !== null) {
                 $selections[$id] = $choice;
                 if ((is_string($prior[$id] ?? null) || is_int($prior[$id] ?? null)) && (string) $prior[$id] !== $choice) {
@@ -150,7 +185,7 @@ final class ConfiguratorEngine
                 $diagnostics[] = ['code' => 'no_legal_options', 'message' => 'No legal Option remains for '.$attribute->label.'.', 'attribute_id' => $id, 'rule_ids' => array_values(array_unique($contributors))];
             }
         }
-        $this->presentation($definition, $states, $selections, $input->properties, $context, $diagnostics);
+        $this->presentation($definition, $states, $selections, $input->properties, $context, $diagnostics, $input->trace, $trace);
         $applicable = array_filter($definition->attributes, fn ($attribute): bool => $states[$attribute->id]['applicable']);
         $complete = $applicable !== [] && count($selections) === count($applicable);
         $code = null;
@@ -161,7 +196,7 @@ final class ConfiguratorEngine
             $diagnostics[] = ['code' => 'unusable_definition', 'message' => 'This Configurator has no applicable Attributes.'];
         }
 
-        return new ConfiguratorEvaluationResult($definition, $states, $selections, $remembered, $context, $diagnostics, $complete, $code, $input->configuratorId);
+        return new ConfiguratorEvaluationResult($definition, $states, $selections, $remembered, $context, $diagnostics, $complete, $code, $input->configuratorId, $trace);
     }
 
     /** @param array<string, string> $selections @param array<string, mixed> $properties @param array<string, string> $context */
@@ -211,7 +246,7 @@ final class ConfiguratorEngine
     }
 
     /** @param array<string, array<string, mixed>> $states @param array<string, string> $selections @param array<string, mixed> $properties @param array<string, string> $context @param list<array<string, mixed>> $diagnostics */
-    private function presentation(ConfiguratorDefinition $definition, array &$states, array $selections, array $properties, array $context, array &$diagnostics): void
+    private function presentation(ConfiguratorDefinition $definition, array &$states, array $selections, array $properties, array $context, array &$diagnostics, bool $traceEnabled, array &$trace): void
     {
         $outcomes = [];
         foreach ($definition->rules as $rule) {
@@ -224,6 +259,10 @@ final class ConfiguratorEngine
                 };
                 if ($field === null) {
                     continue;
+                }
+                if ($traceEnabled) {
+                    $trace[] = ['type' => 'presentation', 'attribute_id' => $effect->attributeId, 'rule_id' => $rule->id,
+                        'message' => $rule->label.': '.$effect->kind->value.' candidate at priority '.$rule->priority];
                 }
                 foreach ($effect->scope === RuleTargetScope::Attribute ? ['attribute'] : $effect->optionIds as $target) {
                     $outcomes[$effect->attributeId][$target][$field][] = ['priority' => $rule->priority, 'value' => $effect->value, 'rule' => $rule->id];
@@ -242,6 +281,10 @@ final class ConfiguratorEngine
                     } else {
                         $states[$attributeId]['options'][$target][$field] = $winners[0]['value'];
                     }
+                    if ($traceEnabled) {
+                        $trace[] = ['type' => 'presentation', 'attribute_id' => (string) $attributeId,
+                            'message' => count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1 ? 'Presentation tie: base '.$field.' retained' : 'Presentation '.$field.' from Rule '.implode(', ', array_column($winners, 'rule'))];
+                    }
                 }
             }
         }
@@ -256,6 +299,6 @@ final class ConfiguratorEngine
     /** @param array<string, mixed> $diagnostic */
     private function diagnostic(ConfiguratorEvaluationResult $result, array $diagnostic): ConfiguratorEvaluationResult
     {
-        return new ConfiguratorEvaluationResult($result->definition, $result->attributes, $result->selections, $result->remembered, $result->context, [...$result->diagnostics, $diagnostic], $result->isComplete, $result->configurationCode, $result->configuratorId);
+        return new ConfiguratorEvaluationResult($result->definition, $result->attributes, $result->selections, $result->remembered, $result->context, [...$result->diagnostics, $diagnostic], $result->isComplete, $result->configurationCode, $result->configuratorId, $result->trace);
     }
 }

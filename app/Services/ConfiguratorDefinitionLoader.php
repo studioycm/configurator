@@ -167,7 +167,7 @@ class ConfiguratorDefinitionLoader
             }
             $row['sets'] = [];
             foreach ($rule->mappingSets->sortBy(['sort_order', 'id']) as $set) {
-                $row['sets'][] = ['id' => (string) $set->id, ...$set->only(['label', 'sort_order']), 'source_option_ids' => $set->sources->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all(), 'target_option_ids' => $set->targets->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all()];
+                $row['sets'][] = ['id' => (string) $set->id, ...$set->only(['label', 'sort_order']), 'disallowed_target_behavior' => $set->disallowed_target_behavior->value, 'source_option_ids' => $set->sources->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all(), 'target_option_ids' => $set->targets->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all()];
             }
             $rules[] = $row;
         }

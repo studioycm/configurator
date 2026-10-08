@@ -27,6 +27,11 @@ class RuleCondition extends Model
         return $this->belongsTo(ConfiguratorRule::class, 'rule_id');
     }
 
+    public function sourceAttribute(): BelongsTo
+    {
+        return $this->belongsTo(ConfiguratorAttribute::class, 'source_configurator_attribute_id');
+    }
+
     public function optionReferences(): HasMany
     {
         return $this->hasMany(RuleConditionOption::class, 'condition_id');

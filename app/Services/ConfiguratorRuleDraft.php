@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\MappingTargetBehavior;
 use Illuminate\Validation\ValidationException;
 
 /** Translates the bounded editor vocabulary; the definition compiler remains authoritative. */
@@ -22,6 +23,9 @@ class ConfiguratorRuleDraft
         unset($rule['conditions']);
         foreach ($rule['sets'] as &$set) {
             unset($set['sort_order']);
+            if (! array_key_exists('disallowed_target_behavior', $set)) {
+                $set['disallowed_target_behavior'] = MappingTargetBehavior::Disable->value;
+            }
         }
         unset($set);
 
@@ -53,7 +57,13 @@ class ConfiguratorRuleDraft
         unset($draft['condition_blocks']);
         $draft['sets'] = $this->rows($draft['sets'], 'sets');
         foreach ($draft['sets'] as $i => &$set) {
-            $this->keys($set, ['id', 'label', 'source_option_ids', 'target_option_ids'], 'sets.'.$i);
+            if (! array_key_exists('disallowed_target_behavior', $set)) {
+                $set['disallowed_target_behavior'] = MappingTargetBehavior::Disable->value;
+            }
+            $this->keys($set, ['id', 'label', 'source_option_ids', 'target_option_ids', 'disallowed_target_behavior'], 'sets.'.$i);
+            if (! is_string($set['disallowed_target_behavior']) || MappingTargetBehavior::tryFrom($set['disallowed_target_behavior']) === null) {
+                $this->invalid('sets.'.$i.'.disallowed_target_behavior', 'Choose Disable or Hide for disallowed targets.');
+            }
             $set['label'] = $set['label'] === '' ? null : $set['label'];
             $set['sort_order'] = $i;
         }

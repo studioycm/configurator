@@ -21,6 +21,30 @@ beforeEach(function () {
     $this->actor = User::factory()->create(['email' => 'ycm@data4.work']);
 });
 
+test('Mapping behavior survives saved edits duplication and a rejected invalid save without changing memberships', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $data['rules'] = [fixtureMapping()];
+    $action = app(SaveConfiguratorDefinition::class);
+    $action->handle($this->actor, $configurator, $data);
+    $draft = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    $setId = $draft['rules'][0]['sets'][0]['id'];
+    $default = $draft['attributes'][1]['default_configurator_option_id'];
+    $draft['rules'][0]['sets'][0]['disallowed_target_behavior'] = 'Hide';
+    $action->handle($this->actor, $configurator, $draft);
+    $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    expect($saved['rules'][0]['sets'][0]['id'])->toBe($setId)
+        ->and($saved['rules'][0]['sets'][0]['disallowed_target_behavior'])->toBe('Hide')
+        ->and($saved['attributes'][1]['default_configurator_option_id'])->toBe($default);
+    $copy = $action->duplicate($this->actor, $configurator, 'Mapping behavior copy');
+    $copied = app(ConfiguratorDefinitionLoader::class)->draft($copy);
+    expect($copied['rules'][0]['sets'][0]['disallowed_target_behavior'])->toBe('Hide')
+        ->and($copied['rules'][0]['sets'][0]['id'])->not->toBe($setId);
+    $invalid = $saved;
+    $invalid['rules'][0]['sets'][0]['disallowed_target_behavior'] = null;
+    expect(fn () => $action->handle($this->actor, $configurator, $invalid))->toThrow(ValidationException::class);
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+});
+
 test('canonical code validation preserves exact case and leading zeros', function () {
     $attribute = Attribute::factory()->create();
     foreach (['Aa', 'aa', '00'] as $code) {

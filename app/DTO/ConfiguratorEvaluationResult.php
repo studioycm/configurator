@@ -10,6 +10,7 @@ final readonly class ConfiguratorEvaluationResult
      * @param  array<string, string>  $remembered
      * @param  array{territory: string, application: string}  $context
      * @param  list<array<string, mixed>>  $diagnostics
+     * @param  list<array<string, mixed>>  $trace
      */
     public function __construct(
         public ?ConfiguratorDefinition $definition,
@@ -21,6 +22,7 @@ final readonly class ConfiguratorEvaluationResult
         public bool $isComplete,
         public ?string $configurationCode,
         public ?int $configuratorId = null,
+        public array $trace = [],
     ) {}
 
     /** @return array{version: int, configurator_id: ?int, context: array<string, string>, selections: array<string, string>, remembered: array<string, string>} */

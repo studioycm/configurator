@@ -22,8 +22,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
@@ -85,16 +83,6 @@ class ConfiguratorRuleForm
                     ->visible(fn (Get $get): bool => $get('target_scope') === 'Options' || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),
                 TextInput::make('display_value')->label('Presentation text')->maxLength(255)->default(null)
                     ->visible(fn (Get $get): bool => in_array($get('kind'), ['SetLabel', 'SetDisplayValue', 'SetHint'], true) || filled($get('display_value')))->dehydratedWhenHidden(),
-            ]);
-        }
-
-        if ($kind !== 'Mapping') {
-            $conditions = $schema[5];
-            $effects = array_pop($schema);
-            unset($schema[5]);
-            $schema[] = Tabs::make('Rule logic')->key('rule-logic')->columnSpanFull()->tabs([
-                Tab::make('Conditions')->schema([$conditions]),
-                Tab::make('Effects')->schema([$effects]),
             ]);
         }
 

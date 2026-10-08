@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\ConditionSource;
 use Database\Factories\ConfiguratorRuleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class ConfiguratorRule extends Model
 {
@@ -55,6 +57,49 @@ class ConfiguratorRule extends Model
     public function mappingSets(): HasMany
     {
         return $this->hasMany(MappingSet::class, 'rule_id');
+    }
+
+    public function isFuturePublicOnly(): bool
+    {
+        return $this->conditions->contains(fn (RuleCondition $condition): bool => in_array($condition->source_kind, [ConditionSource::Territory->value, ConditionSource::Application->value], true));
+    }
+
+    public function workspaceSummary(): string
+    {
+        $predicates = $this->conditions->whereNull('condition_group_id')->sortBy('sort_order')->map(fn (RuleCondition $condition): string => $this->conditionSummary($condition));
+        foreach ($this->conditionGroups->sortBy('sort_order') as $group) {
+            $predicates->push('('.$this->conditions->where('condition_group_id', $group->id)->sortBy('sort_order')
+                ->map(fn (RuleCondition $condition): string => $this->conditionSummary($condition))->implode($group->operator === 'Any' ? ' OR ' : ' AND ').')');
+        }
+        $when = $predicates->isEmpty() ? 'Always' : $predicates->implode(' AND ');
+        if ($this->kind === 'Mapping') {
+            $modes = $this->mappingSets->map(fn (MappingSet $set): string => $set->disallowed_target_behavior?->value ?? 'Disable')->unique()->implode(' / ');
+            $then = ($this->driverAttribute?->label_override ?? $this->driverAttribute?->attribute->label).' → '
+                .($this->targetAttribute?->label_override ?? $this->targetAttribute?->attribute->label).' · '.$this->mappingSets->count().' sets · '.$modes.' disallowed';
+        } else {
+            $then = $this->effects->map(function (RuleEffect $effect): string {
+                $target = $effect->targetAttribute?->label_override ?? $effect->targetAttribute?->attribute->label;
+                $options = $effect->optionReferences->map(fn (RuleEffectOption $reference): string => $reference->configuratorOption->option->code)->implode(', ');
+
+                return Str::headline($effect->kind).' · '.$target.($options === '' ? '' : ' ['.$options.']').(filled($effect->display_value) ? ' → '.$effect->display_value : '');
+            })->implode('; ');
+        }
+
+        return 'When '.$when.' → Then '.$then;
+    }
+
+    private function conditionSummary(RuleCondition $condition): string
+    {
+        $source = match ($condition->source_kind) {
+            'SelectionOption', 'SelectionCode' => $condition->sourceAttribute?->label_override ?? $condition->sourceAttribute?->attribute->label ?? 'Selection',
+            'ProductProperty' => 'Product '.$condition->property_key,
+            default => $condition->source_kind,
+        };
+        $operand = $condition->source_kind === 'SelectionOption'
+            ? $condition->optionReferences->map(fn (RuleConditionOption $reference): string => $reference->configuratorOption->option->code)->implode(', ')
+            : (is_array($condition->operand) ? implode(', ', $condition->operand) : (string) $condition->operand);
+
+        return $source.' '.Str::lower(Str::headline($condition->operator)).' '.$operand;
     }
 
     /** @return array<string, list<string>> */

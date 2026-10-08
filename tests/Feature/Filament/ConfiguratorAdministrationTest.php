@@ -74,8 +74,8 @@ test('Overview save preserves unvisited local inclusions and rules and the works
     expect(array_map(fn ($tab) => $tab->getLabel(), $tabs->getChildSchema()->getComponents()))->toBe(['Overview', 'Groups', 'Attributes', 'Rules', 'Preview & Test']);
     $page->assertActionDoesNotExist('settings')->assertActionDoesNotExist('assignGroups')->assertActionDoesNotExist('viewGroups');
     $this->get(ConfiguratorResource::getUrl('edit', ['record' => $configurator->id]))
-        ->assertDontSeeLivewire(ConfiguratorPreview::class)
-        ->assertSee('Preview and testing tools will be added here later.');
+        ->assertSeeLivewire(ConfiguratorPreview::class)
+        ->assertDontSee('Preview and testing tools will be added here later.');
 });
 
 test('new Configurator creation is unassigned and does not fabricate canonical content', function () {
@@ -95,7 +95,7 @@ test('local inclusion editors preserve shared identity and stored default throug
     }
     unset($option);
     $manager = Livewire\Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callTableAction('include', data: $draft)->assertHasNoTableActionErrors();
+    $manager->callTableAction('includeMany', data: ['selected' => [$draft['attribute_id']], 'review' => [$draft]])->assertHasNoTableActionErrors();
     $inclusion = $configurator->attributes()->sole();
     $default = $inclusion->default_configurator_option_id;
     $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['attributes'][0];

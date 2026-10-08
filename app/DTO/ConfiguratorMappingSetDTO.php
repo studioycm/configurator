@@ -2,6 +2,8 @@
 
 namespace App\DTO;
 
+use App\MappingTargetBehavior;
+
 final readonly class ConfiguratorMappingSetDTO
 {
     /**
@@ -12,5 +14,6 @@ final readonly class ConfiguratorMappingSetDTO
         public string $id,
         public array $sources,
         public array $targets,
+        public MappingTargetBehavior $disallowedTargetBehavior = MappingTargetBehavior::Disable,
     ) {}
 }

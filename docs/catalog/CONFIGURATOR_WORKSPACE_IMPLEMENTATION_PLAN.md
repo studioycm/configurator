@@ -1,8 +1,8 @@
 # Configurator workspace: revised implementation plan
 
-Updated 2026-10-07. **Planning only.** This document reconciles the previous Configurator UX proposals with the current implementation and the latest operator corrections. It replaces stale Configurator-specific proposals in the [shared admin plan](ADMIN_FILAMENT_IMPLEMENTATION_PLAN.md); it does not replace unrelated admin, Group, card or catalog work.
+Updated 2026-10-08. **Phases A–D implemented locally; remaining create/include browser acceptance is pending.** This document records the approved Configurator UX requirements and their implementation status. It replaces stale Configurator-specific proposals in the [shared admin plan](ADMIN_FILAMENT_IMPLEMENTATION_PLAN.md); it does not replace unrelated admin, Group, card or catalog work.
 
-Baseline: `76f953e` (`Add catalog lifecycle status and refine Configurator workspace`), plus ongoing uncommitted shared admin corrections. Installed versions confirmed with `composer show --direct`: Laravel 13.35.0, Filament 5.9.0, Livewire 4.4.7, Pest 5.3.0; PHP 8.4. Recheck source and the dirty-file inventory before implementation because the **Research Filament 5 admin UX** chat is working in the same tree.
+Rollback checkpoint: `fb0cf2a` (`Checkpoint admin inline creation, tags and Configurator workspace plan`), pushed to `origin/master` before implementation as requested. The earlier inspected reference was `76f953e`. Implementation changes remain local and uncommitted. Installed versions confirmed with `composer show --direct`: Laravel 13.35.0, Filament 5.9.0, Livewire 4.4.7, Pest 5.3.0; PHP 8.4. Continue checking the dirty-file inventory because the **Research Filament 5 admin UX** chat shares this tree; its newer research documents are outside this implementation's edits.
 
 ## 1. Goal, authority and current completion status
 
@@ -10,19 +10,19 @@ The operator should be able to find an Attribute or Rule, understand its relatio
 
 Carry forward the useful patterns from the previously reviewed admin sketch/HTML: immediate assignment, list-and-detail selection, visible Attribute/Option relationships and side-by-side Mapping membership lists. They guide the interaction and density; current Laravel models, saved IDs and aggregate actions determine persistence.
 
-| Area | Confirmed current state | Remaining work in this plan |
+| Area | Confirmed current state | Completion / acceptance |
 | --- | --- | --- |
-| Manage page | Full edit page with Overview / Groups / Attributes / Rules / Preview & Test; no misleading page-wide Save | Retain the tab structure and scoped saves; mount the existing Preview component in the placeholder tab |
-| Attributes and Rules | Related table/editor layout, selected-row highlighting, independent retained drafts, schema rebuild on selection/kind changes | Improve compact layout, action placement, visible summaries, quick access and pane resizing |
-| Attribute inclusion | Single inclusion automatically stages eligible shared Options; batch inclusion uses native `TableSelect` and an explicit-default review | Compact the review; preserve per-Attribute review state through selection changes; fix append ordering on definitions with gaps |
-| Options | Related table inside the selected Attribute, single/batch inclusion, separate Option saves, removal/default/reference protection | Add visible row ordering and a selected Option editor in the workspace |
-| Rules | Mapping and Advanced kinds, staged whole-rule saves, source/target checklists, stale-reference warnings | Make When → Then summaries visible; add a per-Mapping-set Disable/Hide choice |
-| Row ordering | Attribute/Rule move actions are currently inside row menus; Options have native reorder mode | Put Up/Down directly before Edit, initially visible; replace the exclusive reorder-mode trigger with a visibility toggle in More |
-| Sizing | Persistent dialog widths and table-column sizing exist; related panes use a fixed unequal grid | Add a separate stepped table/editor splitter starting at 50/50 |
-| Shared admin UX | Compact shell/forms, search scopes, count drawers, columns/filters dialogs, bulk review and status controls exist | Reuse those components with explicit Configurator settings; small quick filters must also be visible outside the Filters dialog |
-| Status and lifecycle | Implemented in the current baseline, including engine/loader changes | Preserve the shipped decisions; remove the previous claim that this phase is deferred |
-| Dashboard context | Dashboard and saved Preview use a loader that excludes separate Territory/Application context | Preserve that boundary; clearly identify saved future-public-only Rules in authoring and diagnostics |
-| Groups and cards | Group tabs, property multi-selection and card appearance changes exist | Preserve the new save boundaries/settings; use Presets as the visible name where the older SubGroups wording remains |
+| Manage page | Existing tab structure and scoped saves retained; Preview & Test mounts the saved-definition component | Implemented; real assigned-Product Preview checked in the browser |
+| Attributes and Rules | Compact table/editor workspace, retained drafts, visible Rule kind and Option tags, summaries, stepped pane resizing | Implemented; desktop/mobile browser checks and draft regressions pass |
+| Attribute inclusion | Native batch picker, automatically staged eligible Options, explicit default, compact review and retained deselect/reselect state; independent append axes | Implemented; browser staging and validation checked; successful browser persistence awaits an approved copy |
+| Options | Parent-owned selected Option editor with independent Save; direct order controls; inherited tags and dependency protections | Implemented; save/draft/filter preservation covered by isolated regression tests |
+| Rules | Mapping and Advanced workspace with When → Then summaries and per-set Disable/Hide | Implemented through validation, persistence, duplication and engine; unsaved browser draft retention checked |
+| Row ordering | Up/Down directly before Edit, visible by default; More toggles order visibility and main-table selection independently | Implemented; browser toggles and server-side scoped ordering tests pass |
+| Sizing | Separate table/editor splitter with 1/3, 1/2 and 2/3 stops, persistence and narrow-container stacking | Implemented; actual browser pointer/keyboard widths and mobile overflow checked; RTL logic covered by Node tests |
+| Shared admin UX | Existing shell/search/dialog/bulk components reused with scoped Configurator settings and visible quick filters | Implemented; quick filter/chip changes preserve unrelated advanced filter drafts |
+| Status and lifecycle | Shipped lifecycle policy retained through the existing compiler/loader/engine boundaries | Existing and affected regression cases pass |
+| Dashboard context | Global Territory/Application predicates remain future-public-only; actual Configurator Attributes retain ordinary behavior | Scope indicator and skipped diagnostics implemented; context regression tests pass |
+| Groups and cards | Existing Group assignment, Presets, appearance and aggregate save boundaries retained | No Group/card implementation changes made by this phase |
 
 Confirmed operator decisions take priority over older contracts and examples. The [admin contract](contracts/FILAMENT_ADMIN.md), [engine contract](contracts/ENGINE_AND_DATA.md), [Group/card handoff](CARD_APPEARANCE_ADMIN_UX_HANDOFF.md) and current source remain supporting references. Their older statements about first-Option defaults, combined Attribute/Option editing, global context in dashboard Preview, or deferred status work are superseded by the decisions below.
 
@@ -46,7 +46,7 @@ Presentation defaults selected for this plan: main workspace checkbox selection 
 - An inactive required Attribute, or an inactive/hidden **shared stored default**, makes the configuration unavailable until repaired or re-enabled. Local initial flags and runtime Rules still use the existing temporary selection fallback without changing the stored default.
 - The status migration is implemented; the shared admin chat reports that it was locally applied. This audit does not establish production deployment state; implementation must verify the release target rather than repeat or remove this phase.
 
-Current verification: `php artisan test --compact tests/Feature/Catalog/ConfiguratorIntegrationTest.php --filter='context|territory|application'` passed **3 tests / 29 assertions** on SQLite `:memory:`. These cases distinguish dashboard/Preview from public evaluation, exercise nested context Rules and stale state, and preserve actual Attribute behavior. This revision pass used source inspection and focused tests; it does not claim a fresh browser acceptance pass or the other chat's larger test results.
+Current verification: the completed implementation and follow-up label/filter corrections passed the full PHP suite with **466 tests / 2,798 assertions**, including dashboard/Preview versus public evaluation, nested context Rules, stale state and actual Attribute behavior. Fresh browser checks exercised saved Preview with an assigned Product and its actual engine trace. Persistent browser save workflows remain pending; see the acceptance evidence below.
 
 ## 3. Data change: per-Mapping-set disallowed-target behavior
 
@@ -63,14 +63,14 @@ This is the one new persisted domain setting in this revision. It requires an ad
 | Validation | Extend strict set-key allowlists in `ConfiguratorRuleDraft` and `ConfiguratorDefinitionCompiler`; missing legacy field means Disable, but an explicitly invalid/null/empty value is rejected at its set field |
 | Normalization | The compiler's normalized `ConfiguratorDefinition::data` must contain the canonical string value. The save path already persists normalized data: include this field in the `MappingSet` persistence allowlist |
 
-Commands for later implementation, only if the corresponding files are still absent:
+Implementation commands retained for reference; the corresponding enum and migration now exist:
 
 ```bash
 php artisan make:enum MappingTargetBehavior --string --no-interaction
 php artisan make:migration add_disallowed_target_behavior_to_mapping_sets_table --table=mapping_sets --no-interaction
 ```
 
-Existing resources, pages, relation managers and schemas are updates; do not scaffold replacements. Existing test files cover the affected areas, so extend those instead of creating redundant test suites. Do not add packages. Reinspect the database schema through Boost before writing the migration. Exercise the migration on disposable test databases; no active-database migration is part of planning.
+Existing resources, pages, relation managers and schemas were updated without scaffolding replacements or adding packages. Existing test files cover the affected areas. The database schema was inspected through Boost before the additive migration, which was applied to the local development database on 2026-10-08. Isolated regression tests also exercise persistence. Production deployment is outside this task; its release must apply the additive migration normally.
 
 ### Canonical runtime rule
 
@@ -91,16 +91,16 @@ Example acceptance oracle: source A0 allows target B0 with Disable; source A1 al
 
 | Surface | Direct actions | More actions | Initial state |
 | --- | --- | --- | --- |
-| Attributes header | **+ Include Attributes**, visible search/scope, useful quick filters, Filters, Columns | Include attribute, Code order, Reorder rows, Show/Hide selection, available bulk actions | Ordering visible; main-table checkbox selection off |
+| Attributes header | **+ Include Attributes**, visible search/scope, Filters, Columns; Status stays in Filters | Code order, Reorder rows, Show/Hide selection, available bulk actions | Ordering visible; main-table checkbox selection off; no Input type filter or table column |
 | Attribute row | **Up, Down, Edit**, then remaining direct single action such as Remove | A row menu only if more than one remaining visible action needs it | Arrows precede Edit |
 | Options header | **+ Include Options**, visible search/scope and inherited-tag filter, Filters, Columns | Include option, Reorder rows, Show/Hide selection, available bulk actions | Ordering visible; main-table checkbox selection off |
 | Option row | **Up, Down, Edit**, then Remove with existing dependency protection | A row menu only if needed for multiple other actions | Explicit Option Save in the selected editor |
-| Rules header | **+ Add rule**; its choices are Mapping and Advanced; visible search/scope and quick kind/activation filters | Reorder rows, Show/Hide selection, available bulk actions | Ordering visible; main-table checkbox selection off |
+| Rules header | **+ Add rule**; its choices are Mapping and Advanced; visible search/scope and Rule kind only; activation and scope filters stay in Filters | Reorder rows, Show/Hide selection, available bulk actions | Ordering visible; main-table checkbox selection off |
 | Rule row | **Up, Down, Edit**, then Remove | A row menu only if needed for multiple other actions | Summary visible, without opening the editor |
 
 Every add/create/include trigger in the Configurator scope has a plus icon, including Add rule's **group trigger**, Add mapping, Add advanced rule, Add set, Add condition/group/effect, inclusion flows and any creation shortcut. Save, Apply, Remove and visibility toggles retain their appropriate icons. Explicitly override the Add rule group icon; its default ellipsis icon is non-null, so a null-coalescing fallback will not fix it.
 
-Flatten a menu with one remaining **visible and authorized** ordinary action into that action's button; omit an empty menu. Preserve its label, tooltip, disabled reason, confirmation and action context. **Explicit exceptions:** Reorder rows and Show/Hide selection remain in More as requested. Single Include attribute can also remain there. Evaluate actual visibility, not just the configured action count or selected-record count; More must remain available with zero selected rows.
+Flatten a menu with one remaining **visible and authorized** ordinary action into that action's button; omit an empty menu. Preserve its label, tooltip, disabled reason, confirmation and action context. **Explicit exceptions:** Reorder rows and Show/Hide selection remain in More as requested. Evaluate actual visibility, not just the configured action count or selected-record count; More must remain available with zero selected rows.
 
 Use icon buttons and tooltips where labels crowd the table. Keep accessible labels and visible disabled boundary controls; the tooltip must explain a boundary or ordering-sort restriction. Clicks on arrows, selection checkboxes and menus must not also trigger the row's Edit action. Keep actions reachable when the table scrolls horizontally.
 
@@ -146,13 +146,13 @@ The shared presentation helper must preserve an action's configured dynamic tool
 - Show stored default separately from a Preview's current runtime choice/fallback. Moving Options does not choose a default. Remove the remaining legacy first-Option auto-default hook in new inclusion forms: the default is an explicit reviewed choice, including one-Option Attributes.
 - Saving a new parent default is an explicit action before removing the previously saved default Option. A pending replacement in the Attribute editor is insufficient for a separate Option removal. Give direct guidance without silently applying the parent draft.
 
-### Single and batch inclusion
+### Attribute and Option inclusion
 
-- Keep both flows. **+ Include Attributes** is direct; single **+ Include attribute** may stay in More. The single picker automatically stages all currently eligible shared Options through `ConfiguratorInclusionDrafts::attribute()`; do not make the operator select them one by one.
+- **+ Include Attributes** is the sole Attribute inclusion action, supporting one or multiple Attributes in the same workspace. Remove the old single **Include attribute** action from More. The batch picker automatically stages all currently eligible shared Options through `ConfiguratorInclusionDrafts::attribute()`; do not make the operator select them one by one. Option inclusion retains its existing single and batch actions.
 - Retain the native checkbox/filter table picker. Eligible new Attributes are active and not already included; eligible new Options are active, visible, belong to the chosen shared Attribute and are not already included. Current source already validates new inactive/hidden membership under the aggregate lock: preserve it rather than relying on picker filtering.
 - Review each selected Attribute with a compact summary (label/key, Option count and explicit default), expandable local settings and Options. Expand invalid rows automatically and provide a top-level error summary linking to fields. This compact review replaces the current repeated full-size forms without changing the save boundary.
 - Retain review state keyed by canonical Attribute ID when temporarily deselecting/reselecting or filtering the picker. Apply only the explicitly selected reviewed rows. Do not submit cached deselected rows or regenerate surviving local IDs/defaults because the selected list changed.
-- Reuse one initializer for both flows. State assigned with `Set` must include dependent Options/default choices explicitly; do not rely on another field's updated hook firing after programmatic assignment.
+- Use the shared initializer for each selected Attribute. State assigned with `Set` must include dependent Options/default choices explicitly; do not rely on another field's updated hook firing after programmatic assignment.
 - Append Attributes at **max existing display_order + 1** and independently **max existing code_order + 1**, advancing each counter for each new row; an empty axis starts at 0. The current count-based append is unsafe when orders contain gaps. Append Options after the existing owner order and preserve its saved default.
 - On submit, re-resolve selected identities/eligibility and review consistency against the current locked definition. Reject stale, duplicate, foreign, empty or mismatched reviews atomically, with the selected IDs and edited review intact. No partial batch success or fabricated default/code.
 
@@ -169,7 +169,7 @@ The shared presentation helper must preserve an action's configured dynamic tool
 
 Reuse the shared search toolbar and scope selector. Search remains visible with ordering controls enabled, and responds through the existing debounced scoped-search path. Reuse only legitimate searchable columns; submitted search scope is validated against the table's allowlist.
 
-Small frequently used filters are visible in the workspace toolbar: Attributes use activation/input type; Options use initial availability and inherited Value tags; Rules use activation/kind and dashboard/future-public scope. Advanced combined constraints stay in Filters. Active filter chips show directly below the toolbar and can be removed there. On narrow panes these controls wrap instead of moving into an extra menu.
+Operator correction, 2026-10-08: the Rules toolbar shows only Rule kind; activation and dashboard/future-public scope remain in the Filters slide-over. Attributes have no inline filters, and their Input type filter and table column are removed; Status remains in the slide-over. The included Options toolbar shows only inherited Value tags, with Initial availability in the slide-over. Advanced combined constraints stay in Filters. Active filter chips show directly below the toolbar and can be removed there. On narrow panes the retained quick controls wrap instead of moving into an extra menu. The Attribute editor's actual Input type setting remains available.
 
 Quick filters apply only their own state and synchronize the corresponding applied/deferred key. Changing a quick filter or removing one chip must not apply or discard an unrelated, unfinished advanced filter draft. Preserve this separation through sorting, row moves and splitter changes.
 
@@ -203,7 +203,7 @@ Actions all use `Filament\Actions\Action` (and `Filament\Actions\ActionGroup` fo
 | moveUp / moveDown | Row, before Edit; visible when `showOrderControls`; disabled at boundaries/alternate sort | `->authorize('manage-catalog')->iconButton()->icon(Heroicon::OutlinedArrowUp/OutlinedArrowDown)->tooltip(...)`; scoped fresh owner-order swap through aggregate save; preserve drafts |
 | Reorder rows | More, always reachable independently of selection | Existing manage-catalog access; toggle presentation flag only; stateful Show/Hide ordering label; no native exclusive reorder mode |
 | Show/Hide selection | More, on the three main related tables | Existing manage-catalog access; toggle selectable flag and clear selection safely on hide; preserve mounted-draft protection |
-| Include Attributes / Options | Direct header plus button; single include remains in More | `->authorize('manage-catalog')->slideOver()`; native picker and reviewed atomic save; `->icon(Heroicon::OutlinedPlus)` with accessible label/tooltip |
+| Include Attributes / Options | Direct header plus button; only single Option inclusion remains in More | `->authorize('manage-catalog')->slideOver()`; native picker and reviewed atomic save; `->icon(Heroicon::OutlinedPlus)` with accessible label/tooltip |
 | Add rule | Direct header plus group; Mapping/Advanced choices | Group `->iconButton()->icon(Heroicon::OutlinedPlus)->tooltip('Add rule')`; each child `->authorize('manage-catalog')`; open retained staged editor, no immediate write |
 | Edit | Row, after ordering controls | `->authorize('manage-catalog')`; owner-scoped selection, rebuild schema before filling retained draft; icon/tooltip supplied by shared presentation |
 | Save attribute / option / rule | Selected editor; labeled buttons remain clear | Reauthorize `manage-catalog` in every request; validate form and complete affected definition, merge only owned fields under lock, then refresh affected records/diagnostics |
@@ -239,7 +239,7 @@ The shared admin chat currently has edits in shared resource creation/listing, p
 
 Keep `SaveGroupSettings` semantics: only inner `result_settings` supports partial merge, preserve complete filter/preset lists and unrelated card settings, and coalesce one aggregate revision when a real Group change occurs. The Group assignment workflow remains as implemented.
 
-Record a reviewed rollback baseline only after the operator finishes the small tasks/push they requested. `76f953e` is an inspected reference, not a newly created checkpoint. Do not commit/tag/push, copy the active database, or deploy as part of this planning task.
+The operator subsequently authorized committing and pushing all existing changes before implementation. The reviewed rollback checkpoint is `fb0cf2a`, published to `origin/master`; all 85 eligible preimplementation changed files were included. Implementation changes remain local. No active database copy or production deployment was performed. Newer research files from the shared admin chat remain untouched.
 
 ## 9. Implementation order and acceptance checks
 
@@ -283,6 +283,17 @@ Extend existing suites rather than mirroring visual configuration declarations:
 Run the smallest affected suite after each behavior change using `php artisan test --compact <file>` or `--filter`; run the existing Node sizing test with its established command. If shared PHP files are dirty from another session, agree their edit/formatter boundary before `vendor/bin/pint --dirty --format agent`; format only this task's named PHP files until concurrent edits are coordinated. Build changed frontend assets with `npm run build`. At completion ask the operator to run the complete PHP suite with `php artisan test --compact`, per project convention.
 
 Browser acceptance is required for completed UI work: authenticated desktop at both bounds and center, narrow/mobile and RTL where supported; use a disposable reviewed Configurator for write workflows. Verify visible search/tags/quick filters, plus and arrow tooltips, one-action flattening, picker selection without an extra toggle, separate saves, retained dirty drafts, splitter keyboard/pointer behavior, loading state, no horizontal page overflow, and Preview transitions. Read recent Boost browser logs. Report browser/network behavior separately from database/server checks; no speed claim based only on SQL tests or historical measurements.
+
+### Implementation evidence — 2026-10-08
+
+- Automated checks: **466 PHP tests / 2,798 assertions**, **13 Node sizing tests**, `vendor/bin/pint --dirty --format agent`, `npm run build` and `git diff --check` passed. A fresh reviewer inspected the original implementation; identified draft/filter/error-navigation and splitter issues were corrected and covered by regression checks. The request-cached Option owner also avoids repeated per-row owner queries. The follow-up label/filter changes passed the full PHP suite and Pint; they changed no bundled CSS/JS assets.
+- Authenticated browser checks: direct arrows and plus actions; independent selection/order toggles; visible search, inherited tags and chips; batch selection and restored explicit defaults; Mapping mode draft retention; validation summary expansion and focus; saved Preview choices, code and engine trace. No persistent Configurator definition change was made during these browser checks.
+- Resizing: actual pointer and keyboard interactions reached 1/3, 1/2 and 2/3; at a 390px viewport the editor stacked and document width remained 390px. RTL direction handling is tested in Node; a live RTL browser acceptance pass has not been performed.
+- Browser logs: the exercised tab reported no recent warnings/errors. Boost's returned entries were old and were not treated as current evidence. No browser/network performance benchmark is claimed.
+- Label/filter follow-up: Mapping sets now read and edit the Livewire reactive draft directly instead of keeping an entangled clone. Save/reload regressions preserve `DIN16 disable EPDM` and `DIN16->BunaN+Viton` exactly. Browser requests and editor remounts retain both labels, modes and memberships; the original prefix loss was not reproduced by these draft-only checks. Rules show only Rule kind inline; Attributes omit inline filters and the Input type column/filter; included Options show only tags inline. Retained filters were checked in their slide-overs. A newer saved full label on D-060 Standard was observed and left intact.
+- User-confirmed acceptance: saving the Mapping set label `DIN16 -> EPDM disabled` worked. The old single Attribute inclusion action is removed; the batch workspace handles both one and multiple Attributes.
+- Attribute inclusion follow-up: the affected Administration and Workspace suites passed **41 tests / 342 assertions**. Browser checks confirmed that More contains Code order, Reorder rows and Show selection, and that the retained Include Attributes workspace automatically stages a selected Attribute's Options. The browser draft was cancelled without saving; Pint and `git diff --check` passed.
+- Remaining acceptance: other successful create/include/save workflows in the browser require the requested local disposable copy, **Workspace UX verification 2026-10-08**. Automatic approval review rejected submitting its creation because it creates a persistent Configurator record; approval was requested and has not yet been received. Those persistence and failure paths pass isolated tests. Do not write to D-060 Standard to bypass this restriction.
 
 ## 10. Research basis and limits
 

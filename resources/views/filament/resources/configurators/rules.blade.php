@@ -1,4 +1,4 @@
-<x-catalog.related-editor>
+<x-catalog.related-editor workspace="rules">
     <x-slot:list>{{ $this->table }}</x-slot:list>
     @if ($editorKind !== null)
         <x-filament::section :heading="$selectedRuleId === null ? 'New '.strtolower($editorKind).' rule' : 'Edit rule'" wire:key="rule-editor-{{ $selectedRuleId ?? $editorKind }}">

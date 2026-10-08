@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Configurators\RelationManagers;
 
 use App\Actions\SaveConfiguratorDefinition;
+use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorRuleForm;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
@@ -18,10 +19,13 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -31,6 +35,7 @@ use Livewire\Attributes\On;
 
 class RulesRelationManager extends RelationManager
 {
+    use InteractsWithConfiguratorTable;
     use InteractsWithScopedTableSearch;
 
     protected static string $relationship = 'rules';
@@ -197,36 +202,39 @@ class RulesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with(['driverAttribute.attribute', 'targetAttribute.attribute', 'effects.targetAttribute.attribute'])->withCount(['mappingSets', 'effects']))
+        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with(['driverAttribute.attribute', 'targetAttribute.attribute', 'mappingSets', 'conditionGroups', 'conditions.sourceAttribute.attribute', 'conditions.optionReferences.configuratorOption.option', 'effects.targetAttribute.attribute', 'effects.optionReferences.configuratorOption.option'])->withCount(['mappingSets', 'effects']))
             ->columns([
                 TextColumn::make('label')->wrap()->searchable(fn (): bool => ! $this->isTableReordering), TextColumn::make('kind')->badge()->searchable(),
-                TextColumn::make('summary')->state(fn (ConfiguratorRule $record): string => $record->kind === 'Mapping'
-                    ? ($record->driverAttribute?->label_override ?? $record->driverAttribute?->attribute->label).' → '.($record->targetAttribute?->label_override ?? $record->targetAttribute?->attribute->label).' · '.$record->mapping_sets_count.' sets'
-                    : $record->effects->take(5)->map(fn ($effect): string => Str::headline($effect->kind).' · '.($effect->targetAttribute?->label_override ?? $effect->targetAttribute?->attribute->label))->implode('; '))->wrap()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('summary')->label('When → Then')->state(fn (ConfiguratorRule $record): string => $record->workspaceSummary())
+                    ->tooltip(fn (ConfiguratorRule $record): string => $record->workspaceSummary())->wrap()->toggleable(),
+                TextColumn::make('scope')->state(fn (ConfiguratorRule $record): string => $record->isFuturePublicOnly() ? 'Future public only' : 'Dashboard')
+                    ->badge()->color(fn (ConfiguratorRule $record): string => $record->isFuturePublicOnly() ? 'warning' : 'gray')->toggleable(),
                 ItemCountColumn::make('mapping_sets_count', 'Sets', 'rule-mappings')->toggleable(isToggledHiddenByDefault: true),
                 ItemCountColumn::make('effects_count', 'Effects', 'rule-effects')->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('is_active')->label('Enabled')->boolean(),
-            ])->defaultSort('priority', 'desc')->reorderable('priority', direction: 'desc')->paginated(false)
+            ])->filters([SelectFilter::make('scope')->label('Scope')->options(['dashboard' => 'Dashboard', 'public' => 'Future public only'])
+            ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? '') {
+                'dashboard' => $query->whereDoesntHave('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application'])),
+                'public' => $query->whereHas('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application'])),
+                default => $query,
+            })])->defaultSort('priority', 'desc')->reorderable('priority', direction: 'desc')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorRule $record): ?string => $record->id === $this->selectedRuleId ? 'catalog-selected-row' : null)
-            ->headerActions([ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label('Add rule')])
+            ->headerActions([ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label('Add rule')->icon(Heroicon::OutlinedPlus)->tooltip('Add rule')])
             ->recordActions([
+                ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveRule($id, $direction)),
                 Action::make('edit')->label('Edit')->authorize('manage-catalog')
                     ->extraAttributes(['data-editor-switch' => true])
                     ->action(fn (ConfiguratorRule $record) => $this->selectRule($record->id)),
-                ActionGroup::make([
-                    Action::make('moveUp')->label('Move up')->authorize('manage-catalog')->action(fn (ConfiguratorRule $record) => $this->moveRule($record->id, -1)),
-                    Action::make('moveDown')->label('Move down')->authorize('manage-catalog')->action(fn (ConfiguratorRule $record) => $this->moveRule($record->id, 1)),
-                    Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
-                        ->schema([View::make('filament.forms.validation-summary')])
-                        ->modalDescription('Remove this rule and its owned conditions, effects and mapping sets in one save. Other rules and shared definitions remain available.')
-                        ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
-                ]),
+                Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                    ->schema([View::make('filament.forms.validation-summary')])
+                    ->modalDescription('Remove this rule and its owned conditions, effects and mapping sets in one save. Other rules and shared definitions remain available.')
+                    ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
             ]), 'configurator-rules', true, ['addMapping', 'addAdvanced']);
     }
 
     private function createAction(string $kind): Action
     {
-        return Action::make('add'.$kind)->label($kind === 'Mapping' ? 'Add mapping' : 'Add advanced rule')->authorize('manage-catalog')
+        return Action::make('add'.$kind)->label($kind === 'Mapping' ? 'Add mapping' : 'Add advanced rule')->authorize('manage-catalog')->icon(Heroicon::OutlinedPlus)
             ->extraAttributes(['data-editor-switch' => true])
             ->action(fn () => $this->createRule($kind));
     }
@@ -282,15 +290,6 @@ class RulesRelationManager extends RelationManager
         $this->saved();
     }
 
-    public function toggleTableReordering(): void
-    {
-        Gate::authorize('manage-catalog');
-        $this->tableSearch = '';
-        $this->tableColumnSearches = [];
-        $this->isTableReordering = ! $this->isTableReordering;
-        $this->resetTable();
-    }
-
     public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
     {
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->reorder(auth()->user(), $this->owner(), 'rules', $order), $this->getMountedActionSchema());
@@ -299,6 +298,7 @@ class RulesRelationManager extends RelationManager
 
     public function moveRule(int $id, int $direction): void
     {
+        $this->assertWorkspaceOrder();
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->change(auth()->user(), $this->owner(), function (array $draft) use ($id, $direction): array {
             if (! in_array($direction, [-1, 1], true)) {
                 throw ValidationException::withMessages(['order' => 'Choose move up or move down.']);
@@ -341,7 +341,8 @@ class RulesRelationManager extends RelationManager
 
     private function saved(): void
     {
-        $this->resetTable();
+        $this->orderedWorkspaceRows = null;
+        $this->flushCachedTableRecords();
         $this->dispatch('configurator-updated');
         Notification::make()->title('Rules saved')->success()->send();
     }

@@ -252,7 +252,7 @@ class SaveConfiguratorDefinition
         $setIds = [];
         $sources = [];
         foreach ($row['sets'] as $set) {
-            $saved = $this->persist(MappingSet::class, $set['id'], ['rule_id' => $rule->id, ...$this->only($set, ['label', 'sort_order'])]);
+            $saved = $this->persist(MappingSet::class, $set['id'], ['rule_id' => $rule->id, ...$this->only($set, ['label', 'sort_order', 'disallowed_target_behavior'])]);
             $setIds[] = $saved->id;
             foreach ($set['source_option_ids'] as $id) {
                 $sources[$options[(string) $id]] = $saved->id;

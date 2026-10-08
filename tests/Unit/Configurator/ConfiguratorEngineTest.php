@@ -27,6 +27,55 @@ function propertyCondition(string $operator, string|array $operand): array
     return ['id' => 'new:property', 'source_kind' => 'ProductProperty', 'source_configurator_attribute_id' => null, 'property_key' => 'Working_Pressure', 'context_dimension' => null, 'operator' => $operator, 'operand' => $operand, 'option_ids' => []];
 }
 
+test('Mapping sets independently hide or disable disallowed targets and recompute after switching back', function () {
+    $definition = engineDefinition(function (array &$data) {
+        $rule = fixtureMapping();
+        $rule['sets'][0]['target_option_ids'] = ['new:B0'];
+        $rule['sets'][0]['disallowed_target_behavior'] = 'Disable';
+        $rule['sets'][] = ['id' => 'new:hide', 'label' => 'Hide others', 'sort_order' => 1, 'source_option_ids' => ['new:A1'], 'target_option_ids' => ['new:B1'], 'disallowed_target_behavior' => 'Hide'];
+        $data['rules'] = [$rule];
+    });
+    $engine = app(ConfiguratorEngine::class);
+    $first = $engine->evaluate(new ConfiguratorEvaluationInput($definition));
+    expect($first->attributes['new:B']['legal'])->toBe(['new:B0'])->and($first->attributes['new:B']['hidden'])->toBe([])
+        ->and($first->attributes['new:B']['disabled'])->toBe(['new:B1'])->and($first->configurationCode)->toBe('A0-B0-C0');
+    $next = $engine->evaluate(new ConfiguratorEvaluationInput($definition, selections: $first->selections, intent: new ConfiguratorInteraction(ConfiguratorIntentType::SelectOption, 'new:A', 'new:A1')));
+    expect($next->attributes['new:B']['legal'])->toBe(['new:B1'])->and($next->attributes['new:B']['hidden'])->toBe(['new:B0'])
+        ->and($next->attributes['new:B']['disabled'])->toBe([])->and($next->configurationCode)->toBe('A1-B1-C0');
+    $back = $engine->evaluate(new ConfiguratorEvaluationInput($definition, selections: $next->selections, intent: new ConfiguratorInteraction(ConfiguratorIntentType::SelectOption, 'new:A', 'new:A0')));
+    expect($back->attributes['new:B']['hidden'])->toBe([])->and($back->attributes['new:B']['disabled'])->toBe(['new:B1'])
+        ->and($back->configurationCode)->toBe('A0-B0-C0')->and($definition->attributes['new:B']->defaultOptionId)->toBe('new:B0');
+});
+
+test('Hide and Disable restrictions intersect without overriding initial flags and tracing leaves runtime unchanged', function () {
+    $definition = engineDefinition(function (array &$data): void {
+        $hide = fixtureMapping('hide');
+        $hide['sets'][0]['disallowed_target_behavior'] = 'Hide';
+        $disable = fixtureMapping('disable');
+        $disable['sets'][0]['target_option_ids'] = ['new:B0'];
+        $disable['sets'][0]['disallowed_target_behavior'] = 'Disable';
+        $data['attributes'][1]['options'][1]['disabled_by_default'] = true;
+        $data['rules'] = [$hide, $disable, fixtureAdvanced('persistent', [], 'B', 'DisableOptions', ['new:B0'])];
+    });
+    $engine = app(ConfiguratorEngine::class);
+    $plain = $engine->evaluate(new ConfiguratorEvaluationInput($definition));
+    $traced = $engine->evaluate(new ConfiguratorEvaluationInput($definition, trace: true));
+    expect($plain->attributes['new:B']['legal'])->toBe([])
+        ->and($plain->attributes['new:B']['hidden'])->toBe(['new:B0'])
+        ->and($plain->attributes['new:B']['disabled'])->toEqualCanonicalizing(['new:B0', 'new:B1'])
+        ->and($plain->configurationCode)->toBeNull()
+        ->and($traced->attributes)->toBe($plain->attributes)
+        ->and($traced->state())->toBe($plain->state())
+        ->and($traced->diagnostics)->toBe($plain->diagnostics)
+        ->and($traced->trace)->not->toBeEmpty();
+    $unmapped = $engine->evaluate(new ConfiguratorEvaluationInput($definition, selections: $plain->selections,
+        intent: new ConfiguratorInteraction(ConfiguratorIntentType::SelectOption, 'new:A', 'new:A1')));
+    expect($unmapped->attributes['new:B']['hidden'])->toBe([])
+        ->and($unmapped->attributes['new:B']['disabled'])->toEqualCanonicalizing(['new:B0', 'new:B1'])
+        ->and($unmapped->attributes['new:B']['legal'])->toBe([])
+        ->and($definition->attributes['new:B']->defaultOptionId)->toBe('new:B0');
+});
+
 test('one DAG evaluation settles A to B to C and preserves the latest accepted upstream choice', function () {
     $definition = engineDefinition(function (array &$d) {
         $first = fixtureMapping('ab');

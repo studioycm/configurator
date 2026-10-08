@@ -162,6 +162,25 @@ test('Preview initializes and reacts to the actual form paths used by the browse
     expect($preview->get('formState'))->toHaveKey('product');
 });
 
+test('saved Preview marks mutations stale and refreshes with an optional engine trace without writes', function () {
+    [$configurator, $product, $draft] = publicConfigurationFixture(function (array &$draft): void {
+        $rule = fixtureMapping();
+        $rule['sets'][0]['disallowed_target_behavior'] = 'Hide';
+        $draft['rules'] = [$rule];
+    });
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id);
+    $baseline = $preview->get('runtime');
+    $writes = [];
+    DB::listen(function ($event) use (&$writes): void {
+        if (preg_match('/^\s*(insert|update|delete|replace)\b/i', $event->sql)) {
+            $writes[] = $event->sql;
+        }
+    });
+    $preview->dispatch('configurator-updated')->assertSet('definitionStale', true)->assertSee('Saved changes are available')
+        ->call('refreshDefinition')->assertSet('definitionStale', false)->call('toggleTrace')->assertSee('Hide disallowed targets');
+    expect($preview->get('runtime'))->toBe($baseline)->and($writes)->toBe([]);
+});
+
 test('saved Preview shows escaped current option presentation alongside public rendering', function () {
     [$configurator, $product] = publicConfigurationFixture(function (array &$draft): void {
         $draft['attributes'][0]['help_text'] = 'Attribute guidance';

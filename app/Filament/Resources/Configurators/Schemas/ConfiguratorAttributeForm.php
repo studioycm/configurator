@@ -17,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
@@ -24,6 +25,15 @@ use Illuminate\Support\Str;
 
 class ConfiguratorAttributeForm
 {
+    /** @return array<Component> */
+    public static function reviewComponents(Configurator $owner): array
+    {
+        $fields = self::components($owner, chooseCanonical: false);
+        $default = array_pop($fields);
+
+        return [$default, Section::make('Local settings and Options')->compact()->collapsible()->collapsed()->schema($fields)];
+    }
+
     /** @return array<Component> */
     public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true, bool $chooseCanonical = true): array
     {
@@ -66,13 +76,7 @@ class ConfiguratorAttributeForm
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                 Select::make('option_id')->label('Canonical Option')->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()
-                    ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id')))
-                    ->afterStateUpdated(function (Get $get, Set $set): void {
-                        $rows = array_filter($get('../../options') ?? [], fn (array $row): bool => filled($row['option_id'] ?? null));
-                        if (str_starts_with((string) $get('../../id'), 'new:') && blank($get('../../default_configurator_option_id')) && count($rows) === 1) {
-                            $set('../../default_configurator_option_id', $get('id'));
-                        }
-                    }),
+                    ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id'))),
                 TextInput::make('label_override')->label('Local option label')->maxLength(255),
                 TextInput::make('display_value_override')->label('Local display value')->maxLength(255),
                 TextInput::make('hint')->label('Local hint')->maxLength(1000),

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tableColumnWidths } from '../../resources/js/table-column-widths.js';
 import { workspaceDialog } from '../../resources/js/workspace-dialogs.js';
+import { workspaceSplit } from '../../resources/js/workspace-split.js';
 
 class Element {
     constructor(className = '') {
@@ -219,4 +220,57 @@ test('destroy removes observers, scheduled column hydration, dialog controls and
     assert.equal(window.listeners.get('resize').size, 0);
     assert.equal(modal.root.querySelector('.catalog-dialog-width-controls'), null);
     assert.equal(modal.root.querySelector('.catalog-dialog-resize-handle'), null);
+});
+
+test('workspace split uses three bounded stops, persists per user and tab and preserves mobile preference', t => {
+    const { values } = environment(t);
+    const first = workspaceSplit({ user: 1, owner: 10, tab: 'attributes' });
+    assert.equal(first.percentage, 50);
+    first.keyDown({ key: 'ArrowRight', preventDefault() {} });
+    assert.equal(first.step, 2);
+    assert.equal(first.percentage, 67);
+    assert.equal(first.columns, 'minmax(0, 4fr) 12px minmax(0, 2fr)');
+    first.keyDown({ key: 'ArrowRight', preventDefault() {} });
+    assert.equal(first.step, 2);
+    assert.equal(values.get('aquestia:split:1:10:attributes:v1'), '2');
+    const restored = workspaceSplit({ user: 1, owner: 10, tab: 'attributes' }); restored.restore();
+    assert.equal(restored.step, 2);
+    restored.resize(390); assert.equal(restored.stacked, true); assert.equal(restored.step, 2);
+    restored.resize(1200); assert.equal(restored.stacked, false); assert.equal(restored.step, 2);
+    assert.equal(workspaceSplit({ user: 2, owner: 10, tab: 'attributes' }).step, 1);
+    const otherTab = workspaceSplit({ user: 1, owner: 10, tab: 'rules' }); otherTab.restore();
+    assert.equal(otherTab.step, 1);
+});
+
+test('workspace split snaps pointer ratios and accepts keyboard reset with denied or invalid storage', t => {
+    environment(t, { saved: [['aquestia:split:1:10:rules:v1', '99']] });
+    const split = workspaceSplit({ user: 1, owner: 10, tab: 'rules' }); split.restore();
+    assert.equal(split.step, 1);
+    assert.equal(split.snap(-2), 0); assert.equal(split.snap(0.5), 1); assert.equal(split.snap(3), 2);
+    split.keyDown({ key: 'End', preventDefault() {} }); assert.equal(split.step, 2);
+    split.keyDown({ key: 'Enter', preventDefault() {} }); assert.equal(split.step, 1);
+    split.keyDown({ key: 'Home', preventDefault() {} }); assert.equal(split.percentage, 33);
+    split.reset(); assert.equal(split.percentage, 50);
+});
+
+test('workspace pointer stops use the root width, preserve cancellation and reverse in RTL', t => {
+    const { writes } = environment(t);
+    const priorStyle = globalThis.getComputedStyle;
+    let direction = 'ltr';
+    globalThis.getComputedStyle = () => ({ direction });
+    t.after(() => { globalThis.getComputedStyle = priorStyle; });
+    const split = workspaceSplit({ user: 1, owner: 10, tab: 'rules' });
+    split.root = { getBoundingClientRect: () => ({ left: 100, width: 1212 }) };
+    split.$el = { getBoundingClientRect: () => ({ left: 700, width: 12 }) };
+    split.resize(1212);
+    const event = { button: 0, pointerId: 1, currentTarget: { setPointerCapture() {} }, preventDefault() {} };
+    split.startDrag(event); split.moveDrag({ clientX: 906 });
+    assert.equal(split.percentage, 67);
+    split.endDrag(true); assert.equal(split.percentage, 50); assert.equal(writes.length, 0);
+    split.startDrag(event); split.moveDrag({ clientX: 506 }); split.endDrag();
+    assert.equal(split.percentage, 33); assert.equal(writes.length, 1);
+    direction = 'rtl';
+    split.startDrag(event); split.moveDrag({ clientX: 506 }); split.endDrag();
+    assert.equal(split.percentage, 67);
+    split.keyDown({ key: 'ArrowRight', preventDefault() {} }); assert.equal(split.percentage, 50);
 });

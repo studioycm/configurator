@@ -31,6 +31,11 @@ class TablePresentation
         }
         StatusActions::configure($table, $key);
         $component = $table->getLivewire();
+        $configuratorWorkspace = method_exists($component, 'workspaceVisibilityActions');
+        if ($configuratorWorkspace) {
+            $table->selectable(fn (): bool => $component->showSelection);
+            $table->reorderable($table->getReorderColumn(), condition: false, direction: $table->getReorderDirection());
+        }
         if (! method_exists($component, 'scopedSearchColumns')) {
             $table->pushFilters([Filter::make('workspaceSearch')->schema([Hidden::make('scope')->default('all')])]);
             $table->searchUsing(function (Builder $query, string $search) use ($table, $component): void {
@@ -66,9 +71,6 @@ class TablePresentation
                 SelectFilter::make('is_active')->label('Rule activation')->options(['1' => 'Enabled', '0' => 'Disabled']),
             ]);
         }
-        if ($key === 'configurator-attributes') {
-            $table->pushFilters([SelectFilter::make('input_type')->label('Input type')->options(['toggle' => 'Toggle', 'select' => 'Select'])]);
-        }
         self::configureQuickFilters($table);
         $constraints = [];
         foreach ($table->getColumns() as $column) {
@@ -86,14 +88,17 @@ class TablePresentation
                     ->maxRules($filter->getMaxRules())->maxNestingDepth($filter->getMaxNestingDepth())])]);
         }
         foreach ($table->getFlatRecordActions() as $action) {
-            $action->iconButton()->tooltip(fn (Action $action): string => (string) $action->getLabel())
-                ->icon($action->getIcon() ?? match ($action->getName()) {
-                    'remove', 'delete' => Heroicon::OutlinedTrash,
-                    'openCatalog' => Heroicon::OutlinedArrowTopRightOnSquare,
-                    'moveUp' => Heroicon::OutlinedArrowUp,
-                    'moveDown' => Heroicon::OutlinedArrowDown,
-                    default => Heroicon::OutlinedPencilSquare,
-                });
+            $action->iconButton();
+            if (! $action->hasTooltip()) {
+                $action->tooltip(fn (Action $action): string => (string) $action->getLabel());
+            }
+            $action->icon($action->getIcon() ?? match ($action->getName()) {
+                'remove', 'delete' => Heroicon::OutlinedTrash,
+                'openCatalog' => Heroicon::OutlinedArrowTopRightOnSquare,
+                'moveUp' => Heroicon::OutlinedArrowUp,
+                'moveDown' => Heroicon::OutlinedArrowDown,
+                default => Heroicon::OutlinedPencilSquare,
+            });
         }
         if ($narrow) {
             $headerActions = $table->getHeaderActions();
@@ -112,7 +117,9 @@ class TablePresentation
             foreach ($selectionActions as $selectionAction) {
                 $remainingActions[] = $selectionAction->dropdown(false);
             }
-            if (filled($table->getReorderColumn())) {
+            if ($configuratorWorkspace) {
+                array_push($remainingActions, ...$component->workspaceVisibilityActions());
+            } elseif (filled($table->getReorderColumn())) {
                 $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['class' => 'catalog-reorder-trigger'], merge: true));
                 $remainingActions[] = $table->getReorderRecordsTriggerAction(false)->label('Reorder rows')->visible(fn (): bool => $table->isReorderable());
             }

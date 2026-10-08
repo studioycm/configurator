@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 
 class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
 {
@@ -28,6 +29,33 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     /** @var array<string, mixed> */
     public array $formState = [];
 
+    #[Locked]
+    public bool $definitionStale = false;
+
+    #[Locked]
+    public bool $showTrace = false;
+
+    #[On('configurator-updated')]
+    public function markDefinitionStale(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->definitionStale = true;
+    }
+
+    public function refreshDefinition(): void
+    {
+        Gate::authorize('manage-catalog');
+        parent::refreshDefinition();
+        $this->definitionStale = false;
+    }
+
+    public function toggleTrace(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->showTrace = ! $this->showTrace;
+        $this->refreshDefinition();
+    }
+
     public function mount(int $configuratorId): void
     {
         Gate::authorize('manage-catalog');
@@ -38,6 +66,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     public function chooseProduct(int|string|null $productId): void
     {
         Gate::authorize('manage-catalog');
+        $this->definitionStale = false;
         if ($productId === null || $productId === '') {
             $this->productId = null;
             $this->runtime = [];
@@ -64,7 +93,9 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
             return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_required', 'message' => 'Choose a Product from an assigned Group to preview.']]);
         }
 
-        return app(ConfiguratorDefinitionLoader::class)->forPreview(auth()->user(), $this->configuratorId, $this->productId, $this->runtime, $intent);
+        $input = app(ConfiguratorDefinitionLoader::class)->forPreview(auth()->user(), $this->configuratorId, $this->productId, $this->runtime, $intent);
+
+        return new ConfiguratorEvaluationInput($input->definition, $input->properties, $input->context, $input->selections, $input->remembered, $input->intent, $input->configuratorId, $input->diagnostics, trace: $this->showTrace);
     }
 
     protected function evaluated(): void
@@ -117,6 +148,9 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     {
         Gate::authorize('manage-catalog');
 
-        return view('livewire.catalog.configurator-preview', ['result' => $this->productId === null ? null : $this->result()]);
+        return view('livewire.catalog.configurator-preview', [
+            'result' => $this->productId === null ? null : $this->result(),
+            'publicOnlyRules' => Configurator::findOrFail($this->configuratorId)->rules()->whereHas('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application']))->orderByDesc('priority')->pluck('label')->all(),
+        ]);
     }
 }

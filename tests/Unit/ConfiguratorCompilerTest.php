@@ -7,6 +7,28 @@ use Tests\TestCase;
 require_once dirname(__DIR__).'/ConfiguratorFixtures.php';
 uses(TestCase::class);
 
+test('Mapping modes normalize legacy definitions and reject explicitly invalid values', function () {
+    [$data, $attributes, $options] = compiledDefinitionFixture();
+    $data['rules'] = [fixtureMapping()];
+    $compiler = app(ConfiguratorDefinitionCompiler::class);
+    $legacy = $compiler->compile($data, $attributes, $options);
+    expect($legacy->data['rules'][0]['sets'][0]['disallowed_target_behavior'])->toBe('Disable');
+    foreach (['Disable', 'Hide'] as $mode) {
+        $data['rules'][0]['sets'][0]['disallowed_target_behavior'] = $mode;
+        $compiled = $compiler->compile($data, $attributes, $options);
+        expect($compiled->rules[0]->sets[0]->disallowedTargetBehavior->value)->toBe($mode);
+    }
+    foreach ([null, '', 'hide', 'Allow', 0] as $mode) {
+        $data['rules'][0]['sets'][0]['disallowed_target_behavior'] = $mode;
+        try {
+            $compiler->compile($data, $attributes, $options);
+            $this->fail('Invalid Mapping mode was accepted.');
+        } catch (ValidationException $exception) {
+            expect($exception->errors())->toHaveKey('rules.0.sets.0.disallowed_target_behavior');
+        }
+    }
+});
+
 test('compiler accepts partial mappings overlapping targets and self presentation without confusing display and graph order', function () {
     [$data, $attributes, $options] = compiledDefinitionFixture();
     $data['attributes'][0]['display_order'] = 2;

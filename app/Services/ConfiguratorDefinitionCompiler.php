@@ -14,6 +14,7 @@ use App\DTO\ConfiguratorEffectDTO;
 use App\DTO\ConfiguratorMappingSetDTO;
 use App\DTO\ConfiguratorOptionDTO;
 use App\DTO\ConfiguratorRuleDTO;
+use App\MappingTargetBehavior;
 use App\RuleEffectKind;
 use App\RuleKind;
 use App\RuleTargetScope;
@@ -127,7 +128,13 @@ class ConfiguratorDefinitionCompiler
                 $setOrders = [];
                 foreach ($this->rows($row['sets'] ?? null, $path.'.sets', 1) as $setIndex => $set) {
                     $setPath = $path.'.sets.'.$setIndex;
-                    $this->keys($set, ['id', 'label', 'sort_order', 'source_option_ids', 'target_option_ids'], $setPath);
+                    if (! array_key_exists('disallowed_target_behavior', $set)) {
+                        $set['disallowed_target_behavior'] = MappingTargetBehavior::Disable->value;
+                    }
+                    $this->keys($set, ['id', 'label', 'sort_order', 'source_option_ids', 'target_option_ids', 'disallowed_target_behavior'], $setPath);
+                    $behavior = is_string($set['disallowed_target_behavior']) ? MappingTargetBehavior::tryFrom($set['disallowed_target_behavior']) : null;
+                    $this->check($behavior !== null, $setPath.'.disallowed_target_behavior', 'Choose Disable or Hide for disallowed targets.');
+                    $data['rules'][$index]['sets'][$setIndex]['disallowed_target_behavior'] = $behavior->value;
                     $setId = $this->claim($set, 'set', $seen, $setPath);
                     $this->text($set['label'] ?? null, $setPath.'.label');
                     $this->unique($this->integer($set['sort_order'] ?? null, $setPath.'.sort_order'), $setOrders, $setPath.'.sort_order', 'Set order must be unique.');
@@ -135,7 +142,7 @@ class ConfiguratorDefinitionCompiler
                     foreach ($sourceIds as $sourceId) {
                         $this->unique($sourceId, $usedSources, $setPath.'.source_option_ids', 'A source Option can belong to at most one set in this rule.');
                     }
-                    $sets[] = new ConfiguratorMappingSetDTO($setId, $sourceIds, $this->optionReferences($set['target_option_ids'] ?? null, $attributes[$target], $setPath.'.target_option_ids'));
+                    $sets[] = new ConfiguratorMappingSetDTO($setId, $sourceIds, $this->optionReferences($set['target_option_ids'] ?? null, $attributes[$target], $setPath.'.target_option_ids'), $behavior);
                 }
                 foreach (array_unique($sources) as $source) {
                     $edges[$source][$target][] = $label;

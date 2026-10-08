@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\MappingTargetBehavior;
 use Database\Factories\MappingSetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,12 +15,12 @@ class MappingSet extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['rule_id', 'label', 'sort_order'];
+    protected $fillable = ['rule_id', 'label', 'sort_order', 'disallowed_target_behavior'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['sort_order' => 'integer'];
+        return ['sort_order' => 'integer', 'disallowed_target_behavior' => MappingTargetBehavior::class];
     }
 
     public function rule(): BelongsTo
