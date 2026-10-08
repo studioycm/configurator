@@ -6,6 +6,19 @@ Date: 2026-09-23. Workspace: `/Users/studioycm/Herd/configurator`.
 
 Authority: [the living plan](../DECISIONS.md) records user decisions. These research notes provide evidence and technical proposals; examples do not override the requested behavior.
 
+## FilamentExamples workspace follow-up — 2026-10-08
+
+The following documents cover the eight subsequently requested FilamentExamples projects and their Laravel architecture. This is a new, separately dated research snapshot; the historical observations below remain dated 2026-09-23.
+
+| Document | Responsibility |
+| --- | --- |
+| [Workspace/interface research](FILAMENT_EXAMPLES_WORKSPACE_RESEARCH.md) | All eight examples, pinned source/lock versions, Chrome/MCP access evidence, lifecycle findings and adaptation limits |
+| [Laravel architecture patterns](FILAMENT_EXAMPLES_LARAVEL_PATTERNS.md) | Providers, actions/services, enums, Eloquent/scopes, casts, typed DTOs, caches, and explicit helper-versus-macro recommendation |
+| [Adoption proposal](FILAMENT_EXAMPLES_ADOPTION_PLAN.md) | Existing-versus-proposed capabilities, contextual editor, selective deferral, four resizing purposes, quick filters/cells and optional plugins |
+| [Select and item-drawer approval inventory](SELECT_PREPOPULATION_AND_ITEM_DRAWER_REVIEW.md) | All model/relationship/vocabulary selectors, recommended initial counts, Product edit scope, all current drawer row types and contextual-tab link fixes |
+
+For this admin/workspace follow-up, reconcile the [admin plan](../ADMIN_FILAMENT_IMPLEMENTATION_PLAN.md), [Configurator workspace plan](../CONFIGURATOR_WORKSPACE_IMPLEMENTATION_PLAN.md), [card appearance handoff](../CARD_APPEARANCE_ADMIN_UX_HANDOFF.md), latest user decisions and active source. The adoption proposal is research/planning; it does not authorize new application or dependency changes. Existing concurrent workspace changes were inspected, not overwritten or certified complete.
+
 ## Requested workflow and status
 
 1. Research Laravel Daily, Filament Examples and official version-matched documentation with multiple agents; inspect real browser content and working source patterns. **Completed for this planning checkpoint: channel title/description scans, all thirteen Laracon demo topics, related publisher sources, four recent/relevant project source reviews and AI Coding Daily's planning workflow. Spoken-content and access limits are recorded below.**
