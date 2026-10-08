@@ -31,13 +31,6 @@
                             <flux:icon.cube class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('Product catalog') }}</span>
                         </a>
                     </flux:tooltip>
-                    @can('manage-catalog')
-                        <flux:tooltip :content="__('Administration')" position="right">
-                            <a href="{{ route('filament.admin.pages.dashboard') }}" aria-label="{{ __('Administration') }}" class="catalog-navigation-item">
-                                <flux:icon.adjustments-horizontal class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('Administration') }}</span>
-                            </a>
-                        </flux:tooltip>
-                    @endcan
                 </nav>
             </div>
             @auth
