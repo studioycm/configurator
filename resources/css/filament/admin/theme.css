@@ -9,15 +9,17 @@
 
 .catalog-configurator-preview { container-type: inline-size; }
 .catalog-configurator-preview-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.catalog-configurator-preview-diagnostics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
 .catalog-configurator-preview-form > .fi-sc { row-gap: 8px; }
 .catalog-configurator-preview-form .fi-fo-field { grid-template-columns: minmax(0, 1fr); gap: 4px 12px; }
 .catalog-configurator-preview-form .fi-fo-field-content-col { grid-column: auto; min-width: 0; }
 @container (min-width: 580px) {
+    .catalog-configurator-preview-diagnostics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .catalog-configurator-preview-form .fi-fo-field-has-inline-label { grid-template-columns: 15rem minmax(0, 1fr); }
     .catalog-configurator-preview-form .fi-fo-field-has-inline-label .fi-fo-field-content-col { grid-column: 2; }
 }
 @container (min-width: 1040px) {
-    .catalog-configurator-preview-layout { grid-template-columns: minmax(0, 1fr) 300px; }
+    .catalog-configurator-preview-layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }
 
 /* 1. Strip the outer container */
