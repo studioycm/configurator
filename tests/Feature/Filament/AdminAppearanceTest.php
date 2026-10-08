@@ -55,6 +55,36 @@ test('legacy appearance settings default loading off and the admin can persist i
     expect(AdminAppearanceSettings::findOrFail(1)->settings['show_configurator_loading_indicator'])->toBeTrue();
 });
 
+test('legacy appearance settings supply a page title size without changing stored settings', function () {
+    $original = AdminAppearanceSettings::findOrFail(1)->settings;
+    unset($original['page_title_size']);
+    AdminAppearanceSettings::findOrFail(1)->update(['settings' => $original]);
+    Cache::put(AdminAppearance::CACHE_KEY, $original);
+
+    expect((new AdminAppearance)->current()['page_title_size'])->toBe(20);
+    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
+});
+
+test('admins can preview and save a page title size that fits the header', function () {
+    $original = AdminAppearanceSettings::findOrFail(1)->settings;
+    $page = Livewire::test(App\Filament\Pages\AdminAppearance::class)
+        ->fillForm(['page_title_size' => 28, 'logo_height' => 28, 'header_height' => 48]);
+
+    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
+    $preview = app(AdminAppearance::class)->variables($page->get('data'));
+    expect($preview['--aquestia-shell-heading-size'])->toBe('28px');
+    expect($preview['--aquestia-shell-heading-line-height'])->toBe('34px');
+    expect($preview['--aquestia-shell-logo-height'])->toBe('28px');
+
+    $page->call('save')->assertHasNoFormErrors();
+    expect(AdminAppearanceSettings::findOrFail(1)->settings['page_title_size'])->toBe(28);
+    expect((new AdminAppearance)->current()['page_title_size'])->toBe(28);
+
+    $page->fillForm(['page_title_size' => 33])->call('save')->assertHasFormErrors(['page_title_size']);
+    $page->fillForm(['page_title_size' => 28, 'header_height' => 40])->call('save')->assertHasFormErrors(['page_title_size']);
+    expect(AdminAppearanceSettings::findOrFail(1)->settings['page_title_size'])->toBe(28);
+});
+
 test('new requests read committed appearance changes and rollback does not invalidate shared cache', function () {
     $originalConnection = DB::getDefaultConnection();
     config(['database.connections.appearance_cache_test' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true]]);

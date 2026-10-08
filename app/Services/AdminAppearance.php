@@ -20,13 +20,13 @@ class AdminAppearance
     /** @return array<string, bool|int|string> */
     public function defaults(): array
     {
-        return ['cell_padding_block' => 6, 'cell_padding_inline' => 10, 'workspace_gap' => 8, 'header_height' => 48, 'logo_height' => 28, 'sidebar_width' => 216, 'collapsed_sidebar_width' => 58, 'navigation_padding_block' => 6, 'control_height' => 32, 'modal_width' => 'medium', 'slide_over_width' => 'medium', 'show_configurator_loading_indicator' => false];
+        return ['cell_padding_block' => 6, 'cell_padding_inline' => 10, 'workspace_gap' => 8, 'header_height' => 48, 'logo_height' => 28, 'sidebar_width' => 216, 'collapsed_sidebar_width' => 58, 'navigation_padding_block' => 6, 'control_height' => 32, 'modal_width' => 'medium', 'slide_over_width' => 'medium', 'show_configurator_loading_indicator' => false, 'page_title_size' => 20];
     }
 
     /** @return array<string, array{0:int, 1:int}> */
     public function ranges(): array
     {
-        return ['cell_padding_block' => [4, 8], 'cell_padding_inline' => [8, 12], 'workspace_gap' => [6, 12], 'header_height' => [40, 64], 'logo_height' => [20, 32], 'sidebar_width' => [192, 320], 'collapsed_sidebar_width' => [58, 80], 'navigation_padding_block' => [4, 8], 'control_height' => [30, 36]];
+        return ['cell_padding_block' => [4, 8], 'cell_padding_inline' => [8, 12], 'workspace_gap' => [6, 12], 'header_height' => [40, 64], 'logo_height' => [20, 32], 'page_title_size' => [14, 32], 'sidebar_width' => [192, 320], 'collapsed_sidebar_width' => [58, 80], 'navigation_padding_block' => [4, 8], 'control_height' => [30, 36]];
     }
 
     /** @param array<string, mixed> $settings @return array<string, bool|int|string> */
@@ -48,6 +48,9 @@ class AdminAppearance
         if ($validated['logo_height'] > $validated['header_height'] - 12) {
             throw ValidationException::withMessages(['settings.logo_height' => 'The logo must fit within the header with 6 px padding above and below.']);
         }
+        if ((int) ceil($validated['page_title_size'] * 1.2) > $validated['header_height'] - 12) {
+            throw ValidationException::withMessages(['settings.page_title_size' => 'The title must fit within the header with 6 px padding above and below. Increase Header height or reduce Page title size.']);
+        }
 
         return $validated;
     }
@@ -66,6 +69,9 @@ class AdminAppearance
         if (! array_key_exists('show_configurator_loading_indicator', $settings)) {
             $settings['show_configurator_loading_indicator'] = false;
         }
+        if (! array_key_exists('page_title_size', $settings)) {
+            $settings['page_title_size'] = $this->defaults()['page_title_size'];
+        }
 
         return $this->resolved = $this->validate($settings);
     }
@@ -81,12 +87,13 @@ class AdminAppearance
     {
         $settings = $draft === null ? $this->current() : array_replace($this->defaults(), array_intersect_key($draft, $this->defaults()));
         $variables = [];
-        $mapping = ['cell_padding_block' => 'cell-padding-block', 'cell_padding_inline' => 'cell-padding-inline', 'workspace_gap' => 'shell-gap', 'header_height' => 'shell-header-min-height', 'logo_height' => 'shell-logo-height', 'sidebar_width' => 'shell-sidebar-width', 'collapsed_sidebar_width' => 'shell-rail-width', 'navigation_padding_block' => 'navigation-padding-block', 'control_height' => 'shell-desktop-target'];
+        $mapping = ['cell_padding_block' => 'cell-padding-block', 'cell_padding_inline' => 'cell-padding-inline', 'workspace_gap' => 'shell-gap', 'header_height' => 'shell-header-min-height', 'logo_height' => 'shell-logo-height', 'page_title_size' => 'shell-heading-size', 'sidebar_width' => 'shell-sidebar-width', 'collapsed_sidebar_width' => 'shell-rail-width', 'navigation_padding_block' => 'navigation-padding-block', 'control_height' => 'shell-desktop-target'];
         foreach ($mapping as $key => $token) {
             [$min, $max] = $this->ranges()[$key];
             $variables['--aquestia-'.$token] = max($min, min($max, (int) $settings[$key])).'px';
         }
         $variables['--aquestia-shell-brand-height'] = $variables['--aquestia-shell-header-min-height'];
+        $variables['--aquestia-shell-heading-line-height'] = (int) ceil((int) $variables['--aquestia-shell-heading-size'] * 1.2).'px';
         foreach (['modal_width', 'slide_over_width'] as $key) {
             $variables['--aquestia-'.str_replace('_', '-', $key)] = (['small' => 640, 'medium' => 960, 'large' => 1280][$settings[$key]] ?? 960).'px';
         }

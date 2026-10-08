@@ -51,7 +51,7 @@ class AdminAppearance extends Page
             View::make('filament.forms.validation-summary'),
             Tabs::make('Appearance')->key('appearance-settings')->columnSpanFull()->tabs([
                 Tab::make('Density')->columns(2)->schema(array_map($number, ['cell_padding_block', 'cell_padding_inline', 'workspace_gap', 'control_height'])),
-                Tab::make('Navigation')->columns(2)->schema(array_map($number, ['header_height', 'logo_height', 'sidebar_width', 'collapsed_sidebar_width', 'navigation_padding_block'])),
+                Tab::make('Navigation')->columns(2)->schema(array_map($number, ['header_height', 'logo_height', 'page_title_size', 'sidebar_width', 'collapsed_sidebar_width', 'navigation_padding_block'])),
                 Tab::make('Dialogs')->columns(2)->schema([$width('modal_width'), $width('slide_over_width')]),
                 Tab::make('Configurator')->schema([
                     Toggle::make('show_configurator_loading_indicator')->label('Show configurator loading indicator')->default(false)
@@ -71,7 +71,8 @@ class AdminAppearance extends Page
     public function save(): void
     {
         Gate::authorize('manage-catalog');
-        $record = ConfiguratorFormErrors::run(fn () => app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $this->form->getState()), $this->form, '/^settings\./');
+        $settings = $this->form->getState();
+        $record = ConfiguratorFormErrors::run(fn () => app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $settings), $this->form, '/^settings\./');
         $this->form->fill($record->settings);
         $this->dispatch('admin-appearance-saved', variables: app(Appearance::class)->variables($record->settings));
         Notification::make()->title('Shared appearance saved')->success()->send();
