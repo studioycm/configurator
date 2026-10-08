@@ -49,17 +49,17 @@ function catalogFilters() {
     const measureHeadings = () => {
         if (!alive || suspended) return;
         const grid = root.querySelector('.catalog-filter-grid');
-        const legend = grid?.querySelector?.('legend');
-        const fieldset = grid?.querySelector?.('fieldset');
-        if (!legend || !fieldset) return;
+        const heading = grid?.querySelector?.('.catalog-filter-heading');
+        const section = grid?.querySelector?.('[data-filter-key]');
+        if (!heading || !section) return;
         const columnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns);
-        const fieldStyle = getComputedStyle(fieldset);
+        const fieldStyle = getComputedStyle(section);
         const width = columnWidth - parseFloat(fieldStyle.paddingLeft) - parseFloat(fieldStyle.paddingRight)
             - parseFloat(fieldStyle.borderLeftWidth) - parseFloat(fieldStyle.borderRightWidth);
         if (!Number.isFinite(width) || width <= 0) return;
         // Include hidden fields without changing visibility, focus or Alpine-owned labels.
         const probe = document.createElement('span');
-        probe.className = legend.className;
+        probe.className = heading.className;
         probe.setAttribute('aria-hidden', 'true');
         Object.assign(probe.style, {position:'absolute', visibility:'hidden', pointerEvents:'none',
             display:'block', insetBlockStart:'0', insetInlineStart:'0', inlineSize:`${width}px`, minBlockSize:'0', maxInlineSize:'none'});

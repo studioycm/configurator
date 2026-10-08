@@ -2,6 +2,8 @@
 
 Prepared 2026-10-07 in `/Users/studioycm/Herd/configurator`.
 
+**Public filter UI update, 2026-10-08:** The count now uses a light box with a larger number above `profiles`, beside an equally tall `RESET` button. `Sub Groups` and its options share an inline row; clicking the selected option clears it. Separate Sub Group/Filters Clear controls were removed. Filter titles now use accessible section headers, with aligned header/first-button tracks retained. This supersedes the earlier active-preset no-op and fieldset/legend presentation only; card settings, aggregate saves, local computation and independent server card delivery remain as described below. Inspect current Git state rather than treating the historical working-tree note below as current.
+
 ## 1. Purpose and current status
 
 The [Admin and Shared Filament UX plan](ADMIN_FILAMENT_IMPLEMENTATION_PLAN.md) was written before the latest Product-card implementation. Reconcile its Group form, batch-edit, appearance and cross-surface work with this handoff before modifying those areas. Preserve the earlier plan's requirements and detail; incorporate the implementation rather than replacing it with the old baseline.

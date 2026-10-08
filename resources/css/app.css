@@ -165,11 +165,36 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+.catalog-result-count {
+    min-inline-size: 104px;
+    min-block-size: 72px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: #e2e8f0;
+    text-align: center;
+}
+.catalog-result-count__amount { font-size: 32px; line-height: 36px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.catalog-result-count__label { font-size: 12px; line-height: 16px; color: #475569; }
+.catalog-filter-reset { min-block-size: 72px; padding: 10px 20px; border: 1px solid #cbd5e1; border-radius: 10px; background: white; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+.catalog-filter-reset:hover { background: #f1f5f9; }
+.catalog-filter-section { min-width: 0; border: 1px solid #e2e8f0; border-radius: 10px; background: white; }
 .catalog-filter-heading {
     min-block-size: var(--catalog-filter-heading-height, 40px);
     max-inline-size: 100%;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 9px 9px 0 0;
+    background: #f8fafc;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
     overflow-wrap: anywhere;
 }
+.dark .catalog-result-count { background: #263244; }
+.dark .catalog-result-count__label { color: #94a3b8; }
+.dark .catalog-filter-reset, .dark .catalog-filter-section { border-color: #3f3f46; background: #18181b; }
+.dark .catalog-filter-reset:hover, .dark .catalog-filter-heading { background: #27272a; }
+.dark .catalog-filter-heading { border-color: #3f3f46; }
 
 .catalog-card-grid {
     --catalog-cards-max-columns: 4;

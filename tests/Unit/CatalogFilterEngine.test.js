@@ -41,11 +41,10 @@ test('compatibility excludes own field and keeps preset constraints', () => {
     result = engine.evaluate(state);
     assert.equal(result.compatibility.pressure[1], false);
 });
-test('singletons clear manual choices, multiple values preserve them, presets are atomic and repeated preset is a no-op', () => {
+test('singletons clear manual choices, multiple values preserve them and presets are atomic', () => {
     let state = selectSequence([['connection','Flange'], ['pressure','25']]);
     state = engine.change(state, {type:'preset', id:'1'}).state;
     assert.equal(state.filters.connection, undefined);
-    assert.equal(engine.change(state, {type:'preset',id:'1'}).changed, false);
     state = engine.change(state, {type:'preset',id:'2'}).state;
     assert.equal(state.filters.pressure, '25');
     state = engine.change(state, {type:'preset',id:'1'}).state;
@@ -53,6 +52,26 @@ test('singletons clear manual choices, multiple values preserve them, presets ar
     state = engine.change(state, {type:'filter',key:'pressure',value:'25'}).state;
     assert.equal(state.subGroupId, null);
     assert.deepEqual(engine.evaluate(state).ids, ['C']);
+});
+test('clicking the active singleton clears it without restoring its discarded manual choice', () => {
+    const selected = engine.change(selectSequence([['connection','Flange'], ['pressure','25']]), {type:'preset',id:'1'}).state;
+    assert.equal(engine.evaluate(selected).hiddenKey, 'connection');
+    const cleared = engine.change(selected, {type:'preset',id:'1'});
+    assert.equal(cleared.changed, true);
+    assert.equal(cleared.state.subGroupId, null);
+    assert.deepEqual(cleared.state.filters, {pressure:'25'});
+    assert.deepEqual(cleared.state.precedence, ['filter:pressure']);
+    assert.equal(engine.evaluate(cleared.state).hiddenKey, null);
+    assert.deepEqual(engine.evaluate(cleared.state).ids, ['A','C']);
+});
+test('clicking the active multivalue preset clears only that preset and preserves ordinary choices', () => {
+    const selected = engine.change(selectSequence([['pressure','16']]), {type:'preset',id:'2'}).state;
+    const cleared = engine.change(selected, {type:'preset',id:'2'});
+    assert.equal(cleared.changed, true);
+    assert.deepEqual(cleared.state, {version:1, filters:{pressure:'16'}, subGroupId:null, precedence:['filter:pressure']});
+    assert.deepEqual(engine.evaluate(cleared.state).ids, ['B']);
+    assert.deepEqual(engine.normalize(readDiscovery(discoveryUrl('https://catalog.test/', cleared.state))).state, cleared.state);
+    assert.equal(engine.change(cleared.state, {type:'preset',id:null}).changed, false);
 });
 test('clear keeps preset and reset clears all without restoring discarded values', () => {
     let state = engine.change(selectSequence([['pressure','25']]),{type:'preset',id:'3'}).state;

@@ -87,10 +87,9 @@ export function createFilterEngine(snapshot) {
             if (raw.filters[action.key] === action.value) delete raw.filters[action.key];
             else { raw.filters[action.key] = action.value; raw.precedence.push(token); }
         } else if (action.type === 'preset' && (action.id === null || presets.has(action.id))) {
-            if (raw.subGroupId === action.id) return {state: current, notices: [], adjusted: false, changed: false};
             raw.precedence = raw.precedence.filter(token => !token.startsWith('subgroup:'));
-            raw.subGroupId = action.id;
-            if (action.id !== null) raw.precedence.push(`subgroup:${action.id}`);
+            raw.subGroupId = raw.subGroupId === action.id ? null : action.id;
+            if (raw.subGroupId !== null) raw.precedence.push(`subgroup:${raw.subGroupId}`);
         } else if (action.type === 'clear' || action.type === 'reset') {
             raw.filters = {};
             if (action.type === 'reset') raw.subGroupId = null;
