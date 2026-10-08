@@ -15,6 +15,7 @@ use Livewire\Attributes\Url;
 
 abstract class SplitListRecords extends ListRecords
 {
+    use InteractsWithCompactListHeader;
     use InteractsWithScopedTableSearch;
 
     protected string $view = 'filament.resources.split-list';

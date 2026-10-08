@@ -7,7 +7,6 @@ use App\Filament\Resources\TablePresentation;
 use App\Filament\Resources\Values\ValueResource;
 use App\Models\Value;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -40,13 +39,9 @@ class ValuesTable
             ->searchPlaceholder('Search master values')->defaultSort('label')->recordActions([Action::make('edit')->label('Edit')->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]), 'values', true);
     }
 
-    public static function tagFilterField(): Select|ToggleButtons
+    public static function tagFilterField(): ToggleButtons
     {
-        $options = Value::tagOptions();
-
-        return (count($options) <= 6
-            ? ToggleButtons::make('values')->inline()->extraAttributes(['class' => 'catalog-tag-filters'])
-            : Select::make('values')->searchable())
-            ->label('Filter by tags')->multiple()->options($options)->default([]);
+        return ToggleButtons::make('values')->inline()->extraAttributes(['class' => 'catalog-tag-filters'])
+            ->label('Filter by tags')->multiple()->options(Value::tagOptions())->default([]);
     }
 }

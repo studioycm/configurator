@@ -115,7 +115,7 @@ test('quick rule kind and activation filters retain owner boundaries and the adv
     $page->filterTable('is_active', '')->assertCanSeeTableRecords([$enabled, $disabled])->assertCanNotSeeTableRecords([$mapping, $foreign]);
 });
 
-test('quick tag choices match any selected tag and larger tag lists stay searchable', function () {
+test('tag filters remain buttons beyond six choices and match any selected tag', function () {
     $a = Value::factory()->create(['label' => 'Flange alpha', 'tags' => ['alpha']]);
     $b = Value::factory()->create(['label' => 'Flange beta', 'tags' => ['beta']]);
     $c = Value::factory()->create(['label' => 'Flange gamma', 'tags' => ['gamma', 'delta', 'epsilon', 'zeta']]);
@@ -126,8 +126,8 @@ test('quick tag choices match any selected tag and larger tag lists stay searcha
     $seventh = Value::factory()->create(['tags' => ['seventh']]);
     $page = Livewire::test(ListValues::class);
     $field = $page->instance()->getTable()->getFilter('tags')->getSchemaComponents()[0];
-    expect($field)->toBeInstanceOf(Select::class);
-    expect($field->isSearchable())->toBeTrue();
+    expect($field)->toBeInstanceOf(ToggleButtons::class);
+    expect($field->getOptions())->toHaveKey('seventh');
     $page->filterTable('tags', ['values' => ['seventh']])
         ->assertCanSeeTableRecords([$seventh])->assertCanNotSeeTableRecords([$a, $b, $c]);
 });
