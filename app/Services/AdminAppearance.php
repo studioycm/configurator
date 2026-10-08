@@ -12,15 +12,15 @@ use Illuminate\Validation\ValidationException;
 
 class AdminAppearance
 {
-    /** @var array<string, int|string>|null */
+    /** @var array<string, bool|int|string>|null */
     private ?array $resolved = null;
 
     public const string CACHE_KEY = 'admin-appearance:singleton:v1';
 
-    /** @return array<string, int|string> */
+    /** @return array<string, bool|int|string> */
     public function defaults(): array
     {
-        return ['cell_padding_block' => 6, 'cell_padding_inline' => 10, 'workspace_gap' => 8, 'header_height' => 48, 'logo_height' => 28, 'sidebar_width' => 216, 'collapsed_sidebar_width' => 58, 'navigation_padding_block' => 6, 'control_height' => 32, 'modal_width' => 'medium', 'slide_over_width' => 'medium'];
+        return ['cell_padding_block' => 6, 'cell_padding_inline' => 10, 'workspace_gap' => 8, 'header_height' => 48, 'logo_height' => 28, 'sidebar_width' => 216, 'collapsed_sidebar_width' => 58, 'navigation_padding_block' => 6, 'control_height' => 32, 'modal_width' => 'medium', 'slide_over_width' => 'medium', 'show_configurator_loading_indicator' => false];
     }
 
     /** @return array<string, array{0:int, 1:int}> */
@@ -29,7 +29,7 @@ class AdminAppearance
         return ['cell_padding_block' => [4, 8], 'cell_padding_inline' => [8, 12], 'workspace_gap' => [6, 12], 'header_height' => [40, 64], 'logo_height' => [20, 32], 'sidebar_width' => [192, 320], 'collapsed_sidebar_width' => [58, 80], 'navigation_padding_block' => [4, 8], 'control_height' => [30, 36]];
     }
 
-    /** @param array<string, mixed> $settings @return array<string, int|string> */
+    /** @param array<string, mixed> $settings @return array<string, bool|int|string> */
     public function validate(array $settings): array
     {
         $rules = ['settings' => ['required', 'array:'.implode(',', array_keys($this->defaults()))]];
@@ -39,10 +39,12 @@ class AdminAppearance
         foreach (['modal_width', 'slide_over_width'] as $key) {
             $rules['settings.'.$key] = ['required', Rule::in(['small', 'medium', 'large'])];
         }
+        $rules['settings.show_configurator_loading_indicator'] = ['required', 'boolean'];
         $validated = Validator::make(['settings' => $settings], $rules)->validate()['settings'];
         foreach ($this->ranges() as $key => $range) {
             $validated[$key] = (int) $validated[$key];
         }
+        $validated['show_configurator_loading_indicator'] = (bool) $validated['show_configurator_loading_indicator'];
         if ($validated['logo_height'] > $validated['header_height'] - 12) {
             throw ValidationException::withMessages(['settings.logo_height' => 'The logo must fit within the header with 6 px padding above and below.']);
         }
@@ -50,7 +52,7 @@ class AdminAppearance
         return $validated;
     }
 
-    /** @return array<string, int|string> */
+    /** @return array<string, bool|int|string> */
     public function current(): array
     {
         if ($this->resolved !== null) {
@@ -59,12 +61,16 @@ class AdminAppearance
         if (! Schema::hasTable('admin_appearance_settings')) {
             return $this->resolved = $this->defaults();
         }
-        $read = fn (): array => $this->validate(AdminAppearanceSettings::findOrFail(1)->settings);
+        $read = fn (): array => AdminAppearanceSettings::findOrFail(1)->settings;
+        $settings = DB::transactionLevel() > 0 ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
+        if (! array_key_exists('show_configurator_loading_indicator', $settings)) {
+            $settings['show_configurator_loading_indicator'] = false;
+        }
 
-        return $this->resolved = DB::transactionLevel() > 0 ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
+        return $this->resolved = $this->validate($settings);
     }
 
-    /** @param array<string, int|string> $settings */
+    /** @param array<string, bool|int|string> $settings */
     public function rememberSaved(array $settings): void
     {
         $this->resolved = $settings;

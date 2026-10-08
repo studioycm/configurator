@@ -7,6 +7,7 @@ use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Services\AdminAppearance as Appearance;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Tabs;
@@ -52,6 +53,10 @@ class AdminAppearance extends Page
                 Tab::make('Density')->columns(2)->schema(array_map($number, ['cell_padding_block', 'cell_padding_inline', 'workspace_gap', 'control_height'])),
                 Tab::make('Navigation')->columns(2)->schema(array_map($number, ['header_height', 'logo_height', 'sidebar_width', 'collapsed_sidebar_width', 'navigation_padding_block'])),
                 Tab::make('Dialogs')->columns(2)->schema([$width('modal_width'), $width('slide_over_width')]),
+                Tab::make('Configurator')->schema([
+                    Toggle::make('show_configurator_loading_indicator')->label('Show configurator loading indicator')->default(false)
+                        ->helperText('Product pages keep this off by default. When enabled, the indicator uses reserved space beside the Configuration heading.'),
+                ]),
             ]),
         ]);
     }

@@ -5,6 +5,7 @@ namespace App\Livewire\Catalog;
 use App\DTO\ConfiguratorEvaluationInput;
 use App\Models\Configurator;
 use App\Models\Product;
+use App\Services\CatalogAvailability;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
 use Filament\Forms\Components\Select;
@@ -15,6 +16,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -108,7 +110,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     {
         Gate::authorize('manage-catalog');
         $fields = [Select::make('product')->label('Product Code')->searchable()
-            ->getSearchResultsUsing(fn (string $search): array => $this->products()->where('product_code', 'like', '%'.$search.'%')->orderBy('product_code')->limit(50)->pluck('product_code', 'id')->all())
+            ->getSearchResultsUsing(fn (string $search): array => $this->products()->whereRaw('LOWER(product_code) LIKE ?', ['%'.Str::lower($search).'%'])->orderBy('product_code')->limit(50)->pluck('product_code', 'id')->all())
             ->getOptionLabelUsing(fn ($value): ?string => $this->products()->find($value)?->product_code)
             ->live()->afterStateUpdated(fn ($state) => $this->chooseProduct($state))->columnSpanFull()];
         if ($this->productId !== null) {
@@ -128,13 +130,13 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
                     }
                 }
                 $field = $attribute->inputType === 'select' ? Select::make('choices.'.$attribute->id)->selectablePlaceholder(false) : ToggleButtons::make('choices.'.$attribute->id)->inline();
-                $fields[] = $field->label($state['label'])->helperText(view('livewire.catalog.configurator-preview-notes', ['state' => $state, 'attribute' => $attribute, 'selectedId' => $result->selections[$attribute->id] ?? null]))->options($options)
+                $fields[] = $field->label($state['label'])->options($options)
                     ->disableOptionWhen(fn ($value): bool => ! in_array((string) $value, $state['legal'], true))
                     ->live()->afterStateUpdated(fn ($state) => $this->selectOption($attribute->id, (string) $state))->columnSpanFull();
             }
         }
 
-        return $schema->statePath('formState')->columns(2)->components($fields);
+        return $schema->statePath('formState')->columns(1)->inlineLabel()->components($fields);
     }
 
     private function products(): Builder
@@ -144,12 +146,25 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
         return Product::whereHas('group', fn (Builder $query) => $query->where('configurator_id', $this->configuratorId)->doesntHave('children'));
     }
 
+    private function dashboardProduct(): ?Product
+    {
+        $products = $this->products()->where('products.is_active', true)->whereIn('products.group_id', app(CatalogAvailability::class)->visibleGroupIds());
+        if ($this->productId !== null) {
+            return $products->find($this->productId);
+        }
+
+        return $products->join('groups', 'groups.id', '=', 'products.group_id')
+            ->orderBy('groups.sort_order')->orderBy('groups.id')->orderBy('products.product_code')->orderBy('products.id')
+            ->first(['products.id', 'products.product_code']);
+    }
+
     public function render(): View
     {
         Gate::authorize('manage-catalog');
 
         return view('livewire.catalog.configurator-preview', [
             'result' => $this->productId === null ? null : $this->result(),
+            'dashboardProduct' => $this->dashboardProduct(),
             'publicOnlyRules' => Configurator::findOrFail($this->configuratorId)->rules()->whereHas('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application']))->orderByDesc('priority')->pluck('label')->all(),
         ]);
     }

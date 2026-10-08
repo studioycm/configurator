@@ -1,4 +1,4 @@
-@props(['result', 'inline' => false])
+@props(['result', 'inline' => false, 'showDiagnostics' => true])
 <div class="space-y-3" aria-live="polite" aria-atomic="true">
     @if ($result->configurationCode !== null)
         <div @class(['flex flex-wrap items-baseline gap-x-3 gap-y-1' => $inline, 'space-y-3' => ! $inline])>
@@ -8,7 +8,7 @@
     @elseif ($result->definition !== null)
         <p class="font-medium">{{ __('Configuration is incomplete. No configuration code is available.') }}</p>
     @endif
-    @if ($result->diagnostics !== [])
+    @if ($showDiagnostics && $result->diagnostics !== [])
         <ul class="space-y-1 text-sm">
             @foreach ($result->diagnostics as $diagnostic)<li>{{ $diagnostic['message'] }}</li>@endforeach
         </ul>

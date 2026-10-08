@@ -16,6 +16,7 @@ beforeEach(function () {
 
 test('shared appearance validates fit persists defaults and refreshes cached values only on change', function () {
     $service = app(AdminAppearance::class);
+    AdminAppearanceSettings::findOrFail(1)->update(['settings' => $service->defaults()]);
     expect($service->current())->toBe($service->defaults());
     $action = app(SaveAdminAppearanceSettings::class);
     $record = $action->handle(auth()->user(), $service->defaults());
@@ -30,11 +31,28 @@ test('shared appearance validates fit persists defaults and refreshes cached val
 });
 
 test('ordinary accounts cannot edit shared appearance and Reset only stages a draft', function () {
+    $original = AdminAppearanceSettings::findOrFail(1)->settings;
     $page = Livewire::test(App\Filament\Pages\AdminAppearance::class)
         ->fillForm(['cell_padding_block' => 4])->call('resetDefaults')->assertSet('data.cell_padding_block', 6);
-    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe(app(AdminAppearance::class)->defaults());
+    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
     $this->actingAs(User::factory()->create());
     $page->call('save')->assertForbidden();
+});
+
+test('legacy appearance settings default loading off and the admin can persist its explicit toggle', function () {
+    $original = AdminAppearanceSettings::findOrFail(1)->settings;
+    Cache::put(AdminAppearance::CACHE_KEY, $original);
+
+    expect((new AdminAppearance)->current()['show_configurator_loading_indicator'])->toBeFalse();
+    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
+
+    Livewire::test(App\Filament\Pages\AdminAppearance::class)
+        ->fillForm(['show_configurator_loading_indicator' => true])->call('save')->assertHasNoFormErrors();
+
+    expect(AdminAppearanceSettings::findOrFail(1)->settings['show_configurator_loading_indicator'])->toBeTrue();
+    expect((new AdminAppearance)->current()['show_configurator_loading_indicator'])->toBeTrue();
+    expect(fn () => app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), [...app(AdminAppearance::class)->defaults(), 'show_configurator_loading_indicator' => 'yes']))->toThrow(ValidationException::class);
+    expect(AdminAppearanceSettings::findOrFail(1)->settings['show_configurator_loading_indicator'])->toBeTrue();
 });
 
 test('new requests read committed appearance changes and rollback does not invalidate shared cache', function () {

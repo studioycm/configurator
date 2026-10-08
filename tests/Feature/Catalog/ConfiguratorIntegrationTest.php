@@ -1,12 +1,15 @@
 <?php
 
+use App\Actions\SaveAdminAppearanceSettings;
 use App\Actions\SaveConfiguratorDefinition;
 use App\Livewire\Catalog\ConfiguratorPreview;
 use App\Livewire\Catalog\ContextSelector;
 use App\Livewire\Catalog\ProductConfigurator;
+use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\AdminAppearance;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
 use Illuminate\Support\Facades\DB;
@@ -50,15 +53,27 @@ test('public and saved Preview share the same settled selections code and contex
     expect($preview->get('runtime'))->toBe($public->get('runtime'))->and($writes)->toBe([]);
 });
 
-test('current saved edits reconcile choices with a notice and unassignment removes configuration immediately', function () {
+test('saved edits reconcile Product choices silently and retain explanations in Preview', function () {
     [$configurator, $product, $draft] = publicConfigurationFixture();
     $b = $draft['attributes'][1];
     $public = Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->call('selectOption', $b['id'], $b['options'][1]['id'])->assertSee('A0-B1-C0');
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)
+        ->call('selectOption', $b['id'], $b['options'][1]['id']);
     $draft['attributes'][1]['options'][1]['disabled_by_default'] = true;
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $draft);
-    $public->call('refreshDefinition')->assertSee('A0-B0-C0')->assertSee('Choice for B was updated');
+    $public->call('refreshDefinition')->assertSee('A0-B0-C0')->assertDontSee('Choice for B was updated');
+    $preview->call('refreshDefinition')->assertSee('A0-B0-C0')->assertSee('Choice for B was updated');
     $product->group->update(['configurator_id' => null]);
     $public->call('refreshDefinition')->assertSee('Configuration is not available')->assertDontSee('A0-B0-C0');
+});
+
+test('Product configuration loading is hidden by default and enabled by the shared appearance setting', function () {
+    [, $product] = publicConfigurationFixture();
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertDontSee('Updating choices…');
+
+    app(SaveAdminAppearanceSettings::class)->handle($this->actor, [...app(AdminAppearance::class)->defaults(), 'show_configurator_loading_indicator' => true]);
+
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('Updating choices…');
 });
 
 test('hidden attributes restore remembered choices through real component interactions', function () {
@@ -76,7 +91,7 @@ test('forged unavailable choices cannot clear the upstream mapping selection', f
     $a = $draft['attributes'][0];
     $b = $draft['attributes'][1];
     Livewire::test(ProductConfigurator::class, ['productId' => $product->id])
-        ->call('selectOption', $b['id'], $b['options'][0]['id'])->assertSee('not currently available')->assertSee('A0-B1-C0')
+        ->call('selectOption', $b['id'], $b['options'][0]['id'])->assertDontSee('not currently available')->assertSee('A0-B1-C0')
         ->assertSet('runtime.selections.'.$a['id'], $a['options'][0]['id']);
 });
 
@@ -146,6 +161,47 @@ test('Preview reauthorizes and rejects a Product outside its currently assigned 
     $preview->call('refreshDefinition')->assertForbidden();
 });
 
+test('Preview opens the selected dashboard Product and restores the ordered fallback when cleared', function () {
+    [$configurator, $selected] = publicConfigurationFixture();
+    $selected->group->update(['sort_order' => 10]);
+    Group::factory()->create(['configurator_id' => $configurator->id, 'sort_order' => -1]);
+    $firstGroup = Group::factory()->create(['configurator_id' => $configurator->id, 'sort_order' => 0]);
+    Product::factory()->for($firstGroup)->create(['product_code' => 'ZZ-LAST']);
+    $first = Product::factory()->for($firstGroup)->create(['product_code' => 'AA-FIRST']);
+    Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id, 'sort_order' => 1]))->create(['product_code' => '00-LATER-GROUP']);
+
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    $preview->assertSee('View in dashboard catalog')->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null)
+        ->call('chooseProduct', $selected->id)->assertSee(route('catalog.products.show', $selected), false)
+        ->call('chooseProduct', null)->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null);
+});
+
+test('Preview dashboard links respect catalog visibility and current Group assignments', function () {
+    [$configurator, $product] = publicConfigurationFixture();
+    $hiddenParent = Group::factory()->create(['is_active' => false]);
+    $hiddenGroup = Group::factory()->for($hiddenParent, 'parent')->create(['configurator_id' => $configurator->id, 'sort_order' => -2]);
+    $hidden = Product::factory()->for($hiddenGroup)->create();
+    $inactiveGroup = Group::factory()->create(['configurator_id' => $configurator->id, 'sort_order' => -1]);
+    $inactive = Product::factory()->for($inactiveGroup)->create(['is_active' => false]);
+
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    $preview->assertSee(route('catalog.products.show', $product), false)
+        ->assertDontSee(route('catalog.products.show', $hidden), false)->assertDontSee(route('catalog.products.show', $inactive), false)
+        ->call('chooseProduct', $inactive->id)->assertDontSee('View in dashboard catalog')->assertSee('The selected Product is not available for this Configurator in the dashboard catalog.')
+        ->call('chooseProduct', $product->id);
+
+    $product->group->update(['configurator_id' => null]);
+    $preview->call('refreshDefinition')->assertDontSee('View in dashboard catalog')->assertDontSee(route('catalog.products.show', $product), false);
+});
+
+test('Preview explains when no assigned dashboard Product is available', function () {
+    $configurator = Configurator::factory()->create();
+    Product::factory()->create();
+
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->assertDontSee('View in dashboard catalog')->assertSee('No dashboard Product is available in the assigned Groups.')->assertSet('productId', null);
+});
+
 test('unassigned Product pages keep facts separate from the unavailable configuration', function () {
     $product = Product::factory()->create(['product_name' => 'Real imported name', 'product_code' => 'REAL-001']);
     $this->get(route('catalog.products.show', $product))->assertOk()->assertSee('Real imported name')->assertSee('REAL-001')->assertSee('Configuration is not available');
@@ -160,6 +216,31 @@ test('Preview initializes and reacts to the actual form paths used by the browse
     $preview->set('formState.choices.'.$a['id'], $a['options'][1]['id'])->assertSee('A1-B0-C0');
     $preview->set('formState.product', null)->assertSet('productId', null)->assertDontSee('A1-B0-C0');
     expect($preview->get('formState'))->toHaveKey('product');
+});
+
+test('Preview Product search ignores casing while preserving codes and assigned Group scope', function () {
+    [$configurator, $product] = publicConfigurationFixture();
+    $mixed = Product::factory()->for($product->group)->create(['product_code' => 'pRoDuCt-MiXeD']);
+    Product::factory()->create(['product_code' => 'PRODUCT-FOREIGN']);
+    $connection = DB::connection();
+    if ($connection->getDriverName() === 'sqlite') {
+        $connection->statement('PRAGMA case_sensitive_like = ON');
+    }
+
+    try {
+        $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+        $select = $preview->instance()->form->getComponentByStatePath('product');
+
+        foreach (['product-', 'PRODUCT-', 'pRoDuCt-'] as $search) {
+            expect($select->getSearchResults($search))->toBe([$product->id => 'PRODUCT-ONLY', $mixed->id => 'pRoDuCt-MiXeD']);
+        }
+        expect($select->getSearchResults("' OR 1=1 --"))->toBe([]);
+        expect($mixed->fresh()->product_code)->toBe('pRoDuCt-MiXeD');
+    } finally {
+        if ($connection->getDriverName() === 'sqlite') {
+            $connection->statement('PRAGMA case_sensitive_like = OFF');
+        }
+    }
 });
 
 test('saved Preview marks mutations stale and refreshes with an optional engine trace without writes', function () {

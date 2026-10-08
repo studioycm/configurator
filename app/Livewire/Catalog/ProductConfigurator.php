@@ -5,6 +5,7 @@ namespace App\Livewire\Catalog;
 use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorEvaluationResult;
 use App\Models\Product;
+use App\Services\AdminAppearance;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
 use Illuminate\Contracts\View\View;
@@ -72,6 +73,10 @@ class ProductConfigurator extends Component
 
     public function render(): View
     {
-        return view('livewire.catalog.product-configurator', ['result' => $this->result(), 'product' => Product::with('group.filters')->findOrFail($this->productId)]);
+        return view('livewire.catalog.product-configurator', [
+            'result' => $this->result(),
+            'product' => Product::with('group.filters')->findOrFail($this->productId),
+            'showLoadingIndicator' => app(AdminAppearance::class)->current()['show_configurator_loading_indicator'],
+        ]);
     }
 }
