@@ -20,7 +20,7 @@
         <p role="status" class="rounded-md border border-amber-300 p-2 text-sm">Saved changes are available. Refresh to retest your choices.</p>
     @endif
     <div class="catalog-configurator-preview-layout">
-        <div class="min-w-0 space-y-3">
+        <div class="catalog-configurator-preview-controls min-w-0 space-y-3">
             @if ($result)
                 <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
                     <x-catalog.configuration-result :result="$result" inline :show-diagnostics="false" />

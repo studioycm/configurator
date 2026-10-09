@@ -10,6 +10,7 @@ use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
@@ -113,6 +114,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
             ->getSearchResultsUsing(fn (string $search): array => $this->products()->whereRaw('LOWER(product_code) LIKE ?', ['%'.Str::lower($search).'%'])->orderBy('product_code')->limit(50)->pluck('product_code', 'id')->all())
             ->getOptionLabelUsing(fn ($value): ?string => $this->products()->find($value)?->product_code)
             ->live()->afterStateUpdated(fn ($state) => $this->chooseProduct($state))->columnSpanFull()];
+        $attributeFields = [];
         if ($this->productId !== null) {
             $result = $this->preparedResult ?? app(ConfiguratorEngine::class)->evaluate($this->input(['kind' => 'Reevaluate']));
             $attributes = $result->definition?->attributes ?? [];
@@ -130,10 +132,15 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
                     }
                 }
                 $field = $attribute->inputType === 'select' ? Select::make('choices.'.$attribute->id)->selectablePlaceholder(false) : ToggleButtons::make('choices.'.$attribute->id)->inline();
-                $fields[] = $field->label($state['label'])->options($options)
+                $attributeFields[] = $field->label($state['label'])->options($options)
                     ->disableOptionWhen(fn ($value): bool => ! in_array((string) $value, $state['legal'], true))
                     ->live()->afterStateUpdated(fn ($state) => $this->selectOption($attribute->id, (string) $state))->columnSpanFull();
             }
+        }
+
+        if ($attributeFields !== []) {
+            $fields[] = Group::make($attributeFields)->columns(1)->columnSpanFull()
+                ->extraAttributes(['class' => 'catalog-configurator-preview-attributes fi-fixed-positioning-context']);
         }
 
         return $schema->statePath('formState')->columns(1)->inlineLabel()->components($fields);
