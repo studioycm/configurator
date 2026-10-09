@@ -34,10 +34,10 @@ class TablePresentation
         $configuratorWorkspace = method_exists($component, 'workspaceVisibilityActions');
         if ($configuratorWorkspace) {
             $table->selectable(fn (): bool => $component->showSelection);
-            $table->reorderable($table->getReorderColumn(), condition: false, direction: $table->getReorderDirection());
+            $table->authorizeReorder(fn (): bool => auth()->user()?->can('manage-catalog') ?? false);
         }
         if (! method_exists($component, 'scopedSearchColumns')) {
-            $table->pushFilters([Filter::make('workspaceSearch')->schema([Hidden::make('scope')->default('all')])]);
+            $table->pushFilters([Filter::make('workspaceSearch')->schema([Hidden::make('scope')->default('all')])->indicateUsing(fn (array $data): array => [])]);
             $table->searchUsing(function (Builder $query, string $search) use ($table, $component): void {
                 $scope = $component->tableFilters['workspaceSearch']['scope'] ?? 'all';
                 if (! is_string($scope) || ! array_key_exists($scope, self::searchColumns($table))) {
@@ -119,9 +119,13 @@ class TablePresentation
             }
             if ($configuratorWorkspace) {
                 array_push($remainingActions, ...$component->workspaceVisibilityActions());
-            } elseif (filled($table->getReorderColumn())) {
+            } elseif (filled($table->getReorderColumn()) && ! method_exists($component, 'rowOrderingActions')) {
                 $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['class' => 'catalog-reorder-trigger'], merge: true));
                 $remainingActions[] = $table->getReorderRecordsTriggerAction(false)->label('Reorder rows')->visible(fn (): bool => $table->isReorderable());
+            }
+            if (filled($table->getReorderColumn()) && method_exists($component, 'rowOrderingActions')) {
+                $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['style' => 'display: none'], merge: true));
+                array_push($directActions, ...$component->rowOrderingActions());
             }
             if ($remainingActions !== []) {
                 $menu = ActionGroup::make($remainingActions)->label('More actions')->icon(Heroicon::OutlinedEllipsisHorizontal)->iconButton()->tooltip('More actions');

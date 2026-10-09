@@ -3,20 +3,18 @@
 namespace App\Filament\Resources\Configurators\Pages;
 
 use App\Filament\Resources\Configurators\ConfiguratorResource;
-use App\Filament\Resources\InteractsWithCompactListHeader;
-use App\Filament\Resources\InteractsWithScopedTableSearch;
-use Filament\Actions\Action;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Resources\SplitListRecords;
 
-class ListConfigurators extends ListRecords
+class ListConfigurators extends SplitListRecords
 {
-    use InteractsWithCompactListHeader;
-    use InteractsWithScopedTableSearch;
-
     protected static string $resource = ConfiguratorResource::class;
+
+    protected bool $inlineCreationEnabled = true;
+
+    protected bool $inlineEditingEnabled = false;
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('create')->label('Create configurator')->url(ConfiguratorResource::getUrl('create'))];
+        return [];
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Groups\Schemas;
 
 use App\Filament\Resources\FormHints;
+use App\Filament\Resources\FormOrderControls;
+use App\Filament\Resources\Groups\Pages\EditGroup;
 use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\GroupFilter;
@@ -11,7 +13,6 @@ use App\Services\CatalogDiscovery;
 use App\Services\CatalogImportParser;
 use App\Services\CatalogPolicy;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,6 +25,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Component;
 
 class GroupForm
 {
@@ -49,12 +51,15 @@ class GroupForm
         $sections = self::settingsSections();
         $leaf = fn (?Group $record): bool => $record !== null && ! $record->children()->exists();
 
-        return $schema->columns(1)->components([Tabs::make('Group settings')->key('group-settings')->columnSpanFull()->tabs([
-            Tab::make('Details')->columns(2)->schema($details),
-            Tab::make('Filters')->schema($sections[3]->getDefaultChildComponents())->visible($leaf),
-            Tab::make('Presets')->schema($sections[4]->getDefaultChildComponents())->visible($leaf),
-            Tab::make('Presentation')->schema([$sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
-        ])]);
+        return $schema->columns(1)->components([Tabs::make('Group settings')->key('group-settings')->columnSpanFull()
+            ->activeTab(fn (Component $livewire): int => $livewire instanceof EditGroup && $livewire->initialTab === 'form.group-settings.presentation::data::tab' ? 4 : 1)
+            ->persistTabInQueryString(fn (Component $livewire): ?string => $livewire instanceof EditGroup && $livewire->isItemDrawerEditor() ? null : 'group-tab')
+            ->tabs([
+                Tab::make('Details')->columns(2)->schema($details),
+                Tab::make('Filters')->schema($sections[3]->getDefaultChildComponents())->visible($leaf),
+                Tab::make('Presets')->schema($sections[4]->getDefaultChildComponents())->visible($leaf),
+                Tab::make('Presentation')->schema([$sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
+            ])]);
     }
 
     /** @return list<Section> */
@@ -115,14 +120,14 @@ class GroupForm
                         $set('catalog_settings.filters', $rows);
                         $set('filter_properties_to_add', []);
                     })->columnSpanFull(),
-                Repeater::make('catalog_settings.filters')->label('Filters')->hintAction(FormHints::make('Only these properties appear as discovery filters. Omitted source values remain available.'))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
+                FormOrderControls::make('catalog_settings.filters')->label('Filters')->hintAction(FormHints::make('Only these properties appear as discovery filters. Omitted source values remain available.'))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
                     Select::make('property_key')->label('Product property')->options($properties)->required()->searchable()->live()
                         ->afterStateUpdated(function (Set $set, mixed $state, ?Group $record): void {
                             $set('values', array_map(fn (string $value): array => ['value' => $value, 'label' => ''], self::values($record, $state)));
                         }),
                     TextInput::make('label')->label('Filter label')->required()->maxLength(255),
-                    Repeater::make('values')->label('Value order and labels')->defaultItems(0)->addable(false)->reorderableWithButtons()->columnSpanFull()
+                    FormOrderControls::make('values')->label('Value order and labels')->defaultItems(0)->addable(false)->reorderableWithButtons()->columnSpanFull()
                         ->hintAction(FormHints::make('Canonical values are read-only. Remove stale values to repair the draft; omitted current values still appear after your ordered values.'))
                         ->schema([
                             TextInput::make('value')->label('Source value')->readOnly()->required(),
@@ -131,7 +136,7 @@ class GroupForm
                 ])->columns(2),
             ])->columnSpanFull(),
             Section::make('SubGroups')->schema([
-                Repeater::make('catalog_settings.sub_groups')->label('Presets')->hintAction(FormHints::make('Named presets select an allowed set for one property. They do not create child Groups or duplicate Products.'))->defaultItems(0)->reorderableWithButtons()->schema([
+                FormOrderControls::make('catalog_settings.sub_groups')->label('Presets')->hintAction(FormHints::make('Named presets select an allowed set for one property. They do not create child Groups or duplicate Products.'))->defaultItems(0)->reorderableWithButtons()->schema([
                     Hidden::make('id'),
                     TextInput::make('label')->label('Preset label')->required()->maxLength(255),
                     Select::make('property_key')->label('Product property')->options($properties)->required()->searchable()->live(),
@@ -145,7 +150,7 @@ class GroupForm
             Section::make('Results')->hidden()->schema([
                 TextInput::make('catalog_settings.result_settings.default_page_size')->label('Default products per page')->integer()->required()->default(10)->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE),
                 Toggle::make('catalog_settings.result_settings.allow_page_size_change')->label('Let visitors change page size')->default(false)->live(),
-                Repeater::make('catalog_settings.result_settings.page_size_options')->label('Available page sizes')->reorderableWithButtons()
+                FormOrderControls::make('catalog_settings.result_settings.page_size_options')->label('Available page sizes')->reorderableWithButtons()
                     ->hintAction(FormHints::make('Include the default size when visitor changes are enabled. These choices are kept when the visitor control is disabled.'))
                     ->schema([TextInput::make('size')->label('Products per page')->integer()->required()->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE)])
                     ->default([['size' => 1], ['size' => 2], ['size' => 10]])->columnSpanFull(),

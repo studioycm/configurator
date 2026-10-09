@@ -13,6 +13,8 @@ use App\Models\Product;
 use App\Models\SubGroup;
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\Testing\TestAction;
 use Filament\Support\Enums\Width;
 use Livewire\Livewire;
 
@@ -43,7 +45,7 @@ test('split lists preserve catalog links alongside their inline record editor', 
     expect($link)->not->toBeNull();
     expect($link->record($record)->getUrl())->toBe(route($route, $record));
     expect($list->instance()->getTable()->getAction('select')->getLabel())->toBe($label);
-    $list->callTableAction('select', $record)->assertSet('selectedRecord', (string) $record->getKey());
+    $list->callAction(TestAction::make('select')->table($record))->assertSet('selectedRecord', (string) $record->getKey());
 })->with([
     [ListProducts::class, Product::class, 'catalog.products.show', 'View'],
     [ListGroups::class, Group::class, 'catalog.groups.show', 'Edit'],
@@ -52,7 +54,7 @@ test('split lists preserve catalog links alongside their inline record editor', 
 test('a bulk only header menu follows native selection visibility and keeps batch actions registered', function () {
     $list = Livewire::test(ListGroups::class);
     $table = $list->instance()->getTable();
-    $menu = $table->getHeaderActions()[0];
+    $menu = collect($table->getHeaderActions())->first(fn ($action): bool => $action instanceof ActionGroup);
 
     expect($menu->getExtraAttributes())->toMatchArray(['x-cloak' => true, 'x-show' => 'getSelectedRecordsCount()']);
     expect($table->getFlatBulkActions())->not->toBeEmpty();
@@ -151,11 +153,12 @@ test('metadata failure preserves the submitted draft and rolls back details too'
     expect($group->fresh()->name)->toBe('Original')->and($group->filters()->count())->toBe(0);
 });
 
-test('Group list action requests cannot bypass the dedicated domain save pages', function () {
+test('Group list create action opens an editor without bypassing its domain save', function () {
     $leaf = Group::factory()->create();
     Product::factory()->for($leaf)->create();
     $list = Livewire::test(ListGroups::class);
-    $list->callAction('create', data: ['name' => 'Forged child', 'parent_id' => null, 'configurator_id' => null, 'description' => null, 'sort_order' => 0]);
+    $list->callAction(TestAction::make('create')->table(), data: ['name' => 'Forged child', 'parent_id' => null, 'configurator_id' => null, 'description' => null, 'sort_order' => 0])
+        ->assertSet('isCreatingRecord', true);
     $this->assertDatabaseMissing('groups', ['name' => 'Forged child']);
 });
 
@@ -165,11 +168,11 @@ test('catalog administration links directly to the public catalog and each recor
 
     $this->get(GroupResource::getUrl())->assertSee('href="'.route('catalog.index').'"', false);
     Livewire::test(ListGroups::class)
-        ->assertTableActionHasUrl('openCatalog', route('catalog.groups.show', $group), $group);
+        ->assertActionHasUrl(TestAction::make('openCatalog')->table($group), route('catalog.groups.show', $group));
     Livewire::test(EditGroup::class, ['record' => $group->id])
         ->assertActionHasUrl('openCatalog', route('catalog.groups.show', $group));
     Livewire::test(ListProducts::class)
-        ->assertTableActionHasUrl('openCatalog', route('catalog.products.show', $product), $product);
+        ->assertActionHasUrl(TestAction::make('openCatalog')->table($product), route('catalog.products.show', $product));
 });
 
 test('one editor save advances one revision for details and result settings together', function () {

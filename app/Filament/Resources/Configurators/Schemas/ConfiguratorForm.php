@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Configurators\Schemas;
 
 use App\Filament\Resources\FormHints;
+use App\Filament\Resources\FormOrderControls;
 use App\Models\CatalogContextSettings;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
@@ -59,7 +60,7 @@ class ConfiguratorForm
 
     public static function contextChoices(string $dimension, string $label): Repeater
     {
-        return Repeater::make('context_schema.'.$dimension)->label($label)
+        return FormOrderControls::make('context_schema.'.$dimension)->label($label)
             ->table([TableColumn::make('Label'), TableColumn::make('Stable value')])->compact()->schema([
                 TextInput::make('label')->required()->maxLength(255),
                 TextInput::make('value')->label('Stable value')->required()->maxLength(255)->distinct(),

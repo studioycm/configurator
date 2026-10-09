@@ -1,6 +1,6 @@
 # Select population, Product editing, and inline item-drawer review
 
-Date: **2026-10-08**. This extends the [FilamentExamples adoption proposal](FILAMENT_EXAMPLES_ADOPTION_PLAN.md). It inventories current application source and records recommendations **for user approval**. No selects, resource forms, drawer editors, links, dependencies, or database records were changed.
+Research date: **2026-10-08**. This extends the [FilamentExamples adoption proposal](FILAMENT_EXAMPLES_ADOPTION_PLAN.md). The original inventory below records recommendations for approval; the approved implementation checkpoint at the end distinguishes subsequent changes from those proposals.
 
 ## 1. Meaning and observed data
 
@@ -182,3 +182,17 @@ Future checks: opening card properties lands on Presentation; Filters/Presets li
 ## 9. Approval choices
 
 The user can approve IDs or groups of IDs rather than a blanket preload-everything change. Recommended changed search-only fields first: **S02, S03, S04, S05, S16**, plus retaining bounded relationship filters **F01–F04**. Existing complete small lists mostly need no visible change. D05 deserves a separate large-vocabulary search improvement; first-ten suggestions alone would otherwise hide valid choices. The first drawer-editor wave is Shared Option, local Attribute/Option settings, Group settings, and card presentation. Product imported-field ownership remains open; Rule/MappingSet/Effect reuse follows the dedicated workspace session.
+
+## 10. Approved implementation checkpoint — 2026-10-09
+
+The user selected **Shared Options first, then Groups/Presentation**. Count drawers now reuse `EditOption` and `EditGroup` beneath their existing tables, with row clicks and an explicit local-edit action. Selected card-property array rows open their real parent Group on Presentation; empty leaf Groups also have an Edit Presentation action. Parent Groups have no Presentation editor. These are existing domain-owned editors, not separate persistence paths or synthetic property records.
+
+`ItemCountColumn` explicitly opts into local editing. Status/dependency/batch inspection drawers retain their full-editor links without local editors, because changing their external scope selector would otherwise discard a mounted draft. Child editors recheck fresh base-list membership at mount, hydration and save, independently of search/page state. Successful saves refresh the matching drawer; unrelated drafts are retained. Failed validation and stale-record failures preserve the draft. Embedded Option deletion is omitted; usage inspection remains available.
+
+Row switching and drawer closing use inline **Keep editing / Discard drafts** choices, including the native footer Close, header X, Escape and backdrop. The parent split-list guard only inspects its own right editor and excludes modal transitions. Desktop width controls and a 390px viewport were checked with an unsaved Group draft retained and no page overflow; browser review did not save or reorder development records.
+
+Group tabs now persist with `group-tab` outside drawers. The verified Presentation ID is **`form.group-settings.presentation::data::tab`**; the shorter IDs in the original proposal above were unverified examples. Drawer tabs use an explicit initial Presentation selection without modifying the parent URL. Local Attribute/Option settings, Rules/MappingSets/Effects and Product drawer editors remain outside this first implementation wave. The selector preload inventory and measured form deferral remain separate decisions.
+
+The same implementation adds header-plus creation in the right pane for Groups and Configurators. Group creation selects its new editor; Configurator creation opens its dedicated manage page. Resource and existing Configurator table/editor layouts share a keyboard-accessible draggable divider with saved one-third/half/two-thirds stops and mobile stacking. Saved order scopes gain drag controls alongside default up/down controls: sibling Groups, Configurator Attributes/local Options/Rules, their matching item drawers, mapping sets, selected card-property order, and existing ordered form repeaters. Shared libraries, Products and the Configurators resource gain no artificial order.
+
+Regression coverage is in `GroupConfiguratorCreationTest`, `RowOrderingTest`, `ItemListOrderingTest` and `ItemDrawerEditorsTest`, alongside the existing affected resource/workspace/search suites. No dependencies or database schema were changed. Publication verification on 2026-10-09 passed the full default suite (521 tests / 3,172 assertions), the guarded disposable MySQL suite (23 tests / 108 assertions), all 28 JavaScript tests, Pint, FilaCheck (zero issues), and the production asset build. Git history records the publication of this checkpoint.

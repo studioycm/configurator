@@ -10,6 +10,7 @@ use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorAttributeForm;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
+use App\Filament\Resources\FormOrderControls;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\ItemCountColumn;
 use App\Filament\Resources\TablePresentation;
@@ -394,7 +395,7 @@ class AttributesRelationManager extends RelationManager
                             ->schema(fn (): array => ConfiguratorAttributeForm::reviewComponents($this->owner()))->columnSpanFull(),
                     ])->action(fn (array $data) => $this->includeAttributes($data['selected'], $data['review'])),
                 Action::make('codeOrder')->label('Code order')->authorize('manage-catalog')
-                    ->schema([Repeater::make('order')->label('Configuration code order')->schema([Hidden::make('id'), TextInput::make('label')->readOnly()->dehydrated(false)])->addable(false)->deletable(false)->reorderableWithButtons()])
+                    ->schema([FormOrderControls::make('order')->label('Configuration code order')->schema([Hidden::make('id'), TextInput::make('label')->readOnly()->dehydrated(false)])->addable(false)->deletable(false)->reorderableWithButtons()])
                     ->fillForm(fn (): array => ['order' => $this->owner()->attributes()->with('attribute')->orderBy('code_order')->get()->map(fn (ConfiguratorAttribute $attribute): array => ['id' => $attribute->id, 'label' => $attribute->label_override ?? $attribute->attribute->label])->all()])
                     ->action(fn (array $data) => $this->saveCodeOrder(array_column($data['order'], 'id'))),
             ])->recordActions([
@@ -518,7 +519,7 @@ class AttributesRelationManager extends RelationManager
     public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
     {
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->reorder(auth()->user(), $this->owner(), 'attributes', $order), $this->getMountedActionSchema());
-        $this->resetTable();
+        $this->saved();
     }
 
     /** @param list<int|string> $ids */

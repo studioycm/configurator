@@ -25,6 +25,8 @@ abstract class SplitListRecords extends ListRecords
 
     protected bool $inlineCreationEnabled = false;
 
+    protected bool $inlineEditingEnabled = true;
+
     #[Locked]
     public bool $isCreatingRecord = false;
 
@@ -58,10 +60,23 @@ abstract class SplitListRecords extends ListRecords
     {
         $resource = static::getResource();
         $model = $resource::getEloquentQuery()->findOrFail($record);
-        abort_unless($resource::hasPage('edit') ? $resource::canEdit($model) : $resource::canView($model), 403);
+        $page = $resource::hasPage('edit') ? 'edit' : 'view';
+        abort_unless($page === 'edit' ? $resource::canEdit($model) : $resource::canView($model), 403);
         $this->isCreatingRecord = false;
+
+        if (! $this->inlineEditingEnabled) {
+            $this->redirect($resource::getUrl($page, ['record' => $model]));
+
+            return;
+        }
+
         $this->selectedRecord = (string) $model->getKey();
         $this->dispatch('catalog-editor-opened');
+    }
+
+    public function hasEditorPane(): bool
+    {
+        return $this->inlineEditingEnabled || $this->isCreatingRecord;
     }
 
     /** @param list<int> $ids */
@@ -80,7 +95,7 @@ abstract class SplitListRecords extends ListRecords
 
             return static::getResource()::getPages()['create']->getPage();
         }
-        if ($this->selectedRecord === null) {
+        if (! $this->inlineEditingEnabled || $this->selectedRecord === null) {
             return null;
         }
         $resource = static::getResource();
@@ -97,8 +112,6 @@ abstract class SplitListRecords extends ListRecords
     protected function makeTable(): Table
     {
         $table = parent::makeTable();
-        $hasEditPage = static::getResource()::hasPage('edit');
-        $otherActions = array_filter($table->getRecordActions(), fn (Action|ActionGroup $action): bool => ! ($action instanceof Action && in_array($action->getName(), ['edit', 'view'], true)));
 
         if ($this->inlineCreationEnabled) {
             $label = 'Create '.static::getResource()::getModelLabel();
@@ -109,6 +122,13 @@ abstract class SplitListRecords extends ListRecords
                 ...$table->getHeaderActions(),
             ]);
         }
+
+        if (! $this->inlineEditingEnabled) {
+            return $table;
+        }
+
+        $hasEditPage = static::getResource()::hasPage('edit');
+        $otherActions = array_filter($table->getRecordActions(), fn (Action|ActionGroup $action): bool => ! ($action instanceof Action && in_array($action->getName(), ['edit', 'view'], true)));
 
         return $table
             ->recordUrl(null)

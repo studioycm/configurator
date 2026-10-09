@@ -4,13 +4,13 @@ namespace App\Filament\Resources\Configurators\Schemas;
 
 use App\ConfigInputType;
 use App\Filament\Resources\FormHints;
+use App\Filament\Resources\FormOrderControls;
 use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\Option;
 use App\Services\ConfiguratorInclusionDrafts;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -72,7 +72,7 @@ class ConfiguratorAttributeForm
                 TextInput::make('label_override')->label('Local label')->maxLength(255)->hintAction(FormHints::make('Leave empty to use the shared Attribute label.')),
                 Textarea::make('help_text')->label('Local help')->maxLength(1000)->rows(3),
             ]),
-            ...($withOptions ? [Repeater::make('options')->label('Included Options')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
+            ...($withOptions ? [FormOrderControls::make('options')->label('Included Options')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                 Select::make('option_id')->label('Canonical Option')->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()

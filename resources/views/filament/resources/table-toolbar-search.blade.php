@@ -13,6 +13,7 @@
                     'maxlength' => 1000,
                     'placeholder' => $table->getSearchPlaceholder(),
                     'type' => 'search',
+                    'disabled' => $this->isTableReordering(),
                     'wire:key' => $this->getId().'.table.tableSearch.field.input',
                     $wireModelAttribute => 'tableSearch',
                     'x-bind:id' => '$id(\'input\')',

@@ -7,6 +7,7 @@ use App\Models\MappingSet;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleDraft;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -55,11 +56,18 @@ test('matrix saves complete sets preserves identities and accepts partial covera
     $originalSet = $rule->mappingSets()->sole()->id;
     $draft = app(ConfiguratorRuleDraft::class)->fromRule($data['rules'][0]);
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callTableAction('edit', $rule)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
+    $manager->callAction(TestAction::make('edit')->table($rule))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($rule->mappingSets()->sole()->id)->toBe($originalSet);
     $draft['sets'][] = ['id' => 'new:other', 'label' => 'Overlapping target', 'source_option_ids' => [$data['attributes'][0]['options'][1]['id']], 'target_option_ids' => $draft['sets'][0]['target_option_ids']];
-    $manager->callTableAction('edit', $rule)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
+    $manager->callAction(TestAction::make('edit')->table($rule))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($rule->mappingSets()->count())->toBe(2)->and($rule->mappingSets()->orderBy('sort_order')->first()->id)->toBe($originalSet);
+
+    $manager->call('reloadEditor');
+    $sets = $manager->get('editorData.sets');
+    $manager->set('editorData.sets', [$sets[1], $sets[0]])->call('saveEditor')->assertHasNoErrors()->call('reloadEditor');
+    expect(array_column($manager->get('editorData.sets'), 'id'))->toBe([$sets[1]['id'], $sets[0]['id']]);
+    expect($manager->get('editorData.sets.0.source_option_ids'))->toBe($sets[1]['source_option_ids']);
+    expect($manager->get('editorData.sets.1.target_option_ids'))->toBe($sets[0]['target_option_ids']);
 });
 
 test('mapping-set labels preserve the complete text through editor save and reload', function (string $label) {
@@ -93,7 +101,7 @@ test('invalid matrix leaves the entire saved aggregate unchanged and keeps the s
         $draft['sets'][0]['id'] = '999999';
     }
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $rule)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(form: 'editorForm');
+        ->callAction(TestAction::make('edit')->table($rule))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(form: 'editorForm');
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
     expect($manager->get('editorData.label'))->toBe('Unsaved repair');
 })->with(['empty', 'duplicate', 'driver', 'cycle', 'foreign set']);
@@ -137,7 +145,7 @@ test('advanced action persists typed context and grouped option conditions with 
     $draft = app(ConfiguratorRuleDraft::class)->fromRule($before['rules'][0]);
     $draft['label'] = 'Edited advanced rule';
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callTableAction('edit', $configurator->rules()->sole())->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
+    $manager->callAction(TestAction::make('edit')->table($configurator->rules()->sole()))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     $after = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     expect($after['rules'][0]['conditions'])->toBe($before['rules'][0]['conditions'])
         ->and($after['rules'][0]['effects'])->toBe($before['rules'][0]['effects'])->and($after['rules'][0]['label'])->toBe('Edited advanced rule');
@@ -152,10 +160,10 @@ test('a forged unknown Builder block cannot be discarded by schema dehydration i
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
 });
 
-test('ordering visibility preserves the filtered list and never enters exclusive reorder mode', function () {
+test('up down visibility preserves the filtered list without entering drag mode', function () {
     [$configurator, $data] = ruleEditorFixture();
     Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->set('tableSearch', 'not a matching rule')->call('toggleTableReordering')
+        ->set('tableSearch', 'not a matching rule')->call('toggleOrderControls')
         ->assertSet('tableSearch', 'not a matching rule')->assertSet('showOrderControls', false)->assertSet('isTableReordering', false)
         ->assertCanNotSeeTableRecords($configurator->rules);
 });
@@ -168,7 +176,7 @@ test('context operator changes keep the previous operand visible until explicitl
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
     $before = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $configurator->rules()->sole());
+        ->callAction(TestAction::make('edit')->table($configurator->rules()->sole()));
     $blockKey = array_key_first($manager->get('editorData.condition_blocks'));
     $path = 'editorData.condition_blocks.'.$blockKey.'.data.';
 

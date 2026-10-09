@@ -1,1 +1,1 @@
-<livewire:catalog.item-list-drawer :list-key="$listKey" :parent-id="$parentId" :key="'items-'.$listKey.'-'.$parentId" />
+<livewire:catalog.item-list-drawer :list-key="$listKey" :parent-id="$parentId" :allow-local-editing="$allowLocalEditing ?? false" :key="'items-'.$listKey.'-'.$parentId.'-'.(($allowLocalEditing ?? false) ? 'editable' : 'readonly')" />

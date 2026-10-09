@@ -13,6 +13,7 @@ use App\Models\Option;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Value;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Livewire\Livewire;
 
@@ -53,9 +54,9 @@ test('matched counts include every page and update only when pending filters are
 });
 
 test('empty resource lists keep a visible zero count and their creation action', function () {
-    Livewire::test(ListValues::class)->assertSee('0 total')->assertTableActionExists('create');
-    Livewire::test(ListGroups::class)->assertSee('0 total')->assertActionExists('create');
-    Livewire::test(ListConfigurators::class)->assertSee('0 total')->assertActionExists('create');
+    Livewire::test(ListValues::class)->assertSee('0 total')->assertActionExists(TestAction::make('create')->table());
+    Livewire::test(ListGroups::class)->assertSee('0 total')->assertActionExists(TestAction::make('create')->table());
+    Livewire::test(ListConfigurators::class)->assertSee('0 total')->assertActionExists(TestAction::make('create')->table());
 });
 
 test('an applied tag remains visible in the count even when every record matches', function () {

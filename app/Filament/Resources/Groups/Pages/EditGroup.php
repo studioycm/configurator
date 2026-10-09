@@ -7,6 +7,7 @@ use App\Actions\SaveGroupSettings;
 use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Groups\Schemas\GroupForm;
 use App\Filament\Resources\InteractsWithBatchEditor;
+use App\Filament\Resources\InteractsWithItemDrawerEditor;
 use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
@@ -16,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class EditGroup extends EditRecord
 {
-    use InteractsWithBatchEditor;
+    use InteractsWithBatchEditor {
+        beforeSave as protected beforeSaveBatchEditor;
+    }
+    use InteractsWithItemDrawerEditor;
 
     protected string $view = 'filament.resources.record-editor';
 
@@ -41,9 +45,16 @@ class EditGroup extends EditRecord
     protected function afterSave(): void
     {
         $this->dispatch('catalog-record-saved');
-        $this->dispatch('catalog-editor-saved');
+        $this->dispatch('catalog-editor-saved')->self();
         $this->getRecord()->refresh();
         $this->fillForm();
+        $this->notifyItemDrawerSaved();
+    }
+
+    protected function beforeSave(): void
+    {
+        $this->assertItemDrawerMembership($this->getRecord()->getKey());
+        $this->beforeSaveBatchEditor();
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model

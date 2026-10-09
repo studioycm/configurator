@@ -7,6 +7,7 @@ use App\Actions\SaveCanonicalOption;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\InteractsWithBatchEditor;
+use App\Filament\Resources\InteractsWithItemDrawerEditor;
 use App\Filament\Resources\Options\OptionResource;
 use App\Services\CanonicalUsage;
 use Filament\Actions\Action;
@@ -16,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class EditOption extends EditRecord
 {
-    use InteractsWithBatchEditor;
+    use InteractsWithBatchEditor {
+        beforeSave as protected beforeSaveBatchEditor;
+    }
+    use InteractsWithItemDrawerEditor;
 
     protected string $view = 'filament.resources.record-editor';
 
@@ -26,7 +30,14 @@ class EditOption extends EditRecord
     {
         $this->rememberBatchEditor();
         $this->dispatch('catalog-record-saved');
-        $this->dispatch('catalog-editor-saved');
+        $this->dispatch('catalog-editor-saved')->self();
+        $this->notifyItemDrawerSaved();
+    }
+
+    protected function beforeSave(): void
+    {
+        $this->assertItemDrawerMembership($this->getRecord()->getKey());
+        $this->beforeSaveBatchEditor();
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
@@ -45,10 +56,17 @@ class EditOption extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        $actions = [
             Action::make('usage')->label('View usage')->authorize('manage-catalog')
                 ->modalHeading('Shared definition usage')->modalSubmitAction(false)->modalCancelActionLabel('Close')
                 ->modalContent(fn () => view('filament.resources.canonical-usage', ['usage' => app(CanonicalUsage::class)->report($this->getRecord())])),
+        ];
+        if ($this->isItemDrawerEditor()) {
+            return $actions;
+        }
+
+        return [
+            ...$actions,
             DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete shared option')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->modalDescription('Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.')
                 ->action(function (): void {

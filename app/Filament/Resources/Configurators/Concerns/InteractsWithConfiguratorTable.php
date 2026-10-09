@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Configurators\Concerns;
 
+use App\Filament\Resources\InteractsWithRowOrdering;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
 use App\Models\ConfiguratorRule;
@@ -20,8 +21,7 @@ use Livewire\Attributes\Locked;
 
 trait InteractsWithConfiguratorTable
 {
-    #[Locked]
-    public bool $showOrderControls = true;
+    use InteractsWithRowOrdering;
 
     #[Locked]
     public bool $showSelection = false;
@@ -38,12 +38,6 @@ trait InteractsWithConfiguratorTable
                 $this->resetValidation($path);
             }
         }
-    }
-
-    public function toggleTableReordering(): void
-    {
-        Gate::authorize('manage-catalog');
-        $this->showOrderControls = ! $this->showOrderControls;
     }
 
     public function toggleWorkspaceSelection(): void
@@ -68,9 +62,6 @@ trait InteractsWithConfiguratorTable
     public function workspaceVisibilityActions(): array
     {
         return [
-            Action::make('reorderRows')->authorize('manage-catalog')->icon(Heroicon::OutlinedArrowsUpDown)
-                ->label(fn (): string => $this->showOrderControls ? 'Reorder rows: hide controls' : 'Reorder rows: show controls')
-                ->action(fn () => $this->toggleTableReordering()),
             Action::make('toggleSelection')->authorize('manage-catalog')->icon(Heroicon::OutlinedCheckCircle)
                 ->label(fn (): string => $this->showSelection ? 'Hide selection' : 'Show selection')
                 ->action(fn () => $this->toggleWorkspaceSelection()),
@@ -83,7 +74,7 @@ trait InteractsWithConfiguratorTable
         return array_map(fn (int $direction): Action => Action::make($direction === -1 ? 'moveUp' : 'moveDown')
             ->label($direction === -1 ? 'Move up' : 'Move down')->authorize('manage-catalog')
             ->icon($direction === -1 ? Heroicon::OutlinedArrowUp : Heroicon::OutlinedArrowDown)->iconButton()
-            ->visible(fn (): bool => $this->showOrderControls)
+            ->visible(fn (): bool => $this->showOrderControls && ! $this->isTableReordering())
             ->disabled(fn (Model $record): bool => ! $this->usesWorkspaceOrder() || $this->workspaceNeighbor($record, $direction) === null)
             ->tooltip(function (Model $record) use ($direction): string {
                 if (! $this->usesWorkspaceOrder()) {
