@@ -360,7 +360,7 @@ class AttributesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with(['attribute', 'defaultOption.option.value'])->withCount('options'))
+        return TablePresentation::configure($table->heading('')->modifyQueryUsing(fn ($query) => $query->with(['attribute', 'defaultOption.option.value'])->withCount('options'))
             ->columns([
                 TextColumn::make('attribute.label')->label('Attribute')->searchable(['label_override', 'help_text'], query: fn ($query, string $search) => $query->where('label_override', 'like', '%'.$search.'%')->orWhere('help_text', 'like', '%'.$search.'%')->orWhereHas('attribute', fn ($query) => $query->where('label', 'like', '%'.$search.'%')->orWhere('key', 'like', '%'.$search.'%')))->wrap()->formatStateUsing(fn (ConfiguratorAttribute $record): string => $record->label_override ?? $record->attribute->label),
                 TextColumn::make('attribute.key')->label('Canonical key')->searchable()->toggleable(isToggledHiddenByDefault: true),

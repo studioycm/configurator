@@ -1,12 +1,5 @@
 {
     "mcpServers": {
-        "laravel-boost": {
-            "command": "/Users/studioycm/Library/Application Support/Herd/bin/php84",
-            "args": [
-                "/Users/studioycm/Herd/configurator/artisan",
-                "boost:mcp"
-            ]
-        },
         "herd": {
             "command": "/Users/studioycm/Library/Application Support/Herd/bin/php84",
             "args": [
@@ -15,6 +8,16 @@
             "env": {
                 "SITE_PATH": "/Users/studioycm/Herd/configurator"
             }
+        },
+        "phpstorm": {
+            "url": "http://127.0.0.1:64442/stream"
+        },
+        "laravel-boost": {
+            "command": "/Users/studioycm/Library/Application Support/Herd/bin/php84",
+            "args": [
+                "/Users/studioycm/Herd/configurator/artisan",
+                "boost:mcp"
+            ]
         }
     }
 }

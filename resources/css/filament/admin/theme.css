@@ -12,6 +12,13 @@
 .catalog-configurator-preview-diagnostics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
 .catalog-configurator-preview-form > .fi-sc { row-gap: 8px; }
 .catalog-configurator-preview-attributes > .fi-sc { row-gap: 8px; }
+.catalog-configurator-preview-attributes .fi-fo-field-label-content,
+.catalog-configurator-preview-attributes .fi-select-input-btn,
+.catalog-configurator-preview-attributes .fi-fo-toggle-buttons .fi-btn { font-size: 12px; line-height: 18px; }
+.catalog-configurator-preview-attributes .fi-fo-toggle-buttons { gap: 0; }
+.catalog-configurator-preview-attributes .fi-fo-toggle-buttons label.fi-color.fi-btn { position: relative; min-height: 24px !important; padding: 2px 6px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.catalog-configurator-preview-attributes .fi-fo-toggle-buttons-btn-ctn:not(:last-child) > label.fi-btn::after { content: ''; position: absolute; inset-block: 4px; inset-inline-end: 0; width: 1px; background: #94a3b8; }
+.catalog-configurator-preview-attributes .fi-fo-toggle-buttons label.fi-btn.fi-disabled { text-decoration: none !important; }
 .catalog-configurator-preview-form .fi-fo-field { grid-template-columns: minmax(0, 1fr); gap: 4px 12px; }
 .catalog-configurator-preview-form .fi-fo-field-content-col { grid-column: auto; min-width: 0; }
 @container (min-width: 580px) {

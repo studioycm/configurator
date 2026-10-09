@@ -8,6 +8,7 @@ use App\Models\ConfiguratorRule;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Forms\Components\Field;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -146,7 +147,7 @@ trait InteractsWithConfiguratorTable
     public function quickFiltersForm(Schema $schema): Schema
     {
         return $schema->statePath('tableFilters')->live()->columns(1)->components(fn (): array => collect($this->workspaceQuickFilterNames())->map(fn (string $name) => $this->getTable()->getFilter($name))
-            ->filter()->map(fn ($filter) => Group::make($filter->getSchemaComponents())->key('workspace-'.$this->getId().'-'.$filter->getName())->statePath($filter->getName()))->all()
+            ->filter()->map(fn ($filter) => Group::make(array_map(fn (Field $field): Field => (clone $field)->hiddenLabel(), $filter->getSchemaComponents()))->key('workspace-'.$this->getId().'-'.$filter->getName())->statePath($filter->getName()))->all()
         );
     }
 

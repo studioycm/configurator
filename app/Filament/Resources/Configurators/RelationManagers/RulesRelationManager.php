@@ -202,7 +202,7 @@ class RulesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with(['driverAttribute.attribute', 'targetAttribute.attribute', 'mappingSets', 'conditionGroups', 'conditions.sourceAttribute.attribute', 'conditions.optionReferences.configuratorOption.option', 'effects.targetAttribute.attribute', 'effects.optionReferences.configuratorOption.option'])->withCount(['mappingSets', 'effects']))
+        return TablePresentation::configure($table->heading('')->modifyQueryUsing(fn ($query) => $query->with(['driverAttribute.attribute', 'targetAttribute.attribute', 'mappingSets', 'conditionGroups', 'conditions.sourceAttribute.attribute', 'conditions.optionReferences.configuratorOption.option', 'effects.targetAttribute.attribute', 'effects.optionReferences.configuratorOption.option'])->withCount(['mappingSets', 'effects']))
             ->columns([
                 TextColumn::make('label')->wrap()->searchable(fn (): bool => ! $this->isTableReordering), TextColumn::make('kind')->badge()->searchable(),
                 TextColumn::make('summary')->label('When → Then')->state(fn (ConfiguratorRule $record): string => $record->workspaceSummary())

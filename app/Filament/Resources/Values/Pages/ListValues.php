@@ -21,7 +21,7 @@ class ListValues extends SplitListRecords
     public function inlineTagsForm(Schema $schema): Schema
     {
         return $schema->statePath('tableFilters.tags')->live()->components([
-            ValuesTable::tagFilterField()->label('Tags'),
+            ValuesTable::tagFilterField()->label('Tags')->hiddenLabel(),
         ]);
     }
 
