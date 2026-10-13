@@ -32,7 +32,7 @@ test('product lookup searches the physical product code and shows read only esca
     Livewire::test(ViewProduct::class, ['record' => $product->id])->assertSee('000ABC')->assertSee('Public caption')
         ->assertSeeInOrder(['Part1', 'one', 'Part2', '&lt;unsafe&gt;', 'Part10', 'ten'], false)
         ->assertDontSee('<unsafe>', false)->assertSee('Part28')->assertSee('a:1:{serialized}');
-    expect(ProductResource::canCreate())->toBeFalse()->and(ProductResource::canEdit($product))->toBeFalse()
+    expect(ProductResource::canCreate())->toBeFalse()->and(ProductResource::canEdit($product))->toBeTrue()
         ->and(Action::make('probe')->getModalWidth())->toBe(Width::FourExtraLarge);
 });
 
@@ -47,7 +47,7 @@ test('split lists preserve catalog links alongside their inline record editor', 
     expect($list->instance()->getTable()->getAction('select')->getLabel())->toBe($label);
     $list->callAction(TestAction::make('select')->table($record))->assertSet('selectedRecord', (string) $record->getKey());
 })->with([
-    [ListProducts::class, Product::class, 'catalog.products.show', 'View'],
+    [ListProducts::class, Product::class, 'catalog.products.show', 'Edit'],
     [ListGroups::class, Group::class, 'catalog.groups.show', 'Edit'],
 ]);
 

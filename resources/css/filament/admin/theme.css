@@ -197,6 +197,14 @@
 .catalog-workspace-splitter:hover::after, .catalog-workspace-splitter:focus-visible::after { background: var(--color-primary-400); }
 .catalog-workspace-splitter:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: -2px; }
 .dark .catalog-workspace-splitter::after { background: var(--color-gray-700); }
+
+.fi-fo-table-repeater.catalog-product-json > table { display: table; table-layout: fixed; }
+.fi-fo-table-repeater.catalog-product-json > table > thead { display: table-header-group; }
+.fi-fo-table-repeater.catalog-product-json > table > tbody { display: table-row-group; }
+.fi-fo-table-repeater.catalog-product-json > table > tbody > tr { display: table-row; padding: 0; }
+.fi-fo-table-repeater.catalog-product-json > table > thead > tr > th,
+.fi-fo-table-repeater.catalog-product-json > table > tbody > tr > td { padding: 4px 8px; }
+.fi-fo-table-repeater.catalog-product-json > table > tbody > tr > td { display: table-cell; overflow-wrap: anywhere; }
 .catalog-workspace-quick-filters { padding: .5rem .75rem; border-top: 1px solid var(--color-gray-200); }
 .catalog-workspace-quick-filters .fi-sc { gap: .5rem; }
 .catalog-workspace-quick-filters > .fi-sc { display: flex; flex-wrap: wrap; align-items: start; }
