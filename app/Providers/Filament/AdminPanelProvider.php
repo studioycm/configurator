@@ -69,7 +69,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.resources.workspace-assets'))
             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
             ->navigationItems([
-                NavigationItem::make('Open dashboard catalog')
+                NavigationItem::make('Product catalog')
                     ->sort(0)
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                     ->url(fn (): string => route('catalog.index')),

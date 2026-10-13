@@ -8,12 +8,14 @@ use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\InteractsWithBatchEditor;
+use App\Models\Attribute;
 use App\Services\CanonicalUsage;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
+/** @extends EditRecord<Attribute> */
 class EditAttribute extends EditRecord
 {
     use InteractsWithBatchEditor;
@@ -29,6 +31,10 @@ class EditAttribute extends EditRecord
         $this->dispatch('catalog-editor-saved');
     }
 
+    /**
+     * @param  Attribute  $record
+     * @param  array<string, mixed>  $data
+     */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
 
@@ -49,7 +55,7 @@ class EditAttribute extends EditRecord
             Action::make('usage')->label('View usage')->authorize('manage-catalog')
                 ->modalHeading('Shared definition usage')->modalSubmitAction(false)->modalCancelActionLabel('Close')
                 ->modalContent(fn () => view('filament.resources.canonical-usage', ['usage' => app(CanonicalUsage::class)->report($this->getRecord())])),
-            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete shared attribute')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete Attribute')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->modalDescription('Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.')
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());

@@ -19,7 +19,7 @@ class OptionForm
             Select::make('attribute_id')->label('Attribute')->required()->rules(['integer'])->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Attribute::where('label', 'like', '%'.$search.'%')->orWhere('key', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Attribute::find($value)?->label : null),
-            Select::make('value_id')->label('Master value')->required()->rules(['integer'])->searchable()
+            Select::make('value_id')->label('UI Name')->required()->rules(['integer'])->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Value::where('label', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Value $value): array => [$value->id => $value->label.' · #'.$value->id.($value->description ? ' · '.Str::limit($value->description, 70) : '')])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Value::find($value)?->label : null),
             TextInput::make('code')->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D')->hintAction(FormHints::make('Enter two ASCII letters or digits. Case and leading zeros are preserved; the code must be globally unique.')),

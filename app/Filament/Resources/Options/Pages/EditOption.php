@@ -9,12 +9,14 @@ use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\InteractsWithBatchEditor;
 use App\Filament\Resources\InteractsWithItemDrawerEditor;
 use App\Filament\Resources\Options\OptionResource;
+use App\Models\Option;
 use App\Services\CanonicalUsage;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
+/** @extends EditRecord<Option> */
 class EditOption extends EditRecord
 {
     use InteractsWithBatchEditor {
@@ -40,6 +42,10 @@ class EditOption extends EditRecord
         $this->beforeSaveBatchEditor();
     }
 
+    /**
+     * @param  Option  $record
+     * @param  array<string, mixed>  $data
+     */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
 
@@ -67,7 +73,7 @@ class EditOption extends EditRecord
 
         return [
             ...$actions,
-            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete shared option')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete Option')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->modalDescription('Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.')
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());

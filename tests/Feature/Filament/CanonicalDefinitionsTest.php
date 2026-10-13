@@ -25,6 +25,7 @@ use App\Services\CanonicalUsage;
 use App\Services\ConfiguratorDefinitionLoader;
 use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
+use Filament\Resources\Resource as FilamentResource;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -110,7 +111,9 @@ test('canonical forms create separate shared records and preserve exact manual O
 
 test('canonical resources reject access outside the existing administrator gate', function () {
     $this->actingAs(User::factory()->create());
-    foreach ([AttributeResource::class, ValueResource::class, OptionResource::class, ConfiguratorResource::class] as $resource) {
+    /** @var list<class-string<FilamentResource>> $resources */
+    $resources = [AttributeResource::class, ValueResource::class, OptionResource::class, ConfiguratorResource::class];
+    foreach ($resources as $resource) {
         expect($resource::canViewAny())->toBeFalse();
         $this->get($resource::getUrl())->assertForbidden();
     }
@@ -138,9 +141,13 @@ test('master value tags validate and filter the list with toggle choices', funct
     expect(fn () => app(SaveCanonicalDefinition::class)->handle($this->actor, $first, ['label' => 'Invalid', 'tags' => [['nested']]]))->toThrow(ValidationException::class);
     Livewire\Livewire::test(ListValues::class)
         ->assertCanSeeTableRecords([$first, $second])
+        ->assertDontSee('Tags: Material')
         ->filterTable('tags', ['values' => ['Material']])
+        ->assertSee('Tags: Material')
         ->assertCanSeeTableRecords([$first])->assertCanNotSeeTableRecords([$second])
-        ->filterTable('tags', ['values' => []])->assertCanSeeTableRecords([$first, $second]);
+        ->call('removeTableFilter', 'tags', 'values')
+        ->assertDontSee('Tags: Material')
+        ->assertCanSeeTableRecords([$first, $second]);
 });
 
 test('attribute list opens its existing editor and options beside the table', function () {
@@ -162,9 +169,9 @@ test('attribute options use canonical saves and reject duplicate codes', functio
     $manager = Livewire\Livewire::test(OptionsRelationManager::class, [
         'ownerRecord' => $attribute, 'pageClass' => EditAttribute::class,
     ]);
-    $manager->callTableAction('create', data: ['value_id' => $value->id, 'code' => 'Z9'])->assertHasNoTableActionErrors();
+    $manager->callAction(TestAction::make('create')->table(), data: ['value_id' => $value->id, 'code' => 'Z9'])->assertHasNoFormErrors();
     expect($attribute->options()->sole()->value_id)->toBe($value->id);
-    $manager->callTableAction('create', data: ['value_id' => Value::factory()->create()->id, 'code' => 'Z9'])->assertHasTableActionErrors(['code']);
+    $manager->callAction(TestAction::make('create')->table(), data: ['value_id' => Value::factory()->create()->id, 'code' => 'Z9'])->assertHasFormErrors(['code']);
     expect($attribute->options()->count())->toBe(1);
 });
 

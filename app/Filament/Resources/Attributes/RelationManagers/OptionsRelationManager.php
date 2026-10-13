@@ -28,6 +28,8 @@ class OptionsRelationManager extends RelationManager
 
     protected static string $relationship = 'options';
 
+    protected static ?string $title = 'Values';
+
     protected static bool $isLazy = false;
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
@@ -39,10 +41,10 @@ class OptionsRelationManager extends RelationManager
     {
         return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('value'))
             ->columns([
-                TextColumn::make('value.label')->label('Master value')->searchable(),
+                TextColumn::make('value.label')->label('UI Name')->searchable(),
                 TextColumn::make('code')->label('Code')->searchable()->toggleable(),
             ])->headerActions([
-                $this->optionAction('create')->label('Add option'),
+                $this->optionAction('create')->label('Add value'),
             ])->recordActions([
                 $this->optionAction('edit')->label('Edit')->fillForm(fn (Option $record): array => $record->only('value_id', 'code')),
                 DependencyActions::canonical(Action::make('remove'))->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
@@ -60,7 +62,7 @@ class OptionsRelationManager extends RelationManager
     {
         return Action::make($name)->authorize('manage-catalog')->schema([
             View::make('filament.forms.validation-summary'),
-            Select::make('value_id')->label('Master value')->required()->searchable()
+            Select::make('value_id')->label('UI Name')->required()->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Value::where('label', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Value $value): array => [$value->id => $value->label.' · #'.$value->id])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Value::find($value)?->label : null),
             TextInput::make('code')->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D'),

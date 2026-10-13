@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -19,8 +20,8 @@ class ValuesTable
     {
         return TablePresentation::configure($table->columns([
             TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
-            TextColumn::make('label')->label('Master value')->sortable()->toggleable()->searchable(),
-            TextColumn::make('description')->searchable()->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('label')->label('UI Name')->sortable()->toggleable()->searchable(),
+            TextColumn::make('description')->label('Specification')->searchable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('tags')->badge(),
             ItemCountColumn::make('options_count', 'Options', 'value-options')->sortable()->toggleable(),
             TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
@@ -34,6 +35,10 @@ class ValuesTable
                         $query->orWhereJsonContains('tags', $tag);
                     }
                 }));
+            })->indicateUsing(function (array $data): array {
+                $tags = array_values(array_filter($data['values'] ?? [], 'is_string'));
+
+                return $tags === [] ? [] : [Indicator::make('Tags: '.implode(', ', $tags))->removeField('values')];
             }),
         ])
             ->searchPlaceholder('Search master values')->defaultSort('label')->recordActions([Action::make('edit')->label('Edit')->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]), 'values', true);
