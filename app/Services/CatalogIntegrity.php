@@ -17,7 +17,7 @@ class CatalogIntegrity
     public function assertLeaf(Group $group): void
     {
         if ($group->children()->exists()) {
-            throw ValidationException::withMessages(['group_id' => 'Products and configurators belong to leaf Groups only.']);
+            throw ValidationException::withMessages(['group_id' => __('catalog.validation.products_and_configurators_belong_to_leaf_groups')]);
         }
     }
 
@@ -31,15 +31,15 @@ class CatalogIntegrity
         $parentId = $group->parent_id;
         while ($parentId !== null) {
             if ($parentId === $group->id || isset($visited[$parentId])) {
-                throw ValidationException::withMessages(['parent_id' => 'A Group cannot become its own ancestor.']);
+                throw ValidationException::withMessages(['parent_id' => __('catalog.validation.a_group_cannot_become_its_own_ancestor')]);
             }
             $visited[$parentId] = true;
             $parent = $groups->get($parentId);
             if ($parent === null) {
-                throw ValidationException::withMessages(['parent_id' => 'The selected parent Group no longer exists.']);
+                throw ValidationException::withMessages(['parent_id' => __('catalog.validation.the_selected_parent_group_no_longer_exists')]);
             }
             if ($parentId === $group->parent_id && ($parent->configurator_id !== null || $parent->products()->exists())) {
-                throw ValidationException::withMessages(['parent_id' => 'A Group containing Products or a configurator cannot become a parent.']);
+                throw ValidationException::withMessages(['parent_id' => __('catalog.validation.a_group_containing_products_or_a_configurator')]);
             }
             $parentId = $parent->parent_id;
         }

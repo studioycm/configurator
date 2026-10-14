@@ -44,7 +44,7 @@ class CatalogDiscovery
             if (isset($raw['version']) && ! in_array($raw['version'], [1, '1'], true)) {
                 $raw = [];
                 $adjusted = true;
-                $notices[] = 'This catalog link used an unsupported version and was reset.';
+                $notices[] = __('catalog.messages.this_catalog_link_used_an_unsupported_version_and_was_reset');
             }
             $selected = [];
             if (is_array($raw['filters'] ?? [])) {
@@ -97,7 +97,7 @@ class CatalogDiscovery
                     }
                     $page = 1;
                 } else {
-                    $notices[] = 'That filter choice is no longer available.';
+                    $notices[] = __('catalog.messages.that_filter_choice_is_no_longer_available');
                 }
             } elseif ($action === 'subgroup') {
                 if ($argument === null || (is_int($argument) && $presets->has($argument))) {
@@ -110,7 +110,7 @@ class CatalogDiscovery
                         $page = 1;
                     }
                 } else {
-                    $notices[] = 'That preset is no longer available.';
+                    $notices[] = __('catalog.messages.that_preset_is_no_longer_available');
                 }
             } elseif (in_array($action, ['clear', 'reset'], true)) {
                 $selected = [];
@@ -124,7 +124,7 @@ class CatalogDiscovery
                     $perPage = $argument;
                     $page = 1;
                 } else {
-                    $notices[] = 'That page size is not available.';
+                    $notices[] = __('catalog.messages.that_page_size_is_not_available');
                 }
             }
             $preset = $presets->get($presetId);
@@ -157,7 +157,7 @@ class CatalogDiscovery
             }
             if ($adjusted) {
                 $page = 1;
-                $notices[] = 'Some catalog choices were adjusted to the current group settings.';
+                $notices[] = __('catalog.messages.some_catalog_choices_were_adjusted_to_the_current_group_settings');
             }
             $compatible = $this->compatibleValues($groupId, $filters->keys()->all(), $constraints, $vocabulary);
             $fields = [];
@@ -176,7 +176,7 @@ class CatalogDiscovery
             $total = (clone $query)->count();
             if ($page > max(1, (int) ceil($total / $perPage))) {
                 $page = 1;
-                $notices[] = 'The requested page is no longer available. Showing page 1.';
+                $notices[] = __('catalog.messages.the_requested_page_is_no_longer_available_showing_page_1');
                 $adjusted = true;
             }
             $showProducts = $settings['max_results'] === 'all' || $total <= $settings['max_results'];
@@ -254,7 +254,7 @@ class CatalogDiscovery
     private function expressions(string $key): array
     {
         if (! in_array($key, CatalogImportParser::propertyKeys(), true)) {
-            throw new \InvalidArgumentException('Unregistered catalog property.');
+            throw new \InvalidArgumentException(__('catalog.messages.unregistered_catalog_property'));
         }
         $path = '$."'.$key.'"';
         if (DB::getDriverName() === 'mysql') {

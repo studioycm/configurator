@@ -18,7 +18,7 @@ trait InteractsWithScopedTableSearch
     /** @return array<string, string> */
     public function scopedSearchColumns(): array
     {
-        $fields = ['all' => 'All fields'];
+        $fields = ['all' => __('ui.tables.all_fields')];
         foreach ($this->getTable()->getColumns() as $column) {
             if ($column->isGloballySearchable()) {
                 $fields[$column->getName()] = (string) $column->getLabel();

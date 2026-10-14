@@ -38,7 +38,7 @@ function publicConfigurationFixture(?Closure $change = null): array
 test('public and saved Preview share the same settled selections code and context without database writes', function () {
     [$configurator, $product, $draft] = publicConfigurationFixture(fn (array &$draft) => $draft['rules'] = [fixtureMapping()]);
     $public = Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('A0-B1-C0');
-    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)->assertSee('Saved definition')->assertSee('A0-B1-C0');
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)->assertSee(__('configurator.copy.saved_definition'))->assertSee('A0-B1-C0');
     $writes = [];
     DB::listen(function ($event) use (&$writes): void {
         if (preg_match('/^\s*(insert|update|delete|replace)\b/i', $event->sql)) {
@@ -69,11 +69,11 @@ test('saved edits reconcile Product choices silently and retain explanations in 
 
 test('Product configuration loading is hidden by default and enabled by the shared appearance setting', function () {
     [, $product] = publicConfigurationFixture();
-    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertDontSee('Updating choices…');
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertDontSee(__('configurator.copy.updating_choices'));
 
     app(SaveAdminAppearanceSettings::class)->handle($this->actor, [...app(AdminAppearance::class)->defaults(), 'show_configurator_loading_indicator' => true]);
 
-    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('Updating choices…');
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee(__('configurator.copy.updating_choices'));
 });
 
 test('hidden attributes restore remembered choices through real component interactions', function () {
@@ -143,7 +143,7 @@ test('dashboard drops complete context gated rules even with nested predicates a
         ->and($result->definition->contextSchema)->toBe(['territory' => [], 'application' => []])
         ->and($result->definition->rules)->toBe([])
         ->and($loader->draft($configurator->fresh()))->toBe($before);
-    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('Territory')
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee(__('configurator.labels.territory'))
         ->call('selectOption', $before['attributes'][0]['id'], $before['attributes'][0]['options'][1]['id'])->assertSee('A1-B0-C0');
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id);
     expect($preview->instance()->form->getComponent('formState.context.territory'))->toBeNull();
@@ -171,7 +171,7 @@ test('Preview opens the selected dashboard Product and restores the ordered fall
     Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id, 'sort_order' => 1]))->create(['product_code' => '00-LATER-GROUP']);
 
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
-    $preview->assertSee('View in dashboard catalog')->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null)
+    $preview->assertSee(__('configurator.copy.view_in_dashboard_catalog'))->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null)
         ->call('chooseProduct', $selected->id)->assertSee(route('catalog.products.show', $selected), false)
         ->call('chooseProduct', null)->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null);
 });
@@ -187,11 +187,11 @@ test('Preview dashboard links respect catalog visibility and current Group assig
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
     $preview->assertSee(route('catalog.products.show', $product), false)
         ->assertDontSee(route('catalog.products.show', $hidden), false)->assertDontSee(route('catalog.products.show', $inactive), false)
-        ->call('chooseProduct', $inactive->id)->assertDontSee('View in dashboard catalog')->assertSee('The selected Product is not available for this Configurator in the dashboard catalog.')
+        ->call('chooseProduct', $inactive->id)->assertDontSee(__('configurator.copy.view_in_dashboard_catalog'))->assertSee('The selected Product is not available for this Configurator in the dashboard catalog.')
         ->call('chooseProduct', $product->id);
 
     $product->group->update(['configurator_id' => null]);
-    $preview->call('refreshDefinition')->assertDontSee('View in dashboard catalog')->assertDontSee(route('catalog.products.show', $product), false);
+    $preview->call('refreshDefinition')->assertDontSee(__('configurator.copy.view_in_dashboard_catalog'))->assertDontSee(route('catalog.products.show', $product), false);
 });
 
 test('Preview explains when no assigned dashboard Product is available', function () {
@@ -199,7 +199,7 @@ test('Preview explains when no assigned dashboard Product is available', functio
     Product::factory()->create();
 
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
-        ->assertDontSee('View in dashboard catalog')->assertSee('No dashboard Product is available in the assigned Groups.')->assertSet('productId', null);
+        ->assertDontSee(__('configurator.copy.view_in_dashboard_catalog'))->assertSee('No dashboard Product is available in the assigned Groups.')->assertSet('productId', null);
 });
 
 test('unassigned Product pages keep facts separate from the unavailable configuration', function () {

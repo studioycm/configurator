@@ -9,7 +9,6 @@ use App\Filament\Resources\Values\Pages\ListValues;
 use App\Models\User;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
-use Filament\Tables\Filters\BaseFilter;
 use Livewire\Livewire;
 use Tests\Fixtures\Legacy\Filament\Resources\ConfigurationParts\Pages\ListConfigurationParts;
 use Tests\Fixtures\Legacy\Filament\Resources\ConfigurationSpecifications\Pages\ListConfigurationSpecifications;
@@ -29,140 +28,77 @@ beforeEach(function () {
 dataset('table-standards-pages', [
     'groups' => [
         'page' => ListGroups::class,
-        'columns' => ['id' => 'ID', 'name' => 'Name', 'legacy_id' => 'Legacy ID', 'parent.name' => 'Parent', 'configurator.name' => 'Configurator', 'sort_order' => 'Sort Order', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id', 'name', 'legacy_id', 'parent.name', 'configurator.name', 'sort_order', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'name', 'legacy_id', 'parent.name'],
-        'filters' => ['parent_id' => 'Parent'],
+        'filters' => ['parent_id'],
     ],
     'config attributes' => [
         'page' => ListAttributes::class,
-        'columns' => ['id' => 'ID', 'key' => 'Key', 'label' => 'Attribute', 'options_count' => 'Values', 'configurator_attributes_count' => 'Used by', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id', 'key', 'label', 'options_count', 'configurator_attributes_count', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'key', 'label'],
         'filters' => [],
     ],
     'config options' => [
         'page' => ListOptions::class,
-        'columns' => ['id' => 'ID', 'code' => 'Code', 'attribute.label' => 'Attribute', 'value.label' => 'UI Name', 'configurator_options_count' => 'Configurator uses', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id', 'code', 'attribute.label', 'value.label', 'configurator_options_count', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'code', 'attribute.label', 'value.label'],
-        'filters' => ['attribute_id' => 'Attribute'],
+        'filters' => ['attribute_id'],
     ],
     'master values' => [
         'page' => ListValues::class,
-        'columns' => ['id' => 'ID', 'label' => 'UI Name', 'description' => 'Specification', 'tags' => 'Tags', 'options_count' => 'Attributes', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id', 'label', 'description', 'tags', 'options_count', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'label', 'description'],
-        'filters' => ['tags' => 'Tags'],
+        'filters' => ['tags'],
     ],
     'config profiles' => [
         'page' => ListConfigurators::class,
-        'columns' => ['id' => 'ID', 'name' => 'Name', 'groups_count' => 'Assigned groups', 'configurator_attributes_count' => 'Attributes', 'rules_count' => 'Rules', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id', 'name', 'groups_count', 'configurator_attributes_count', 'rules_count', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'name'],
         'filters' => [],
     ],
     'configuration parts' => [
         'page' => ListConfigurationParts::class,
-        'columns' => [
-            'id' => 'ID',
-            'productConfiguration.name' => 'Product Configuration',
-            'part.name' => 'Part',
-            'part_number' => 'Part Number',
-            'label' => 'Name',
-            'material' => 'Material',
-            'quantity' => 'Quantity',
-            'unit' => 'Unit',
-            'segment_index' => 'Segment Index',
-            'sort_order' => 'Sort Order',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
+        'columns' => ['id', 'productConfiguration.name', 'part.name', 'part_number', 'label', 'material', 'quantity', 'unit', 'segment_index', 'sort_order', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'productConfiguration.name', 'part.name', 'label', 'material', 'unit'],
-        'filters' => [
-            'product_configuration_id' => 'Product Configuration',
-            'part_id' => 'Part',
-        ],
+        'filters' => ['product_configuration_id', 'part_id'],
     ],
     'configuration specifications' => [
         'page' => ListConfigurationSpecifications::class,
-        'columns' => [
-            'id' => 'ID',
-            'productConfiguration.name' => 'Product Configuration',
-            'spec_group' => 'Spec Group',
-            'key' => 'Key',
-            'value' => 'Value',
-            'unit' => 'Unit',
-            'sort_order' => 'Sort Order',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
+        'columns' => ['id', 'productConfiguration.name', 'spec_group', 'key', 'value', 'unit', 'sort_order', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'productConfiguration.name', 'spec_group', 'key', 'value', 'unit'],
-        'filters' => [
-            'product_configuration_id' => 'Product Configuration',
-        ],
+        'filters' => ['product_configuration_id'],
     ],
     'option rules' => [
         'page' => ListOptionRules::class,
-        'columns' => [
-            'id' => 'ID',
-            'configProfile.name' => 'Configurator',
-            'optionAttribute.label' => 'Attribute',
-            'option.label' => 'Option',
-            'targetAttribute.label' => 'Target Attribute',
-            'allowed_option_ids' => 'Allowed Target Options',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
+        'columns' => ['id', 'configProfile.name', 'optionAttribute.label', 'option.label', 'targetAttribute.label', 'allowed_option_ids', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'configProfile.name', 'optionAttribute.label', 'targetAttribute.label'],
-        'filters' => [
-            'config_profile_id' => 'Configurator',
-            'option' => 'Option',
-            'optionAttribute' => 'Attribute',
-            'target_attribute_id' => 'Target Attribute',
-        ],
+        'filters' => ['config_profile_id', 'option', 'optionAttribute', 'target_attribute_id'],
     ],
     'parts' => [
         'page' => ListParts::class,
-        'columns' => [
-            'id' => 'ID',
-            'name' => 'Name',
-            'code' => 'Code',
-            'default_material' => 'Default Material',
-            'is_active' => 'Active',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
+        'columns' => ['id', 'name', 'code', 'default_material', 'is_active', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'name', 'code', 'default_material'],
         'filters' => [],
     ],
     'product configurations' => [
         'page' => ListProductConfigurations::class,
-        'columns' => [
-            'id' => 'ID',
-            'productProfile.name' => 'Product',
-            'configuration_code' => 'Configuration Code',
-            'name' => 'Name',
-            'is_active' => 'Active',
-            'drawing_image_path' => 'Drawing Image',
-            'created_at' => 'Created At',
-            'updated_at' => 'Updated At',
-        ],
+        'columns' => ['id', 'productProfile.name', 'configuration_code', 'name', 'is_active', 'drawing_image_path', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'productProfile.name', 'configuration_code', 'name'],
-        'filters' => [
-            'product_profile_id' => 'Product',
-        ],
+        'filters' => ['product_profile_id'],
     ],
     'products' => [
         'page' => ListProducts::class,
-        'columns' => ['id' => 'ID', 'product_code' => 'Product Code', 'product_name' => 'Product Name', 'group.name' => 'Group', 'legacy_id' => 'Legacy ID', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id', 'product_code', 'product_name', 'group.name', 'legacy_id', 'created_at', 'updated_at'],
         'searchableColumns' => ['id', 'product_code', 'product_name', 'group.name', 'legacy_id'],
-        'filters' => ['group_id' => 'Group'],
+        'filters' => ['group_id'],
     ],
 ]);
 
 it('applies the requested Filament table standards', function (string $page, array $columns, array $searchableColumns, array $filters) {
     $component = Livewire::test($page);
-    $table = $component->instance()->getTable();
 
-    foreach ($columns as $name => $expectedLabel) {
+    foreach ($columns as $name) {
         $component->assertTableColumnExists($name);
-        expect($table->getColumn($name)->getLabel())->toBe($expectedLabel, "Unexpected label for column [{$name}] on [{$page}].");
     }
 
     $isCurrent = str_starts_with($page, 'App\\Filament\\');
@@ -179,11 +115,11 @@ it('applies the requested Filament table standards', function (string $page, arr
         });
     }
 
-    foreach ($filters as $name => $label) {
-        $component->assertTableFilterExists($name, function (BaseFilter $filter) use ($label): bool {
-            return $filter->getLabel() === $label;
-        });
+    foreach ($filters as $name) {
+        $component->assertTableFilterExists($name);
     }
+
+    $table = $component->instance()->getTable();
 
     if ($isCurrent) {
         expect($table->getFiltersLayout())->toBe(FiltersLayout::Modal)

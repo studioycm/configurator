@@ -20,18 +20,18 @@ class ReorderCatalogGroups
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         if (! array_is_list($order) || array_filter($order, fn (mixed $id): bool => ! is_int($id) && ! is_string($id)) !== []) {
-            throw ValidationException::withMessages(['order' => 'Submit the complete unique sibling order.']);
+            throw ValidationException::withMessages(['order' => __('catalog.groups.validation.submit_the_complete_unique_sibling_order')]);
         }
         DB::transaction(function () use ($parentId, $order): void {
             $groups = $this->integrity->lockGroups();
             if ($parentId !== null && ! $groups->has($parentId)) {
-                throw ValidationException::withMessages(['order' => 'The selected parent no longer exists.']);
+                throw ValidationException::withMessages(['order' => __('catalog.groups.validation.the_selected_parent_no_longer_exists')]);
             }
             $siblings = $groups->filter(fn (Group $group): bool => $group->parent_id === $parentId);
             $ids = array_map('strval', $order);
             $expected = $siblings->keys()->map(fn (int $id): string => (string) $id)->all();
             if (count($ids) !== count(array_unique($ids)) || count($ids) !== count($expected) || array_diff($ids, $expected) !== []) {
-                throw ValidationException::withMessages(['order' => 'Reorder the complete current sibling list. Refresh it if Groups were added, moved or removed.']);
+                throw ValidationException::withMessages(['order' => __('catalog.groups.validation.reorder_the_complete_current_sibling_list_refresh')]);
             }
             $this->saveOrder($siblings, $ids, $parentId);
         }, attempts: 3);
@@ -41,7 +41,7 @@ class ReorderCatalogGroups
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         if (! in_array($direction, [-1, 1], true)) {
-            throw ValidationException::withMessages(['order' => 'Choose move up or move down.']);
+            throw ValidationException::withMessages(['order' => __('catalog.groups.validation.choose_move_up_or_move_down')]);
         }
         DB::transaction(function () use ($id, $direction): void {
             $groups = $this->integrity->lockGroups();

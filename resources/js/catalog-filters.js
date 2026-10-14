@@ -3,6 +3,7 @@ import { createFilterEngine, readDiscovery, discoveryUrl } from './catalog-filte
 function catalogFilters() {
     // Dataset rows, indexes, timers and transport identities never enter Alpine's proxy.
     let snapshot;
+    let labels;
     let root;
     let engine;
     let displayedRevision;
@@ -44,8 +45,8 @@ function catalogFilters() {
         refreshPromise = null;
     };
     const errorText = error => [401,403,419].includes(Number(error?.status))
-        ? 'Your session has expired or access changed. Reload this page to continue.'
-        : 'Products could not be loaded. Please retry.';
+        ? labels.session_changed
+        : labels.products_failed;
     const measureHeadings = () => {
         if (!alive || suspended) return;
         const grid = root.querySelector('.catalog-filter-grid');
@@ -89,19 +90,20 @@ function catalogFilters() {
             if (initialized) return;
             initialized = true;
             root = this.$el;
+            labels = JSON.parse(root.dataset.catalogLabels);
             const source = root.querySelector('[data-catalog-snapshot]');
             try {
                 const initial = JSON.parse(source?.textContent ?? 'null');
                 source?.remove();
                 if (initial) {
                     snapshot = initial;
-                    engine = createFilterEngine(snapshot);
+                    engine = createFilterEngine(snapshot, labels);
                     this.available = true;
                     confirmedAt = performance.now();
                     this.publish(engine.normalize(readDiscovery(location.href)), 'replace');
-                } else this.unavailable = 'Filters are temporarily unavailable. Please retry.';
+                } else this.unavailable = labels.filters_unavailable;
             } catch {
-                this.unavailable = 'The catalog could not be initialized. Reload this page.';
+                this.unavailable = labels.initialization_failed;
                 this.reloadRequired = true;
             }
             listen(window, 'popstate', () => {
@@ -246,7 +248,7 @@ function catalogFilters() {
                         automaticRetries--;
                         const refreshed = await this.refreshSnapshot(true);
                         if (refreshed && current(id, revision)) this.scheduleCards();
-                        else if (!refreshed && current(id, revision)) { this.cardStatus = 'error'; this.cardError = 'The catalog changed. Retry to load current products.'; }
+                        else if (!refreshed && current(id, revision)) { this.cardStatus = 'error'; this.cardError = labels.catalog_changed; }
                     } else { this.cardStatus = 'error'; this.cardError = 'The catalog is still changing. Please retry.'; }
                     return;
                 }
@@ -327,13 +329,13 @@ function catalogFilters() {
                     if (!valid()) return false;
                     if (replacement.schema !== 1) {
                         this.reloadRequired = true;
-                        this.freshnessError = 'The catalog format changed. Reload this page.';
+                        this.freshnessError = labels.format_changed;
                         return false;
                     }
                     if (replacement.groupId !== root.dataset.groupId || !/^[1-9][0-9]{0,19}$/.test(replacement.revision)) throw new Error('Invalid dataset identity');
                     if (revision && BigInt(replacement.revision) < BigInt(revision)) return false;
                     if (replacement.revision !== revision || !engine) {
-                        const newEngine = createFilterEngine(replacement);
+                        const newEngine = createFilterEngine(replacement, labels);
                         const choices = engine ? this.state : readDiscovery(location.href);
                         const normalized = newEngine.normalize(choices);
                         snapshot = replacement;
@@ -346,9 +348,9 @@ function catalogFilters() {
                     return true;
                 } catch (error) {
                     if (!valid() || signal.aborted) return false;
-                    const message = [401,403,419].includes(Number(error?.status)) ? errorText(error) : 'Could not check for catalog updates. Your current filters remain available. Retry when connected.';
+                    const message = [401,403,419].includes(Number(error?.status)) ? errorText(error) : labels.update_failed;
                     if (this.available) this.freshnessError = message;
-                    else this.unavailable = 'Filters are temporarily unavailable. Please retry.';
+                    else this.unavailable = labels.filters_unavailable;
                     return false;
                 } finally {
                     if (sequence === refreshSequence) {
@@ -370,7 +372,7 @@ function catalogFilters() {
             this.cardStatus = 'idle';
             this.refreshing = false;
             this.reloadRequired = true;
-            this.unavailable = status === 404 ? 'This Group is no longer available. Return to the catalog.' : 'This Group now contains other groups. Reload to browse them.';
+            this.unavailable = status === 404 ? labels.group_unavailable : labels.group_is_branch;
         },
     };
 }

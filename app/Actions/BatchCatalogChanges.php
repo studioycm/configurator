@@ -47,17 +47,17 @@ class BatchCatalogChanges
             'groups' => ['description' => $text(true, 5000),
                 'card_properties' => ['type' => 'multiple', 'nullable' => true, 'rules' => ['array', 'list'], 'options' => array_combine(CatalogImportParser::propertyKeys(), CatalogImportParser::propertyKeys())],
                 'cards_per_row' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'between:1,6']],
-                'max_results' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in(['all', ...range(1, 24)])], 'options' => ['all' => 'All'] + array_combine(range(1, 24), range(1, 24))],
+                'max_results' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in(['all', ...range(1, 24)])], 'options' => ['all' => __('ui.choices.all')] + array_combine(range(1, 24), range(1, 24))],
                 'products_debounce_ms' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'min:0', 'max:2147483600', 'multiple_of:100']],
                 'card_only_differences' => $boolean, 'card_show_labels' => $boolean,
-                'card_property_layout' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))], 'options' => CatalogPolicy::CARD_LAYOUTS],
+                'card_property_layout' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))], 'options' => array_map(fn (string $label): string => __($label), CatalogPolicy::CARD_LAYOUTS)],
                 'card_property_columns' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in([1, 2])], 'options' => [1 => '1', 2 => '2']],
                 'card_padding_block' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'between:0,16']],
                 'card_padding_inline' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'between:0,20']]],
-            'configurator-attributes' => ['label_override' => $text(true), 'help_text' => $text(true, 1000), 'input_type' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::enum(ConfigInputType::class)], 'options' => array_column(ConfigInputType::cases(), 'name', 'value')]],
+            'configurator-attributes' => ['label_override' => $text(true), 'help_text' => $text(true, 1000), 'input_type' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::enum(ConfigInputType::class)], 'options' => collect(ConfigInputType::cases())->mapWithKeys(fn (ConfigInputType $type): array => [$type->value => $type->getLabel()])->all()]],
             'configurator-options' => ['label_override' => $text(true), 'display_value_override' => $text(true), 'hint' => $text(true, 1000), 'hidden_by_default' => $boolean, 'disabled_by_default' => $boolean],
             'configurator-rules' => ['label' => $text(), 'is_active' => $boolean],
-            default => throw ValidationException::withMessages(['batch' => 'This table does not support batch edits.']),
+            default => throw ValidationException::withMessages(['batch' => __('admin.batch.validation.this_table_does_not_support_batch_edits')]),
         };
     }
 
@@ -108,13 +108,13 @@ class BatchCatalogChanges
                 Configurator::whereIn('id', array_unique($owners))->orderBy('id')->lockForUpdate()->get();
                 $records = $this->records($table, $ids, $ownerId, lock: true);
                 if (! hash_equals($this->token($actor, $table, $records, $intent, $ownerId), $token)) {
-                    throw ValidationException::withMessages(['preview' => 'Selected records changed, or your operation changed. Refresh the preview before applying. Your inputs were kept.']);
+                    throw ValidationException::withMessages(['preview' => __('admin.batch.validation.selected_records_changed_or_your_operation_changed')]);
                 }
                 $after = [];
                 foreach ($records as $record) {
                     $after[$record->id] = $this->transform($table, $record, $intent);
                     if (($intent['operation'] ?? '') === 'remove' && $this->removalBlockers($record) !== []) {
-                        throw ValidationException::withMessages(['preview' => 'Dependencies block this selection. Open the blocking records and repair them before removing anything.']);
+                        throw ValidationException::withMessages(['preview' => __('admin.batch.validation.dependencies_block_this_selection_open_the_blocking')]);
                     }
                 }
                 $this->validateSelectedCodes($table, $after);
@@ -156,7 +156,7 @@ class BatchCatalogChanges
         }
         $codes = array_column($states, 'code');
         if (count(array_unique($codes, SORT_STRING)) !== count($codes)) {
-            throw ValidationException::withMessages(['code' => 'The resulting selection contains duplicate codes. Each code must remain unique.']);
+            throw ValidationException::withMessages(['code' => __('admin.batch.validation.the_resulting_selection_contains_duplicate_codes_each')]);
         }
     }
 
@@ -200,7 +200,7 @@ class BatchCatalogChanges
             'attributes' => Attribute::class, 'values' => Value::class, 'options', 'attribute-options' => Option::class,
             'configurators' => Configurator::class, 'groups' => Group::class, 'configurator-attributes' => ConfiguratorAttribute::class,
             'configurator-options' => ConfiguratorOption::class, 'configurator-rules' => ConfiguratorRule::class,
-            default => throw ValidationException::withMessages(['batch' => 'Unsupported table.']),
+            default => throw ValidationException::withMessages(['batch' => __('admin.batch.validation.unsupported_table')]),
         };
         $query = $class::query()->whereKey($ids)->orderBy('id');
         if ($class === ConfiguratorAttribute::class) {
@@ -210,7 +210,7 @@ class BatchCatalogChanges
         }
         if (in_array($table, ['attribute-options', 'configurator-attributes', 'configurator-options', 'configurator-rules'], true)) {
             if ($ownerId === null) {
-                throw ValidationException::withMessages(['batch' => 'An owner is required.']);
+                throw ValidationException::withMessages(['batch' => __('admin.batch.validation.an_owner_is_required')]);
             }
             $column = match ($table) {
                 'attribute-options' => 'attribute_id', 'configurator-options' => 'configurator_attribute_id', default => 'configurator_id'
@@ -219,7 +219,7 @@ class BatchCatalogChanges
         }
         $records = $query->when($lock, fn (Builder $query): Builder => $query->lockForUpdate())->get();
         if ($records->count() !== count($ids)) {
-            throw ValidationException::withMessages(['batch' => 'A selected record was removed or does not belong to this table. Refresh selection.']);
+            throw ValidationException::withMessages(['batch' => __('admin.batch.validation.a_selected_record_was_removed_or_does')]);
         }
 
         return $records;
@@ -257,7 +257,7 @@ class BatchCatalogChanges
         $operation = $intent['operation'] ?? null;
         if ($operation === 'remove') {
             if (! $this->canRemove($table)) {
-                throw ValidationException::withMessages(['batch' => 'Removal is not available for this table.']);
+                throw ValidationException::withMessages(['batch' => __('admin.batch.validation.removal_is_not_available_for_this_table')]);
             }
 
             return [];
@@ -265,7 +265,7 @@ class BatchCatalogChanges
         if ($operation === 'replace') {
             $field = $intent['field'] ?? '';
             if (($fields[$field]['type'] ?? '') !== 'text') {
-                throw ValidationException::withMessages(['field' => 'Choose a permitted string field.']);
+                throw ValidationException::withMessages(['field' => __('admin.batch.validation.choose_a_permitted_string_field')]);
             }
             try {
                 $state[$field] = app(StringFieldTransformer::class)->replace($state[$field], $intent);
@@ -283,12 +283,12 @@ class BatchCatalogChanges
                 }
                 if ($mode === 'clear') {
                     if (! $fields[$field]['nullable']) {
-                        throw ValidationException::withMessages(['changes' => 'This field cannot be cleared.']);
+                        throw ValidationException::withMessages(['changes' => __('admin.batch.validation.this_field_cannot_be_cleared')]);
                     }
                     $state[$field] = in_array($fields[$field]['type'], ['tags', 'multiple'], true) ? [] : null;
                 } elseif (in_array($mode, ['add', 'remove'], true)) {
                     if ($field !== 'tags' || ! is_array($change['value'] ?? null)) {
-                        throw ValidationException::withMessages(['changes' => 'Add/remove applies to tags only.']);
+                        throw ValidationException::withMessages(['changes' => __('admin.batch.validation.addremove_applies_to_tags_only')]);
                     }
                     $tags = $state[$field] ?? [];
                     $state[$field] = $mode === 'add' ? array_values(array_unique([...$tags, ...$change['value']])) : array_values(array_diff($tags, $change['value']));
@@ -297,7 +297,7 @@ class BatchCatalogChanges
                 }
             }
         } else {
-            throw ValidationException::withMessages(['batch' => 'Choose a supported operation.']);
+            throw ValidationException::withMessages(['batch' => __('admin.batch.validation.choose_a_supported_operation')]);
         }
         $rules = [];
         foreach ($fields as $key => $field) {

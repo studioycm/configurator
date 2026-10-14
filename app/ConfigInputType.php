@@ -8,7 +8,7 @@ use Filament\Support\Contracts\HasLabel;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 
-enum ConfigInputType: string implements HasLabel, HasIcon, HasColor
+enum ConfigInputType: string implements HasColor, HasIcon, HasLabel
 {
     case Toggle = 'toggle';
     case Select = 'select';
@@ -16,8 +16,8 @@ enum ConfigInputType: string implements HasLabel, HasIcon, HasColor
     public function getLabel(): string|Htmlable|null
     {
         return match ($this) {
-            self::Toggle => 'Toggle',
-            self::Select => 'Select',
+            self::Toggle => __('configurator.inputs.toggle'),
+            self::Select => __('configurator.inputs.select'),
         };
     }
 

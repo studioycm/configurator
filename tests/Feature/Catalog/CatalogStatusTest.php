@@ -66,7 +66,7 @@ test('a branch with no visible children stays a branch without mounting leaf fil
     $child = Group::factory()->create(['parent_id' => $parent->id]);
     app(ChangeCatalogStatus::class)->handle($this->actor, $child, false);
     $this->get(route('catalog.groups.show', $parent))->assertOk()
-        ->assertSee('There are no available groups in this branch.')
+        ->assertSee(__('catalog.frontend.copy.there_are_no_available_groups_in_this_branch'))
         ->assertDontSee('data-catalog-filters', escape: false);
     app(ChangeCatalogStatus::class)->handle($this->actor, $child, true);
     $this->get(route('catalog.groups.show', $parent))->assertOk()->assertSee($child->name);
@@ -134,7 +134,7 @@ test('the Configurator dialog lists impact and applies its chosen Group policy',
     [$configurator, $group, $product] = statusConfigurationFixture();
     $dialog = Livewire::test(EditConfigurator::class, ['record' => $configurator->id])->mountAction('changeStatus');
     expect($dialog->instance()->getSchema($dialog->instance()->getMountedActionSchemaName())->toHtml())->toContain('1 assigned Groups', '1 Products');
-    $dialog->fillForm(['is_active' => '0', 'group_behavior' => 'hide'])->callMountedAction()->assertHasNoActionErrors();
+    $dialog->fillForm(['is_active' => '0', 'group_behavior' => 'hide'])->callMountedAction()->assertHasNoFormErrors();
     expect($configurator->fresh()->is_active)->toBeFalse()->and($configurator->fresh()->disabled_group_behavior)->toBe('hide');
 });
 
@@ -143,7 +143,7 @@ test('a changed assignment blocks a stale status dialog and keeps every flag unc
     $dialog = Livewire::test(EditConfigurator::class, ['record' => $configurator->id])->mountAction('changeStatus')
         ->fillForm(['is_active' => '0', 'group_behavior' => 'unassign']);
     $newGroup = Group::factory()->create(['configurator_id' => $configurator->id]);
-    $dialog->callMountedAction()->assertHasActionErrors(['is_active']);
+    $dialog->callMountedAction()->assertHasFormErrors(['is_active']);
     expect($configurator->fresh()->is_active)->toBeTrue()->and($group->fresh()->configurator_id)->toBe($configurator->id)->and($newGroup->fresh()->configurator_id)->toBe($configurator->id);
 });
 
@@ -151,10 +151,10 @@ test('Product table status supports a single record and an atomic selection', fu
     $first = Product::factory()->create();
     $second = Product::factory()->create();
     $page = Livewire::test(ListProducts::class);
-    $page->mountAction(TestAction::make('changeStatus')->table($first))->fillForm(['is_active' => '0'])->callMountedAction()->assertHasNoActionErrors();
+    $page->mountAction(TestAction::make('changeStatus')->table($first))->fillForm(['is_active' => '0'])->callMountedAction()->assertHasNoFormErrors();
     expect($first->fresh()->is_active)->toBeFalse();
     $page->selectTableRecords([$first, $second])->mountAction(TestAction::make('batchStatus')->table()->bulk())
-        ->fillForm(['is_active' => '1'])->callMountedAction()->assertHasNoActionErrors();
+        ->fillForm(['is_active' => '1'])->callMountedAction()->assertHasNoFormErrors();
     expect($first->fresh()->is_active)->toBeTrue()->and($second->fresh()->is_active)->toBeTrue();
 });
 
@@ -163,7 +163,7 @@ test('a changed Product set blocks a stale Configurator impact review', function
     $dialog = Livewire::test(EditConfigurator::class, ['record' => $configurator->id])->mountAction('changeStatus')
         ->fillForm(['is_active' => '0', 'group_behavior' => 'hide']);
     Product::factory()->for($group)->create();
-    $dialog->callMountedAction()->assertHasActionErrors(['is_active']);
+    $dialog->callMountedAction()->assertHasFormErrors(['is_active']);
     expect($configurator->fresh()->is_active)->toBeTrue();
 });
 
@@ -173,7 +173,7 @@ test('selected inclusion statuses update one complete owner definition and retai
     $revision = (int) $group->fresh()->catalog_revision;
     Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->selectTableRecords([$rows[0], $rows[1]])->mountAction(TestAction::make('batchStatus')->table()->bulk())
-        ->fillForm(['is_active' => '0'])->callMountedAction()->assertHasNoActionErrors();
+        ->fillForm(['is_active' => '0'])->callMountedAction()->assertHasNoFormErrors();
     expect($rows[0]->fresh()->is_active)->toBeFalse()->and($rows[1]->fresh()->is_active)->toBeFalse()
         ->and($rows[2]->fresh()->is_active)->toBeTrue()->and($configurator->attributes()->count())->toBe(3)
         ->and((int) $group->fresh()->catalog_revision)->toBe($revision + 1);
@@ -184,10 +184,10 @@ test('Option visibility is independent of Disabled and both prevent selection', 
     $option = $configurator->attributes()->first()->options()->first()->option;
     $page = Livewire::test(ListOptions::class);
     $page->mountAction(TestAction::make('changeVisibility')->table($option))
-        ->fillForm(['visibility' => 'hidden'])->callMountedAction()->assertHasNoActionErrors();
+        ->fillForm(['visibility' => 'hidden'])->callMountedAction()->assertHasNoFormErrors();
     expect($option->fresh()->is_active)->toBeTrue()->and($option->fresh()->is_hidden)->toBeTrue();
     $page->mountAction(TestAction::make('changeStatus')->table($option))
-        ->fillForm(['is_active' => '0', 'visibility' => 'visible'])->callMountedAction()->assertHasNoActionErrors();
+        ->fillForm(['is_active' => '0', 'visibility' => 'visible'])->callMountedAction()->assertHasNoFormErrors();
     expect($option->fresh()->is_active)->toBeFalse()->and($option->fresh()->is_hidden)->toBeFalse();
 });
 

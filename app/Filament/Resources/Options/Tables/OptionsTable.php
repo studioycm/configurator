@@ -17,14 +17,14 @@ class OptionsTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
-            TextColumn::make('code')->label('Code')->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true)->copyable(),
-            TextColumn::make('attribute.label')->label('Attribute')->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
-            TextColumn::make('value.label')->label('UI Name')->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
-            ItemCountColumn::make('configurator_options_count', 'Configurator uses', 'option-inclusions')->sortable()->toggleable(),
-            TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('updated_at')->label('Updated At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-        ])->filters([SelectFilter::make('attribute_id')->label('Attribute')->relationship('attribute', 'label')->searchable()->preload()])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
-            ->defaultSort('code')->recordActions([Action::make('edit')->label('Edit')->url(fn (Option $record): string => OptionResource::getUrl('edit', ['record' => $record]))]), 'options', true);
+            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
+            TextColumn::make('code')->label(__('catalog.fields.code'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true)->copyable(),
+            TextColumn::make('attribute.label')->label(__('catalog.resources.attributes.singular'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
+            TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
+            ItemCountColumn::make('configurator_options_count', __('catalog.usage.headings.configurator_uses'), 'option-inclusions')->sortable()->toggleable(),
+            TextColumn::make('created_at')->label(__('ui.fields.created_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('updated_at')->label(__('ui.fields.updated_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+        ])->filters([SelectFilter::make('attribute_id')->label(__('catalog.resources.attributes.singular'))->relationship('attribute', 'label')->searchable()->preload()])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
+            ->defaultSort('code')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Option $record): string => OptionResource::getUrl('edit', ['record' => $record]))]), 'options', true);
     }
 }

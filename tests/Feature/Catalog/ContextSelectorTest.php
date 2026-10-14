@@ -23,7 +23,7 @@ test('the context summary uses choice labels and the modal marks one active togg
 });
 
 test('empty context schemas still offer All and context labels remain escaped', function () {
-    Livewire::test(ContextSelector::class)->assertSee('Territory')->assertSee('Application')->assertSee('All')
+    Livewire::test(ContextSelector::class)->assertSee(__('configurator.labels.territory'))->assertSee(__('configurator.labels.application'))->assertSee(__('ui.choices.all'))
         ->assertSeeHtml('aria-label="Edit territory and application"');
 
     Livewire::test(ContextSelector::class, [

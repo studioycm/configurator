@@ -16,16 +16,16 @@ class AttributesTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('key')->label('Key')->sortable()->toggleable(isToggledHiddenByDefault: true)->searchable(isIndividual: false, isGlobal: true),
-            TextColumn::make('label')->label('Attribute')->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
-            ItemCountColumn::make('options_count', 'Values', 'attribute-options')->sortable()->toggleable(),
-            ItemCountColumn::make('configurator_attributes_count', 'Used by', 'attribute-inclusions')
-                ->suffix(fn (mixed $state): string => (int) $state === 1 ? ' configurator' : ' configurators')
+            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('key')->label(__('catalog.fields.key'))->sortable()->toggleable(isToggledHiddenByDefault: true)->searchable(isIndividual: false, isGlobal: true),
+            TextColumn::make('label')->label(__('catalog.resources.attributes.singular'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
+            ItemCountColumn::make('options_count', __('catalog.attribute_values.short_plural'), 'attribute-options')->sortable()->toggleable(),
+            ItemCountColumn::make('configurator_attributes_count', __('catalog.usage.fields.used_by'), 'attribute-inclusions')
+                ->suffix(fn (mixed $state): string => ' '.trans_choice('configurator.resource.count_label', (int) $state))
                 ->sortable()->toggleable(),
-            TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('updated_at')->label('Updated At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('created_at')->label(__('ui.fields.created_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('updated_at')->label(__('ui.fields.updated_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
         ])->filters([])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
-            ->defaultSort('label')->recordActions([Action::make('edit')->label('Edit')->url(fn (Attribute $record): string => AttributeResource::getUrl('edit', ['record' => $record]))]), 'attributes', true);
+            ->defaultSort('label')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Attribute $record): string => AttributeResource::getUrl('edit', ['record' => $record]))]), 'attributes', true);
     }
 }

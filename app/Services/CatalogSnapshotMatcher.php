@@ -30,20 +30,20 @@ class CatalogSnapshotMatcher
             $field = $fields[$key] ?? null;
             $option = $field ? array_search($value, array_column($field['options'], 'value'), true) : false;
             if ($option === false) {
-                throw ValidationException::withMessages(['criteria.filters' => 'A filter choice is not valid for this Group.']);
+                throw ValidationException::withMessages(['criteria.filters' => __('catalog.validation.a_filter_choice_is_not_valid_for')]);
             }
             $constraints['filter:'.$key] = ['column' => $field['column'], 'codes' => [$field['options'][$option]['code']]];
         }
         $preset = $criteria['subGroupId'] === null ? null : ($presets[$criteria['subGroupId']] ?? null);
         if ($criteria['subGroupId'] !== null && $preset === null) {
-            throw ValidationException::withMessages(['criteria.subGroupId' => 'This preset does not belong to this Group.']);
+            throw ValidationException::withMessages(['criteria.subGroupId' => __('catalog.validation.this_preset_does_not_belong_to_this')]);
         }
         if ($preset !== null) {
             $constraints['subgroup:'.$preset['id']] = ['column' => $preset['column'], 'codes' => $preset['codes']];
         }
         $precedence = $criteria['precedence'];
         if (count($precedence) !== count($constraints) || array_diff($precedence, array_keys($constraints)) !== []) {
-            throw ValidationException::withMessages(['criteria.precedence' => 'The selection order must name every choice exactly once.']);
+            throw ValidationException::withMessages(['criteria.precedence' => __('catalog.validation.the_selection_order_must_name_every_choice')]);
         }
         if ($preset !== null && count($preset['values']) === 1) {
             unset($constraints['filter:'.$preset['key']]);

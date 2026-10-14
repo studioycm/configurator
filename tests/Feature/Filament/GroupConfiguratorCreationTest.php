@@ -98,7 +98,7 @@ test('embedded group creation reports invalid parent ancestry beside the field a
         ->fillForm(['name' => 'Retained group draft', 'parent_id' => $parent->id]);
 
     $editor->call('create')->assertHasFormErrors(['parent_id'])
-        ->assertSee('A Group cannot become its own ancestor.')
+        ->assertSee(__('catalog.validation.a_group_cannot_become_its_own_ancestor'))
         ->assertSet('data.name', 'Retained group draft')->assertSet('data.parent_id', $parent->id)
         ->assertNotDispatched('catalog-record-created')->assertNoRedirect();
 

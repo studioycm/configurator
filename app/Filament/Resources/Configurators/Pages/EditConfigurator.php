@@ -62,18 +62,18 @@ class EditConfigurator extends EditRecord
 
     public function getBreadcrumb(): string
     {
-        return 'Manage';
+        return __('configurator.labels.manage');
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema->columns(1)->components([
-            Tabs::make('Configurator')->key('configurator-editor')->persistTabInQueryString('tab')->columnSpanFull()->tabs([
-                Tab::make('Overview')->schema([Livewire::make(ConfiguratorOverview::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('overview-'.$this->getRecord()->id)]),
-                Tab::make('Groups')->badge(fn (): int => $this->getRecord()->groups_count ?? $this->getRecord()->groups()->count())->schema([Livewire::make(ConfiguratorGroups::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('groups-'.$this->getRecord()->id)->lazy()]),
-                Tab::make('Attributes')->badge(fn (): int => $this->getRecord()->attributes_count ?? $this->getRecord()->attributes()->count())->schema([Livewire::make(AttributesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialAttributeId' => $this->initialAttributeId])->key('attributes-'.$this->getRecord()->id)->lazy()]),
-                Tab::make('Rules')->badge(fn (): int => $this->getRecord()->rules_count ?? $this->getRecord()->rules()->count())->schema([Livewire::make(RulesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialRuleId' => $this->initialRuleId])->key('rules-'.$this->getRecord()->id)->lazy()]),
-                Tab::make('Preview & Test')->schema([Livewire::make(ConfiguratorPreview::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('preview-'.$this->getRecord()->id)->lazy()]),
+            Tabs::make(__('configurator.resource.singular'))->key('configurator-editor')->persistTabInQueryString('tab')->columnSpanFull()->tabs([
+                Tab::make(__('configurator.workspace.tabs.overview'))->key(fn (Tab $component): string => 'overview::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([Livewire::make(ConfiguratorOverview::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('overview-'.$this->getRecord()->id)]),
+                Tab::make(__('catalog.resources.groups.plural'))->key(fn (Tab $component): string => 'groups::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->badge(fn (): int => $this->getRecord()->groups_count ?? $this->getRecord()->groups()->count())->schema([Livewire::make(ConfiguratorGroups::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('groups-'.$this->getRecord()->id)->lazy()]),
+                Tab::make(__('catalog.resources.attributes.plural'))->key(fn (Tab $component): string => 'attributes::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->badge(fn (): int => $this->getRecord()->attributes_count ?? $this->getRecord()->attributes()->count())->schema([Livewire::make(AttributesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialAttributeId' => $this->initialAttributeId])->key('attributes-'.$this->getRecord()->id)->lazy()]),
+                Tab::make(__('configurator.rules.plural'))->key(fn (Tab $component): string => 'rules::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->badge(fn (): int => $this->getRecord()->rules_count ?? $this->getRecord()->rules()->count())->schema([Livewire::make(RulesRelationManager::class, fn (): array => ['ownerRecord' => $this->getRecord(), 'pageClass' => static::class, 'initialRuleId' => $this->initialRuleId])->key('rules-'.$this->getRecord()->id)->lazy()]),
+                Tab::make(__('configurator.workspace.tabs.preview'))->key(fn (Tab $component): string => 'preview-test::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([Livewire::make(ConfiguratorPreview::class, fn (): array => ['configuratorId' => $this->getRecord()->id])->key('preview-'.$this->getRecord()->id)->lazy()]),
             ]),
         ]);
     }
@@ -86,29 +86,29 @@ class EditConfigurator extends EditRecord
     public function save(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
     {
         Gate::authorize('manage-catalog');
-        abort(405, 'Use the scoped Overview, inclusion or rule action.');
+        abort(405, __('configurator.validation.use_the_scoped_overview_inclusion_or_rule'));
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        abort(405, 'Use a scoped Configurator action.');
+        abort(405, __('configurator.validation.use_a_scoped_configurator_action'));
     }
 
     protected function getHeaderActions(): array
     {
         return [
             StatusActions::make(Action::make('changeStatus')->record(fn (): Model => $this->getRecord()), Configurator::class),
-            Action::make('duplicate')->label('Duplicate')->authorize('manage-catalog')->schema([TextInput::make('name')->required()->maxLength(255)])
-                ->fillForm(fn (): array => ['name' => $this->getRecord()->name.' copy'])
+            Action::make('duplicate')->label(__('ui.actions.duplicate'))->authorize('manage-catalog')->schema([TextInput::make('name')->label(__('ui.fields.name'))->required()->maxLength(255)])
+                ->fillForm(fn (): array => ['name' => __('configurator.actions.copy_name', ['name' => $this->getRecord()->name])])
                 ->action(function (array $data): void {
                     $copy = ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->duplicate(auth()->user(), $this->getRecord(), $data['name']), $this->getMountedActionSchema());
                     $this->redirect(ConfiguratorResource::getUrl('edit', ['record' => $copy]));
                 }),
-            Action::make('remove')->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+            Action::make('remove')->label(__('ui.actions.delete'))->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->schema([View::make('filament.forms.validation-summary')])
-                ->extraModalFooterActions(fn (): array => $this->getRecord()->groups()->exists() ? [Action::make('blockingGroups')->label('View assigned Groups')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => 'configurator-groups', 'parentId' => $this->getRecord()->id]))] : [])
+                ->extraModalFooterActions(fn (): array => $this->getRecord()->groups()->exists() ? [Action::make('blockingGroups')->label(__('configurator.labels.view_assigned_groups'))->slideOver()->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.back'))->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => 'configurator-groups', 'parentId' => $this->getRecord()->id]))] : [])
                 ->modalSubmitAction(fn (Action $action): Action => $action->disabled($this->getRecord()->groups()->exists()))
-                ->modalDescription('Unassign Groups before deleting this Configurator. Local inclusions and rules will be removed; shared canonical records remain available.')
+                ->modalDescription(__('configurator.help.unassign_groups_before_deleting_this_configurator_local'))
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteConfigurator::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());
                     $this->redirect(ConfiguratorResource::getUrl());

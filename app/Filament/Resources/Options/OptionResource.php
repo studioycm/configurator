@@ -21,19 +21,28 @@ class OptionResource extends Resource
 {
     protected static ?string $model = Option::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
-
     protected static ?int $navigationSort = 2;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
-    protected static ?string $modelLabel = 'Attribute Value';
-
-    protected static ?string $pluralModelLabel = 'Attribute Values';
-
     protected static ?string $slug = 'options';
 
     protected static ?string $recordTitleAttribute = 'code';
+
+    public static function getModelLabel(): string
+    {
+        return __('catalog.resources.attribute_values.singular');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('catalog.resources.attribute_values.plural');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.product_configuration');
+    }
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -47,7 +56,7 @@ class OptionResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'All administrative records';
+        return __('catalog.attribute_values.labels.all_administrative_records');
     }
 
     public static function canViewAny(): bool

@@ -38,7 +38,7 @@ abstract class SplitCreateRecord extends CreateRecord
             return parent::getCancelFormAction();
         }
 
-        return Action::make('cancel')->label('Cancel')->color('gray')
+        return Action::make('cancel')->label(__('ui.actions.cancel'))->color('gray')
             ->extraAttributes(['data-editor-transition' => true])
             ->action(fn () => $this->dispatch('catalog-create-cancelled', resource: static::getResource())
                 ->to(static::getResource()::getPages()['index']->getPage()));

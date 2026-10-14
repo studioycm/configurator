@@ -22,17 +22,26 @@ class AttributeResource extends Resource
 {
     protected static ?string $model = Attribute::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
-
     protected static ?int $navigationSort = 3;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
 
-    protected static ?string $modelLabel = 'Attribute';
-
-    protected static ?string $pluralModelLabel = 'Attributes';
-
     protected static ?string $recordTitleAttribute = 'label';
+
+    public static function getModelLabel(): string
+    {
+        return __('catalog.resources.attributes.singular');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('catalog.resources.attributes.plural');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.product_configuration');
+    }
 
     public static function getNavigationBadge(): ?string
     {
@@ -41,7 +50,7 @@ class AttributeResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'All administrative records';
+        return __('catalog.attributes.labels.all_administrative_records');
     }
 
     public static function canViewAny(): bool

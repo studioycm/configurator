@@ -9,7 +9,7 @@ class FormHints
 {
     public static function make(string $text): Action
     {
-        return Action::make('help')->label('Help: '.$text)
+        return Action::make('help')->label(__('admin.workspace.labels.help', ['value1' => $text]))
             ->icon(Heroicon::OutlinedQuestionMarkCircle)->iconButton()->color('gray')
             ->tooltip($text)->alpineClickHandler('$el._tippy?.show()')
             ->extraAttributes(['class' => 'catalog-help-trigger']);

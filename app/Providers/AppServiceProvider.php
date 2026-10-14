@@ -54,6 +54,12 @@ class AppServiceProvider extends ServiceProvider
                     'user' => auth()->id() ?? 0,
                     'purpose' => hash('sha256', $action->getName()),
                     'slideOver' => $action->isModalSlideOver(),
+                    'labels' => [
+                        'width' => __('admin.dialogs.width'),
+                        'narrower' => __('admin.dialogs.narrower'),
+                        'wider' => __('admin.dialogs.wider'),
+                        'reset' => __('admin.dialogs.reset_width'),
+                    ],
                     'width' => $action->isConfirmationRequired() ? 640 : (['small' => 640, 'medium' => 960, 'large' => 1280][app(AdminAppearance::class)->current()[$action->isModalSlideOver() ? 'slide_over_width' : 'modal_width']]),
                 ]).')',
                 'class' => 'catalog-workspace-dialog',

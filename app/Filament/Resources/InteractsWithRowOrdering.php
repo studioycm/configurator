@@ -32,14 +32,14 @@ trait InteractsWithRowOrdering
     {
         return [
             Action::make('reorderRows')->authorize('manage-catalog')->iconButton()->icon(Heroicon::OutlinedArrowsUpDown)
-                ->label(fn (): string => $this->showOrderControls ? 'Hide up/down controls' : 'Show up/down controls')
-                ->tooltip(fn (): string => $this->showOrderControls ? 'Hide up/down controls' : 'Show up/down controls')
+                ->label(fn (): string => $this->showOrderControls ? __('admin.ordering.labels.hide_updown_controls') : __('admin.ordering.labels.show_updown_controls'))
+                ->tooltip(fn (): string => $this->showOrderControls ? __('admin.ordering.help.hide_updown_controls') : __('admin.ordering.help.show_updown_controls'))
                 ->visible(fn (): bool => ! $this->isTableReordering())
                 ->action(fn () => $this->toggleOrderControls()),
             Action::make('dragOrder')->authorize('manage-catalog')->iconButton()
                 ->icon(fn (): Heroicon => $this->isTableReordering() ? Heroicon::OutlinedCheck : Heroicon::OutlinedBars3)
-                ->label(fn (): string => $this->isTableReordering() ? 'Done reordering' : 'Drag to reorder')
-                ->tooltip(fn (): string => $this->isTableReordering() ? 'Done: resume search and filters' : 'Drag the complete ordered list')
+                ->label(fn (): string => $this->isTableReordering() ? __('admin.ordering.labels.done_reordering') : __('admin.ordering.labels.drag_to_reorder'))
+                ->tooltip(fn (): string => $this->isTableReordering() ? __('admin.ordering.help.done_resume_search_and_filters') : __('admin.ordering.help.drag_the_complete_ordered_list'))
                 ->action(fn () => $this->toggleTableReordering()),
         ];
     }

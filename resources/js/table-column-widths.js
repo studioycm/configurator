@@ -28,7 +28,7 @@ export function tableColumnWidths(config) {
             const name = header.dataset.widthColumn;
             if (!header.querySelector('.catalog-column-resize')) {
                 const handle = document.createElement('button'); handle.type = 'button'; handle.className = 'catalog-column-resize'; handle.setAttribute('wire:ignore', '');
-                handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', `Width of ${header.dataset.widthLabel || name}. Arrow keys resize; Home small; End wide; Delete resets.`);
+                handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', config.labels.resize_column.replace(':column', header.dataset.widthLabel || name));
                 handle.setAttribute('aria-valuemin', '64'); handle.setAttribute('aria-valuemax', '640');
                 handle.addEventListener('click', event => { event.stopPropagation(); event.preventDefault(); });
                 handle.addEventListener('pointerdown', event => {

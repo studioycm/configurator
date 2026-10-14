@@ -108,15 +108,15 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
                 return new LengthAwarePaginator($records->forPage($page, (int) $recordsPerPage), $records->count(), (int) $recordsPerPage, $page);
             });
         } else {
-            $table->query($definition->query)->defaultSort('id')->recordActions([Action::make('edit')->label($this->allowLocalEditing ? 'Open full editor' : 'Open editor')->icon('heroicon-o-arrow-top-right-on-square')->url(fn (Model $record): string => app(ItemLists::class)->recordUrl($record))->openUrlInNewTab()]);
+            $table->query($definition->query)->defaultSort('id')->recordActions([Action::make('edit')->label($this->allowLocalEditing ? __('ui.actions.open_full_editor') : __('ui.actions.open_editor'))->icon('heroicon-o-arrow-top-right-on-square')->url(fn (Model $record): string => app(ItemLists::class)->recordUrl($record))->openUrlInNewTab()]);
         }
 
         if ($this->localEditorComponent($definition) !== null) {
             $table->recordAction('select')->recordUrl(null)
                 ->recordClasses(fn (Model|array $record): ?string => $record instanceof Model && (string) $record->getKey() === $this->selectedRecordId ? 'catalog-selected-row' : null)
                 ->recordActions([
-                    Action::make('select')->label($this->listKey === 'group-card-properties' ? 'Edit Presentation' : 'Edit here')
-                        ->icon('heroicon-o-pencil-square')->iconButton()->tooltip($this->listKey === 'group-card-properties' ? 'Edit Presentation' : 'Edit here')->authorize('manage-catalog')
+                    Action::make('select')->label($this->listKey === 'group-card-properties' ? __('catalog.labels.edit_presentation') : __('ui.actions.edit_here'))
+                        ->icon('heroicon-o-pencil-square')->iconButton()->tooltip($this->listKey === 'group-card-properties' ? __('catalog.help.edit_presentation') : __('ui.actions.edit_here'))->authorize('manage-catalog')
                         ->extraAttributes(['data-item-editor-transition' => true])
                         ->action(fn (Model|array $record) => $this->selectRecord($this->getTableRecordKey($record))),
                     ...$table->getRecordActions(),
@@ -128,19 +128,19 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
             $table->reorderable($column, direction: $this->listKey === 'configurator-rules' ? 'desc' : 'asc')
                 ->defaultSort($column, $this->listKey === 'configurator-rules' ? 'desc' : 'asc')
                 ->recordActions([
-                    Action::make('moveUp')->label('Move up')->icon('heroicon-o-chevron-up')->iconButton()->authorize('manage-catalog')
+                    Action::make('moveUp')->label(__('catalog.labels.move_up'))->icon('heroicon-o-chevron-up')->iconButton()->authorize('manage-catalog')
                         ->visible(fn (): bool => $this->showOrderControls && ! $this->isTableReordering())
                         ->action(fn (Model|array $record) => $this->moveItem($this->getTableRecordKey($record), -1)),
-                    Action::make('moveDown')->label('Move down')->icon('heroicon-o-chevron-down')->iconButton()->authorize('manage-catalog')
+                    Action::make('moveDown')->label(__('catalog.labels.move_down'))->icon('heroicon-o-chevron-down')->iconButton()->authorize('manage-catalog')
                         ->visible(fn (): bool => $this->showOrderControls && ! $this->isTableReordering())
                         ->action(fn (Model|array $record) => $this->moveItem($this->getTableRecordKey($record), 1)),
                     ...$table->getRecordActions(),
                 ]);
         }
 
-        $headerActions = $definition->fullListUrl ? [Action::make('fullList')->label('Open full list')->url($definition->fullListUrl)->openUrlInNewTab()] : [];
+        $headerActions = $definition->fullListUrl ? [Action::make('fullList')->label(__('ui.actions.open_full_list'))->url($definition->fullListUrl)->openUrlInNewTab()] : [];
         if ($this->listKey === 'group-card-properties' && $this->localEditorComponent($definition) !== null) {
-            array_unshift($headerActions, Action::make('editPresentation')->label('Edit Presentation')->icon('heroicon-o-pencil-square')->authorize('manage-catalog')
+            array_unshift($headerActions, Action::make('editPresentation')->label(__('catalog.labels.edit_presentation'))->icon('heroicon-o-pencil-square')->authorize('manage-catalog')
                 ->extraAttributes(['data-item-editor-transition' => true])->action(fn () => $this->editPresentation()));
         }
 
@@ -248,7 +248,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
     {
         Gate::authorize('manage-catalog');
         if (filled($this->tableSort)) {
-            throw ValidationException::withMessages(['order' => 'Clear column sorting before moving rows.']);
+            throw ValidationException::withMessages(['order' => __('catalog.validation.clear_column_sorting_before_moving_rows')]);
         }
         app(ItemListOrdering::class)->move(auth()->user(), $this->listKey, $this->parentId, $id, $direction);
         $this->ordered();

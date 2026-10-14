@@ -20,7 +20,7 @@ class DeleteConfigurator
             $this->integrity->lockGroups();
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
             if ($record->groups()->exists()) {
-                throw ValidationException::withMessages(['configurator' => 'Unassign the leaf Groups before deleting this shared Configurator.']);
+                throw ValidationException::withMessages(['configurator' => __('configurator.validation.unassign_the_leaf_groups_before_deleting_this')]);
             }
             $this->definitions->handle($actor, $record, ['name' => $record->name, 'description' => $record->description, 'context_schema' => ['territory' => [], 'application' => []], 'policy_overrides' => [], 'attributes' => [], 'rules' => []]);
             $record->delete();

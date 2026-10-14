@@ -120,11 +120,11 @@ class AttributesRelationManager extends RelationManager
             return [
                 View::make('filament.forms.validation-summary'),
                 Hidden::make('option_id')->required()->rules(['integer']),
-                TextInput::make('label_override')->label('Local UI Name')->maxLength(255)->placeholder($option->option->value->label),
-                TextInput::make('display_value_override')->label('Local display value')->maxLength(255)->placeholder($option->option->value->label),
-                TextInput::make('hint')->label('Local hint')->maxLength(1000),
-                Toggle::make('hidden_by_default')->label('Initially hidden'),
-                Toggle::make('disabled_by_default')->label('Initially disabled'),
+                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255)->placeholder($option->option->value->label),
+                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255)->placeholder($option->option->value->label),
+                TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
+                Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden')),
+                Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled')),
             ];
         });
     }
@@ -166,7 +166,7 @@ class AttributesRelationManager extends RelationManager
         $option = $this->selectedOption();
         abort_unless($attribute && $option, 404);
         if (isset($this->optionEditorStaleRows[$option->id])) {
-            throw ValidationException::withMessages(['optionEditorData' => 'Batch changes were saved. Reload this value before saving; your draft was kept.']);
+            throw ValidationException::withMessages(['optionEditorData' => __('configurator.validation.batch_changes_were_saved_reload_this_value')]);
         }
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorOption::class)->handle(auth()->user(), $attribute, $option->id, $this->optionEditorForm->getState()), $this->optionEditorForm, '/^attributes\.\d+\.options\.\d+\./');
         $this->selectOption($attribute->id, $option->id, reload: true);
@@ -266,7 +266,7 @@ class AttributesRelationManager extends RelationManager
         $attribute = $this->selectedAttribute();
         abort_unless($attribute, 404);
         if (isset($this->editorStaleRows[$attribute->id])) {
-            throw ValidationException::withMessages(['editorData' => 'Batch changes were saved for this record. Reload the saved record before editing again. Your draft has been kept.']);
+            throw ValidationException::withMessages(['editorData' => __('configurator.validation.batch_changes_were_saved_for_this_record')]);
         }
         $this->saveInclusion($attribute->id, $this->editorForm->getState());
         $this->selectAttribute($attribute->id, reload: true);
@@ -363,49 +363,49 @@ class AttributesRelationManager extends RelationManager
     {
         return TablePresentation::configure($table->heading('')->modifyQueryUsing(fn ($query) => $query->with(['attribute', 'defaultOption.option.value'])->withCount('options'))
             ->columns([
-                TextColumn::make('attribute.label')->label('Attribute')->searchable(['label_override', 'help_text'], query: fn ($query, string $search) => $query->where('label_override', 'like', '%'.$search.'%')->orWhere('help_text', 'like', '%'.$search.'%')->orWhereHas('attribute', fn ($query) => $query->where('label', 'like', '%'.$search.'%')->orWhere('key', 'like', '%'.$search.'%')))->wrap()->formatStateUsing(fn (ConfiguratorAttribute $record): string => $record->label_override ?? $record->attribute->label),
-                TextColumn::make('attribute.key')->label('Canonical key')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('label_override')->label('Local label')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('help_text')->label('Help text')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                ItemCountColumn::make('options_count', 'Values', 'inclusion-options'),
-                TextColumn::make('defaultOption.option.code')->label('Default code'),
-                TextColumn::make('defaultOption.option.value.label')->label('Default UI Name')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('code_order')->label('Code position')->formatStateUsing(fn (int $state): int => $state + 1)->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('attribute.label')->label(__('catalog.resources.attributes.singular'))->searchable(['label_override', 'help_text'], query: fn ($query, string $search) => $query->where('label_override', 'like', '%'.$search.'%')->orWhere('help_text', 'like', '%'.$search.'%')->orWhereHas('attribute', fn ($query) => $query->where('label', 'like', '%'.$search.'%')->orWhere('key', 'like', '%'.$search.'%')))->wrap()->formatStateUsing(fn (ConfiguratorAttribute $record): string => $record->label_override ?? $record->attribute->label),
+                TextColumn::make('attribute.key')->label(__('configurator.labels.canonical_key'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('label_override')->label(__('configurator.labels.local_label'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('help_text')->label(__('configurator.labels.help_text'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                ItemCountColumn::make('options_count', __('catalog.attribute_values.short_plural'), 'inclusion-options'),
+                TextColumn::make('defaultOption.option.code')->label(__('configurator.inclusions.fields.default_code')),
+                TextColumn::make('defaultOption.option.value.label')->label(__('configurator.inclusions.fields.default_ui_name'))->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('code_order')->label(__('configurator.labels.code_position'))->formatStateUsing(fn (int $state): int => $state + 1)->toggleable(isToggledHiddenByDefault: true),
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorAttribute $record): ?string => $record->id === $this->selectedAttributeId ? 'catalog-selected-row' : null)
             ->headerActions([
-                Action::make('includeMany')->label('Include Attributes')->authorize('manage-catalog')->slideOver()
+                Action::make('includeMany')->label(__('configurator.labels.include_attributes'))->authorize('manage-catalog')->slideOver()
                     ->schema([
                         View::make('filament.forms.configurator-review-errors'),
                         Hidden::make('review_drafts')->default([])->dehydrated(false),
-                        TableSelect::make('selected')->label('Shared Attributes')->multiple()->required()->minItems(1)->live()->tableConfiguration(AttributeSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])
+                        TableSelect::make('selected')->label(__('configurator.labels.shared_attributes'))->multiple()->required()->minItems(1)->live()->tableConfiguration(AttributeSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])
                             ->afterStateUpdated(function (Set $set, Get $get, ?array $state): void {
                                 $rows = collect($get('review_drafts') ?? [])->replace(collect($get('review') ?? [])->keyBy('attribute_id'));
                                 $set('review_drafts', $rows->all());
                                 $set('review', array_map(fn ($id): array => $rows->get((int) $id) ?? app(ConfiguratorInclusionDrafts::class)->attribute((int) $id), $state ?? []));
                             }),
-                        Repeater::make('review')->label('Review Attributes and choose each stored default')->defaultItems(0)->addable(false)->deletable(false)->reorderable(false)
+                        Repeater::make('review')->label(__('configurator.labels.review_attributes_and_choose_each_stored_default'))->defaultItems(0)->addable(false)->deletable(false)->reorderable(false)
                             ->collapsible()->itemLabel(function (array $state): string {
                                 $attribute = Attribute::find($state['attribute_id'] ?? null);
                                 $default = collect($state['options'] ?? [])->firstWhere('id', $state['default_configurator_option_id'] ?? null);
                                 $option = $default ? Option::find($default['option_id']) : null;
 
-                                return ($attribute?->label ?? 'Attribute').' · '.($attribute?->key ?? '').' · '.count($state['options'] ?? []).' Values · Default: '.($option?->code ?? 'choose required');
+                                return __('configurator.inclusions.summary', ['attribute' => $attribute?->label ?? __('catalog.resources.attributes.singular'), 'key' => $attribute?->key ?? '', 'count' => count($state['options'] ?? []), 'code' => $option?->code ?? __('configurator.inclusions.choose_required')]);
                             })
                             ->schema(fn (): array => ConfiguratorAttributeForm::reviewComponents($this->owner()))->columnSpanFull(),
                     ])->action(fn (array $data) => $this->includeAttributes($data['selected'], $data['review'])),
-                Action::make('codeOrder')->label('Code order')->authorize('manage-catalog')
-                    ->schema([FormOrderControls::make('order')->label('Configuration code order')->schema([Hidden::make('id'), TextInput::make('label')->readOnly()->dehydrated(false)])->addable(false)->deletable(false)->reorderableWithButtons()])
+                Action::make('codeOrder')->label(__('configurator.labels.code_order'))->authorize('manage-catalog')
+                    ->schema([FormOrderControls::make('order')->label(__('configurator.labels.configuration_code_order'))->schema([Hidden::make('id'), TextInput::make('label')->label(__('ui.fields.label'))->readOnly()->dehydrated(false)])->addable(false)->deletable(false)->reorderableWithButtons()])
                     ->fillForm(fn (): array => ['order' => $this->owner()->attributes()->with('attribute')->orderBy('code_order')->get()->map(fn (ConfiguratorAttribute $attribute): array => ['id' => $attribute->id, 'label' => $attribute->label_override ?? $attribute->attribute->label])->all()])
                     ->action(fn (array $data) => $this->saveCodeOrder(array_column($data['order'], 'id'))),
             ])->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveAttribute($id, $direction)),
-                Action::make('edit')->label('Edit')->authorize('manage-catalog')
+                Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')
                     ->extraAttributes(['data-editor-switch' => true])
                     ->action(fn (ConfiguratorAttribute $record) => $this->selectAttribute($record->id)),
-                DependencyActions::local(Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                DependencyActions::local(Action::make('remove')->label(__('ui.actions.remove'))->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Remove this local inclusion and its Included Values. Referencing rules must be repaired first; shared canonical records remain available.')
+                    ->modalDescription(__('configurator.help.remove_this_local_inclusion_and_its_included'))
                     ->action(fn (ConfiguratorAttribute $record) => $this->removeInclusion($record->id))),
             ]), 'configurator-attributes', true, ['includeMany']);
     }
@@ -415,7 +415,7 @@ class AttributesRelationManager extends RelationManager
     {
         $ids = Validator::make(['selected' => $ids], ['selected' => ['required', 'array', 'list', 'min:1'], 'selected.*' => ['required', 'integer', 'distinct', 'min:1']])->validate()['selected'];
         if (array_map('intval', $ids) !== array_map('intval', array_column($rows, 'attribute_id'))) {
-            throw ValidationException::withMessages(['review' => 'Review every selected Attribute before including it.']);
+            throw ValidationException::withMessages(['review' => __('configurator.validation.review_every_selected_attribute_before_including_it')]);
         }
         $firstReviewIndex = null;
         try {
@@ -425,7 +425,7 @@ class AttributesRelationManager extends RelationManager
                 $codeOrder = ($draft['attributes'] === [] ? -1 : max(array_column($draft['attributes'], 'code_order'))) + 1;
                 foreach ($rows as $reviewIndex => $row) {
                     if (empty($row['default_configurator_option_id'])) {
-                        throw ValidationException::withMessages(['review.'.$reviewIndex.'.default_configurator_option_id' => 'Choose a stored default for every new Attribute.']);
+                        throw ValidationException::withMessages(['review.'.$reviewIndex.'.default_configurator_option_id' => __('configurator.validation.choose_a_stored_default_for_every_new')]);
                     }
                     if (($row['input_type'] ?? null) instanceof ConfigInputType) {
                         $row['input_type'] = $row['input_type']->value;
@@ -471,10 +471,10 @@ class AttributesRelationManager extends RelationManager
                     }
                 }
                 if ($id !== null && $index === null) {
-                    throw ValidationException::withMessages(['attribute' => 'This inclusion does not belong to this Configurator.']);
+                    throw ValidationException::withMessages(['attribute' => __('configurator.validation.this_inclusion_does_not_belong_to_this')]);
                 }
                 if (array_diff(array_keys($data), ['id', 'attribute_id', 'input_type', 'label_override', 'help_text', 'default_configurator_option_id', 'options']) !== []) {
-                    throw ValidationException::withMessages(['attribute' => 'Unsupported inclusion fields.']);
+                    throw ValidationException::withMessages(['attribute' => __('configurator.validation.unsupported_inclusion_fields')]);
                 }
                 $old = $index === null ? ['display_order' => ($draft['attributes'] === [] ? -1 : max(array_column($draft['attributes'], 'display_order'))) + 1, 'code_order' => ($draft['attributes'] === [] ? -1 : max(array_column($draft['attributes'], 'code_order'))) + 1] : $draft['attributes'][$index];
                 $row = [...$old, ...$data];
@@ -504,7 +504,7 @@ class AttributesRelationManager extends RelationManager
     {
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->change(auth()->user(), $this->owner(), function (array $draft) use ($id): array {
             if (! in_array((string) $id, array_column($draft['attributes'], 'id'), true)) {
-                throw ValidationException::withMessages(['attribute' => 'This inclusion does not belong to this Configurator.']);
+                throw ValidationException::withMessages(['attribute' => __('configurator.validation.this_inclusion_does_not_belong_to_this')]);
             }
             $draft['attributes'] = array_values(array_filter($draft['attributes'], fn (array $row): bool => (string) $row['id'] !== (string) $id));
 
@@ -536,12 +536,12 @@ class AttributesRelationManager extends RelationManager
         $owner = $this->owner();
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->change($actor, $owner, function (array $draft) use ($id, $direction): array {
             if (! in_array($direction, [-1, 1], true)) {
-                throw ValidationException::withMessages(['order' => 'Choose move up or move down.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.choose_move_up_or_move_down')]);
             }
             usort($draft['attributes'], fn (array $a, array $b): int => $a['display_order'] <=> $b['display_order']);
             $index = array_search((string) $id, array_column($draft['attributes'], 'id'), true);
             if ($index === false) {
-                throw ValidationException::withMessages(['order' => 'This inclusion does not belong to this Configurator.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.this_inclusion_does_not_belong_to_this')]);
             }
             $next = $index + $direction;
             if (isset($draft['attributes'][$next])) {
@@ -584,6 +584,6 @@ class AttributesRelationManager extends RelationManager
         $this->orderedWorkspaceRows = null;
         $this->flushCachedTableRecords();
         $this->dispatch('configurator-updated');
-        Notification::make()->title('Local inclusion saved')->success()->send();
+        Notification::make()->title(__('configurator.headings.local_inclusion_saved'))->success()->send();
     }
 }

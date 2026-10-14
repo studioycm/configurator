@@ -81,7 +81,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
         }
         $product = $this->products()->find($productId);
         if ($product === null) {
-            throw ValidationException::withMessages(['product' => 'Choose a Product from a currently assigned leaf Group.']);
+            throw ValidationException::withMessages(['product' => __('configurator.validation.choose_a_product_from_a_currently_assigned')]);
         }
         $this->productId = $product->id;
         $this->runtime = [];
@@ -93,7 +93,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     {
         Gate::authorize('manage-catalog');
         if ($this->productId === null) {
-            return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_required', 'message' => 'Choose a Product from an assigned Group to preview.']]);
+            return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_required', 'message' => __('configurator.messages.choose_a_product_from_an_assigned_group')]]);
         }
 
         $input = app(ConfiguratorDefinitionLoader::class)->forPreview(auth()->user(), $this->configuratorId, $this->productId, $this->runtime, $intent);
@@ -110,7 +110,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     public function form(Schema $schema): Schema
     {
         Gate::authorize('manage-catalog');
-        $fields = [Select::make('product')->label('Product Code')->searchable()
+        $fields = [Select::make('product')->label(__('configurator.labels.product_code'))->searchable()
             ->getSearchResultsUsing(fn (string $search): array => $this->products()->whereRaw('LOWER(product_code) LIKE ?', ['%'.Str::lower($search).'%'])->orderBy('product_code')->limit(50)->pluck('product_code', 'id')->all())
             ->getOptionLabelUsing(fn ($value): ?string => $this->products()->find($value)?->product_code)
             ->live()->afterStateUpdated(fn ($state) => $this->chooseProduct($state))->columnSpanFull()];

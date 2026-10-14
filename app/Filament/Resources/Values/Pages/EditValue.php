@@ -46,11 +46,11 @@ class EditValue extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('usage')->label('View usage')->authorize('manage-catalog')
-                ->modalHeading('Shared definition usage')->modalSubmitAction(false)->modalCancelActionLabel('Close')
+            Action::make('usage')->label(__('catalog.usage.actions.view'))->authorize('manage-catalog')
+                ->modalHeading(__('catalog.master_values.headings.shared_definition_usage'))->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.close'))
                 ->modalContent(fn () => view('filament.resources.canonical-usage', ['usage' => app(CanonicalUsage::class)->report($this->getRecord())])),
-            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete master value')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
-                ->modalDescription('Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.')
+            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label(__('catalog.master_values.labels.delete_master_value'))->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                ->modalDescription(__('catalog.master_values.help.referenced_definitions_cannot_be_removed_use_view'))
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());
                     $this->redirect(ValueResource::getUrl());

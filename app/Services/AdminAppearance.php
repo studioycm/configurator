@@ -46,10 +46,10 @@ class AdminAppearance
         }
         $validated['show_configurator_loading_indicator'] = (bool) $validated['show_configurator_loading_indicator'];
         if ($validated['logo_height'] > $validated['header_height'] - 12) {
-            throw ValidationException::withMessages(['settings.logo_height' => 'The logo must fit within the header with 6 px padding above and below.']);
+            throw ValidationException::withMessages(['settings.logo_height' => __('admin.appearance.validation.the_logo_must_fit_within_the_header')]);
         }
         if ((int) ceil($validated['page_title_size'] * 1.2) > $validated['header_height'] - 12) {
-            throw ValidationException::withMessages(['settings.page_title_size' => 'The title must fit within the header with 6 px padding above and below. Increase Header height or reduce Page title size.']);
+            throw ValidationException::withMessages(['settings.page_title_size' => __('admin.appearance.validation.the_title_must_fit_within_the_header')]);
         }
 
         return $validated;

@@ -96,18 +96,18 @@ class CatalogImportParser
     public function parse(string $path): array
     {
         if (! is_file($path) || ! is_readable($path)) {
-            throw ValidationException::withMessages(['source' => 'The canonical CSV is not readable.']);
+            throw ValidationException::withMessages(['source' => __('catalog.validation.the_canonical_csv_is_not_readable')]);
         }
         $contents = file_get_contents($path);
         if ($contents === false || ! mb_check_encoding($contents, 'UTF-8') || str_contains($contents, "\0")) {
-            throw ValidationException::withMessages(['source' => 'The canonical CSV must contain valid UTF-8 text without null bytes.']);
+            throw ValidationException::withMessages(['source' => __('catalog.validation.the_canonical_csv_must_contain_valid_utf_8')]);
         }
         $stream = fopen('php://temp', 'w+');
         fwrite($stream, $contents);
         rewind($stream);
         try {
             if (fgetcsv($stream, escape: '') !== array_column(self::COLUMNS, 'header')) {
-                throw ValidationException::withMessages(['source' => 'The 67 positional headers do not match the canonical map, including the blank header at position 48.']);
+                throw ValidationException::withMessages(['source' => __('catalog.validation.the_67_positional_headers_do_not_match')]);
             }
             $rows = [];
             $groups = [];
@@ -117,18 +117,18 @@ class CatalogImportParser
             while (($values = fgetcsv($stream, escape: '')) !== false) {
                 $line++;
                 if (count($values) !== count(self::COLUMNS)) {
-                    throw ValidationException::withMessages(['source' => 'CSV row '.$line.' must contain exactly 67 positions.']);
+                    throw ValidationException::withMessages(['source' => __('catalog.validation.csv_row_must_contain_exactly_67_positions', ['value1' => $line])]);
                 }
                 foreach ([0 => 64, 1 => 64, 2 => 255, 3 => 64, 42 => 255] as $position => $length) {
                     if (($position !== 42 && $values[$position] === '') || mb_strlen($values[$position]) > $length) {
-                        throw ValidationException::withMessages(['source' => 'Invalid required field or length at row '.$line.', column '.($position + 1).'.']);
+                        throw ValidationException::withMessages(['source' => __('catalog.validation.invalid_required_field_or_length_at_row', ['value1' => $line, 'value2' => $position + 1])]);
                     }
                 }
                 if (isset($identities['id:'.$values[0]]) || isset($codes['code:'.$values[3]])) {
-                    throw ValidationException::withMessages(['source' => 'Duplicate Product identity or code at row '.$line.'.']);
+                    throw ValidationException::withMessages(['source' => __('catalog.validation.duplicate_product_identity_or_code_at_row', ['value1' => $line])]);
                 }
                 if (isset($groups[$values[1]]) && $groups[$values[1]] !== $values[2]) {
-                    throw ValidationException::withMessages(['source' => 'Conflicting Group names at row '.$line.'.']);
+                    throw ValidationException::withMessages(['source' => __('catalog.validation.conflicting_group_names_at_row', ['value1' => $line])]);
                 }
                 $identities['id:'.$values[0]] = true;
                 $codes['code:'.$values[3]] = true;

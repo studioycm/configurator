@@ -5,7 +5,7 @@
             <a class="block h-full rounded-xl border border-zinc-300 bg-white px-4 py-3 transition hover:border-teal-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-600 dark:border-zinc-700 dark:bg-zinc-900" href="{{ route('catalog.groups.show', $child) }}">
                 <h2 class="text-xl font-semibold">{{ $child->name }} <span aria-hidden="true">→</span></h2>
                 @if ($child->description)<p class="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $child->description }}</p>@endif
-                <span class="mt-2.5 inline-block text-sm text-teal-700 dark:text-teal-300">{{ __('Browse group') }}</span>
+                <span class="mt-2.5 inline-block text-sm text-teal-700 dark:text-teal-300">{{ __('catalog.frontend.copy.browse_group') }}</span>
             </a>
         </li>
     @endforeach

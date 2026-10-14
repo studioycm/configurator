@@ -41,7 +41,7 @@ class ConfiguratorRuleDraft
             $path = 'condition_blocks.'.$i;
             $this->keys($block, ['type', 'data'], $path);
             if (! is_array($block['data'])) {
-                $this->invalid($path, 'Provide a condition or a one-level group.');
+                $this->invalid($path, __('configurator.validation.provide_a_condition_or_a_one_level_group'));
             }
             if ($block['type'] === 'predicate') {
                 $conditions[] = $this->predicateFromDraft($block['data'], $path.'.data');
@@ -51,7 +51,7 @@ class ConfiguratorRuleDraft
                 $group['conditions'] = array_map(fn (array $condition): array => $this->predicateFromDraft($condition, $path.'.data.conditions'), $this->rows($group['conditions'], $path.'.data.conditions'));
                 $conditions[] = $group;
             } else {
-                $this->invalid($path, 'Only predicates and one level of All/Any groups are supported.');
+                $this->invalid($path, __('configurator.validation.only_predicates_and_one_level_of_all_any_groups_are_supported'));
             }
         }
         unset($draft['condition_blocks']);
@@ -62,7 +62,7 @@ class ConfiguratorRuleDraft
             }
             $this->keys($set, ['id', 'label', 'source_option_ids', 'target_option_ids', 'disallowed_target_behavior'], 'sets.'.$i);
             if (! is_string($set['disallowed_target_behavior']) || MappingTargetBehavior::tryFrom($set['disallowed_target_behavior']) === null) {
-                $this->invalid('sets.'.$i.'.disallowed_target_behavior', 'Choose Disable or Hide for disallowed targets.');
+                $this->invalid('sets.'.$i.'.disallowed_target_behavior', __('configurator.validation.choose_disable_or_hide_for_disallowed_targets'));
             }
             $set['label'] = $set['label'] === '' ? null : $set['label'];
             $set['sort_order'] = $i;
@@ -95,7 +95,7 @@ class ConfiguratorRuleDraft
         $list = in_array($row['operator'], ['In', 'NotIn'], true);
         $selection = in_array($row['source_kind'], ['SelectionOption', 'SelectionCode'], true);
         if (($list && $row['operand_text'] !== null) || (! $list && $row['operand_list'] !== []) || ($selection && ($row['operand_text'] !== null || $row['operand_list'] !== []))) {
-            $this->invalid($path, 'Clear the previous operand explicitly before changing its source or scalar/list operator.');
+            $this->invalid($path, __('configurator.validation.clear_operand_before_source_change'));
         }
         $operand = $selection ? null : ($list ? $row['operand_list'] : $row['operand_text']);
         unset($row['operand_text'], $row['operand_list']);
@@ -107,7 +107,7 @@ class ConfiguratorRuleDraft
     private function rows(mixed $rows, string $path): array
     {
         if (! is_array($rows) || count($rows) > 500 || array_filter($rows, fn (mixed $row): bool => ! is_array($row)) !== []) {
-            $this->invalid($path, 'Provide a bounded list of complete rows.');
+            $this->invalid($path, __('configurator.validation.provide_a_bounded_list_of_complete_rows'));
         }
 
         return array_values($rows);
@@ -117,7 +117,7 @@ class ConfiguratorRuleDraft
     private function keys(array $row, array $keys, string $path): void
     {
         if (array_diff(array_keys($row), $keys) !== [] || array_diff($keys, array_keys($row)) !== []) {
-            $this->invalid($path, 'Provide a complete row with only supported fields. Nested or unknown rule payloads are not supported.');
+            $this->invalid($path, __('configurator.validation.unsupported_rule_payload'));
         }
     }
 

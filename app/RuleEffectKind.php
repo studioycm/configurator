@@ -18,14 +18,14 @@ enum RuleEffectKind: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::AllowOptions => 'Allow values',
-            self::ExcludeOptions => 'Exclude values',
-            self::HideOptions => 'Hide values',
-            self::DisableOptions => 'Disable values',
-            self::HideAttribute => 'Hide Attribute',
-            self::SetLabel => 'Set label',
-            self::SetDisplayValue => 'Set display value',
-            self::SetHint => 'Set hint',
+            self::AllowOptions => __('configurator.rules.effects.allow_values'),
+            self::ExcludeOptions => __('configurator.rules.effects.exclude_values'),
+            self::HideOptions => __('configurator.rules.effects.hide_values'),
+            self::DisableOptions => __('configurator.rules.effects.disable_values'),
+            self::HideAttribute => __('configurator.rules.effects.hide_attribute'),
+            self::SetLabel => __('configurator.rules.effects.set_label'),
+            self::SetDisplayValue => __('configurator.rules.effects.set_display_value'),
+            self::SetHint => __('configurator.rules.effects.set_hint'),
         };
     }
 }

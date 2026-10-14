@@ -18,7 +18,7 @@ class SaveAdminAppearanceSettings
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         if (! Schema::hasTable('admin_appearance_settings')) {
-            throw ValidationException::withMessages(['settings' => 'Shared appearance storage is not installed yet. Apply the reviewed Admin Appearance migration before saving. Your preview is still available.']);
+            throw ValidationException::withMessages(['settings' => __('admin.appearance.validation.shared_appearance_storage_is_not_installed_yet')]);
         }
         $validated = app(AdminAppearance::class)->validate($settings);
         $record = DB::transaction(function () use ($validated): AdminAppearanceSettings {

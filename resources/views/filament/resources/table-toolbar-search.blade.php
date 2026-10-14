@@ -4,7 +4,7 @@
         $wireModelAttribute = $table->isSearchOnBlur() ? 'wire:model.live.blur' : 'wire:model.live.debounce.'.$table->getSearchDebounce();
     @endphp
     <div x-id="['input']" class="fi-ta-search-field catalog-table-search" wire:key="{{ $this->getId() }}.workspace-search">
-        <label x-bind:for="$id('input')" class="fi-sr-only">Search</label>
+        <label x-bind:for="$id('input')" class="fi-sr-only">{{ __('admin.workspace.copy.search') }}</label>
         <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass" wire:target="tableSearch">
             <x-filament::input
                 :attributes="(new \Filament\Support\View\ComponentAttributeBag)->merge([

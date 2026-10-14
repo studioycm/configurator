@@ -9,10 +9,15 @@ use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Lang;
 use Livewire\Livewire;
 
 test('Attribute Values are omitted from navigation while authorized workflows remain available', function (string $email) {
     $this->actingAs(User::factory()->create(['email' => $email]));
+    Lang::addLines([
+        'catalog.resources.attribute_values.plural' => 'Shared library values',
+        'catalog.attribute_values.headings.shared' => 'Shared library value details',
+    ], 'en');
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     $attribute = Attribute::factory()->create();
     $value = Value::factory()->create();
@@ -21,13 +26,15 @@ test('Attribute Values are omitted from navigation while authorized workflows re
 
     expect($navigationUrls)->toContain(AttributeResource::getUrl())->not->toContain(OptionResource::getUrl());
     expect(OptionResource::getSlug())->toBe('options');
-    $this->get(OptionResource::getUrl())->assertSee('Attribute Values');
-    $this->get(OptionResource::getUrl('create'))->assertSee('Create Attribute Value');
-    Livewire::test(CreateOption::class)
+    $this->get(OptionResource::getUrl())->assertSee(OptionResource::getTitleCasePluralModelLabel());
+    $create = Livewire::test(CreateOption::class);
+    $this->get(OptionResource::getUrl('create'))->assertSee($create->instance()->getTitle());
+    $create
         ->fillForm(['attribute_id' => $attribute->id, 'value_id' => $value->id, 'code' => 'A1'])
         ->call('create')->assertHasNoFormErrors();
     $option = Option::where('code', 'A1')->sole();
-    $this->get(OptionResource::getUrl('edit', ['record' => $option]))->assertSee('Shared Attribute Value');
+    $editor = Livewire::test(EditOption::class, ['record' => $option->id]);
+    $this->get(OptionResource::getUrl('edit', ['record' => $option]))->assertSee($editor->instance()->form->getComponents()[0]->getHeading());
     Livewire::test(EditOption::class, ['record' => $option->id, 'listKey' => 'attribute-options', 'parentId' => $attribute->id])
         ->fillForm(['attribute_id' => $attribute->id, 'value_id' => $value->id, 'code' => 'A2'])
         ->call('save')->assertHasNoFormErrors()->assertDispatched('item-drawer-record-saved');

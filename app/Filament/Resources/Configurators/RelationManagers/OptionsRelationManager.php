@@ -46,8 +46,6 @@ class OptionsRelationManager extends RelationManager
 
     protected static string $relationship = 'options';
 
-    protected static ?string $title = 'Included Values';
-
     protected static bool $isLazy = false;
 
     #[Reactive]
@@ -65,6 +63,11 @@ class OptionsRelationManager extends RelationManager
         }
     }
 
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return __('configurator.inclusions.values.heading');
+    }
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return $ownerRecord instanceof ConfiguratorAttribute && Gate::allows('manage-catalog');
@@ -74,25 +77,25 @@ class OptionsRelationManager extends RelationManager
     {
         return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('option.value'))
             ->columns([
-                TextColumn::make('label_override')->label('Local UI Name')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('display_value_override')->label('Display value')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('hint')->label('Hint')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('option.code')->label('Code')->searchable(),
-                TextColumn::make('option.value.label')->label('UI Name')->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
-                TextColumn::make('option.value.tags')->label('Tags')->badge(),
-                IconColumn::make('stored_default')->label('Default')->boolean()->state(fn (ConfiguratorOption $record): bool => $record->id === $this->owner()->default_configurator_option_id),
-                IconColumn::make('hidden_by_default')->label('Hidden')->boolean()->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('disabled_by_default')->label('Disabled')->boolean()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('display_value_override')->label(__('configurator.labels.display_value'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('hint')->label(__('configurator.labels.hint'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('option.code')->label(__('catalog.fields.code'))->searchable(),
+                TextColumn::make('option.value.label')->label(__('catalog.fields.ui_name'))->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
+                TextColumn::make('option.value.tags')->label(__('catalog.fields.tags'))->badge(),
+                IconColumn::make('stored_default')->label(__('ui.fields.default'))->boolean()->state(fn (ConfiguratorOption $record): bool => $record->id === $this->owner()->default_configurator_option_id),
+                IconColumn::make('hidden_by_default')->label(__('ui.status.hidden'))->boolean()->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('disabled_by_default')->label(__('ui.status.disabled'))->boolean()->toggleable(isToggledHiddenByDefault: true),
             ])->filters([
-                SelectFilter::make('availability')->label('Initial availability')->options(['visible' => 'Visible', 'hidden' => 'Hidden', 'disabled' => 'Disabled'])
+                SelectFilter::make('availability')->label(__('configurator.labels.initial_availability'))->options(['visible' => __('ui.status.visible'), 'hidden' => __('ui.status.hidden'), 'disabled' => __('ui.status.disabled')])
                     ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? '') {
                         'visible' => $query->where('hidden_by_default', false)->where('disabled_by_default', false),
                         'hidden' => $query->where('hidden_by_default', true),
                         'disabled' => $query->where('disabled_by_default', true),
                         default => $query,
                     }),
-                Filter::make('tags')->schema(fn (): array => [ValuesTable::tagFilterField()])
-                    ->indicateUsing(fn (array $data): ?string => empty($data['values']) ? null : 'Tags: '.implode(', ', $data['values']))
+                Filter::make('tags')->label(__('catalog.fields.tags'))->schema(fn (): array => [ValuesTable::tagFilterField()])
+                    ->indicateUsing(fn (array $data): ?string => empty($data['values']) ? null : __('catalog.filters.tags_indicator', ['tags' => implode(', ', $data['values'])]))
                     ->query(fn (Builder $query, array $data): Builder => $query->when(! empty($data['values']), fn (Builder $query): Builder => $query->whereHas('option.value', function (Builder $query) use ($data): void {
                         $query->where(function (Builder $query) use ($data): void {
                             foreach (array_filter($data['values'], 'is_string') as $tag) {
@@ -103,18 +106,18 @@ class OptionsRelationManager extends RelationManager
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)->recordAction('edit')
             ->recordClasses(fn (ConfiguratorOption $record): ?string => $record->id === $this->selectedOptionId ? 'catalog-selected-row' : null)
             ->headerActions([
-                Action::make('includeMany')->label('Include Values')->authorize('manage-catalog')->slideOver()
-                    ->schema([TableSelect::make('selected')->label('Shared Attribute Values')->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
+                Action::make('includeMany')->label(__('configurator.inclusions.values.actions.include_many'))->authorize('manage-catalog')->slideOver()
+                    ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
                     ->action(fn (array $data) => $this->includeOptions($data['selected'])),
-                Action::make('include')->label('Include value')->icon(Heroicon::OutlinedPlus)->authorize('manage-catalog')->schema(fn (): array => $this->optionFields())
+                Action::make('include')->label(__('configurator.inclusions.values.actions.include'))->icon(Heroicon::OutlinedPlus)->authorize('manage-catalog')->schema(fn (): array => $this->optionFields())
                     ->action(fn (array $data) => $this->saveOption(null, $data)),
             ])->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveOption($id, $direction)),
-                Action::make('edit')->label('Edit')->authorize('manage-catalog')->extraAttributes(['data-option-editor-switch' => true])
+                Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')->extraAttributes(['data-option-editor-switch' => true])
                     ->action(fn (ConfiguratorOption $record) => $this->dispatch('configurator-option-selected', attributeId: $this->owner()->id, optionId: $record->id)->to(AttributesRelationManager::class)),
-                DependencyActions::local(Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                DependencyActions::local(Action::make('remove')->label(__('ui.actions.remove'))->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Choose another stored default and repair rule references before removing a value.')
+                    ->modalDescription(__('configurator.help.choose_another_stored_default_and_repair_rule'))
                     ->action(fn (ConfiguratorOption $record) => $this->removeOption($record->id))),
             ]), 'configurator-options', true, ['includeMany']);
     }
@@ -128,7 +131,7 @@ class OptionsRelationManager extends RelationManager
             foreach ($ids as $id) {
                 $option = Option::where('attribute_id', $attribute['attribute_id'])->find($id);
                 if (! $option || in_array((int) $id, $existing, true)) {
-                    throw ValidationException::withMessages(['selected' => 'Choose current, not already included Attribute Values belonging to this Attribute.']);
+                    throw ValidationException::withMessages(['selected' => __('configurator.validation.choose_current_not_already_included_attribute_values')]);
                 }
                 $attribute['options'][] = app(ConfiguratorInclusionDrafts::class)->option($option);
             }
@@ -144,16 +147,16 @@ class OptionsRelationManager extends RelationManager
 
         return [
             View::make('filament.forms.validation-summary'),
-            Select::make('option_id')->label('Shared Attribute Value')->required()->rules(['integer'])->searchable()->disabled($option !== null)->dehydrated()
+            Select::make('option_id')->label(__('catalog.attribute_values.headings.shared'))->required()->rules(['integer'])->searchable()->disabled($option !== null)->dehydrated()
                 ->options(fn (): array => Option::where('attribute_id', $owner->attribute_id)
                     ->when($option === null, fn ($query) => $query->where('is_active', true)->where('is_hidden', false))
                     ->whereNotIn('id', $owner->options()->when($option, fn ($query) => $query->whereKeyNot($option->id))->pluck('option_id'))
                     ->with('value')->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->code.' · '.$row->value->label])->all()),
-            TextInput::make('label_override')->label('Local UI Name')->maxLength(255),
-            TextInput::make('display_value_override')->label('Local display value')->maxLength(255),
-            TextInput::make('hint')->label('Local hint')->maxLength(1000),
-            Toggle::make('hidden_by_default')->label('Initially hidden')->default(false),
-            Toggle::make('disabled_by_default')->label('Initially disabled')->default(false),
+            TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255),
+            TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255),
+            TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
+            Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden'))->default(false),
+            Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled'))->default(false),
         ];
     }
 
@@ -168,7 +171,7 @@ class OptionsRelationManager extends RelationManager
     {
         $this->changeOptions(function (array $attribute) use ($id): array {
             if (! in_array((string) $id, array_column($attribute['options'], 'id'), true)) {
-                throw ValidationException::withMessages(['option' => 'This Included Value does not belong to this attribute.']);
+                throw ValidationException::withMessages(['option' => __('configurator.validation.this_included_value_does_not_belong_to')]);
             }
             $attribute['options'] = array_values(array_filter($attribute['options'], fn (array $row): bool => (string) $row['id'] !== (string) $id));
 
@@ -181,12 +184,12 @@ class OptionsRelationManager extends RelationManager
         $this->assertWorkspaceOrder();
         $this->changeOptions(function (array $attribute) use ($id, $direction): array {
             if (! in_array($direction, [-1, 1], true)) {
-                throw ValidationException::withMessages(['order' => 'Choose move up or move down.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.choose_move_up_or_move_down')]);
             }
             usort($attribute['options'], fn (array $a, array $b): int => $a['display_order'] <=> $b['display_order']);
             $index = array_search((string) $id, array_column($attribute['options'], 'id'), true);
             if ($index === false) {
-                throw ValidationException::withMessages(['order' => 'This Included Value does not belong to this Attribute.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.this_included_value_does_not_belong_to_2')]);
             }
             $next = $index + $direction;
             if (isset($attribute['options'][$next])) {
@@ -241,6 +244,6 @@ class OptionsRelationManager extends RelationManager
         $this->flushCachedTableRecords();
         $this->dispatch('configurator-options-updated');
         $this->dispatch('configurator-updated');
-        Notification::make()->title('Values saved')->success()->send();
+        Notification::make()->title(__('configurator.headings.values_saved'))->success()->send();
     }
 }

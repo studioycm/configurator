@@ -61,7 +61,7 @@ function publicCatalogCardHtml(Group $group): string
 }
 
 test('signed in users can open the catalog before products are imported', function () {
-    $this->get(route('catalog.index'))->assertOk()->assertSeeLivewire(Index::class)->assertSee('The catalog is being prepared.')->assertDontSee('D060');
+    $this->get(route('catalog.index'))->assertOk()->assertSeeLivewire(Index::class)->assertSee(__('catalog.frontend.copy.the_catalog_is_being_prepared'))->assertDontSee('D060');
 });
 
 test('catalog navigation follows actual ancestors and branches without descendant cards', function () {
@@ -80,7 +80,7 @@ test('a leaf fetches all its own products in code order through a separate JSON 
         Product::factory()->for($group)->create(['product_code' => sprintf('CODE-%02d', $i)]);
     }
     $foreign = Product::factory()->create(['product_code' => 'FOREIGN']);
-    Livewire::test(GroupShow::class, ['group' => $group])->assertDontSee('CODE-01')->assertDontSee('Product pagination')
+    Livewire::test(GroupShow::class, ['group' => $group])->assertDontSee('CODE-01')->assertDontSee(__('catalog.frontend.copy.product_pagination'))
         ->call('loadCards', ['version' => 1, 'filters' => [], 'subGroupId' => null, 'precedence' => []], '1', 'cards-1')
         ->assertReturned(function ($response) use ($foreign): bool {
             $html = implode('', $response['htmlChunks']);
@@ -95,7 +95,7 @@ test('a leaf fetches all its own products in code order through a separate JSON 
 test('public product facts are escaped and unassigned configuration remains honest', function () {
     $product = Product::factory()->create(['product_name' => 'Visitor name', 'product_code' => '000123', 'description' => '<script>unsafe</script>', 'properties' => ['operating_pressure' => '25 bar']]);
     $this->get(route('catalog.products.show', $product))->assertOk()->assertSeeLivewire(ProductShow::class)->assertSee('Visitor name')->assertSee('000123')->assertSee('25 bar')
-        ->assertSee('<script>unsafe</script>')->assertDontSee('<script>unsafe</script>', false)->assertSee('Configuration is not available for this product.')->assertDontSee('Configuration Code');
+        ->assertSee('<script>unsafe</script>')->assertDontSee('<script>unsafe</script>', false)->assertSee(__('configurator.copy.configuration_is_not_available_for_this_product'))->assertDontSee(__('configurator.copy.configuration_code'));
 });
 
 test('unknown catalog records return not found', function () {
@@ -171,7 +171,7 @@ test('presets are embedded once and card requests accept only an owned preset', 
     Product::factory()->count(2)->for($group)->sequence(['properties' => ['Working_Pressure' => '10']], ['properties' => ['Working_Pressure' => '16']])->create();
     $low = SubGroup::factory()->for($group)->create(['label' => 'Low pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10']]);
     $high = SubGroup::factory()->for($group)->create(['label' => 'High pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['16']]);
-    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee('Filters')->assertSee('Sub Groups')->assertSee('profiles')->assertSee('RESET')->assertDontSee('Clear subgroup')->assertDontSee('Clear filters')->assertSet('groupId', (string) $group->id);
+    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee(__('ui.tables.filters'))->assertSee(__('catalog.frontend.copy.sub_groups'))->assertSee(__('catalog.frontend.copy.profiles'))->assertSee(__('catalog.frontend.copy.reset'))->assertDontSee('Clear subgroup')->assertDontSee(__('admin.workspace.labels.clear_filters'))->assertSet('groupId', (string) $group->id);
     expect(substr_count($page->html(), 'data-catalog-snapshot'))->toBe(1);
     expect(publicCatalogCards($group)['total'])->toBe(2);
     expect(publicCatalogCards($group, preset: (string) $low->id)['total'])->toBe(1);

@@ -16,11 +16,11 @@ class DependencyActions
     public static function categoryLabel(string $category): string
     {
         return match ($category) {
-            'options' => 'Shared Attribute Values',
-            'inclusions' => 'Configurator uses',
-            'defaults' => 'Stored defaults',
-            'rules' => 'Blocking rules',
-            'groups' => 'Assigned groups',
+            'options' => __('catalog.attribute_values.headings.shared_plural'),
+            'inclusions' => __('catalog.usage.headings.configurator_uses'),
+            'defaults' => __('catalog.usage.headings.stored_defaults'),
+            'rules' => __('catalog.usage.headings.blocking_rules'),
+            'groups' => __('configurator.labels.assigned_groups'),
         };
     }
 
@@ -47,7 +47,7 @@ class DependencyActions
                     }
                     $key = 'canonical-'.$type.'-'.$category;
                     $label = self::categoryLabel($category);
-                    $actions[] = Action::make('blocking-'.$category)->label('View '.$label.' ('.$count.')')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')
+                    $actions[] = Action::make('blocking-'.$category)->label(__('catalog.labels.view_2', ['value1' => $label, 'value2' => $count]))->slideOver()->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.back'))
                         ->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => $key, 'parentId' => $record->id]));
                 }
 
@@ -70,7 +70,7 @@ class DependencyActions
             $actions = [];
             foreach ($keys as $key => $count) {
                 if ($count > 0) {
-                    $actions[] = Action::make($key)->label((str_ends_with($key, 'defaults') ? 'View stored defaults' : 'View blocking rules').' ('.$count.')')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => $key, 'parentId' => $record->id]));
+                    $actions[] = Action::make($key)->label((str_ends_with($key, 'defaults') ? __('catalog.usage.actions.view_defaults') : __('catalog.usage.actions.view_rules')).' ('.$count.')')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.back'))->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => $key, 'parentId' => $record->id]));
                 }
             }
 

@@ -5,9 +5,9 @@
             @class(['catalog-table-count', 'catalog-table-count-filtered' => $counts['filtered']])
             role="status"
             aria-live="polite"
-            aria-label="{{ $counts['matched'] }} matching records of {{ $counts['total'] }} total"
-            x-tooltip="{ content: 'Matching records after search and applied filters, out of the total before filtering. Both counts include all pages.', theme: $store.theme }"
-        >{{ $counts['filtered'] ? number_format($counts['matched']).' of '.number_format($counts['total']) : number_format($counts['total']).' total' }}</span>
+            aria-label="{{ __('admin.tables.counts.accessible', ['matched' => $counts['matched'], 'total' => $counts['total']]) }}"
+            x-tooltip="{ content: @js(__('admin.tables.counts.help')), theme: $store.theme }"
+        >{{ $counts['filtered'] ? __('admin.tables.counts.matched', ['matched' => number_format($counts['matched']), 'total' => number_format($counts['total'])]) : __('admin.tables.counts.total', ['total' => number_format($counts['total'])]) }}</span>
     @elseif ($this->getTable()->getHeading() !== '')
         <div class="catalog-table-heading">
             <h3>{{ $this->getTable()->getHeading() ?? $this->getTable()->getPluralModelLabel() }}</h3>

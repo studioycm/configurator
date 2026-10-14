@@ -805,3 +805,6 @@ The phased [ATTRIBUTE_VALUE_RENAMING_PLAN.md](ATTRIBUTE_VALUE_RENAMING_PLAN.md) 
 
 
 **Phase A implemented locally, 2026-10-14:** UI wording now uses Attribute Values / Included Values and the standalone navigation link is hidden, with existing access, permissions, routes and internal contracts preserved. Final default suite: **546 tests / 3,365 assertions**; Pint, FilaCheck and diff checks passed, with authenticated desktop review. The naming plan records the independent review fix, lint rulings and exact coverage. No DB changes, commit, push or deployment occurred. Phase B and the Product-data foundation remain pending.
+
+
+**Terminology follow-up, 2026-10-14:** Phase A was committed and pushed as `957013f`. The subsequent local cleanup uses four contextual English language files (`ui`, `catalog`, `configurator`, `admin`) for application-owned wording, retains stable domain/state/URL identifiers, and refocuses existing tests on behavior and configured labels. The enum-state regression remains. See [the naming plan follow-up](ATTRIBUTE_VALUE_RENAMING_PLAN.md#terminology-and-behavior-test-follow-up--2026-10-14) for ownership, research and verification. This cleanup does not implement Phase B or the Product-data foundation.

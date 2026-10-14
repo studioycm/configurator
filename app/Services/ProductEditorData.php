@@ -33,12 +33,12 @@ class ProductEditorData
         $submitted = [];
         foreach ($rows as $row) {
             if (! array_key_exists($row['key'], $original) || array_key_exists($row['key'], $submitted)) {
-                throw ValidationException::withMessages([$field => 'Keep the existing JSON keys. Fields cannot be added, removed or renamed here.']);
+                throw ValidationException::withMessages([$field => __('catalog.products.validation.keep_the_existing_json_keys_fields_cannot')]);
             }
             $submitted[$row['key']] = $row['value'] ?? '';
         }
         if (count($submitted) !== count($original)) {
-            throw ValidationException::withMessages([$field => 'Keep every existing JSON field, including blank values.']);
+            throw ValidationException::withMessages([$field => __('catalog.products.validation.keep_every_existing_json_field_including_blank')]);
         }
         $updated = $original;
         foreach ($original as $key => $value) {
@@ -47,7 +47,7 @@ class ProductEditorData
                 continue;
             }
             if (! is_string($value) && $value !== null) {
-                throw ValidationException::withMessages([$field => 'Structured and non-text source values are read-only until their editing semantics are defined.']);
+                throw ValidationException::withMessages([$field => __('catalog.products.validation.structured_and_non_text_source_values_are_read_only')]);
             }
             $updated[$key] = $input;
         }

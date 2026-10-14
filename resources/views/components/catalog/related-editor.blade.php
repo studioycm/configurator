@@ -10,10 +10,10 @@
     <x-catalog.workspace-splitter />
     <div class="catalog-related-pane min-w-0">
         <div x-cloak x-show="confirmDiscard" role="alert" class="mb-2 rounded-lg border border-amber-300 p-2">
-            <p class="mb-2 text-sm">Discard all unsaved editor drafts?</p>
+            <p class="mb-2 text-sm">{{ __('admin.workspace.copy.discard_all_unsaved_editor_drafts') }}</p>
             <div class="flex gap-2">
-                <x-filament::button color="gray" x-on:click="confirmDiscard = false">Keep editing</x-filament::button>
-                <x-filament::button color="danger" x-on:click="confirmDiscard = false; closingOption ? $wire.closeOptionEditor() : $wire.closeEditor()">Discard drafts</x-filament::button>
+                <x-filament::button color="gray" x-on:click="confirmDiscard = false">{{ __('catalog.frontend.copy.keep_editing') }}</x-filament::button>
+                <x-filament::button color="danger" x-on:click="confirmDiscard = false; closingOption ? $wire.closeOptionEditor() : $wire.closeEditor()">{{ __('catalog.frontend.copy.discard_drafts') }}</x-filament::button>
             </div>
         </div>
         {{ $slot }}

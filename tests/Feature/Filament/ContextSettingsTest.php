@@ -12,6 +12,7 @@ use App\Models\Configurator;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleDraft;
+use Filament\Actions\Testing\TestAction;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -46,7 +47,7 @@ test('global validation preserves the staged settings and stored choices', funct
     $before = CatalogContextSettings::current()->choices;
     Livewire::test(ContextSettings::class)->fillForm(['context_schema' => [
         'territory' => [['value' => 'All', 'label' => 'Reserved choice']], 'application' => [],
-    ]])->call('save')->assertHasFormErrors()->assertSee('All is reserved for unrestricted context.');
+    ]])->call('save')->assertHasFormErrors()->assertSee(__('configurator.validation.all_is_reserved_for_unrestricted_context'));
     expect(CatalogContextSettings::current()->choices)->toBe($before);
 });
 
@@ -94,7 +95,7 @@ test('rule editor offers inherited context choices and preserves their string id
     $ruleDraft['label'] = 'Edited context rule';
     Livewire::test(RulesRelationManager::class, [
         'ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class,
-    ])->callTableAction('edit', $configurator->rules()->sole())->fillForm($ruleDraft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
+    ])->callAction(TestAction::make('edit')->table($configurator->rules()->sole()))->fillForm($ruleDraft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($configurator->rules()->sole()->conditions()->sole()->operand)->toBe($operand);
     expect($configurator->rules()->sole()->label)->toBe('Edited context rule');
 })->with([

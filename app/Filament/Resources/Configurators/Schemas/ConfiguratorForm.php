@@ -26,32 +26,32 @@ class ConfiguratorForm
     /** @return array<Component> */
     public static function overview(bool $withContext = true): array
     {
-        $fields = [TextInput::make('name')->required()->maxLength(255), Textarea::make('description')->rows(3)->maxLength(5000)->columnSpanFull()];
+        $fields = [TextInput::make('name')->label(__('ui.fields.name'))->required()->maxLength(255), Textarea::make('description')->label(__('configurator.fields.description'))->rows(3)->maxLength(5000)->columnSpanFull()];
         $sections = [View::make('filament.forms.validation-summary')->columnSpanFull(), ...$fields];
         if ($withContext) {
             $global = CatalogContextSettings::current()->choices;
             $contextSections = [];
-            foreach (['territory' => 'Territory', 'application' => 'Application'] as $dimension => $label) {
-                $contextSections[] = Section::make($label.' choices')
-                    ->afterHeader([FormHints::make('All global options are available by default. Change only the exceptions for this Configurator.')])
+            foreach (['territory' => __('configurator.labels.territory'), 'application' => __('configurator.labels.application')] as $dimension => $label) {
+                $contextSections[] = Section::make(__('configurator.headings.choices', ['value1' => $label]))
+                    ->afterHeader([FormHints::make(__('configurator.hints.all_global_options_are_available_by_default'))])
                     ->schema([
-                        CheckboxList::make('hidden_context_options.'.$dimension)->label('Hide global options')
+                        CheckboxList::make('hidden_context_options.'.$dimension)->label(__('configurator.labels.hide_global_options'))
                             ->options(function (Get $get) use ($global, $dimension): array {
                                 $choices = array_column($global[$dimension], 'label', 'value');
                                 foreach ($get('hidden_context_options.'.$dimension) ?? [] as $value) {
-                                    $choices[$value] ??= $value.' (no longer global)';
+                                    $choices[$value] ??= $value.__('configurator.context.no_longer_global_suffix');
                                 }
 
                                 return $choices;
                             })->columns(['default' => 1, 'sm' => 2])->default([])
                             ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
-                            ->hintAction(FormHints::make('Checked options are hidden here only. All remains available.')),
-                        self::contextChoices($dimension, 'Local options')
-                            ->hintAction(FormHints::make('Add choices for this Configurator only. Using a global stable value customizes its label locally. Repair rules before removing a used choice.')),
+                            ->hintAction(FormHints::make(__('configurator.hints.checked_options_are_hidden_here_only_all'))),
+                        self::contextChoices($dimension, __('configurator.context.local_options'))
+                            ->hintAction(FormHints::make(__('configurator.hints.add_choices_for_this_configurator_only_using'))),
                     ]);
             }
-            $sections[] = Section::make('Future public catalog context')->key('public-context')->collapsed()->columns(['default' => 1, 'lg' => 2])->columnSpanFull()
-                ->afterHeader([FormHints::make('Territory and Application are reserved for the future public catalog. The agent dashboard and saved Preview use Configurator Attributes instead and ignore separate context rules.')])
+            $sections[] = Section::make(__('configurator.headings.future_public_catalog_context'))->key('public-context')->collapsed()->columns(['default' => 1, 'lg' => 2])->columnSpanFull()
+                ->afterHeader([FormHints::make(__('configurator.hints.territory_and_application_are_reserved_for_the'))])
                 ->schema($contextSections);
         }
 
@@ -61,10 +61,10 @@ class ConfiguratorForm
     public static function contextChoices(string $dimension, string $label): Repeater
     {
         return FormOrderControls::make('context_schema.'.$dimension)->label($label)
-            ->table([TableColumn::make('Label'), TableColumn::make('Stable value')])->compact()->schema([
-                TextInput::make('label')->required()->maxLength(255),
-                TextInput::make('value')->label('Stable value')->required()->maxLength(255)->distinct(),
-            ])->defaultItems(0)->reorderableWithButtons()->columnSpanFull()->addActionLabel('Add option')
-            ->hintAction(FormHints::make('Stable values are used by rules. Keep them unchanged when renaming labels.'));
+            ->table([TableColumn::make('Label'), TableColumn::make(__('configurator.context.stable_value'))])->compact()->schema([
+                TextInput::make('label')->label(__('ui.fields.label'))->required()->maxLength(255),
+                TextInput::make('value')->label(__('configurator.labels.stable_value'))->required()->maxLength(255)->distinct(),
+            ])->defaultItems(0)->reorderableWithButtons()->columnSpanFull()->addActionLabel(__('configurator.labels.add_option'))
+            ->hintAction(FormHints::make(__('configurator.hints.stable_values_are_used_by_rules_keep')));
     }
 }

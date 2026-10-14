@@ -49,7 +49,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
         $this->form->fill($record->only(['name', 'description', 'context_schema', 'hidden_context_options']));
         $this->dispatch('configurator-updated');
         $this->dispatch('catalog-overview-saved');
-        Notification::make()->title('Overview saved')->success()->send();
+        Notification::make()->title(__('configurator.headings.overview_saved'))->success()->send();
     }
 
     private function owner(): Configurator

@@ -172,7 +172,7 @@ class RulesRelationManager extends RelationManager
         Gate::authorize('manage-catalog');
         abort_if($this->editorKind === null, 404);
         if ($this->selectedRuleId !== null && isset($this->editorStaleRows['rule:'.$this->selectedRuleId])) {
-            throw ValidationException::withMessages(['editorData' => 'Batch changes were saved for this record. Reload the saved record before editing again. Your draft has been kept.']);
+            throw ValidationException::withMessages(['editorData' => __('configurator.validation.batch_changes_were_saved_for_this_record')]);
         }
         $this->editorForm->getState();
         $state = $this->editorForm->getRawState();
@@ -204,37 +204,37 @@ class RulesRelationManager extends RelationManager
     {
         return TablePresentation::configure($table->heading('')->modifyQueryUsing(fn ($query) => $query->with(['driverAttribute.attribute', 'targetAttribute.attribute', 'mappingSets', 'conditionGroups', 'conditions.sourceAttribute.attribute', 'conditions.optionReferences.configuratorOption.option', 'effects.targetAttribute.attribute', 'effects.optionReferences.configuratorOption.option'])->withCount(['mappingSets', 'effects']))
             ->columns([
-                TextColumn::make('label')->wrap()->searchable(fn (): bool => ! $this->isTableReordering), TextColumn::make('kind')->badge()->searchable(),
-                TextColumn::make('summary')->label('When → Then')->state(fn (ConfiguratorRule $record): string => $record->workspaceSummary())
+                TextColumn::make('label')->label(__('ui.fields.label'))->wrap()->searchable(fn (): bool => ! $this->isTableReordering), TextColumn::make('kind')->label(__('ui.fields.kind'))->badge()->searchable(),
+                TextColumn::make('summary')->label(__('configurator.labels.when_then'))->state(fn (ConfiguratorRule $record): string => $record->workspaceSummary())
                     ->tooltip(fn (ConfiguratorRule $record): string => $record->workspaceSummary())->wrap()->toggleable(),
-                TextColumn::make('scope')->state(fn (ConfiguratorRule $record): string => $record->isFuturePublicOnly() ? 'Future public only' : 'Dashboard')
+                TextColumn::make('scope')->label(__('configurator.labels.scope'))->state(fn (ConfiguratorRule $record): string => $record->isFuturePublicOnly() ? __('configurator.rules.scope.public') : 'Dashboard')
                     ->badge()->color(fn (ConfiguratorRule $record): string => $record->isFuturePublicOnly() ? 'warning' : 'gray')->toggleable(),
-                ItemCountColumn::make('mapping_sets_count', 'Sets', 'rule-mappings')->toggleable(isToggledHiddenByDefault: true),
-                ItemCountColumn::make('effects_count', 'Effects', 'rule-effects')->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('is_active')->label('Enabled')->boolean(),
-            ])->filters([SelectFilter::make('scope')->label('Scope')->options(['dashboard' => 'Dashboard', 'public' => 'Future public only'])
+                ItemCountColumn::make('mapping_sets_count', __('configurator.labels.sets'), 'rule-mappings')->toggleable(isToggledHiddenByDefault: true),
+                ItemCountColumn::make('effects_count', __('configurator.labels.effects'), 'rule-effects')->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('is_active')->label(__('ui.status.enabled'))->boolean(),
+            ])->filters([SelectFilter::make('scope')->label(__('configurator.labels.scope'))->options(['dashboard' => __('configurator.labels.dashboard'), 'public' => __('configurator.labels.future_public_only')])
             ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? '') {
                 'dashboard' => $query->whereDoesntHave('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application'])),
                 'public' => $query->whereHas('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application'])),
                 default => $query,
             })])->defaultSort('priority', 'desc')->reorderable('priority', direction: 'desc')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorRule $record): ?string => $record->id === $this->selectedRuleId ? 'catalog-selected-row' : null)
-            ->headerActions([ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label('Add rule')->icon(Heroicon::OutlinedPlus)->tooltip('Add rule')])
+            ->headerActions([ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label(__('configurator.labels.add_rule'))->icon(Heroicon::OutlinedPlus)->tooltip(__('configurator.help.add_rule'))])
             ->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveRule($id, $direction)),
-                Action::make('edit')->label('Edit')->authorize('manage-catalog')
+                Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')
                     ->extraAttributes(['data-editor-switch' => true])
                     ->action(fn (ConfiguratorRule $record) => $this->selectRule($record->id)),
-                Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                Action::make('remove')->label(__('ui.actions.remove'))->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Remove this rule and its owned conditions, effects and mapping sets in one save. Other rules and shared definitions remain available.')
+                    ->modalDescription(__('configurator.help.remove_this_rule_and_its_owned_conditions'))
                     ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
             ]), 'configurator-rules', true, ['addMapping', 'addAdvanced']);
     }
 
     private function createAction(string $kind): Action
     {
-        return Action::make('add'.$kind)->label($kind === 'Mapping' ? 'Add mapping' : 'Add advanced rule')->authorize('manage-catalog')->icon(Heroicon::OutlinedPlus)
+        return Action::make('add'.$kind)->label($kind === 'Mapping' ? __('configurator.labels.add_mapping') : __('configurator.labels.add_advanced_rule'))->authorize('manage-catalog')->icon(Heroicon::OutlinedPlus)
             ->extraAttributes(['data-editor-switch' => true])
             ->action(fn () => $this->createRule($kind));
     }
@@ -247,11 +247,11 @@ class RulesRelationManager extends RelationManager
             app(SaveConfiguratorDefinition::class)->change(auth()->user(), $owner, function (array $draft) use ($id, $kind, $data): array {
                 $index = array_search((string) $id, array_column($draft['rules'], 'id'), true);
                 if ($id !== null && $index === false) {
-                    throw ValidationException::withMessages(['rule' => 'This rule does not belong to this Configurator.']);
+                    throw ValidationException::withMessages(['rule' => __('configurator.validation.this_rule_does_not_belong_to_this')]);
                 }
                 $expected = $id === null ? $kind : $draft['rules'][$index]['kind'];
                 if (! in_array($expected, ['Mapping', 'Advanced'], true) || ($data['kind'] ?? null) !== $expected || $kind !== $expected) {
-                    throw ValidationException::withMessages(['kind' => 'Rule kind is fixed. Create a separate rule to change kind.']);
+                    throw ValidationException::withMessages(['kind' => __('configurator.validation.rule_kind_is_fixed_create_a_separate')]);
                 }
                 $rule = app(ConfiguratorRuleDraft::class)->toRule($data);
                 if ($id !== null) {
@@ -260,7 +260,7 @@ class RulesRelationManager extends RelationManager
                     $draft['rules'][$index] = $rule;
                 } else {
                     if (! str_starts_with((string) $rule['id'], 'new:')) {
-                        throw ValidationException::withMessages(['id' => 'New rules require a new staging key.']);
+                        throw ValidationException::withMessages(['id' => __('configurator.validation.new_rules_require_a_new_staging_key')]);
                     }
                     $rule['priority'] = $draft['rules'] === [] ? 0 : max(array_column($draft['rules'], 'priority')) + 1;
                     $draft['rules'][] = $rule;
@@ -278,7 +278,7 @@ class RulesRelationManager extends RelationManager
     {
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->change(auth()->user(), $this->owner(), function (array $draft) use ($id): array {
             if (! in_array((string) $id, array_column($draft['rules'], 'id'), true)) {
-                throw ValidationException::withMessages(['rule' => 'This rule does not belong to this Configurator.']);
+                throw ValidationException::withMessages(['rule' => __('configurator.validation.this_rule_does_not_belong_to_this')]);
             }
             $draft['rules'] = array_values(array_filter($draft['rules'], fn (array $rule): bool => (string) $rule['id'] !== (string) $id));
 
@@ -301,12 +301,12 @@ class RulesRelationManager extends RelationManager
         $this->assertWorkspaceOrder();
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorDefinition::class)->change(auth()->user(), $this->owner(), function (array $draft) use ($id, $direction): array {
             if (! in_array($direction, [-1, 1], true)) {
-                throw ValidationException::withMessages(['order' => 'Choose move up or move down.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.choose_move_up_or_move_down')]);
             }
             usort($draft['rules'], fn (array $a, array $b): int => $b['priority'] <=> $a['priority']);
             $index = array_search((string) $id, array_column($draft['rules'], 'id'), true);
             if ($index === false) {
-                throw ValidationException::withMessages(['order' => 'This rule does not belong to this Configurator.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.this_rule_does_not_belong_to_this')]);
             }
             $next = $index + $direction;
             if (isset($draft['rules'][$next])) {
@@ -344,6 +344,6 @@ class RulesRelationManager extends RelationManager
         $this->orderedWorkspaceRows = null;
         $this->flushCachedTableRecords();
         $this->dispatch('configurator-updated');
-        Notification::make()->title('Rules saved')->success()->send();
+        Notification::make()->title(__('configurator.headings.rules_saved'))->success()->send();
     }
 }

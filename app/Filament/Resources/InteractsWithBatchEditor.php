@@ -34,7 +34,7 @@ trait InteractsWithBatchEditor
     {
         if ($this->batchEditorStale || $this->batchEditorRecordOriginal !== $this->batchRecordFingerprint()) {
             $this->batchEditorStale = true;
-            throw ValidationException::withMessages(['data.record' => 'This record changed after your editor was opened. Your draft was kept. Reload the saved record before editing again.']);
+            throw ValidationException::withMessages(['data.record' => __('admin.batch.validation.this_record_changed_after_your_editor_was')]);
         }
     }
 

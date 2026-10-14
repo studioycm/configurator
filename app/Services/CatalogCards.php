@@ -53,9 +53,9 @@ class CatalogCards
                     $labels = array_column($snapshot['fields'], 'label', 'key');
                     $display = $this->display->compare($read['products'], $appearance['card_properties'], $labels, $appearance['card_only_differences']);
                     $read['response']['propertiesNotice'] = match ($display['noticeReason']) {
-                        'single_match' => __('Only one product matches, so there are no differing properties to show.'),
-                        'shared_properties' => __('These products share the configured properties.'),
-                        'no_populated_properties' => __('No populated card properties are configured for these products.'),
+                        'single_match' => __('catalog.messages.no_differences_single_match'),
+                        'shared_properties' => __('catalog.messages.these_products_share_the_configured_properties'),
+                        'no_populated_properties' => __('catalog.messages.no_populated_card_properties_are_configured_for_these_products'),
                         default => null,
                     };
                     foreach ($read['products']->chunk(24) as $products) {
@@ -70,6 +70,6 @@ class CatalogCards
                 $this->snapshots->get($groupId);
             }
         }
-        throw new ServiceUnavailableHttpException(2, 'The catalog could not be prepared. Please retry.');
+        throw new ServiceUnavailableHttpException(2, __('catalog.messages.the_catalog_could_not_be_prepared_please_retry'));
     }
 }

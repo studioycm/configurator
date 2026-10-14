@@ -84,7 +84,7 @@ trait InteractsWithItemDrawerEditor
             return parent::getCancelFormAction();
         }
 
-        return Action::make('cancel')->label('Close editor')->color('gray')
+        return Action::make('cancel')->label(__('admin.workspace.labels.close_editor'))->color('gray')
             ->extraAttributes(['data-item-editor-transition' => true])
             ->action(fn () => $this->dispatch('item-drawer-editor-closed', listKey: $this->listKey, parentId: $this->parentId)
                 ->to(ItemListDrawer::class));

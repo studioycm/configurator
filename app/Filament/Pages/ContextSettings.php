@@ -20,15 +20,26 @@ class ContextSettings extends Page
 {
     protected static bool $shouldRegisterNavigation = false;
 
-    protected static ?string $title = 'Territory & Application';
-
-    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
-
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected string $view = 'filament.pages.context-settings';
 
     /** @var array<string, mixed> */
+    public function getTitle(): string
+    {
+        return __('configurator.context.title');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('configurator.context.title');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.settings');
+    }
+
     public array $data = [];
 
     public static function canAccess(): bool
@@ -44,16 +55,16 @@ class ContextSettings extends Page
 
     protected function getHeaderActions(): array
     {
-        return [FormHints::make('Reserved for the future public catalog. These choices do not affect the agent dashboard. All is always available. Keep stable values unchanged when renaming labels.')];
+        return [FormHints::make(__('configurator.context.hints.reserved_for_the_future_public_catalog_these'))];
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema->statePath('data')->columns(1)->components([
             View::make('filament.forms.validation-summary')->columnSpanFull(),
-            Tabs::make('Context choices')->key('context-choices')->columnSpanFull()->tabs([
-                Tab::make('Territories')->schema([ConfiguratorForm::contextChoices('territory', 'Territory options')->helperText(null)->hintAction(FormHints::make('Stable values are used by rules. Keep them unchanged when renaming labels.'))]),
-                Tab::make('Applications')->schema([ConfiguratorForm::contextChoices('application', 'Application options')->helperText(null)->hintAction(FormHints::make('Stable values are used by rules. Keep them unchanged when renaming labels.'))]),
+            Tabs::make(__('configurator.context.headings.context_choices'))->key('context-choices')->columnSpanFull()->tabs([
+                Tab::make(__('configurator.context.headings.territories'))->key(fn (Tab $component): string => 'territories::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([ConfiguratorForm::contextChoices('territory', __('configurator.context.territory_options'))->helperText(null)->hintAction(FormHints::make(__('configurator.context.hints.stable_values_are_used_by_rules_keep')))]),
+                Tab::make(__('configurator.context.headings.applications'))->key(fn (Tab $component): string => 'applications::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([ConfiguratorForm::contextChoices('application', __('configurator.context.application_options'))->helperText(null)->hintAction(FormHints::make(__('configurator.context.hints.stable_values_are_used_by_rules_keep')))]),
             ]),
         ]);
     }
@@ -64,6 +75,6 @@ class ContextSettings extends Page
         $data = $this->form->getState();
         $settings = ConfiguratorFormErrors::run(fn () => app(SaveCatalogContextSettings::class)->handle(auth()->user(), $data['context_schema']), $this->form);
         $this->form->fill(['context_schema' => $settings->choices]);
-        Notification::make()->title('Global choices saved')->success()->send();
+        Notification::make()->title(__('configurator.context.headings.global_choices_saved'))->success()->send();
     }
 }

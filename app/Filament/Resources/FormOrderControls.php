@@ -16,10 +16,10 @@ class FormOrderControls
             ->moveDownAction(fn (Action $action): Action => $action->extraAttributes(['x-show' => 'showButtonOrder', 'x-cloak' => true], merge: true))
             ->reorderAction(fn (Action $action): Action => $action->extraAttributes(['x-show' => 'showDragOrder', 'x-cloak' => true], merge: true))
             ->hintActions([
-                Action::make('toggleOrderButtons')->label('Show or hide up/down controls')->iconButton()->icon(Heroicon::OutlinedArrowsUpDown)
-                    ->tooltip('Show or hide up/down controls')->alpineClickHandler('showButtonOrder = ! showButtonOrder'),
-                Action::make('toggleOrderDrag')->label('Show or hide drag handles')->iconButton()->icon(Heroicon::OutlinedBars3)
-                    ->tooltip('Show or hide drag handles; order is saved with the form')->alpineClickHandler('showDragOrder = ! showDragOrder'),
+                Action::make('toggleOrderButtons')->label(__('admin.ordering.labels.show_or_hide_updown_controls'))->iconButton()->icon(Heroicon::OutlinedArrowsUpDown)
+                    ->tooltip(__('admin.ordering.help.show_or_hide_updown_controls'))->alpineClickHandler('showButtonOrder = ! showButtonOrder'),
+                Action::make('toggleOrderDrag')->label(__('admin.ordering.labels.show_or_hide_drag_handles'))->iconButton()->icon(Heroicon::OutlinedBars3)
+                    ->tooltip(__('admin.ordering.help.show_or_hide_drag_handles_order_is'))->alpineClickHandler('showDragOrder = ! showDragOrder'),
             ]);
     }
 }

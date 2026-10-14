@@ -23,7 +23,7 @@ class CatalogSnapshots
     public function revision(int $groupId): string
     {
         $group = app(CatalogAvailability::class)->group($groupId);
-        abort_if($group->children_exists, 409, 'This Group is now a branch.');
+        abort_if($group->children_exists, 409, __('catalog.messages.this_group_is_now_a_branch'));
 
         return (string) $group->catalog_revision;
     }
@@ -67,10 +67,10 @@ class CatalogSnapshots
 
                     return $snapshot;
                 }
-                throw new ServiceUnavailableHttpException(2, 'The catalog is changing. Please retry.');
+                throw new ServiceUnavailableHttpException(2, __('catalog.messages.the_catalog_is_changing_please_retry'));
             });
         } catch (LockTimeoutException $exception) {
-            throw new ServiceUnavailableHttpException(2, 'The catalog is being prepared. Please retry.', $exception);
+            throw new ServiceUnavailableHttpException(2, __('catalog.messages.the_catalog_is_being_prepared_please_retry'), $exception);
         }
     }
 }

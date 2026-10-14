@@ -157,7 +157,7 @@ test('attribute list opens its existing editor and options beside the table', fu
     Livewire\Livewire::test(ListAttributes::class)
         ->call('selectRecord', (string) $attribute->id)
         ->assertSet('selectedRecord', (string) $attribute->id)
-        ->assertSee('Shared Attribute')->assertSee($value->label)->assertSee($option->code);
+        ->assertSee(__('catalog.attributes.headings.shared_attribute'))->assertSee($value->label)->assertSee($option->code);
     Livewire\Livewire::test(EditAttribute::class, ['record' => $attribute->id])
         ->fillForm(['key' => $attribute->key, 'label' => 'Updated in panel'])->call('save')->assertHasNoFormErrors()->assertDispatched('catalog-record-saved');
     expect($attribute->fresh()->label)->toBe('Updated in panel');
@@ -185,8 +185,10 @@ test('attribute option deletion exposes exact dependencies and disables only blo
     ]);
     $manager->mountAction(TestAction::make('remove')->table($used));
     $action = $manager->instance()->getMountedAction();
-    expect($action->getModalSubmitAction()->isDisabled())->toBeTrue()
-        ->and(collect($action->getExtraModalFooterActions())->map(fn (Action $action): string => $action->getLabel())->all())->toContain('View Configurator uses (1)');
+    expect($action->getModalSubmitAction()->isDisabled())->toBeTrue();
+    $links = collect($action->getExtraModalFooterActions())->keyBy(fn (Action $action): string => $action->getName());
+    expect($links)->toHaveKey('blocking-inclusions');
+    expect($links['blocking-inclusions']->getModalContent()->getData())->toMatchArray(['listKey' => 'canonical-option-inclusions', 'parentId' => $used->id]);
     $manager->call('unmountAction')->mountAction(TestAction::make('remove')->table($unused));
     $action = $manager->instance()->getMountedAction();
     expect($action->getModalSubmitAction()->isDisabled())->toBeFalse()

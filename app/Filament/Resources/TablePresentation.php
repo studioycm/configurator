@@ -67,8 +67,8 @@ class TablePresentation
         }
         if ($key === 'configurator-rules') {
             $table->pushFilters([
-                SelectFilter::make('kind')->label('Rule kind')->options(['Mapping' => 'Mapping', 'Advanced' => 'Advanced']),
-                SelectFilter::make('is_active')->label('Rule activation')->options(['1' => 'Enabled', '0' => 'Disabled']),
+                SelectFilter::make('kind')->label(__('admin.workspace.labels.rule_kind'))->options(['Mapping' => __('admin.workspace.labels.mapping'), 'Advanced' => __('admin.workspace.labels.advanced')]),
+                SelectFilter::make('is_active')->label(__('admin.workspace.labels.rule_activation'))->options(['1' => __('ui.status.enabled'), '0' => __('ui.status.disabled')]),
             ]);
         }
         self::configureQuickFilters($table);
@@ -76,14 +76,14 @@ class TablePresentation
         foreach ($table->getColumns() as $column) {
             if ($column->isSearchable() && ! str_starts_with($key, 'array-')) {
                 $constraints[] = $column->getName() === 'id'
-                    ? NumberConstraint::make('id')->label('ID')
+                    ? NumberConstraint::make('id')->label(__('ui.fields.id'))
                     : TextConstraint::make($column->getName())->label((string) $column->getLabel());
             }
         }
         if ($constraints !== []) {
-            $table->pushFilters([QueryBuilder::make('constraints')->label('Combined constraints')->constraints($constraints)->maxRules(20)->maxNestingDepth(3)
+            $table->pushFilters([QueryBuilder::make('constraints')->label(__('admin.workspace.labels.combined_constraints'))->constraints($constraints)->maxRules(20)->maxNestingDepth(3)
                 ->schema(fn (QueryBuilder $filter): array => [RuleBuilder::make('rules')->label($filter->getLabel())
-                    ->hintAction(FormHints::make('Combine field conditions using AND or OR.'))
+                    ->hintAction(FormHints::make(__('admin.workspace.hints.combine_field_conditions_using_and_or_or')))
                     ->constraints($filter->getConstraints())->blockPickerColumns($filter->getConstraintPickerColumns())->blockPickerWidth($filter->getConstraintPickerWidth())
                     ->maxRules($filter->getMaxRules())->maxNestingDepth($filter->getMaxNestingDepth())])]);
         }
@@ -121,14 +121,14 @@ class TablePresentation
                 array_push($remainingActions, ...$component->workspaceVisibilityActions());
             } elseif (filled($table->getReorderColumn()) && ! method_exists($component, 'rowOrderingActions')) {
                 $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['class' => 'catalog-reorder-trigger'], merge: true));
-                $remainingActions[] = $table->getReorderRecordsTriggerAction(false)->label('Reorder rows')->visible(fn (): bool => $table->isReorderable());
+                $remainingActions[] = $table->getReorderRecordsTriggerAction(false)->label(__('admin.workspace.labels.reorder_rows'))->visible(fn (): bool => $table->isReorderable());
             }
             if (filled($table->getReorderColumn()) && method_exists($component, 'rowOrderingActions')) {
                 $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['style' => 'display: none'], merge: true));
                 array_push($directActions, ...$component->rowOrderingActions());
             }
             if ($remainingActions !== []) {
-                $menu = ActionGroup::make($remainingActions)->label('More actions')->icon(Heroicon::OutlinedEllipsisHorizontal)->iconButton()->tooltip('More actions');
+                $menu = ActionGroup::make($remainingActions)->label(__('admin.workspace.labels.more_actions'))->icon(Heroicon::OutlinedEllipsisHorizontal)->iconButton()->tooltip(__('admin.workspace.help.more_actions'));
                 if (collect($menu->getFlatActions())->every(fn (Action $action): bool => $action instanceof BulkAction)) {
                     $menu->extraAttributes(['x-cloak' => true, 'x-show' => 'getSelectedRecordsCount()']);
                 }
@@ -139,12 +139,12 @@ class TablePresentation
 
         return $table->extraAttributes(['class' => 'catalog-workspace-table'.($narrow ? ' catalog-narrow-table' : ''), 'data-workspace-table' => $key, 'data-reordering' => (int) $component->isTableReordering], merge: true)
             ->header(view('filament.resources.table-native-header'))
-            ->searchable(false)->searchPlaceholder('Search')->deselectAllRecordsWhenFiltered(false)
+            ->searchable(false)->searchPlaceholder(__('ui.tables.search'))->deselectAllRecordsWhenFiltered(false)
             ->filtersLayout(FiltersLayout::Modal)->filtersFormColumns(1)->deferFilters()
-            ->filtersTriggerAction(fn (Action $action): Action => $action->label('Filters')->iconButton()->tooltip('Filters')->slideOver()->stickyModalHeader()->stickyModalFooter())
-            ->filtersResetAction(fn (Action $action): Action => $action->label('Clear filters'))
+            ->filtersTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.filters'))->iconButton()->tooltip(__('ui.tables.filters'))->slideOver()->stickyModalHeader()->stickyModalFooter())
+            ->filtersResetAction(fn (Action $action): Action => $action->label(__('admin.workspace.labels.clear_filters')))
             ->reorderableColumns()->columnManagerLayout(ColumnManagerLayout::Modal)->persistColumnsInSession()
-            ->columnManagerTriggerAction(fn (Action $action): Action => $action->label('Columns')->iconButton()->tooltip('Columns')->slideOver()->stickyModalHeader()->stickyModalFooter()->extraModalFooterActions([$table->getColumnManagerApplyAction()->alpineClickHandler("workspaceColumnManager(\$el, 'applyTableColumnManager'); close()"), Action::make('resetColumnManager')->label('Reset columns')->color('danger')->alpineClickHandler("workspaceColumnManager(\$el, 'resetDeferredColumns'); \$wire.resetTableColumnManager(); ".'$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')'), Action::make('resetWidths')->label('Reset widths')->color('gray')->alpineClickHandler('$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')')]));
+            ->columnManagerTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.columns'))->iconButton()->tooltip(__('ui.tables.columns'))->slideOver()->stickyModalHeader()->stickyModalFooter()->extraModalFooterActions([$table->getColumnManagerApplyAction()->alpineClickHandler("workspaceColumnManager(\$el, 'applyTableColumnManager'); close()"), Action::make('resetColumnManager')->label(__('admin.workspace.labels.reset_columns'))->color('danger')->alpineClickHandler("workspaceColumnManager(\$el, 'resetDeferredColumns'); \$wire.resetTableColumnManager(); ".'$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')'), Action::make('resetWidths')->label(__('admin.workspace.labels.reset_widths'))->color('gray')->alpineClickHandler('$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')')]));
     }
 
     private static function configureQuickFilters(Table $table): void
@@ -186,7 +186,7 @@ class TablePresentation
     /** @return array<string, string> */
     public static function searchColumns(Table $table): array
     {
-        $fields = ['all' => 'All fields'];
+        $fields = ['all' => __('ui.tables.all_fields')];
         foreach ($table->getColumns() as $column) {
             if ($column->isGloballySearchable()) {
                 $fields[$column->getName()] = (string) $column->getLabel();

@@ -37,10 +37,10 @@ class ImportCatalogProducts
         $batch['parents_hash'] = hash('sha256', json_encode($parents, JSON_THROW_ON_ERROR));
         if ($apply && ($sourceHash === null || $mapHash === null
             || ! hash_equals($batch['source_hash'], $sourceHash) || ! hash_equals($batch['map_hash'], $mapHash))) {
-            throw ValidationException::withMessages(['source' => 'Apply requires the exact reviewed source and map SHA-256 hashes. Run a new dry-run.']);
+            throw ValidationException::withMessages(['source' => __('catalog.products.validation.apply_requires_the_exact_reviewed_source_and')]);
         }
         if ($apply && ($parentsHash === null || ! hash_equals($batch['parents_hash'], $parentsHash))) {
-            throw ValidationException::withMessages(['parents' => 'Apply requires the exact reviewed parent metadata SHA-256 hash. Run a new dry-run.']);
+            throw ValidationException::withMessages(['parents' => __('catalog.products.validation.apply_requires_the_exact_reviewed_parent_metadata')]);
         }
         $lock = Cache::lock(self::lockName(), 300);
         if (! $lock->get()) {
@@ -75,12 +75,12 @@ class ImportCatalogProducts
             $data = $row['data'];
             foreach ($byCode->get('code:'.$data['product_code'], collect()) as $candidate) {
                 if ($candidate->legacy_id !== $data['legacy_id']) {
-                    throw ValidationException::withMessages(['source' => 'Product code conflicts with another legacy identity at row '.$row['row'].'.']);
+                    throw ValidationException::withMessages(['source' => __('catalog.products.validation.product_code_conflicts_with_another_legacy_identity', ['value1' => $row['row']])]);
                 }
             }
             $product = $byIdentity->get('id:'.$data['legacy_id']);
             if ($product !== null && $groups->get($product->group_id)?->legacy_id !== $product->legacy_group_id) {
-                throw ValidationException::withMessages(['source' => 'Existing Product relationship conflicts with its recorded Group identity at row '.$row['row'].'.']);
+                throw ValidationException::withMessages(['source' => __('catalog.products.validation.existing_product_relationship_conflicts_with_its_recorded', ['value1' => $row['row']])]);
             }
             $product = $product === null ? new Product : clone $product;
             foreach (['properties', 'parts', 'extra_data'] as $bucket) {
@@ -182,7 +182,7 @@ class ImportCatalogProducts
         }
         $resolve = function (string $legacyId, string $name) use (&$nodes, &$legacyNodes, &$requestedNames): string {
             if (isset($requestedNames[$legacyId]) && $requestedNames[$legacyId] !== $name) {
-                throw ValidationException::withMessages(['parents' => 'Conflicting Group names in parent metadata.']);
+                throw ValidationException::withMessages(['parents' => __('catalog.products.validation.conflicting_group_names_in_parent_metadata')]);
             }
             $requestedNames[$legacyId] = $name;
             $key = $legacyNodes[$legacyId] ??= 'new:'.$legacyId;
@@ -197,11 +197,11 @@ class ImportCatalogProducts
         }
         foreach ($parents as $legacyId => $metadata) {
             if (! isset($sourceNodes[$legacyId]) || ! is_array($metadata)) {
-                throw ValidationException::withMessages(['parents' => 'Parent metadata must name a Group represented in this CSV.']);
+                throw ValidationException::withMessages(['parents' => __('catalog.products.validation.parent_metadata_must_name_a_group_represented')]);
             }
             $parent = isset($metadata['parent_id']) ? 'group:'.$metadata['parent_id'] : $resolve($metadata['parent_legacy_id'], $metadata['parent_name']);
             if (! isset($nodes[$parent])) {
-                throw ValidationException::withMessages(['parents' => 'The supplied parent Group does not exist.']);
+                throw ValidationException::withMessages(['parents' => __('catalog.products.validation.the_supplied_parent_group_does_not_exist')]);
             }
             $nodes[$sourceNodes[$legacyId]]['parent'] = $parent;
         }
@@ -211,12 +211,12 @@ class ImportCatalogProducts
             $parentKey = $node['parent'];
             while ($parentKey !== null) {
                 if (isset($seen[$parentKey]) || ! isset($nodes[$parentKey])) {
-                    throw ValidationException::withMessages(['parents' => 'The proposed Group hierarchy contains a cycle or missing parent.']);
+                    throw ValidationException::withMessages(['parents' => __('catalog.products.validation.the_proposed_group_hierarchy_contains_a_cycle')]);
                 }
                 $seen[$parentKey] = true;
                 $parent = $nodes[$parentKey]['model'];
                 if (in_array($parentKey, $sourceNodes, true) || $parent->configurator_id !== null || in_array($parent->id, $productGroupIds, true)) {
-                    throw ValidationException::withMessages(['parents' => 'Products and configurator assignments require a leaf Group.']);
+                    throw ValidationException::withMessages(['parents' => __('catalog.products.validation.products_and_configurator_assignments_require_a_leaf')]);
                 }
                 $parentKey = $nodes[$parentKey]['parent'];
             }

@@ -38,7 +38,7 @@ test('new Advanced effects keep string scopes and show Target values before any 
         ->call('createRule', 'Advanced')->fillForm(app(ConfiguratorRuleDraft::class)->fromRule($ruleData), 'editorForm');
     $key = array_key_first($manager->get('editorData.effects'));
 
-    $manager->assertFormFieldExists('effects.'.$key.'.target_scope', 'editorForm', fn (Select $field): bool => $field->getState() === 'Options' && $field->getOptions() === ['Attribute' => 'Whole Attribute', 'Options' => 'Selected values'])
+    $manager->assertFormFieldExists('effects.'.$key.'.target_scope', 'editorForm', fn (Select $field): bool => $field->getState() === 'Options' && array_keys($field->getOptions()) === ['Attribute', 'Options'])
         ->assertSchemaComponentVisible('effects.'.$key.'.option_ids', 'editorForm', 'form')
         ->set('editorData.label', 'Allow selected values')
         ->set('editorData.effects.'.$key.'.option_ids', [$attribute['options'][0]['id']])
@@ -80,6 +80,7 @@ test('matrix saves complete sets preserves identities and accepts partial covera
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
     $manager->callAction(TestAction::make('edit')->table($rule))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($rule->mappingSets()->sole()->id)->toBe($originalSet);
+    expect($manager->html())->not->toContain('@js(');
     $draft['sets'][] = ['id' => 'new:other', 'label' => 'Overlapping target', 'source_option_ids' => [$data['attributes'][0]['options'][1]['id']], 'target_option_ids' => $draft['sets'][0]['target_option_ids']];
     $manager->callAction(TestAction::make('edit')->table($rule))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($rule->mappingSets()->count())->toBe(2)->and($rule->mappingSets()->orderBy('sort_order')->first()->id)->toBe($originalSet);

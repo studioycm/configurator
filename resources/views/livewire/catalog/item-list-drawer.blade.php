@@ -32,10 +32,10 @@
     @if ($editor = $this->editorComponent())
         <div class="catalog-item-drawer-editor mt-4 min-w-0">
             <div x-cloak x-show="confirmDiscard" role="alert" class="mb-2 rounded-lg border border-amber-300 p-2">
-                <p class="mb-2 text-sm">Discard the unsaved editor draft?</p>
+                <p class="mb-2 text-sm">{{ __('catalog.frontend.copy.discard_the_unsaved_editor_draft') }}</p>
                 <div class="flex gap-2">
-                    <x-filament::button color="gray" x-on:click="keepEditing()">Keep editing</x-filament::button>
-                    <x-filament::button color="danger" x-on:click="discardDrafts()">Discard drafts</x-filament::button>
+                    <x-filament::button color="gray" x-on:click="keepEditing()">{{ __('catalog.frontend.copy.keep_editing') }}</x-filament::button>
+                    <x-filament::button color="danger" x-on:click="discardDrafts()">{{ __('catalog.frontend.copy.discard_drafts') }}</x-filament::button>
                 </div>
             </div>
             @livewire($editor, ['record' => $selectedRecordId, 'listKey' => $listKey, 'parentId' => $parentId, 'initialTab' => $listKey === 'group-card-properties' ? 'form.group-settings.presentation::data::tab' : null], key('item-editor-'.$listKey.'-'.$parentId.'-'.$selectedRecordId))

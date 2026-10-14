@@ -114,7 +114,7 @@ abstract class SplitListRecords extends ListRecords
         $table = parent::makeTable();
 
         if ($this->inlineCreationEnabled) {
-            $label = 'Create '.static::getResource()::getModelLabel();
+            $label = __('ui.actions.create_record', ['record' => static::getResource()::getModelLabel()]);
             $table->headerActions([
                 Action::make('create')->label($label)->iconButton()->icon(Heroicon::OutlinedPlus)->tooltip($label)
                     ->visible(fn (): bool => static::getResource()::canCreate())->disabled(fn (): bool => $this->isCreatingRecord)
@@ -135,8 +135,8 @@ abstract class SplitListRecords extends ListRecords
             ->recordAction('select')
             ->recordClasses(fn (Model $record): ?string => ! $this->isCreatingRecord && (string) $record->getKey() === $this->selectedRecord ? 'catalog-selected-row' : null)
             ->recordActions([
-                Action::make('select')->label($hasEditPage ? 'Edit' : 'View')
-                    ->iconButton()->icon($hasEditPage ? Heroicon::OutlinedPencilSquare : Heroicon::OutlinedEye)->tooltip($hasEditPage ? 'Edit' : 'View')
+                Action::make('select')->label($hasEditPage ? __('ui.actions.edit') : __('admin.workspace.labels.view'))
+                    ->iconButton()->icon($hasEditPage ? Heroicon::OutlinedPencilSquare : Heroicon::OutlinedEye)->tooltip($hasEditPage ? __('ui.actions.edit') : __('admin.workspace.help.view'))
                     ->action(fn (Model $record) => $this->selectRecord((string) $record->getKey())),
                 ...$otherActions,
             ]);

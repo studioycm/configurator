@@ -21,17 +21,26 @@ class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Catalog';
-
     protected static ?int $navigationSort = 2;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
 
-    protected static ?string $modelLabel = 'Product';
-
-    protected static ?string $pluralModelLabel = 'Products';
-
     protected static ?string $recordTitleAttribute = 'product_code';
+
+    public static function getModelLabel(): string
+    {
+        return __('catalog.resources.products.singular');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('catalog.resources.products.plural');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.catalog');
+    }
 
     public static function getNavigationBadge(): ?string
     {
@@ -40,7 +49,7 @@ class ProductResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'All administrative records';
+        return __('catalog.products.labels.all_administrative_records');
     }
 
     public static function canViewAny(): bool

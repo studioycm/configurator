@@ -46,12 +46,12 @@ class SaveConfiguratorDefinition
             $this->assertOwnership($data, $current);
             foreach ($data['attributes'] as $index => $row) {
                 if (! $preserveInactiveReferences && str_starts_with((string) $row['id'], 'new:') && ! $attributes[$row['attribute_id']]['is_active']) {
-                    throw ValidationException::withMessages(['attributes.'.$index.'.attribute_id' => 'Disabled Attributes cannot be newly included. Re-enable the shared Attribute first.']);
+                    throw ValidationException::withMessages(['attributes.'.$index.'.attribute_id' => __('configurator.validation.disabled_attributes_cannot_be_newly_included_re_enable')]);
                 }
                 foreach ($row['options'] as $optionIndex => $option) {
                     $canonical = $options[$option['option_id']];
                     if (! $preserveInactiveReferences && str_starts_with((string) $option['id'], 'new:') && (! $canonical['is_active'] || $canonical['is_hidden'])) {
-                        throw ValidationException::withMessages(['attributes.'.$index.'.options.'.$optionIndex.'.option_id' => 'Disabled or hidden Attribute Values cannot be newly included.']);
+                        throw ValidationException::withMessages(['attributes.'.$index.'.options.'.$optionIndex.'.option_id' => __('configurator.validation.disabled_or_hidden_attribute_values_cannot_be')]);
                     }
                 }
             }
@@ -121,15 +121,15 @@ class SaveConfiguratorDefinition
                     }
                 }
                 if ($found === null) {
-                    throw ValidationException::withMessages(['order' => 'This Attribute does not belong to the Configurator.']);
+                    throw ValidationException::withMessages(['order' => __('configurator.validation.this_attribute_does_not_belong_to_the')]);
                 }
                 $rows = &$data['attributes'][$found]['options'];
                 $column = 'display_order';
             } else {
-                throw ValidationException::withMessages(['order' => 'Unknown order axis.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.unknown_order_axis')]);
             }
             if (array_filter($ids, fn (mixed $id): bool => ! is_int($id) && ! is_string($id)) !== []) {
-                throw ValidationException::withMessages(['order' => 'Submit the complete unique row order.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.submit_the_complete_unique_row_order')]);
             }
             $submitted = array_map('strval', $ids);
             $expected = array_map('strval', array_column($rows, 'id'));
@@ -137,7 +137,7 @@ class SaveConfiguratorDefinition
             sort($sorted, SORT_STRING);
             sort($expected, SORT_STRING);
             if (! array_is_list($ids) || $sorted !== $expected) {
-                throw ValidationException::withMessages(['order' => 'Submit the complete unique row order, including rows hidden by filters.']);
+                throw ValidationException::withMessages(['order' => __('configurator.validation.submit_the_complete_unique_row_order_including')]);
             }
             foreach ($rows as &$row) {
                 $position = array_search((string) $row['id'], $submitted, true);
@@ -310,7 +310,7 @@ class SaveConfiguratorDefinition
                     continue;
                 }
                 if (($existing[$type][$id] ?? null) !== $owner) {
-                    throw ValidationException::withMessages([$type.'.'.$id => 'This row belongs to another owner or its canonical identity changed. Reload and repair the draft.']);
+                    throw ValidationException::withMessages([$type.'.'.$id => __('configurator.validation.this_row_belongs_to_another_owner_or')]);
                 }
             }
         }

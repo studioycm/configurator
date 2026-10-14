@@ -14,7 +14,7 @@ final readonly class ConfiguratorPolicy
     public static function resolve(array $overrides): self
     {
         if ($overrides !== []) {
-            throw ValidationException::withMessages(['policy_overrides' => 'No policy overrides are currently supported.']);
+            throw ValidationException::withMessages(['policy_overrides' => __('configurator.validation.no_policy_overrides_are_currently_supported')]);
         }
 
         return new self;

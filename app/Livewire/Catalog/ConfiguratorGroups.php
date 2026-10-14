@@ -39,8 +39,8 @@ class ConfiguratorGroups extends Component implements HasActions, HasSchemas
 
     public function membershipAction(): Action
     {
-        return Action::make('membership')->label('Manage Group assignments')->authorize('manage-catalog')->slideOver()
-            ->schema([TableSelect::make('selected')->label('Final assigned Groups')->multiple()->tableConfiguration(GroupSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->configuratorId])])
+        return Action::make('membership')->label(__('configurator.labels.manage_group_assignments'))->authorize('manage-catalog')->slideOver()
+            ->schema([TableSelect::make('selected')->label(__('configurator.labels.final_assigned_groups'))->multiple()->tableConfiguration(GroupSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->configuratorId])])
             ->fillForm(function (): array {
                 $this->expectedGroupIds = $this->owner()->groups()->orderBy('id')->pluck('id')->all();
 
@@ -48,27 +48,27 @@ class ConfiguratorGroups extends Component implements HasActions, HasSchemas
             })
             ->action(function (array $data): void {
                 ConfiguratorFormErrors::run(fn () => app(AssignConfiguratorGroups::class)->handle(auth()->user(), $this->owner(), $data['selected'] ?? [], $this->expectedGroupIds), $this->getMountedActionSchema());
-                $this->saved('Group assignments saved');
+                $this->saved(__('configurator.groups.notifications.saved'));
             });
     }
 
     public function productsAction(): Action
     {
-        return Action::make('products')->label('View Products')->authorize('manage-catalog')->slideOver()->modalSubmitAction(false)->modalContent(fn (array $arguments) => view('filament.resources.item-list-content', ['listKey' => 'group-products', 'parentId' => (int) $arguments['group']]));
+        return Action::make('products')->label(__('configurator.labels.view_products'))->authorize('manage-catalog')->slideOver()->modalSubmitAction(false)->modalContent(fn (array $arguments) => view('filament.resources.item-list-content', ['listKey' => 'group-products', 'parentId' => (int) $arguments['group']]));
     }
 
     public function assignGroup(int $groupId): void
     {
         $this->resetErrorBag();
         ConfiguratorFormErrors::run(fn () => app(AssignConfiguratorGroups::class)->assign(auth()->user(), $this->owner(), $groupId));
-        $this->saved('Group assigned');
+        $this->saved(__('configurator.groups.notifications.assigned'));
     }
 
     public function unassignGroup(int $groupId): void
     {
         $this->resetErrorBag();
         ConfiguratorFormErrors::run(fn () => app(AssignConfiguratorGroups::class)->unassign(auth()->user(), $this->owner(), $groupId));
-        $this->saved('Group unassigned');
+        $this->saved(__('configurator.groups.notifications.unassigned'));
     }
 
     private function owner(): Configurator

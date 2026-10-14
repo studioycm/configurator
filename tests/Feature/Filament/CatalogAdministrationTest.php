@@ -36,19 +36,19 @@ test('product lookup searches the physical product code and shows read only esca
         ->and(Action::make('probe')->getModalWidth())->toBe(Width::FourExtraLarge);
 });
 
-test('split lists preserve catalog links alongside their inline record editor', function (string $page, string $model, string $route, string $label) {
+test('split lists preserve catalog links alongside their inline record editor', function (string $page, string $model, string $route) {
     $record = $model::factory()->create();
     $list = Livewire::test($page);
-    $list->assertSee('Open catalog page');
     $link = $list->instance()->getTable()->getAction('openCatalog');
 
     expect($link)->not->toBeNull();
+    $list->assertSee($link->getLabel());
     expect($link->record($record)->getUrl())->toBe(route($route, $record));
-    expect($list->instance()->getTable()->getAction('select')->getLabel())->toBe($label);
+    expect($list->instance()->getTable()->getAction('select')->getLabel())->toBe(__('ui.actions.edit'));
     $list->callAction(TestAction::make('select')->table($record))->assertSet('selectedRecord', (string) $record->getKey());
 })->with([
-    [ListProducts::class, Product::class, 'catalog.products.show', 'Edit'],
-    [ListGroups::class, Group::class, 'catalog.groups.show', 'Edit'],
+    [ListProducts::class, Product::class, 'catalog.products.show'],
+    [ListGroups::class, Group::class, 'catalog.groups.show'],
 ]);
 
 test('a bulk only header menu follows native selection visibility and keeps batch actions registered', function () {

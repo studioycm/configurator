@@ -31,7 +31,7 @@ class SaveCatalogContextSettings
                     $this->compiler->compile($draft, $attributes, $options, globalContext: $choices);
                 } catch (ValidationException $exception) {
                     throw ValidationException::withMessages([
-                        'context_schema' => 'Cannot save global choices while “'.$configurator->name.'” needs repair: '.collect($exception->errors())->flatten()->first().' Update its rules or retain the choice as a local option.',
+                        'context_schema' => __('configurator.context.validation.cannot_save_global_choices_while_needs', ['value1' => $configurator->name, 'value2' => collect($exception->errors())->flatten()->first()]),
                     ]);
                 }
             }

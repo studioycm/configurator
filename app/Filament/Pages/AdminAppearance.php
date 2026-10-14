@@ -19,15 +19,26 @@ use Illuminate\Support\Facades\Gate;
 
 class AdminAppearance extends Page
 {
-    protected static ?string $title = 'Admin Appearance';
-
-    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
-
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected string $view = 'filament.pages.admin-appearance';
 
     /** @var array<string, mixed> */
+    public function getTitle(): string
+    {
+        return __('admin.appearance.title');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.appearance.title');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.settings');
+    }
+
     public array $data = [];
 
     public static function canAccess(): bool
@@ -44,18 +55,18 @@ class AdminAppearance extends Page
     public function form(Schema $schema): Schema
     {
         $ranges = app(Appearance::class)->ranges();
-        $number = fn (string $key): TextInput => TextInput::make($key)->label(str($key)->replace('_', ' ')->title()->toString())->integer()->required()->minValue($ranges[$key][0])->maxValue($ranges[$key][1])->suffix('px')->live(onBlur: true);
-        $width = fn (string $key): Select => Select::make($key)->options(['small' => 'Small · 640px', 'medium' => 'Medium · 960px', 'large' => 'Large · 1280px'])->required()->live();
+        $number = fn (string $key): TextInput => TextInput::make($key)->label(__('admin.appearance.fields.'.$key))->integer()->required()->minValue($ranges[$key][0])->maxValue($ranges[$key][1])->suffix('px')->live(onBlur: true);
+        $width = fn (string $key): Select => Select::make($key)->options(['small' => __('admin.appearance.labels.small_640px'), 'medium' => __('admin.appearance.labels.medium_960px'), 'large' => __('admin.appearance.labels.large_1280px')])->required()->live();
 
         return $schema->statePath('data')->columns(1)->components([
             View::make('filament.forms.validation-summary'),
-            Tabs::make('Appearance')->key('appearance-settings')->columnSpanFull()->tabs([
-                Tab::make('Density')->columns(2)->schema(array_map($number, ['cell_padding_block', 'cell_padding_inline', 'workspace_gap', 'control_height'])),
-                Tab::make('Navigation')->columns(2)->schema(array_map($number, ['header_height', 'logo_height', 'page_title_size', 'sidebar_width', 'collapsed_sidebar_width', 'navigation_padding_block'])),
-                Tab::make('Dialogs')->columns(2)->schema([$width('modal_width'), $width('slide_over_width')]),
-                Tab::make('Configurator')->schema([
-                    Toggle::make('show_configurator_loading_indicator')->label('Show configurator loading indicator')->default(false)
-                        ->helperText('Product pages keep this off by default. When enabled, the indicator uses reserved space beside the Configuration heading.'),
+            Tabs::make(__('admin.appearance.headings.appearance'))->key('appearance-settings')->columnSpanFull()->tabs([
+                Tab::make(__('admin.appearance.headings.density'))->key(fn (Tab $component): string => 'density::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->schema(array_map($number, ['cell_padding_block', 'cell_padding_inline', 'workspace_gap', 'control_height'])),
+                Tab::make(__('admin.appearance.headings.navigation'))->key(fn (Tab $component): string => 'navigation::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->schema(array_map($number, ['header_height', 'logo_height', 'page_title_size', 'sidebar_width', 'collapsed_sidebar_width', 'navigation_padding_block'])),
+                Tab::make(__('admin.appearance.headings.dialogs'))->key(fn (Tab $component): string => 'dialogs::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->schema([$width('modal_width'), $width('slide_over_width')]),
+                Tab::make(__('configurator.resource.singular'))->key(fn (Tab $component): string => 'configurator::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([
+                    Toggle::make('show_configurator_loading_indicator')->label(__('admin.appearance.labels.show_configurator_loading_indicator'))->default(false)
+                        ->helperText(__('admin.appearance.hints.product_pages_keep_this_off_by_default')),
                 ]),
             ]),
         ]);
@@ -75,6 +86,6 @@ class AdminAppearance extends Page
         $record = ConfiguratorFormErrors::run(fn () => app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $settings), $this->form, '/^settings\./');
         $this->form->fill($record->settings);
         $this->dispatch('admin-appearance-saved', variables: app(Appearance::class)->variables($record->settings));
-        Notification::make()->title('Shared appearance saved')->success()->send();
+        Notification::make()->title(__('admin.appearance.headings.shared_appearance_saved'))->success()->send();
     }
 }

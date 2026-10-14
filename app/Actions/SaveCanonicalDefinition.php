@@ -37,14 +37,14 @@ class SaveCanonicalDefinition
                 }
                 $validated = Validator::make(['definition' => $data], $rules)->validate()['definition'];
                 if ($record instanceof Attribute && $record->exists && $record->key !== $validated['key'] && ($record->options()->exists() || $record->inclusions()->exists())) {
-                    throw ValidationException::withMessages(['key' => 'This Attribute key is in use. Repair its Attribute Values and Configurator inclusions before changing its identity.']);
+                    throw ValidationException::withMessages(['key' => __('catalog.validation.this_attribute_key_is_in_use_repair')]);
                 }
                 $record->fill($validated)->save();
 
                 return $record;
             });
         } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['key' => 'This Attribute key was saved elsewhere. Choose a unique key.']);
+            throw ValidationException::withMessages(['key' => __('catalog.validation.this_attribute_key_was_saved_elsewhere_choose')]);
         }
     }
 }

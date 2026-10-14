@@ -32,7 +32,7 @@ class SaveCatalogProduct
             $record = Product::query()->whereKey($product->id)->lockForUpdate()->firstOrFail();
             abort_unless($groups->has($record->group_id), 404);
             if (! hash_equals(self::fingerprint($record), $expectedFingerprint)) {
-                throw ValidationException::withMessages(['record' => 'This Product changed after your editor was opened. Your draft was kept. Reload the saved record before editing again.']);
+                throw ValidationException::withMessages(['record' => __('catalog.products.validation.this_product_changed_after_your_editor_was')]);
             }
             $rules = [
                 'product' => ['required', 'array:product_code,product_name,description,properties,parts,extra_data'],

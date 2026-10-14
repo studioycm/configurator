@@ -54,6 +54,6 @@ class EditProduct extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('openCatalog')->label('Open catalog')->url(fn (): string => route('catalog.products.show', $this->getRecord()))->openUrlInNewTab()];
+        return [Action::make('openCatalog')->label(__('catalog.products.labels.open_catalog'))->url(fn (): string => route('catalog.products.show', $this->getRecord()))->openUrlInNewTab()];
     }
 }

@@ -21,17 +21,26 @@ class ValueResource extends Resource
 {
     protected static ?string $model = Value::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
-
     protected static ?int $navigationSort = 1;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedListBullet;
 
-    protected static ?string $modelLabel = 'Master value';
-
-    protected static ?string $pluralModelLabel = 'Master values';
-
     protected static ?string $recordTitleAttribute = 'label';
+
+    public static function getModelLabel(): string
+    {
+        return __('catalog.resources.master_values.singular');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('catalog.resources.master_values.plural');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.product_configuration');
+    }
 
     public static function getNavigationBadge(): ?string
     {
@@ -40,7 +49,7 @@ class ValueResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'All administrative records';
+        return __('catalog.master_values.labels.all_administrative_records');
     }
 
     public static function canViewAny(): bool

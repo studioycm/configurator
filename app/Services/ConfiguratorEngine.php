@@ -22,14 +22,14 @@ final class ConfiguratorEngine
     public function evaluate(ConfiguratorEvaluationInput $input): ConfiguratorEvaluationResult
     {
         if ($input->definition === null) {
-            return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], $input->diagnostics === [] ? [['code' => 'unassigned', 'message' => 'This Product does not have an assigned Configurator.']] : $input->diagnostics, false, null, $input->configuratorId);
+            return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], $input->diagnostics === [] ? [['code' => 'unassigned', 'message' => __('configurator.messages.this_product_does_not_have_an_assigned')]] : $input->diagnostics, false, null, $input->configuratorId);
         }
         foreach ($input->definition->attributes as $attribute) {
             $default = $attribute->options[$attribute->defaultOptionId];
             if (! $attribute->active || ! $default->active || $default->lifecycleHidden) {
                 $inactiveAttribute = ! $attribute->active;
 
-                return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], [...$input->diagnostics, ['code' => $inactiveAttribute ? 'inactive_attribute' : 'inactive_default', 'message' => $inactiveAttribute ? 'A required Attribute is disabled. Repair or re-enable it before configuring this Product.' : 'A stored default value is disabled or hidden. Repair or re-enable it before configuring this Product.', 'attribute_id' => $attribute->id]], false, null, $input->configuratorId);
+                return new ConfiguratorEvaluationResult(null, [], [], [], ['territory' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT, 'application' => ConfiguratorPolicy::UNRESTRICTED_CONTEXT], [...$input->diagnostics, ['code' => $inactiveAttribute ? 'inactive_attribute' : 'inactive_default', 'message' => $inactiveAttribute ? __('configurator.messages.a_required_attribute_is_disabled_repair_or') : __('configurator.messages.a_stored_default_value_is_disabled_or'), 'attribute_id' => $attribute->id]], false, null, $input->configuratorId);
             }
         }
         $context = [];
@@ -39,18 +39,18 @@ final class ConfiguratorEngine
             $choices = [ConfiguratorPolicy::UNRESTRICTED_CONTEXT, ...array_column($input->definition->contextSchema[$dimension], 'value')];
             $context[$dimension] = is_string($choice) && in_array($choice, $choices, true) ? $choice : ConfiguratorPolicy::UNRESTRICTED_CONTEXT;
             if ($context[$dimension] !== $choice) {
-                $diagnostics[] = ['code' => 'context_repaired', 'message' => 'A context choice is no longer available. Unrestricted context was restored.'];
+                $diagnostics[] = ['code' => 'context_repaired', 'message' => __('configurator.messages.a_context_choice_is_no_longer_available')];
             }
         }
         $baseline = $this->settle($input, $context, $input->selections, $input->remembered, $diagnostics);
         $intent = $input->intent;
         if ($intent->malformed) {
-            return $this->diagnostic($baseline, ['code' => 'interaction_rejected', 'message' => 'The interaction was malformed. Current choices have been refreshed.']);
+            return $this->diagnostic($baseline, ['code' => 'interaction_rejected', 'message' => __('configurator.messages.the_interaction_was_malformed_current_choices_have')]);
         }
         if ($intent->kind === ConfiguratorIntentType::SelectOption) {
             $attribute = $baseline->attributes[$intent->attributeId] ?? null;
             if ($attribute === null || ! $attribute['applicable'] || ! in_array($intent->optionId, $attribute['legal'], true)) {
-                return $this->diagnostic($baseline, ['code' => 'selection_rejected', 'message' => 'That value is not currently available. Choices have been refreshed.', 'attribute_id' => $intent->attributeId]);
+                return $this->diagnostic($baseline, ['code' => 'selection_rejected', 'message' => __('configurator.messages.that_value_is_not_currently_available_choices'), 'attribute_id' => $intent->attributeId]);
             }
             $selections = $baseline->selections;
             $selections[$intent->attributeId] = $intent->optionId;
@@ -60,7 +60,7 @@ final class ConfiguratorEngine
         if ($intent->kind === ConfiguratorIntentType::ChangeContext) {
             $choices = isset($input->definition->contextSchema[$intent->dimension]) ? [ConfiguratorPolicy::UNRESTRICTED_CONTEXT, ...array_column($input->definition->contextSchema[$intent->dimension], 'value')] : [];
             if (! in_array($intent->choice, $choices, true)) {
-                return $this->diagnostic($baseline, ['code' => 'context_rejected', 'message' => 'That context choice is not available. Current choices have been refreshed.']);
+                return $this->diagnostic($baseline, ['code' => 'context_rejected', 'message' => __('configurator.messages.that_context_choice_is_not_available_current')]);
             }
             $context[$intent->dimension] = $intent->choice;
 
@@ -91,7 +91,7 @@ final class ConfiguratorEngine
                     : count(array_filter($rule->effects, fn ($effect): bool => $effect->attributeId === $id && ! in_array($effect->kind, [RuleEffectKind::SetLabel, RuleEffectKind::SetDisplayValue, RuleEffectKind::SetHint], true))) > 0);
                 if (! $rule->active || ! $this->matches($rule->conditions, $definition, $selections, $input->properties, $context)) {
                     if ($input->trace && $affects) {
-                        $trace[] = ['type' => 'rule', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.($rule->active ? ': conditions did not match' : ': disabled Rule skipped')];
+                        $trace[] = ['type' => 'rule', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => __($rule->active ? 'configurator.trace.conditions_not_matched' : 'configurator.trace.disabled_rule_skipped', ['rule' => $rule->label])];
                     }
 
                     continue;
@@ -113,14 +113,14 @@ final class ConfiguratorEngine
                             $contributors[] = $rule->id;
                             if ($input->trace) {
                                 $trace[] = ['type' => 'mapping', 'attribute_id' => $id, 'rule_id' => $rule->id, 'set_id' => $set->id,
-                                    'message' => $rule->label.': set '.$set->id.' · '.$set->disallowedTargetBehavior->value.' disallowed targets',
+                                    'message' => __('configurator.messages.set_disallowed_targets', ['value1' => $rule->label, 'value2' => $set->id, 'value3' => $set->disallowedTargetBehavior->value]),
                                     'excluded' => array_values(array_diff($all, $set->targets)), 'legal' => $legal];
                             }
                             break;
                         }
                     }
                     if ($input->trace && ! $matchedSet) {
-                        $trace[] = ['type' => 'mapping', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.': unmapped source, no added restriction'];
+                        $trace[] = ['type' => 'mapping', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => __('configurator.messages.unmapped_source_no_added_restriction', ['value1' => $rule->label])];
                     }
 
                     continue;
@@ -168,21 +168,21 @@ final class ConfiguratorEngine
             $choice = $definition->policy->selection($legal, $current, $rememberedChoice, $attribute->defaultOptionId);
             if ($input->trace) {
                 $reason = match (true) {
-                    $choice === null => 'No legal choice remains',
-                    $choice === $current => 'Current choice retained',
-                    $current === null && $choice === $rememberedChoice => 'Remembered choice restored',
-                    $choice === $attribute->defaultOptionId => 'Stored default used',
-                    default => 'Temporary fallback to the first legal value',
+                    $choice === null => __('configurator.trace.no_legal_choice'),
+                    $choice === $current => __('configurator.trace.choice_retained'),
+                    $current === null && $choice === $rememberedChoice => __('configurator.trace.choice_restored'),
+                    $choice === $attribute->defaultOptionId => __('configurator.trace.default_used'),
+                    default => __('configurator.trace.fallback_used'),
                 };
                 $trace[] = ['type' => 'selection', 'attribute_id' => $id, 'message' => $reason, 'choice_id' => $choice];
             }
             if ($choice !== null) {
                 $selections[$id] = $choice;
                 if ((is_string($prior[$id] ?? null) || is_int($prior[$id] ?? null)) && (string) $prior[$id] !== $choice) {
-                    $diagnostics[] = ['code' => 'selection_adjusted', 'message' => 'Choice for '.$attribute->label.' was updated to '.$attribute->options[$choice]->label.' because the previous choice is unavailable.', 'attribute_id' => $id];
+                    $diagnostics[] = ['code' => 'selection_adjusted', 'message' => __('configurator.messages.choice_for_was_updated_to_because_the', ['value1' => $attribute->label, 'value2' => $attribute->options[$choice]->label]), 'attribute_id' => $id];
                 }
             } else {
-                $diagnostics[] = ['code' => 'no_legal_options', 'message' => 'No legal value remains for '.$attribute->label.'.', 'attribute_id' => $id, 'rule_ids' => array_values(array_unique($contributors))];
+                $diagnostics[] = ['code' => 'no_legal_options', 'message' => __('configurator.messages.no_legal_value_remains_for', ['value1' => $attribute->label]), 'attribute_id' => $id, 'rule_ids' => array_values(array_unique($contributors))];
             }
         }
         $this->presentation($definition, $states, $selections, $input->properties, $context, $diagnostics, $input->trace, $trace);
@@ -193,7 +193,7 @@ final class ConfiguratorEngine
             uasort($applicable, fn ($a, $b): int => [$a->codeOrder, $a->id] <=> [$b->codeOrder, $b->id]);
             $code = implode($definition->policy->codeSeparator, array_map(fn ($attribute): string => $attribute->options[$selections[$attribute->id]]->code, $applicable));
         } elseif ($applicable === []) {
-            $diagnostics[] = ['code' => 'unusable_definition', 'message' => 'This Configurator has no applicable Attributes.'];
+            $diagnostics[] = ['code' => 'unusable_definition', 'message' => __('configurator.messages.this_configurator_has_no_applicable_attributes')];
         }
 
         return new ConfiguratorEvaluationResult($definition, $states, $selections, $remembered, $context, $diagnostics, $complete, $code, $input->configuratorId, $trace);
@@ -262,7 +262,7 @@ final class ConfiguratorEngine
                 }
                 if ($traceEnabled) {
                     $trace[] = ['type' => 'presentation', 'attribute_id' => $effect->attributeId, 'rule_id' => $rule->id,
-                        'message' => $rule->label.': '.$effect->kind->getLabel().' candidate at priority '.$rule->priority];
+                        'message' => __('configurator.messages.candidate_at_priority', ['value1' => $rule->label, 'value2' => $effect->kind->getLabel(), 'value3' => $rule->priority])];
                 }
                 foreach ($effect->scope === RuleTargetScope::Attribute ? ['attribute'] : $effect->optionIds as $target) {
                     $outcomes[$effect->attributeId][$target][$field][] = ['priority' => $rule->priority, 'value' => $effect->value, 'rule' => $rule->id];
@@ -275,7 +275,7 @@ final class ConfiguratorEngine
                     $priority = max(array_column($values, 'priority'));
                     $winners = array_values(array_filter($values, fn (array $value): bool => $value['priority'] === $priority));
                     if (count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1) {
-                        $diagnostics[] = ['code' => 'presentation_priority_tie', 'message' => 'Conflicting presentation rules have the same priority; the base '.$field.' is shown.', 'attribute_id' => (string) $attributeId, 'rule_ids' => array_column($winners, 'rule')];
+                        $diagnostics[] = ['code' => 'presentation_priority_tie', 'message' => __('configurator.messages.conflicting_presentation_rules_have_the_same_priority', ['value1' => $field]), 'attribute_id' => (string) $attributeId, 'rule_ids' => array_column($winners, 'rule')];
                     } elseif ($target === 'attribute') {
                         $states[$attributeId][$field] = $winners[0]['value'];
                     } else {
@@ -283,7 +283,7 @@ final class ConfiguratorEngine
                     }
                     if ($traceEnabled) {
                         $trace[] = ['type' => 'presentation', 'attribute_id' => (string) $attributeId,
-                            'message' => count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1 ? 'Presentation tie: base '.$field.' retained' : 'Presentation '.$field.' from Rule '.implode(', ', array_column($winners, 'rule'))];
+                            'message' => count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1 ? __('configurator.messages.presentation_tie_base_retained', ['value1' => $field]) : __('configurator.messages.presentation_from_rule', ['value1' => $field, 'value2' => implode(', ', array_column($winners, 'rule'))])];
                     }
                 }
             }

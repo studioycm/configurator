@@ -15,11 +15,11 @@ enum ConditionSource: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::SelectionOption => 'Selected value',
-            self::SelectionCode => 'Selected code',
-            self::ProductProperty => 'Product property',
-            self::Territory => 'Territory',
-            self::Application => 'Application',
+            self::SelectionOption => __('configurator.rules.sources.selected_value'),
+            self::SelectionCode => __('configurator.rules.sources.selected_code'),
+            self::ProductProperty => __('catalog.fields.product_property'),
+            self::Territory => __('configurator.labels.territory'),
+            self::Application => __('configurator.labels.application'),
         };
     }
 }

@@ -19,6 +19,7 @@ use App\Models\Group;
 use App\Models\Option;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 
@@ -65,7 +66,7 @@ test('Overview save preserves unvisited local inclusions and rules and the works
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
     $before = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     $page = Livewire\Livewire::test(EditConfigurator::class, ['record' => $configurator->id])
-        ->assertSee('Overview')->assertSee('Groups')->assertSee('Attributes')->assertSee('Rules')->assertSee('Preview & Test')->assertDontSeeText('Reserved for later custom behavior.');
+        ->assertSee(__('configurator.workspace.tabs.overview'))->assertSee(__('catalog.resources.groups.plural'))->assertSee(__('catalog.resources.attributes.plural'))->assertSee(__('configurator.rules.plural'))->assertSee(__('configurator.workspace.tabs.preview'))->assertDontSeeText('Reserved for later custom behavior.');
     Livewire\Livewire::test(ConfiguratorOverview::class, ['configuratorId' => $configurator->id])
         ->fillForm(['name' => 'Renamed', 'description' => 'Shared details', 'context_schema' => ['territory' => [], 'application' => []]])->call('saveOverview')->assertHasNoFormErrors();
     $after = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
@@ -95,7 +96,7 @@ test('local inclusion editors preserve shared identity and stored default throug
     }
     unset($option);
     $manager = Livewire\Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callTableAction('includeMany', data: ['selected' => [$draft['attribute_id']], 'review' => [$draft]])->assertHasNoTableActionErrors();
+    $manager->callAction(TestAction::make('includeMany')->table(), data: ['selected' => [$draft['attribute_id']], 'review' => [$draft]])->assertHasNoFormErrors();
     $inclusion = $configurator->attributes()->sole();
     $default = $inclusion->default_configurator_option_id;
     $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['attributes'][0];
@@ -109,7 +110,7 @@ test('local inclusion editors preserve shared identity and stored default throug
     Livewire\Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $inclusion, 'pageClass' => EditConfigurator::class])
         ->call('reorderTable', array_column($saved['options'], 'id'))->assertHasNoErrors();
     unset($saved['options']);
-    $manager->callTableAction('edit', $inclusion)->fillForm($saved, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
+    $manager->callAction(TestAction::make('edit')->table($inclusion))->fillForm($saved, 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     expect($inclusion->fresh()->default_configurator_option_id)->toBe($default)->and($inclusion->fresh()->label_override)->toBe('Local only')->and($inclusion->attribute->label)->toBe('A');
     expect($inclusion->options()->orderBy('display_order')->pluck('id')->last())->toBe($default);
 });
@@ -131,7 +132,7 @@ test('duplicate action remaps local rows and copies no Group assignments', funct
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
     Group::factory()->create(['configurator_id' => $configurator->id]);
     Livewire\Livewire::test(EditConfigurator::class, ['record' => $configurator->id])
-        ->callAction('duplicate', data: ['name' => 'Independent copy'])->assertHasNoActionErrors();
+        ->callAction('duplicate', data: ['name' => 'Independent copy'])->assertHasNoFormErrors();
     $copy = Configurator::where('name', 'Independent copy')->sole();
     expect($copy->groups()->count())->toBe(0)->and($copy->attributes()->count())->toBe(3)->and(Option::count())->toBe(6);
 });
@@ -158,9 +159,9 @@ test('failed inclusion validation keeps the staged draft and renders its repair 
     $draft['default_configurator_option_id'] = '999999';
     $draft['label_override'] = 'Unsaved local draft';
     $component = Livewire\Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $inclusion)->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(['default_configurator_option_id'], 'editorForm')
+        ->callAction(TestAction::make('edit')->table($inclusion))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(['default_configurator_option_id'], 'editorForm')
         ->assertSet('editorData.label_override', 'Unsaved local draft');
-    expect($component->instance()->editorForm->toHtml())->toContain('Repair these items before saving');
+    expect($component->instance()->editorForm->toHtml())->toContain(__('admin.workspace.copy.repair_these_items_before_saving'));
     expect($inclusion->fresh()->label_override)->toBeNull()->and($inclusion->options()->count())->toBe(2);
 });
 

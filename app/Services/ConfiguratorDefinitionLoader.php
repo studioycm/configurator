@@ -40,7 +40,7 @@ class ConfiguratorDefinitionLoader
             $this->assertSnapshotIsolation();
             $product = Product::with('group')->findOrFail($productId);
             if (! app(CatalogAvailability::class)->productIsVisible($product)) {
-                return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'product_unavailable', 'message' => 'This Product is no longer available in the catalog.']]);
+                return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'product_unavailable', 'message' => __('configurator.messages.this_product_is_no_longer_available_in')]]);
             }
             $configuratorId = $product->group->configurator_id;
             $interaction = ConfiguratorInteraction::fromUntrusted($intent === [] ? ['kind' => 'Initialize'] : $intent);
@@ -53,7 +53,7 @@ class ConfiguratorDefinitionLoader
             $diagnostics = [];
             $sameDefinition = ($state['version'] ?? null) === 1 && ($state['configurator_id'] ?? null) === $configuratorId;
             if ($state !== [] && ! $sameDefinition) {
-                $diagnostics[] = ['code' => 'definition_changed', 'message' => 'The current Configurator has been loaded and its choices reset.'];
+                $diagnostics[] = ['code' => 'definition_changed', 'message' => __('configurator.messages.the_current_configurator_has_been_loaded_and')];
             }
             $safeState = [];
             foreach (['context', 'selections', 'remembered'] as $key) {
@@ -65,7 +65,7 @@ class ConfiguratorDefinitionLoader
             try {
                 $configurator = Configurator::findOrFail($configuratorId);
                 if (! $configurator->is_active) {
-                    return new ConfiguratorEvaluationInput(null, properties: $product->properties, configuratorId: $configuratorId, diagnostics: [['code' => 'inactive_configurator', 'message' => 'The assigned Configurator is disabled.']]);
+                    return new ConfiguratorEvaluationInput(null, properties: $product->properties, configuratorId: $configuratorId, diagnostics: [['code' => 'inactive_configurator', 'message' => __('configurator.messages.the_assigned_configurator_is_disabled')]]);
                 }
                 $data = $this->draft($configurator);
                 if (! $withPublicContext) {
@@ -77,7 +77,7 @@ class ConfiguratorDefinitionLoader
                 $definition = $this->compiler->compile($data, $attributes, $options, globalContext: $withPublicContext ? CatalogContextSettings::current()->choices : []);
             } catch (ValidationException) {
                 $definition = null;
-                $diagnostics[] = ['code' => 'invalid_definition', 'message' => 'The assigned Configurator needs repair before it can be used.'];
+                $diagnostics[] = ['code' => 'invalid_definition', 'message' => __('configurator.messages.the_assigned_configurator_needs_repair_before_it')];
             }
 
             return new ConfiguratorEvaluationInput($definition, $product->properties, $safeState['context'], $safeState['selections'], $safeState['remembered'], $interaction, $configuratorId, $diagnostics);
@@ -93,7 +93,7 @@ class ConfiguratorDefinitionLoader
             $this->assertSnapshotIsolation();
             $available = Product::whereKey($productId)->whereHas('group', fn ($query) => $query->where('configurator_id', $configuratorId)->doesntHave('children'))->exists();
             if (! $available) {
-                return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_unavailable', 'message' => 'This Product is no longer assigned to the previewed Configurator. Choose another Product.']]);
+                return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_unavailable', 'message' => __('configurator.messages.this_product_is_no_longer_assigned_to')]]);
             }
 
             return $this->forDashboardProduct($productId, $state, $intent);

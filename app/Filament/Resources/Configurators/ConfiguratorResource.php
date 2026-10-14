@@ -21,17 +21,26 @@ class ConfiguratorResource extends Resource
 {
     protected static ?string $model = Configurator::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Product configuration';
-
     protected static ?int $navigationSort = 4;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
 
-    protected static ?string $modelLabel = 'Configurator';
-
-    protected static ?string $pluralModelLabel = 'Configurators';
-
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getModelLabel(): string
+    {
+        return __('configurator.resource.singular');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('configurator.resource.plural');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.product_configuration');
+    }
 
     public static function getNavigationBadge(): ?string
     {
@@ -40,7 +49,7 @@ class ConfiguratorResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'All administrative records';
+        return __('configurator.labels.all_administrative_records');
     }
 
     public static function canViewAny(): bool

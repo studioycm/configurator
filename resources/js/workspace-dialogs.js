@@ -32,17 +32,17 @@ export function workspaceDialog(config) {
         toolbar = document.createElement('div');
         toolbar.className = 'catalog-dialog-width-controls';
         toolbar.setAttribute('role', 'group');
-        toolbar.setAttribute('aria-label', 'Dialog width');
+        toolbar.setAttribute('aria-label', config.labels.width);
         toolbar.setAttribute('wire:ignore', '');
         const button = (label, run) => {
             const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
             element.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); run(); });
             toolbar.append(element); return element;
         };
-        for (const [label, direction] of [['Narrower', -1], ['Wider', 1]]) {
+        for (const [label, direction] of [[config.labels.narrower, -1], [config.labels.wider, 1]]) {
             button(label, () => { const next = nextWidth(direction); if (next === undefined) return; width = next; paint(); save(); }).dataset.widthStep = String(direction);
         }
-        button('Reset width', () => { width = defaultWidth; try { localStorage.removeItem(storageKey); } catch {} paint(); });
+        button(config.labels.reset, () => { width = defaultWidth; try { localStorage.removeItem(storageKey); } catch {} paint(); });
         header.append(toolbar);
         paint();
     };

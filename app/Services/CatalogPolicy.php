@@ -11,13 +11,13 @@ class CatalogPolicy
     public const int MAX_RESULT_THRESHOLD = 24;
 
     public const array CARD_LAYOUTS = [
-        'inline_start' => 'Inline · Start',
-        'inline_center' => 'Inline · Center',
-        'inline_space_between' => 'Inline · Space between',
-        'above_start' => 'Label above · Start',
-        'above_center' => 'Label above · Center',
-        'below_start' => 'Label below · Start',
-        'below_center' => 'Label below · Center',
+        'inline_start' => 'catalog.groups.card_layouts.inline_start',
+        'inline_center' => 'catalog.groups.card_layouts.inline_center',
+        'inline_space_between' => 'catalog.groups.card_layouts.inline_space_between',
+        'above_start' => 'catalog.groups.card_layouts.above_start',
+        'above_center' => 'catalog.groups.card_layouts.above_center',
+        'below_start' => 'catalog.groups.card_layouts.below_start',
+        'below_center' => 'catalog.groups.card_layouts.below_center',
     ];
 
     public const array RESULT_SETTINGS = [

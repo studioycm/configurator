@@ -10,6 +10,7 @@ use App\Models\Group;
 use App\Models\Option;
 use App\Models\RuleEffect;
 use App\Models\User;
+use App\RuleEffectKind;
 use App\Services\CatalogImportParser;
 use App\Services\ItemLists;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -21,10 +22,10 @@ test('rule effect lists and summaries display value wording without changing per
     $effect = RuleEffect::factory()->create(['kind' => 'AllowOptions']);
 
     Livewire::test(ItemListDrawer::class, ['listKey' => 'rule-effects', 'parentId' => $effect->rule_id])
-        ->assertCanSeeTableRecords([$effect])->assertSee('Allow values');
+        ->assertCanSeeTableRecords([$effect])->assertSee(RuleEffectKind::AllowOptions->getLabel());
 
     $this->assertDatabaseHas('rule_effects', ['id' => $effect->id, 'kind' => 'AllowOptions']);
-    expect($effect->rule->workspaceSummary())->toContain('Allow values');
+    expect($effect->rule->workspaceSummary())->toContain(RuleEffectKind::AllowOptions->getLabel());
 });
 
 test('item edit links select the actual owner record and reject foreign initial selections', function () {

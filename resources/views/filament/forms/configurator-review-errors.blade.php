@@ -1,6 +1,6 @@
 @if ($getLivewire()->getErrorBag()->any())
     <div role="alert" class="rounded-lg border border-red-300 p-3">
-        <p class="font-semibold">Review these fields before including Attributes</p>
+        <p class="font-semibold">{{ __('configurator.copy.review_these_fields_before_including_attributes') }}</p>
         <ul class="mt-2 space-y-1">
             @foreach ($getLivewire()->getErrorBag()->messages() as $path => $messages)
                 @php($fieldId = $getLivewire()->getMountedActionSchema()?->getComponentByStatePath($path, withHidden: true, withAbsoluteStatePath: true)?->getId())

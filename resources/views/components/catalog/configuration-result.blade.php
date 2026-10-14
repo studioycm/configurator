@@ -2,11 +2,11 @@
 <div class="space-y-3" aria-live="polite" aria-atomic="true">
     @if ($result->configurationCode !== null)
         <div @class(['flex flex-wrap items-baseline gap-x-3 gap-y-1' => $inline, 'space-y-3' => ! $inline])>
-            <p class="text-sm font-medium">{{ __('Configuration Code') }}</p>
+            <p class="text-sm font-medium">{{ __('configurator.copy.configuration_code') }}</p>
             <p class="break-all font-mono text-xl font-semibold" data-configuration-code>{{ $result->configurationCode }}</p>
         </div>
     @elseif ($result->definition !== null)
-        <p class="font-medium">{{ __('Configuration is incomplete. No configuration code is available.') }}</p>
+        <p class="font-medium">{{ __('configurator.copy.configuration_is_incomplete_no_configuration_code_is_available') }}</p>
     @endif
     @if ($showDiagnostics && $result->diagnostics !== [])
         <ul class="space-y-1 text-sm">

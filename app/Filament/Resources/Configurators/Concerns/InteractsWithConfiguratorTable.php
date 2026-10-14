@@ -46,7 +46,7 @@ trait InteractsWithConfiguratorTable
         if ($this->showSelection) {
             foreach ($this->getMountedActions() as $action) {
                 if ($action instanceof BulkAction) {
-                    throw ValidationException::withMessages(['selection' => 'Finish or cancel the open batch review before hiding selection.']);
+                    throw ValidationException::withMessages(['selection' => __('configurator.validation.finish_or_cancel_the_open_batch_review')]);
                 }
             }
             $this->selectedTableRecords = [];
@@ -63,7 +63,7 @@ trait InteractsWithConfiguratorTable
     {
         return [
             Action::make('toggleSelection')->authorize('manage-catalog')->icon(Heroicon::OutlinedCheckCircle)
-                ->label(fn (): string => $this->showSelection ? 'Hide selection' : 'Show selection')
+                ->label(fn (): string => $this->showSelection ? __('configurator.labels.hide_selection') : __('configurator.labels.show_selection'))
                 ->action(fn () => $this->toggleWorkspaceSelection()),
         ];
     }
@@ -72,18 +72,18 @@ trait InteractsWithConfiguratorTable
     protected function workspaceOrderActions(Closure $move): array
     {
         return array_map(fn (int $direction): Action => Action::make($direction === -1 ? 'moveUp' : 'moveDown')
-            ->label($direction === -1 ? 'Move up' : 'Move down')->authorize('manage-catalog')
+            ->label($direction === -1 ? __('configurator.labels.move_up') : __('configurator.labels.move_down'))->authorize('manage-catalog')
             ->icon($direction === -1 ? Heroicon::OutlinedArrowUp : Heroicon::OutlinedArrowDown)->iconButton()
             ->visible(fn (): bool => $this->showOrderControls && ! $this->isTableReordering())
             ->disabled(fn (Model $record): bool => ! $this->usesWorkspaceOrder() || $this->workspaceNeighbor($record, $direction) === null)
             ->tooltip(function (Model $record) use ($direction): string {
                 if (! $this->usesWorkspaceOrder()) {
-                    return 'Restore the default order to move rows.';
+                    return __('admin.ordering.restore_default');
                 }
                 $neighbor = $this->workspaceNeighbor($record, $direction);
 
-                return $neighbor === null ? ($direction === -1 ? 'Already first' : 'Already last')
-                    : ($direction === -1 ? 'Move before ' : 'Move after ').$this->workspaceRowLabel($neighbor);
+                return $neighbor === null ? ($direction === -1 ? __('configurator.help.already_first') : __('configurator.help.already_last'))
+                    : __($direction === -1 ? 'admin.ordering.move_before' : 'admin.ordering.move_after', ['row' => $this->workspaceRowLabel($neighbor)]);
             })
             ->action(fn (Model $record) => $move((int) $record->getKey(), $direction)), [-1, 1]);
     }
@@ -92,7 +92,7 @@ trait InteractsWithConfiguratorTable
     {
         Gate::authorize('manage-catalog');
         if (! $this->usesWorkspaceOrder()) {
-            throw ValidationException::withMessages(['order' => 'Restore the default order to move rows.']);
+            throw ValidationException::withMessages(['order' => __('configurator.validation.restore_the_default_order_to_move_rows')]);
         }
     }
 

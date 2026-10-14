@@ -84,7 +84,7 @@ class ItemListOrdering
 
                 return $draft;
             }
-            throw ValidationException::withMessages(['order' => 'This Rule no longer belongs to the Configurator.']);
+            throw ValidationException::withMessages(['order' => __('admin.ordering.validation.this_rule_no_longer_belongs_to_the')]);
         });
     }
 
@@ -93,7 +93,7 @@ class ItemListOrdering
         Gate::forUser($actor)->authorize('manage-catalog');
         abort_if($this->column($key) === null, 403);
         if (! in_array($direction, [-1, 1], true)) {
-            throw ValidationException::withMessages(['order' => 'Choose up or down.']);
+            throw ValidationException::withMessages(['order' => __('admin.ordering.validation.choose_up_or_down')]);
         }
         DB::transaction(function () use ($actor, $key, $parentId, $id, $direction): void {
             if ($key === 'group-card-properties') {
@@ -104,7 +104,7 @@ class ItemListOrdering
             $ids = $this->ids($actor, $key, $parentId);
             $position = array_search((string) $id, array_map('strval', $ids), true);
             if ($position === false) {
-                throw ValidationException::withMessages(['order' => 'This row does not belong to this list.']);
+                throw ValidationException::withMessages(['order' => __('admin.ordering.validation.this_row_does_not_belong_to_this')]);
             }
             $target = $position + $direction;
             if (! array_key_exists($target, $ids)) {
@@ -132,7 +132,7 @@ class ItemListOrdering
     private function completeOrder(array $ids, array $expected): array
     {
         if (! array_is_list($ids) || array_filter($ids, fn (mixed $id): bool => ! is_int($id) && ! is_string($id)) !== []) {
-            throw ValidationException::withMessages(['order' => 'Submit the complete unique row order.']);
+            throw ValidationException::withMessages(['order' => __('admin.ordering.validation.submit_the_complete_unique_row_order')]);
         }
         $submitted = array_map('strval', $ids);
         $sorted = $submitted;
@@ -140,7 +140,7 @@ class ItemListOrdering
         sort($sorted, SORT_STRING);
         sort($expected, SORT_STRING);
         if ($sorted !== $expected) {
-            throw ValidationException::withMessages(['order' => 'Submit the complete unique row order, including rows hidden by filters.']);
+            throw ValidationException::withMessages(['order' => __('admin.ordering.validation.submit_the_complete_unique_row_order_including')]);
         }
 
         return $submitted;

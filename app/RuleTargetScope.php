@@ -12,8 +12,8 @@ enum RuleTargetScope: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Attribute => 'Whole Attribute',
-            self::Options => 'Selected values',
+            self::Attribute => __('configurator.rules.scopes.attribute'),
+            self::Options => __('configurator.rules.scopes.values'),
         };
     }
 }

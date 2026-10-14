@@ -55,9 +55,9 @@ class AdminPanelProvider extends PanelProvider
             ->topbar(false)
             ->globalSearch(position: GlobalSearchPosition::Sidebar)
             ->navigationGroups([
-                NavigationGroup::make()->label('Product configuration')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
-                NavigationGroup::make()->label('Catalog')->icon(Heroicon::OutlinedCube),
-                NavigationGroup::make()->label('Settings')->icon(Heroicon::OutlinedCog6Tooth),
+                NavigationGroup::make()->label(__('admin.navigation.product_configuration'))->icon(Heroicon::OutlinedAdjustmentsHorizontal),
+                NavigationGroup::make()->label(__('admin.navigation.catalog'))->icon(Heroicon::OutlinedCube),
+                NavigationGroup::make()->label(__('admin.navigation.settings'))->icon(Heroicon::OutlinedCog6Tooth),
             ])
             ->login()
             ->passwordReset()
@@ -69,7 +69,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.resources.workspace-assets'))
             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
             ->navigationItems([
-                NavigationItem::make('Product catalog')
+                NavigationItem::make(__('catalog.navigation.product_catalog'))
                     ->sort(0)
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                     ->url(fn (): string => route('catalog.index')),

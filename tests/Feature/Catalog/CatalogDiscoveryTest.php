@@ -125,7 +125,7 @@ test('livewire keeps only group identity while the browser owns discovery state'
     $group = discoveryFixture();
     $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSet('groupId', (string) $group->id);
     expect(array_keys($page->snapshot['data']))->toBe(['groupId']);
-    $page->assertDontSee('Product pagination');
+    $page->assertDontSee(__('catalog.frontend.copy.product_pagination'));
 });
 
 test('audited source filter metadata reproduces the observed 36 versus 9 outcomes', function () {

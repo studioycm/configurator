@@ -33,7 +33,7 @@ class AssignConfiguratorGroups
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
             $ids = $groups->where('configurator_id', $record->id)->modelKeys();
             if (! $assign && ! in_array($groupId, $ids, true)) {
-                throw ValidationException::withMessages(['groups' => 'This Group is no longer assigned to this Configurator.']);
+                throw ValidationException::withMessages(['groups' => __('configurator.validation.this_group_is_no_longer_assigned_to')]);
             }
             $ids = $assign ? array_values(array_unique([...$ids, $groupId])) : array_values(array_diff($ids, [$groupId]));
             $this->handle($actor, $record, $ids);
@@ -55,13 +55,13 @@ class AssignConfiguratorGroups
                 sort($currentIds);
                 sort($expectedIds);
                 if ($currentIds !== $expectedIds) {
-                    throw ValidationException::withMessages(['selected' => 'Assignments changed elsewhere. Reopen this selection before applying; your choices have been kept.']);
+                    throw ValidationException::withMessages(['selected' => __('configurator.validation.assignments_changed_elsewhere_reopen_this_selection_before')]);
                 }
             }
             foreach ($ids as $id) {
                 $group = $groups->get($id);
                 if ($group === null || ($group->configurator_id !== null && $group->configurator_id !== $record->id)) {
-                    throw ValidationException::withMessages(['groups' => 'Choose existing unassigned Groups or this Configurator’s current assignments. Change another assignment explicitly from its Group.']);
+                    throw ValidationException::withMessages(['groups' => __('configurator.validation.choose_existing_unassigned_groups_or_this_configurators')]);
                 }
                 $this->integrity->assertLeaf($group);
             }

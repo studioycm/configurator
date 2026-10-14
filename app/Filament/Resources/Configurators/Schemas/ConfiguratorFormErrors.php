@@ -29,7 +29,7 @@ class ConfiguratorFormErrors
         }
         if (! $exception instanceof ValidationException) {
             report($exception);
-            $exception = ValidationException::withMessages(['save' => 'Changes could not be saved. Your draft was kept. Please try again.']);
+            $exception = ValidationException::withMessages(['save' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
         }
         if ($schema === null) {
             throw $exception;

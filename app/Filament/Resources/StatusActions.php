@@ -47,42 +47,42 @@ class StatusActions
             return;
         }
         $columns = $table->getColumns();
-        $columns['is_active'] = IconColumn::make('is_active')->label('Active')->boolean()->sortable()->toggleable()
-            ->tooltip(fn (Model $record): string => $record->is_active ? 'Active — change status' : 'Disabled — change status')
+        $columns['is_active'] = IconColumn::make('is_active')->label(__('ui.status.active'))->boolean()->sortable()->toggleable()
+            ->tooltip(fn (Model $record): string => $record->is_active ? __('admin.status.help.active_change_status') : __('admin.status.help.disabled_change_status'))
             ->action(self::make(Action::make('changeStatus'), $class));
         if ($class === Option::class) {
-            $columns['is_hidden'] = IconColumn::make('is_hidden')->label('Hidden')->boolean()->toggleable()
+            $columns['is_hidden'] = IconColumn::make('is_hidden')->label(__('ui.status.hidden'))->boolean()->toggleable()
                 ->trueIcon(Heroicon::OutlinedEyeSlash)->falseIcon(Heroicon::OutlinedEye)->trueColor('gray')->falseColor('success')
-                ->tooltip(fn (Option $record): string => $record->is_hidden ? 'Hidden — change visibility' : 'Visible — change visibility')
+                ->tooltip(fn (Option $record): string => $record->is_hidden ? __('admin.status.help.hidden_change_visibility') : __('admin.status.help.visible_change_visibility'))
                 ->action(self::make(Action::make('changeVisibility'), $class));
         }
         $table->columns(array_values($columns));
-        $table->pushFilters([SelectFilter::make('is_active')->label('Status')->options(['1' => 'Active', '0' => 'Disabled'])]);
+        $table->pushFilters([SelectFilter::make('is_active')->label(__('admin.status.labels.status'))->options(['1' => __('ui.status.active'), '0' => __('ui.status.disabled')])]);
         if ($class === Option::class) {
-            $table->pushFilters([SelectFilter::make('is_hidden')->label('Visibility')->options(['0' => 'Visible', '1' => 'Hidden'])]);
+            $table->pushFilters([SelectFilter::make('is_hidden')->label(__('admin.status.labels.visibility'))->options(['0' => __('ui.status.visible'), '1' => __('ui.status.hidden')])]);
         }
-        $table->pushToolbarActions([BulkActionGroup::make([self::make(BulkAction::make('batchStatus'), $class)->deselectRecordsAfterCompletion()])->label('Status')]);
+        $table->pushToolbarActions([BulkActionGroup::make([self::make(BulkAction::make('batchStatus'), $class)->deselectRecordsAfterCompletion()])->label(__('admin.status.labels.status'))]);
     }
 
     /** @param class-string<Model> $class */
     public static function make(Action $action, string $class): Action
     {
-        $schema = [Hidden::make('review_token')->required(), ToggleButtons::make('is_active')->label('Status')->options(['1' => 'Active', '0' => 'Disabled'])->inline()->required()->live()];
+        $schema = [Hidden::make('review_token')->required(), ToggleButtons::make('is_active')->label(__('admin.status.labels.status'))->options(['1' => __('ui.status.active'), '0' => __('ui.status.disabled')])->inline()->required()->live()];
         if ($class === Option::class) {
-            $schema[] = Select::make('visibility')->options(['unchanged' => 'Keep each visibility', 'visible' => 'Visible', 'hidden' => 'Hidden'])->default('unchanged')->required()
-                ->hintAction(FormHints::make('Hidden and Disabled both prevent selection. Existing inclusions and rule references remain stored. An unavailable stored default requires repair.'));
+            $schema[] = Select::make('visibility')->label(__('admin.status.labels.visibility'))->options(['unchanged' => __('admin.status.labels.keep_each_visibility'), 'visible' => __('ui.status.visible'), 'hidden' => __('ui.status.hidden')])->default('unchanged')->required()
+                ->hintAction(FormHints::make(__('admin.status.hints.hidden_and_disabled_both_prevent_selection_existing')));
         }
         if ($class === Configurator::class) {
-            $schema[] = Select::make('group_behavior')->label('Assigned Groups and Products')->options([
-                'visible' => 'Keep visible, without configuration', 'hide' => 'Hide while this Configurator is disabled', 'unassign' => 'Unassign Groups; keep Products visible without configuration',
+            $schema[] = Select::make('group_behavior')->label(__('admin.status.labels.assigned_groups_and_products'))->options([
+                'visible' => __('admin.status.labels.keep_visible_without_configuration'), 'hide' => __('admin.status.labels.hide_while_this_configurator_is_disabled'), 'unassign' => __('admin.status.labels.unassign_groups_keep_products_visible_without_configuration'),
             ])->visible(fn (Get $get): bool => (string) $get('is_active') === '0')->required(fn (Get $get): bool => (string) $get('is_active') === '0')
-                ->hintAction(FormHints::make('Hiding preserves Group and Product flags and assignments. Re-enabling restores visibility according to their own flags. Unassigning keeps stored definitions but does not restore assignments when re-enabled.'));
+                ->hintAction(FormHints::make(__('admin.status.hints.hiding_preserves_group_and_product_flags_and')));
         }
         $schema[] = View::make('filament.resources.status-impact')->viewData(fn (): array => ['impacts' => self::impacts(self::selection($action))]);
 
-        return $action->label('Change status')->authorize('manage-catalog')->slideOver()->schema($schema)->modalSubmitActionLabel('Apply status')->stickyModalHeader()->stickyModalFooter()
+        return $action->label(__('admin.status.labels.change_status'))->authorize('manage-catalog')->slideOver()->schema($schema)->modalSubmitActionLabel(__('admin.status.labels.apply_status'))->stickyModalHeader()->stickyModalFooter()
             ->fillForm(fn (Action $action, ?Model $record): array => ['is_active' => $record === null ? null : ($record->is_active ? '1' : '0'), 'visibility' => $record instanceof Option ? ($record->is_hidden ? 'hidden' : 'visible') : 'unchanged', 'review_token' => self::reviewToken(self::selection($action))])
-            ->modalDescription('Review the affected records before applying. Related records keep their own status and stored references.')
+            ->modalDescription(__('admin.status.help.review_the_affected_records_before_applying_related'))
             ->extraModalFooterActions(fn (Action $action): array => self::inspectionActions(self::selection($action)))
             ->action(function (Action $action, array $data, $livewire): void {
                 Validator::make($data, ['is_active' => ['required', 'boolean'], 'visibility' => ['sometimes', Rule::in(['unchanged', 'visible', 'hidden'])]])->validate();
@@ -91,7 +91,7 @@ class StatusActions
                     app(CatalogRevisions::class)->batch(function () use ($selection, $data): void {
                         $locked = app(ChangeCatalogStatus::class)->lockForReview($selection);
                         if ($locked->count() !== $selection->count() || ! hash_equals(self::reviewToken($locked, locked: true), $data['review_token'] ?? '')) {
-                            throw ValidationException::withMessages(['is_active' => 'These records or their assignments changed. Close and reopen the status dialog to review the current impact.']);
+                            throw ValidationException::withMessages(['is_active' => __('admin.status.validation.these_records_or_their_assignments_changed_close')]);
                         }
                         app(ChangeCatalogStatus::class)->handleSelection(auth()->user(), $locked, (bool) $data['is_active'], $data['group_behavior'] ?? null,
                             hidden: isset($data['visibility']) && $data['visibility'] !== 'unchanged' ? $data['visibility'] === 'hidden' : null);
@@ -104,7 +104,7 @@ class StatusActions
                 $livewire->dispatch('configurator-updated');
                 $livewire->dispatch('refresh-sidebar');
                 $livewire->dispatch('catalog-record-saved');
-                Notification::make()->title('Status updated')->success()->send();
+                Notification::make()->title(__('admin.status.headings.status_updated'))->success()->send();
             });
     }
 
@@ -154,8 +154,8 @@ class StatusActions
         }
         $choices = $records->pluck('name', 'id')->all();
 
-        return array_map(fn (string $type): Action => Action::make('status-'.$type)->label('View affected '.ucfirst($type))->color('gray')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')->schema([
-            Select::make('configurator')->options($choices)->default(array_key_first($choices))->selectablePlaceholder(false)->live(),
+        return array_map(fn (string $type): Action => Action::make('status-'.$type)->label(__('admin.status.labels.view_affected', ['value1' => ucfirst($type)]))->color('gray')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.back'))->schema([
+            Select::make('configurator')->label(__('configurator.resource.singular'))->options($choices)->default(array_key_first($choices))->selectablePlaceholder(false)->live(),
             View::make('filament.resources.item-list-content')->viewData(fn (Get $get): array => ['listKey' => 'configurator-'.$type, 'parentId' => array_key_exists($get('configurator'), $choices) ? (int) $get('configurator') : (int) array_key_first($choices)]),
         ]), ['groups', 'products']);
     }

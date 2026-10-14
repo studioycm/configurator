@@ -35,7 +35,7 @@ class ChangeCatalogStatus
             return;
         }
         if ($hidden !== null) {
-            throw ValidationException::withMessages(['hidden' => 'Only shared Attribute Values support hidden status.']);
+            throw ValidationException::withMessages(['hidden' => __('admin.status.validation.only_shared_attribute_values_support_hidden_status')]);
         }
         DB::transaction(function () use ($actor, $records, $active): void {
             $locked = $this->lockForReview($records);
@@ -65,7 +65,7 @@ class ChangeCatalogStatus
     public function lockForReview(Collection $records): Collection
     {
         if ($records->isEmpty() || $records->contains(fn (Model $record): bool => $record::class !== $records->first()::class)) {
-            throw ValidationException::withMessages(['is_active' => 'Choose records from one status table.']);
+            throw ValidationException::withMessages(['is_active' => __('admin.status.validation.choose_records_from_one_status_table')]);
         }
         app(CatalogIntegrity::class)->lockGroups();
         $ownerIds = [];
@@ -93,13 +93,13 @@ class ChangeCatalogStatus
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         if (! in_array($record::class, [Attribute::class, Option::class, Configurator::class, Product::class, Group::class, ConfiguratorAttribute::class, ConfiguratorRule::class], true)) {
-            throw ValidationException::withMessages(['status' => 'This record does not support lifecycle status.']);
+            throw ValidationException::withMessages(['status' => __('admin.status.validation.this_record_does_not_support_lifecycle_status')]);
         }
         if ($record instanceof Configurator && ! $active && ! in_array($groupBehavior, ['visible', 'hide', 'unassign'], true)) {
-            throw ValidationException::withMessages(['group_behavior' => 'Choose what should happen to assigned Groups and their Products.']);
+            throw ValidationException::withMessages(['group_behavior' => __('admin.status.validation.choose_what_should_happen_to_assigned_groups')]);
         }
         if ($hidden !== null && ! $record instanceof Option) {
-            throw ValidationException::withMessages(['hidden' => 'Only shared Attribute Values support hidden status.']);
+            throw ValidationException::withMessages(['hidden' => __('admin.status.validation.only_shared_attribute_values_support_hidden_status')]);
         }
         DB::transaction(function () use ($actor, $record, $active, $groupBehavior, $hidden): void {
             $fresh = $this->lockForReview(collect([$record]))->firstOrFail();

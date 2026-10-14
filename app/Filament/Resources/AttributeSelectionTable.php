@@ -15,6 +15,6 @@ class AttributeSelectionTable
         Gate::authorize('manage-catalog');
 
         return TablePresentation::configure($table->query(fn (Table $table) => Attribute::where('is_active', true)->whereNotIn('id', Configurator::findOrFail((int) $table->getArguments()['owner_id'])->attributes()->select('attribute_id')))
-            ->columns([TextColumn::make('label')->label('Attribute')->searchable()->toggleable(), TextColumn::make('key')->label('Key')->searchable()->toggleable()])->paginationPageOptions([10, 25, 50]), 'select-attribute', true);
+            ->columns([TextColumn::make('label')->label(__('catalog.resources.attributes.singular'))->searchable()->toggleable(), TextColumn::make('key')->label(__('catalog.fields.key'))->searchable()->toggleable()])->paginationPageOptions([10, 25, 50]), 'select-attribute', true);
     }
 }

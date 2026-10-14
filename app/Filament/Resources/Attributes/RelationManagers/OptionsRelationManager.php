@@ -28,9 +28,12 @@ class OptionsRelationManager extends RelationManager
 
     protected static string $relationship = 'options';
 
-    protected static ?string $title = 'Values';
-
     protected static bool $isLazy = false;
+
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return __('catalog.attribute_values.short_plural');
+    }
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -41,15 +44,15 @@ class OptionsRelationManager extends RelationManager
     {
         return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('value'))
             ->columns([
-                TextColumn::make('value.label')->label('UI Name')->searchable(),
-                TextColumn::make('code')->label('Code')->searchable()->toggleable(),
+                TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->searchable(),
+                TextColumn::make('code')->label(__('catalog.fields.code'))->searchable()->toggleable(),
             ])->headerActions([
-                $this->optionAction('create')->label('Add value'),
+                $this->optionAction('create')->label(__('catalog.attributes.labels.add_value')),
             ])->recordActions([
-                $this->optionAction('edit')->label('Edit')->fillForm(fn (Option $record): array => $record->only('value_id', 'code')),
-                DependencyActions::canonical(Action::make('remove'))->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+                $this->optionAction('edit')->label(__('ui.actions.edit'))->fillForm(fn (Option $record): array => $record->only('value_id', 'code')),
+                DependencyActions::canonical(Action::make('remove'))->label(__('ui.actions.delete'))->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Used Attribute Values cannot be deleted. Repair their dependencies first.')
+                    ->modalDescription(__('catalog.attributes.help.used_attribute_values_cannot_be_deleted_repair'))
                     ->action(function (Option $record): void {
                         abort_unless($record->attribute_id === $this->getOwnerRecord()->id, 404);
                         ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $record), $this->getMountedActionSchema());
@@ -62,17 +65,17 @@ class OptionsRelationManager extends RelationManager
     {
         return Action::make($name)->authorize('manage-catalog')->schema([
             View::make('filament.forms.validation-summary'),
-            Select::make('value_id')->label('UI Name')->required()->searchable()
+            Select::make('value_id')->label(__('catalog.fields.ui_name'))->required()->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Value::where('label', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Value $value): array => [$value->id => $value->label.' · #'.$value->id])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Value::find($value)?->label : null),
-            TextInput::make('code')->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D'),
+            TextInput::make('code')->label(__('catalog.fields.code'))->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D'),
         ])->action(function (array $data, ?Option $record): void {
             abort_if($record && $record->attribute_id !== $this->getOwnerRecord()->id, 404);
             ConfiguratorFormErrors::run(
                 fn () => app(SaveCanonicalOption::class)->handle(auth()->user(), $record, $this->getOwnerRecord()->id, (int) $data['value_id'], $data['code']),
                 $this->getMountedActionSchema(),
             );
-            Notification::make()->title('Attribute Value saved')->success()->send();
+            Notification::make()->title(__('catalog.attributes.headings.attribute_value_saved'))->success()->send();
             $this->dispatch('catalog-record-saved');
         });
     }

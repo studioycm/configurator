@@ -11,7 +11,7 @@
             <fieldset aria-labelledby="attribute-label-{{ $this->getId() }}-{{ $attribute->id }}" class="min-w-0 space-y-1.5">
                 @if ($attribute->inputType === 'select')
                     <select aria-label="{{ $state['label'] }}" wire:change="selectOption('{{ $attribute->id }}', $event.target.value)" class="w-full border-0 border-b border-zinc-300 bg-transparent px-2 py-1 focus-visible:outline-2 focus-visible:outline-blue-600 sm:max-w-md dark:border-zinc-600">
-                        @if (! isset($result->selections[$attribute->id]))<option value="" selected disabled>{{ __('No available choice') }}</option>@endif
+                        @if (! isset($result->selections[$attribute->id]))<option value="" selected disabled>{{ __('configurator.copy.no_available_choice') }}</option>@endif
                         @foreach ($attribute->options as $option)
                             @if (! in_array($option->id, $state['hidden'], true))
                                 <option value="{{ $option->id }}" @selected(($result->selections[$attribute->id] ?? null) === $option->id) @disabled(! in_array($option->id, $state['legal'], true))>{{ $state['options'][$option->id]['label'] }}</option>

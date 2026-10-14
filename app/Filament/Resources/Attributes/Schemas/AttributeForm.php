@@ -11,9 +11,9 @@ class AttributeForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components([Section::make('Shared Attribute')->afterHeader([FormHints::make('Labels apply wherever this Attribute is included. Local label overrides remain unchanged.')])->compact()->columns(2)->schema([
-            TextInput::make('key')->required()->maxLength(100)->hintAction(FormHints::make('A stable identity. Used keys require reference repair before changing.')),
-            TextInput::make('label')->required()->maxLength(255),
+        return $schema->columns(1)->components([Section::make(__('catalog.attributes.headings.shared_attribute'))->key(fn (Section $component): string => 'shared-attribute::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->afterHeader([FormHints::make(__('catalog.attributes.hints.labels_apply_wherever_this_attribute_is_included'))])->compact()->columns(2)->schema([
+            TextInput::make('key')->label(__('catalog.fields.key'))->required()->maxLength(100)->hintAction(FormHints::make(__('catalog.attributes.hints.a_stable_identity_used_keys_require_reference'))),
+            TextInput::make('label')->label(__('ui.fields.label'))->required()->maxLength(255),
         ])]);
     }
 }

@@ -22,7 +22,7 @@
             </div>
         </header>
         @if ($fields !== [])
-            <dl id="catalog-card-facts-{{ $identity }}" aria-label="{{ __('Product properties') }}" class="catalog-product-card__facts">
+            <dl id="catalog-card-facts-{{ $identity }}" aria-label="{{ __('catalog.frontend.copy.product_properties') }}" class="catalog-product-card__facts">
                 @foreach ($fields as $field)
                     @php($value = $properties[$field['key']] ?? null)
                     <div class="catalog-product-card__fact" data-property-key="{{ $field['key'] }}">

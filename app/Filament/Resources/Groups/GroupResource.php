@@ -20,17 +20,26 @@ class GroupResource extends Resource
 {
     protected static ?string $model = Group::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Catalog';
-
     protected static ?int $navigationSort = 1;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
-    protected static ?string $modelLabel = 'Group';
-
-    protected static ?string $pluralModelLabel = 'Groups';
-
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getModelLabel(): string
+    {
+        return __('catalog.resources.groups.singular');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('catalog.resources.groups.plural');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation.catalog');
+    }
 
     public static function getNavigationBadge(): ?string
     {
@@ -39,7 +48,7 @@ class GroupResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'All administrative records';
+        return __('catalog.groups.labels.all_administrative_records');
     }
 
     public static function canViewAny(): bool

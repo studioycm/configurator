@@ -312,3 +312,44 @@ Lint rulings:
 - Add the missing Tags active indicator to the shared-value selector using the existing pattern. This is a small presentation addition required by the lint check; tag queries, storage and filtering state are unchanged.
 
 Final review: one Important issue fixed RED → GREEN; no remaining Critical/Important findings or deferred runtime minors. The reviewer did not assess browser layout, production/MySQL, Phase B, historical fixtures or publication. Desktop browser coverage is recorded above; the other items remain intentionally outside this local Phase A delivery.
+
+
+## Terminology and behavior-test follow-up — 2026-10-14
+
+Phase A was published as `957013f52f8e36adb245f64b3aab5114d336cfe2` on `origin/master`, after the 546-test / 3,365-assertion default suite and reviewed explicit-file publication. The follow-up below was implemented and verified locally; commit and push were authorized on 2026-10-15. Phase B remains deferred.
+
+### Application-owned language structure
+
+Use contextual PHP language keys rather than a second expected-string registry in tests:
+
+| File | Responsibility |
+| --- | --- |
+| `lang/en/ui.php` | Reused controls, common fields/statuses, navigation and accessibility vocabulary |
+| `lang/en/catalog.php` | Master Values, shared Attributes/Attribute Values, Groups, Products, presentation/filter settings and catalog copy |
+| `lang/en/configurator.php` | Configurator identity, local inclusions, rules/mapping, Preview, context, diagnostics and validation |
+| `lang/en/admin.php` | Shared admin workspace, batch/status/order controls, table counts, appearance and dialog controls |
+
+Resource labels are dynamic native getters; contextual forms/tables/actions and application-owned validation/messages resolve the same language files. Framework-provided generic wording stays in Laravel/Filament/Livewire translations. Starter-kit authentication/account forms, branding, user-entered record names, imported Product headings/values and historical source adapters are outside this terminology cleanup. No language switcher, locale route, plugin or dependency is added.
+
+Keep machine identifiers independent from copy: columns/filter names, form state paths, actions, list/drawer keys, route slugs, event names and enum backing values are unchanged. Explicit Section/Tabs/Tab keys preserve the existing native English-slug/state-path identities; changing a heading must not alter a saved link or mounted schema key. Rule option arrays retain string backing-value keys and use translated display labels; do not replace them with native enum options that change the state type. Display summaries may translate operators without changing evaluation.
+
+Browser labels are safely encoded as page/component configuration. Catalog filter copy is not added to cached snapshots, discovery URLs or engine facts. Initial loading and refreshed snapshots pass the same dictionary into the in-memory filter engine. Mapping icon-button bindings use `Js::from` echoes rather than an uncompiled directive inside a Blade component attribute.
+
+### Existing tests
+
+This follow-up supersedes literal copy expectations in the Phase A table standards. Assert stable column/filter/action identifiers, query/search/filter capabilities, visibility, counts, authorization, saved IDs and outcomes. Where rendered text is relevant, read the component/resource/action configuration or domain language key. Do not compare a configured label to itself as a supposed wording regression. The existing navigation test changes translations during the test to verify that rendering follows configuration while routes/access remain stable.
+
+Retain the Advanced-effect enum-state regression: string `Options` scope, visible Target values before a selection, successful save and unchanged persisted effect/scope/reference IDs. The existing Mapping persistence test also verifies that rendered controls contain no literal `@js(` directive; this reproduced the browser binding failure before the fix. Deprecated helpers in the touched Configurator/context tests now use Filament 5 `TestAction`. No separate copy-only test suite was introduced.
+
+### Research basis
+
+[Laravel Daily's PHP-versus-JSON translation guidance](https://laraveldaily.com/post/laravel-multi-language-key-json-string-php-array) recommends contextual PHP keys where the same word has different meanings. Its linked [Laravel Daily video](https://www.youtube.com/watch?v=9cfelgca3z0) was discovered; no full video transcript was reviewed. Installed-version [Laravel localization](https://laravel.com/docs/13.x/localization) and [Filament resource labels](https://filamentphp.com/docs/5.x/resources/overview) were verified through Boost. Filament Examples MCP supplied actual `v4/full-projects/multi-language-with-switcher` resource/form/table/provider examples: native resource label getters and translated field/table labels are useful; the switcher dependency is unnecessary here. No directly relevant FilamentDaily localization video was found; other existing research remains interaction inspiration, not a claim about localization APIs.
+
+
+### Follow-up verification
+
+- Final full isolated SQLite/testing suite: **546 passed / 3,277 assertions**, 30.03 seconds, after the Mapping binding fix. Existing enum-state and persistence/authorization tests are included.
+- JavaScript filter engine: **9 passed**. Asset build passed. Pint and FilaCheck passed with zero remaining issues; PHP lint checked 116 changed PHP/language files with zero failures. Static inspection resolved 840 literal language references with zero missing keys; dynamic label families were reviewed separately. Diff checks passed.
+- PhpStorm WARNING-level inspections passed for OptionResource, ConfiguratorRuleForm, ConfiguratorRule, catalog Index and TableConfigurationStandardsTest. Independent read-only review found the refreshed-snapshot label omission, corrected; duplicate identical browser label configuration was removed.
+- Authenticated local browser review covered Master Values tag buttons/count drawer/shared editor, direct Attribute Values access with no sidebar link, Group editor tabs, Configurator Rules/Mapping editor and catalog filter initialization. Browser review discovered the uncompiled icon-button bindings; an existing Mapping test failed before the fix and passed afterward. Fresh Mapping browser controls show numbered labels and no new console errors. No records were saved during review; user-owned tabs/drafts were preserved. This is desktop coverage, not a new mobile/MySQL/production claim.
+- At this verification checkpoint, no DB migration, domain rename, permissions change, locale switcher, commit/push of this follow-up or production deployment occurred. Publication was subsequently authorized on 2026-10-15; deployment remains separate. Starter-kit authentication text remains outside this application-domain cleanup.

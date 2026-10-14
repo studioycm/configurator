@@ -30,9 +30,9 @@ trait InteractsWithGroupOrdering
     public function rowOrderingActions(): array
     {
         $actions = $this->defaultRowOrderingActions();
-        $actions[1]->modal(fn (): bool => ! $this->isTableReordering())->modalHeading('Order Groups under one parent')->modalSubmitActionLabel('Start reordering')
-            ->schema(fn (): array => $this->isTableReordering() ? [] : [Select::make('parent')->label('Parent')->required()->searchable()
-                ->options(fn (): array => ['root' => 'Root Groups'] + Group::query()->has('children')->orderBy('name')->pluck('name', 'id')->all())->default('root')])
+        $actions[1]->modal(fn (): bool => ! $this->isTableReordering())->modalHeading(__('admin.ordering.headings.order_groups_under_one_parent'))->modalSubmitActionLabel(__('admin.ordering.labels.start_reordering'))
+            ->schema(fn (): array => $this->isTableReordering() ? [] : [Select::make('parent')->label(__('catalog.groups.fields.parent'))->required()->searchable()
+                ->options(fn (): array => ['root' => __('catalog.groups.root_plural')] + Group::query()->has('children')->orderBy('name')->pluck('name', 'id')->all())->default('root')])
             ->action(function (array $data): void {
                 if ($this->isTableReordering()) {
                     $this->toggleTableReordering();
@@ -75,7 +75,7 @@ trait InteractsWithGroupOrdering
     {
         Gate::authorize('manage-catalog');
         if (! $this->usesGroupOrder()) {
-            throw ValidationException::withMessages(['order' => 'Restore the default sort order to move Groups.']);
+            throw ValidationException::withMessages(['order' => __('admin.ordering.validation.restore_the_default_sort_order_to_move')]);
         }
         app(ReorderCatalogGroups::class)->move(auth()->user(), $id, $direction);
         $this->groupOrderRows = null;

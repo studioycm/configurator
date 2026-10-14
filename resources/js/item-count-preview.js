@@ -1,6 +1,6 @@
 let previewId = 0;
 
-export function itemCountPreview(key, parentId) {
+export function itemCountPreview(key, parentId, labels) {
     let tooltip;
     let loaded;
     let visible = false;
@@ -15,7 +15,7 @@ export function itemCountPreview(key, parentId) {
                 this.$el.querySelector('button, a')?.setAttribute('aria-describedby', tooltip.id);
                 document.body.append(tooltip);
             }
-            tooltip.textContent = 'Loading items…';
+            tooltip.textContent = labels.loading;
             const box = this.$el.getBoundingClientRect();
             tooltip.style.left = `${Math.max(8, Math.min(box.left, innerWidth - 280))}px`;
             tooltip.style.top = `${Math.min(box.bottom + 4, innerHeight - 150)}px`;
@@ -26,7 +26,7 @@ export function itemCountPreview(key, parentId) {
                 if (visible && loaded === request) tooltip.textContent = lines.join('\n');
             } catch {
                 loaded = null;
-                if (visible) tooltip.textContent = 'Open list to inspect items';
+                if (visible) tooltip.textContent = labels.unavailable;
             }
         },
         hide() { visible = false; loaded = null; if (tooltip) tooltip.hidden = true; },

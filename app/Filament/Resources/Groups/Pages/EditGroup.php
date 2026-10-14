@@ -29,7 +29,7 @@ class EditGroup extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('openCatalog')->label('Open catalog page')
+            Action::make('openCatalog')->label(__('catalog.groups.labels.open_catalog_page'))
                 ->url(fn (): string => route('catalog.groups.show', $this->getRecord()))
                 ->openUrlInNewTab(),
         ];
