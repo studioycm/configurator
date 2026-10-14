@@ -27,7 +27,7 @@ class DeleteCanonicalDefinition
             }
             if ($used) {
                 $names = $configurators->take(5)->pluck('name')->implode(', ');
-                throw ValidationException::withMessages(['record' => 'This shared definition is in use'.($names === '' ? '' : ' by '.$names).'. View usage and repair its Options, defaults and rules before removing it.']);
+                throw ValidationException::withMessages(['record' => 'This shared definition is in use'.($names === '' ? '' : ' by '.$names).'. View usage and repair its Attribute Values, defaults and rules before removing it.']);
             }
             $record->delete();
         });

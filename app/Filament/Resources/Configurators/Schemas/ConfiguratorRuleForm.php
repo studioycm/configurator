@@ -9,6 +9,7 @@ use App\Filament\Resources\FormHints;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\RuleEffectKind;
+use App\RuleTargetScope;
 use App\Services\CatalogImportParser;
 use App\Services\ConfiguratorDefinitionCompiler;
 use Filament\Forms\Components\Builder;
@@ -65,8 +66,8 @@ class ConfiguratorRuleForm
                 Select::make('driver_configurator_attribute_id')->label('Driver Attribute')->options($attributes)->required()->searchable()->live(),
                 Select::make('target_configurator_attribute_id')->label('Target Attribute')->options($attributes)->required()->searchable()->live(),
             ]);
-            $schema[] = MappingSetsField::make('sets')->label('Allowed-option sets')->required()->default([])->columnSpanFull()
-                ->hintAction(FormHints::make('Unmapped driver options add no restriction. Each source can belong to one set; allowed targets may overlap.'))
+            $schema[] = MappingSetsField::make('sets')->label('Allowed-value sets')->required()->default([])->columnSpanFull()
+                ->hintAction(FormHints::make('Unmapped driver values add no restriction. Each source can belong to one set; allowed targets may overlap.'))
                 ->sourceChoices(fn (Get $get): array => $options[$get('driver_configurator_attribute_id')] ?? [])
                 ->targetChoices(fn (Get $get): array => $options[$get('target_configurator_attribute_id')] ?? []);
             $schema[] = Hidden::make('effects')->default([]);
@@ -76,10 +77,10 @@ class ConfiguratorRuleForm
             $schema[] = Hidden::make('sets')->default([]);
             $schema[] = Repeater::make('effects')->label('Effects')->minItems(1)->defaultItems(1)->columnSpanFull()->columns(2)->schema([
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
-                Select::make('kind')->label('Effect')->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => Str::headline($kind->value)])->all())->required()->live()->hintAction(FormHints::make('Exclusion is an advanced restriction. Use a mapping for ordinary allowed-option sets.')),
+                Select::make('kind')->label('Effect')->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => $kind->getLabel()])->all())->required()->live()->hintAction(FormHints::make('Exclusion is an advanced restriction. Use a mapping for ordinary allowed-value sets.')),
                 Select::make('target_configurator_attribute_id')->label('Target Attribute')->options($attributes)->required()->searchable()->live(),
-                Select::make('target_scope')->label('Applies to')->options(['Attribute' => 'Whole Attribute', 'Options' => 'Selected Options'])->required()->default('Options')->live(),
-                Select::make('option_ids')->label('Target Options')->options(fn (Get $get): array => self::withStale($options[$get('target_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))->multiple()->searchable()->default([])
+                Select::make('target_scope')->label('Applies to')->options(collect(RuleTargetScope::cases())->mapWithKeys(fn (RuleTargetScope $scope): array => [$scope->value => $scope->getLabel()])->all())->required()->default('Options')->live(),
+                Select::make('option_ids')->label('Target values')->options(fn (Get $get): array => self::withStale($options[$get('target_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))->multiple()->searchable()->default([])
                     ->visible(fn (Get $get): bool => $get('target_scope') === 'Options' || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),
                 TextInput::make('display_value')->label('Presentation text')->maxLength(255)->default(null)
                     ->visible(fn (Get $get): bool => in_array($get('kind'), ['SetLabel', 'SetDisplayValue', 'SetHint'], true) || filled($get('display_value')))->dehydratedWhenHidden(),
@@ -100,9 +101,9 @@ class ConfiguratorRuleForm
         return [
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
             Select::make('source_kind')->label('Source')->options([
-                'Agent dashboard' => collect(ConditionSource::cases())->reject(fn (ConditionSource $source): bool => in_array($source->value, ['Territory', 'Application'], true))->mapWithKeys(fn (ConditionSource $source): array => [$source->value => Str::headline($source->value)])->all(),
+                'Agent dashboard' => collect(ConditionSource::cases())->reject(fn (ConditionSource $source): bool => in_array($source->value, ['Territory', 'Application'], true))->mapWithKeys(fn (ConditionSource $source): array => [$source->value => $source->getLabel()])->all(),
                 'Future public catalog' => ['Territory' => 'Territory', 'Application' => 'Application'],
-            ])->hintAction(FormHints::make('Separate Territory and Application conditions apply only to the future public catalog. Use Selection Option or Selection Code for actual Configurator Attributes in the agent dashboard.'))->required()->live()
+            ])->hintAction(FormHints::make('Separate Territory and Application conditions apply only to the future public catalog. Use Selected value or Selected code for actual Configurator Attributes in the agent dashboard.'))->required()->live()
                 ->afterStateUpdated(fn (mixed $state, Set $set) => $set('context_dimension', match ($state) {
                     'Territory' => 'territory', 'Application' => 'application', default => null
                 })),
@@ -112,7 +113,7 @@ class ConfiguratorRuleForm
             Select::make('property_key')->label('Product property')->options(array_combine(CatalogImportParser::propertyKeys(), CatalogImportParser::propertyKeys()))->searchable()->default(null)
                 ->visible(fn (Get $get): bool => $get('source_kind') === 'ProductProperty' || filled($get('property_key')))->dehydratedWhenHidden(),
             Hidden::make('context_dimension')->default(null),
-            Select::make('option_ids')->label('Included Options / exact codes')->multiple()->searchable()->default([])
+            Select::make('option_ids')->label('Included values / exact codes')->multiple()->searchable()->default([])
                 ->options(fn (Get $get): array => self::withStale($options[$get('source_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))
                 ->maxItems(fn (Get $get): int => $list($get) ? 500 : 1)
                 ->visible(fn (Get $get): bool => $selection($get) || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),

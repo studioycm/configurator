@@ -19,7 +19,7 @@ class AttributesTable
             TextColumn::make('id')->label('ID')->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('key')->label('Key')->sortable()->toggleable(isToggledHiddenByDefault: true)->searchable(isIndividual: false, isGlobal: true),
             TextColumn::make('label')->label('Attribute')->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
-            ItemCountColumn::make('options_count', 'Options', 'attribute-options')->sortable()->toggleable(),
+            ItemCountColumn::make('options_count', 'Values', 'attribute-options')->sortable()->toggleable(),
             ItemCountColumn::make('configurator_attributes_count', 'Used by', 'attribute-inclusions')
                 ->suffix(fn (mixed $state): string => (int) $state === 1 ? ' configurator' : ' configurators')
                 ->sortable()->toggleable(),

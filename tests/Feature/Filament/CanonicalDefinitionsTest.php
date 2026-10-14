@@ -186,7 +186,7 @@ test('attribute option deletion exposes exact dependencies and disables only blo
     $manager->mountAction(TestAction::make('remove')->table($used));
     $action = $manager->instance()->getMountedAction();
     expect($action->getModalSubmitAction()->isDisabled())->toBeTrue()
-        ->and(collect($action->getExtraModalFooterActions())->map(fn (Action $action): string => $action->getLabel())->all())->toContain('View inclusions (1)');
+        ->and(collect($action->getExtraModalFooterActions())->map(fn (Action $action): string => $action->getLabel())->all())->toContain('View Configurator uses (1)');
     $manager->call('unmountAction')->mountAction(TestAction::make('remove')->table($unused));
     $action = $manager->instance()->getMountedAction();
     expect($action->getModalSubmitAction()->isDisabled())->toBeFalse()

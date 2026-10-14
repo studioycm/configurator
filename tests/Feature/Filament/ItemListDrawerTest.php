@@ -8,12 +8,24 @@ use App\Models\Attribute;
 use App\Models\ConfiguratorAttribute;
 use App\Models\Group;
 use App\Models\Option;
+use App\Models\RuleEffect;
 use App\Models\User;
 use App\Services\CatalogImportParser;
 use App\Services\ItemLists;
 use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+
+test('rule effect lists and summaries display value wording without changing persisted kinds', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $effect = RuleEffect::factory()->create(['kind' => 'AllowOptions']);
+
+    Livewire::test(ItemListDrawer::class, ['listKey' => 'rule-effects', 'parentId' => $effect->rule_id])
+        ->assertCanSeeTableRecords([$effect])->assertSee('Allow values');
+
+    $this->assertDatabaseHas('rule_effects', ['id' => $effect->id, 'kind' => 'AllowOptions']);
+    expect($effect->rule->workspaceSummary())->toContain('Allow values');
+});
 
 test('item edit links select the actual owner record and reject foreign initial selections', function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));

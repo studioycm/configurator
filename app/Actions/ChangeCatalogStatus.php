@@ -35,7 +35,7 @@ class ChangeCatalogStatus
             return;
         }
         if ($hidden !== null) {
-            throw ValidationException::withMessages(['hidden' => 'Only shared Options support hidden status.']);
+            throw ValidationException::withMessages(['hidden' => 'Only shared Attribute Values support hidden status.']);
         }
         DB::transaction(function () use ($actor, $records, $active): void {
             $locked = $this->lockForReview($records);
@@ -99,7 +99,7 @@ class ChangeCatalogStatus
             throw ValidationException::withMessages(['group_behavior' => 'Choose what should happen to assigned Groups and their Products.']);
         }
         if ($hidden !== null && ! $record instanceof Option) {
-            throw ValidationException::withMessages(['hidden' => 'Only shared Options support hidden status.']);
+            throw ValidationException::withMessages(['hidden' => 'Only shared Attribute Values support hidden status.']);
         }
         DB::transaction(function () use ($actor, $record, $active, $groupBehavior, $hidden): void {
             $fresh = $this->lockForReview(collect([$record]))->firstOrFail();

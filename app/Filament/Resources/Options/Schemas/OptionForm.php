@@ -15,7 +15,7 @@ class OptionForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components([Section::make('Shared Option')->afterHeader([FormHints::make('The Attribute, Value and exact code are shared by every local inclusion. Review usage before editing.')])->compact()->columns(2)->schema([
+        return $schema->columns(1)->components([Section::make('Shared Attribute Value')->afterHeader([FormHints::make('The Attribute, Master Value and exact code are shared by every local inclusion. Review usage before editing.')])->compact()->columns(2)->schema([
             Select::make('attribute_id')->label('Attribute')->required()->rules(['integer'])->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Attribute::where('label', 'like', '%'.$search.'%')->orWhere('key', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Attribute::find($value)?->label : null),

@@ -32,7 +32,7 @@ test('resource lists show one quiet breadcrumb title and the full table count', 
     expect($list->instance()->resourceTableCounts)->toBe(['matched' => 3, 'total' => 3, 'filtered' => false]);
 })->with([
     'master values' => [ListValues::class, Value::class, 'Product configuration', 'Master Values'],
-    'options' => [ListOptions::class, Option::class, 'Product configuration', 'Options'],
+    'options' => [ListOptions::class, Option::class, 'Product configuration', 'Attribute Values'],
     'attributes' => [ListAttributes::class, Attribute::class, 'Product configuration', 'Attributes'],
     'configurators' => [ListConfigurators::class, Configurator::class, 'Product configuration', 'Configurators'],
     'groups' => [ListGroups::class, Group::class, 'Catalog', 'Groups'],

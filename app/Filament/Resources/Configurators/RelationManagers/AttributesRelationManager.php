@@ -120,7 +120,7 @@ class AttributesRelationManager extends RelationManager
             return [
                 View::make('filament.forms.validation-summary'),
                 Hidden::make('option_id')->required()->rules(['integer']),
-                TextInput::make('label_override')->label('Local option label')->maxLength(255)->placeholder($option->option->value->label),
+                TextInput::make('label_override')->label('Local UI Name')->maxLength(255)->placeholder($option->option->value->label),
                 TextInput::make('display_value_override')->label('Local display value')->maxLength(255)->placeholder($option->option->value->label),
                 TextInput::make('hint')->label('Local hint')->maxLength(1000),
                 Toggle::make('hidden_by_default')->label('Initially hidden'),
@@ -166,7 +166,7 @@ class AttributesRelationManager extends RelationManager
         $option = $this->selectedOption();
         abort_unless($attribute && $option, 404);
         if (isset($this->optionEditorStaleRows[$option->id])) {
-            throw ValidationException::withMessages(['optionEditorData' => 'Batch changes were saved. Reload this Option before saving; your draft was kept.']);
+            throw ValidationException::withMessages(['optionEditorData' => 'Batch changes were saved. Reload this value before saving; your draft was kept.']);
         }
         ConfiguratorFormErrors::run(fn () => app(SaveConfiguratorOption::class)->handle(auth()->user(), $attribute, $option->id, $this->optionEditorForm->getState()), $this->optionEditorForm, '/^attributes\.\d+\.options\.\d+\./');
         $this->selectOption($attribute->id, $option->id, reload: true);
@@ -367,9 +367,9 @@ class AttributesRelationManager extends RelationManager
                 TextColumn::make('attribute.key')->label('Canonical key')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('label_override')->label('Local label')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('help_text')->label('Help text')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                ItemCountColumn::make('options_count', 'Options', 'inclusion-options'),
+                ItemCountColumn::make('options_count', 'Values', 'inclusion-options'),
                 TextColumn::make('defaultOption.option.code')->label('Default code'),
-                TextColumn::make('defaultOption.option.value.label')->label('Default Value')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('defaultOption.option.value.label')->label('Default UI Name')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('code_order')->label('Code position')->formatStateUsing(fn (int $state): int => $state + 1)->toggleable(isToggledHiddenByDefault: true),
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorAttribute $record): ?string => $record->id === $this->selectedAttributeId ? 'catalog-selected-row' : null)
@@ -390,7 +390,7 @@ class AttributesRelationManager extends RelationManager
                                 $default = collect($state['options'] ?? [])->firstWhere('id', $state['default_configurator_option_id'] ?? null);
                                 $option = $default ? Option::find($default['option_id']) : null;
 
-                                return ($attribute?->label ?? 'Attribute').' · '.($attribute?->key ?? '').' · '.count($state['options'] ?? []).' Options · Default: '.($option?->code ?? 'choose required');
+                                return ($attribute?->label ?? 'Attribute').' · '.($attribute?->key ?? '').' · '.count($state['options'] ?? []).' Values · Default: '.($option?->code ?? 'choose required');
                             })
                             ->schema(fn (): array => ConfiguratorAttributeForm::reviewComponents($this->owner()))->columnSpanFull(),
                     ])->action(fn (array $data) => $this->includeAttributes($data['selected'], $data['review'])),
@@ -405,7 +405,7 @@ class AttributesRelationManager extends RelationManager
                     ->action(fn (ConfiguratorAttribute $record) => $this->selectAttribute($record->id)),
                 DependencyActions::local(Action::make('remove')->label('Remove')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Remove this local inclusion and its local options. Referencing rules must be repaired first; shared canonical records remain available.')
+                    ->modalDescription('Remove this local inclusion and its Included Values. Referencing rules must be repaired first; shared canonical records remain available.')
                     ->action(fn (ConfiguratorAttribute $record) => $this->removeInclusion($record->id))),
             ]), 'configurator-attributes', true, ['includeMany']);
     }

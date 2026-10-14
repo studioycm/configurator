@@ -19,25 +19,25 @@
             </x-filament::section>
             @livewire(\App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => $this->getPageClass(), 'selectedOptionId' => $selectedOptionId], key('attribute-options-'.$attribute->id))
             @if ($option = $this->selectedOption())
-                <x-filament::section :heading="'Option: '.$option->option->code.' · '.$option->option->value->label" wire:key="option-editor-{{ $option->id }}">
-                    <p class="mb-2 text-sm text-gray-500">Blank local fields inherit the shared Value. Save this Option separately from the Attribute.</p>
+                <x-filament::section :heading="'Included Value: '.$option->option->code.' · '.$option->option->value->label" wire:key="option-editor-{{ $option->id }}">
+                    <p class="mb-2 text-sm text-gray-500">Blank local fields inherit the shared Attribute Value. Save this Included Value separately from the Attribute.</p>
                     @if (isset($optionEditorStaleRows[$option->id]))
                         <div role="alert" class="mb-2 text-sm text-warning-600">
-                            <p>Batch changes were saved. Your Option draft was kept.</p>
-                            <x-filament::button color="warning" wire:click="reloadOptionEditor">Reload saved Option</x-filament::button>
+                            <p>Batch changes were saved. Your value draft was kept.</p>
+                            <x-filament::button color="warning" wire:click="reloadOptionEditor">Reload saved value</x-filament::button>
                         </div>
                     @endif
                     {{ $this->optionEditorForm }}
                     <div class="mt-3 flex flex-wrap gap-3">
-                        <x-filament::button wire:click="saveOptionEditor" wire:loading.attr="disabled" wire:target="saveOptionEditor">Save option</x-filament::button>
-                        <x-filament::button color="gray" wire:click="closeOptionEditor" data-close-option-editor>Close option</x-filament::button>
+                        <x-filament::button wire:click="saveOptionEditor" wire:loading.attr="disabled" wire:target="saveOptionEditor">Save value</x-filament::button>
+                        <x-filament::button color="gray" wire:click="closeOptionEditor" data-close-option-editor>Close value</x-filament::button>
                     </div>
                 </x-filament::section>
             @endif
         </div>
     @else
         <x-filament::section>
-            <p class="text-sm text-gray-500">Select an attribute to edit its settings and included options.</p>
+            <p class="text-sm text-gray-500">Select an attribute to edit its settings and included values.</p>
         </x-filament::section>
     @endif
 </x-catalog.related-editor>

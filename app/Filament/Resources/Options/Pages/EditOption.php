@@ -73,7 +73,7 @@ class EditOption extends EditRecord
 
         return [
             ...$actions,
-            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete Option')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
+            DependencyActions::canonical(Action::make('remove'), $this->getRecord())->label('Delete Attribute Value')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                 ->modalDescription('Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.')
                 ->action(function (): void {
                     ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $this->getRecord()), $this->getMountedActionSchema());

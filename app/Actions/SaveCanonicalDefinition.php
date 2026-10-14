@@ -37,7 +37,7 @@ class SaveCanonicalDefinition
                 }
                 $validated = Validator::make(['definition' => $data], $rules)->validate()['definition'];
                 if ($record instanceof Attribute && $record->exists && $record->key !== $validated['key'] && ($record->options()->exists() || $record->inclusions()->exists())) {
-                    throw ValidationException::withMessages(['key' => 'This Attribute key is in use. Repair its Options and Configurator inclusions before changing its identity.']);
+                    throw ValidationException::withMessages(['key' => 'This Attribute key is in use. Repair its Attribute Values and Configurator inclusions before changing its identity.']);
                 }
                 $record->fill($validated)->save();
 

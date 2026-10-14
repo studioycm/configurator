@@ -49,7 +49,7 @@ class OptionsRelationManager extends RelationManager
                 $this->optionAction('edit')->label('Edit')->fillForm(fn (Option $record): array => $record->only('value_id', 'code')),
                 DependencyActions::canonical(Action::make('remove'))->label('Delete')->color('danger')->authorize('manage-catalog')->requiresConfirmation()
                     ->schema([View::make('filament.forms.validation-summary')])
-                    ->modalDescription('Used options cannot be deleted. Repair their dependencies first.')
+                    ->modalDescription('Used Attribute Values cannot be deleted. Repair their dependencies first.')
                     ->action(function (Option $record): void {
                         abort_unless($record->attribute_id === $this->getOwnerRecord()->id, 404);
                         ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $record), $this->getMountedActionSchema());
@@ -72,7 +72,7 @@ class OptionsRelationManager extends RelationManager
                 fn () => app(SaveCanonicalOption::class)->handle(auth()->user(), $record, $this->getOwnerRecord()->id, (int) $data['value_id'], $data['code']),
                 $this->getMountedActionSchema(),
             );
-            Notification::make()->title('Option saved')->success()->send();
+            Notification::make()->title('Attribute Value saved')->success()->send();
             $this->dispatch('catalog-record-saved');
         });
     }

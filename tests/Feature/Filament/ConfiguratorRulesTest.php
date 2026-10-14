@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleDraft;
 use Filament\Actions\Testing\TestAction;
+use Filament\Forms\Components\Select;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -26,6 +27,27 @@ function ruleEditorFixture(): array
 
     return [$configurator, app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())];
 }
+
+test('new Advanced effects keep string scopes and show Target values before any values are selected', function () {
+    [$configurator, $data] = ruleEditorFixture();
+    $attribute = $data['attributes'][1];
+    $ruleData = fixtureAdvanced('allow-values', [], 'B', 'AllowOptions');
+    $ruleData['effects'][0]['target_configurator_attribute_id'] = $attribute['id'];
+    $ruleData['effects'][0]['target_scope'] = 'Options';
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('createRule', 'Advanced')->fillForm(app(ConfiguratorRuleDraft::class)->fromRule($ruleData), 'editorForm');
+    $key = array_key_first($manager->get('editorData.effects'));
+
+    $manager->assertFormFieldExists('effects.'.$key.'.target_scope', 'editorForm', fn (Select $field): bool => $field->getState() === 'Options' && $field->getOptions() === ['Attribute' => 'Whole Attribute', 'Options' => 'Selected values'])
+        ->assertSchemaComponentVisible('effects.'.$key.'.option_ids', 'editorForm', 'form')
+        ->set('editorData.label', 'Allow selected values')
+        ->set('editorData.effects.'.$key.'.option_ids', [$attribute['options'][0]['id']])
+        ->call('saveEditor')->assertHasNoErrors();
+
+    $rule = $configurator->rules()->where('label', 'Allow selected values')->sole();
+    $this->assertDatabaseHas('rule_effects', ['rule_id' => $rule->id, 'kind' => 'AllowOptions', 'target_scope' => 'Options']);
+    expect($rule->effects()->sole()->optionReferences()->sole()->configurator_option_id)->toBe((int) $attribute['options'][0]['id']);
+});
 
 test('highest displayed rule receives highest priority and incomplete permutations cannot change it', function () {
     [$configurator, $data] = canonicalDefinitionFixture();

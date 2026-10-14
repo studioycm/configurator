@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\ConditionSource;
+use App\RuleEffectKind;
 use Database\Factories\ConfiguratorRuleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -81,7 +82,7 @@ class ConfiguratorRule extends Model
                 $target = $effect->targetAttribute?->label_override ?? $effect->targetAttribute?->attribute->label;
                 $options = $effect->optionReferences->map(fn (RuleEffectOption $reference): string => $reference->configuratorOption->option->code)->implode(', ');
 
-                return Str::headline($effect->kind).' · '.$target.($options === '' ? '' : ' ['.$options.']').(filled($effect->display_value) ? ' → '.$effect->display_value : '');
+                return (RuleEffectKind::tryFrom($effect->kind)?->getLabel() ?? Str::headline($effect->kind)).' · '.$target.($options === '' ? '' : ' ['.$options.']').(filled($effect->display_value) ? ' → '.$effect->display_value : '');
             })->implode('; ');
         }
 

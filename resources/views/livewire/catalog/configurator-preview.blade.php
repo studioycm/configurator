@@ -3,7 +3,7 @@
         <div class="flex flex-wrap items-center gap-2">
             <span class="text-sm font-medium">Saved definition</span>
             <x-filament::icon-button color="gray" size="sm" icon="heroicon-o-question-mark-circle" label="About saved Preview"
-                tooltip="Preview reads saved Rules and Product facts. Unsaved Attribute, Option and Rule drafts are not included. Choose a real Product from an assigned Group to test its configuration. Rule diagnostics show the current legal, hidden and disabled choices. Enable engine trace to inspect evaluation steps." />
+                tooltip="Preview reads saved Rules and Product facts. Unsaved Attribute, Included Value and Rule drafts are not included. Choose a real Product from an assigned Group to test its configuration. Rule diagnostics show the current legal, hidden and disabled choices. Enable engine trace to inspect evaluation steps." />
             <x-filament::button color="gray" size="sm" wire:click="refreshDefinition" wire:loading.attr="disabled" wire:target="refreshDefinition">Refresh saved definition</x-filament::button>
             <x-filament::button color="gray" size="sm" wire:click="toggleTrace" wire:loading.attr="disabled" wire:target="toggleTrace">{{ $showTrace ? 'Hide engine trace' : 'Show engine trace' }}</x-filament::button>
         </div>
@@ -43,7 +43,7 @@
                         @endforeach
                         @foreach ($result->attributes as $id => $state)
                             <li>
-                                <p class="font-medium">{{ $state['label'] }} · {{ $state['applicable'] ? count($state['legal']).' legal Options' : 'Inapplicable' }}</p>
+                                <p class="font-medium">{{ $state['label'] }} · {{ $state['applicable'] ? count($state['legal']).' legal values' : 'Inapplicable' }}</p>
                                 <p class="text-gray-500">Hidden: {{ collect($state['hidden'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: 'none' }} · Disabled: {{ collect($state['disabled'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: 'none' }}</p>
                                 @if ($state['applicable'])
                                     @include('livewire.catalog.configurator-preview-notes', ['attribute' => $result->definition->attributes[$id], 'selectedId' => $result->selections[$id] ?? null])

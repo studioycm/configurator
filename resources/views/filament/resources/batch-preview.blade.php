@@ -6,7 +6,7 @@
             <p class="text-sm text-danger-600">{{ $this->batchPreview['blocked_count'] }} records are blocked. Nothing in this selection can be removed until the dependencies are repaired.</p>
             <ul class="list-disc ps-4 text-sm">
                 @foreach ($this->batchPreview['blockers'] as $blocker)
-                    <li>{{ $blocker['name'] }} #{{ $blocker['parent_id'] }}: {{ $blocker['count'] }} {{ $blocker['category'] }}. Use View {{ $blocker['category'] }} below.</li>
+                    <li>{{ $blocker['name'] }} #{{ $blocker['parent_id'] }}: {{ $blocker['count'] }} {{ \App\Filament\Resources\DependencyActions::categoryLabel($blocker['category']) }}. Use View {{ \App\Filament\Resources\DependencyActions::categoryLabel($blocker['category']) }} below.</li>
                 @endforeach
             </ul>
         @endif

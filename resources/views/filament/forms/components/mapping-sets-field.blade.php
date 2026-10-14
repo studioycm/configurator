@@ -95,9 +95,9 @@
                 </div>
                 <div class="catalog-mapping-lists grid gap-3">
                     <div class="min-w-0">
-                        <h4 class="sticky top-0 bg-white py-2 font-medium dark:bg-gray-900" x-text="'Driver options · ' + set.source_option_ids.length + ' selected'"></h4>
-                        <input type="search" x-model="searches[set.id + ':source']" :aria-label="'Search set ' + (index + 1) + ' driver options'" placeholder="Search driver Options" class="mb-2 w-full rounded-lg border border-gray-300 px-2 py-1 dark:bg-gray-900" />
-                        <div class="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700" tabindex="0" :aria-label="'Set ' + (index + 1) + ' driver options'">
+                        <h4 class="sticky top-0 bg-white py-2 font-medium dark:bg-gray-900" x-text="'Driver values · ' + set.source_option_ids.length + ' selected'"></h4>
+                        <input type="search" x-model="searches[set.id + ':source']" :aria-label="'Search set ' + (index + 1) + ' driver values'" placeholder="Search driver values" class="mb-2 w-full rounded-lg border border-gray-300 px-2 py-1 dark:bg-gray-900" />
+                        <div class="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700" tabindex="0" :aria-label="'Set ' + (index + 1) + ' driver values'">
                             <template x-for="(label, id) in sources" :key="id">
                                 <label class="flex items-start gap-2 text-sm" x-show="matches(label, searches[set.id + ':source'])">
                                     <input type="checkbox" :value="String(id)" x-model="set.source_option_ids" :aria-label="'Set ' + (index + 1) + ' driver ' + label" class="mt-1" />

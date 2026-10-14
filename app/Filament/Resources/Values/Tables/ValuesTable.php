@@ -23,7 +23,7 @@ class ValuesTable
             TextColumn::make('label')->label('UI Name')->sortable()->toggleable()->searchable(),
             TextColumn::make('description')->label('Specification')->searchable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('tags')->badge(),
-            ItemCountColumn::make('options_count', 'Options', 'value-options')->sortable()->toggleable(),
+            ItemCountColumn::make('options_count', 'Attributes', 'value-options')->sortable()->toggleable(),
             TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('updated_at')->label('Updated At')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
         ])->filters([

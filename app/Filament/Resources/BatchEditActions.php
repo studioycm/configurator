@@ -73,7 +73,7 @@ class BatchEditActions
                 $actions = [$action->makeModalSubmitAction('previewBatch', arguments: ['preview' => true])->label('Preview changes')->color('gray')];
                 foreach (collect($livewire->batchPreview['blockers'] ?? [])->groupBy('category') as $category => $blockers) {
                     $choices = $blockers->values()->all();
-                    $actions[] = Action::make('blocking-'.$category)->label('View '.$category.' ('.$blockers->sum('count').')')->color('gray')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')->schema([
+                    $actions[] = Action::make('blocking-'.$category)->label('View '.DependencyActions::categoryLabel($category).' ('.$blockers->sum('count').')')->color('gray')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')->schema([
                         Select::make('blocking_record')->label('Blocked record')->options(array_map(fn (array $blocker): string => $blocker['name'].' #'.$blocker['parent_id'].' ('.$blocker['count'].')', $choices))->default(0)->selectablePlaceholder(false)->live(),
                         View::make('filament.resources.item-list-content')->viewData(function (Get $get) use ($choices): array {
                             $choice = $choices[$get('blocking_record')] ?? $choices[0];

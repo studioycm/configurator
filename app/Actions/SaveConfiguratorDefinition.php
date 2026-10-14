@@ -51,7 +51,7 @@ class SaveConfiguratorDefinition
                 foreach ($row['options'] as $optionIndex => $option) {
                     $canonical = $options[$option['option_id']];
                     if (! $preserveInactiveReferences && str_starts_with((string) $option['id'], 'new:') && (! $canonical['is_active'] || $canonical['is_hidden'])) {
-                        throw ValidationException::withMessages(['attributes.'.$index.'.options.'.$optionIndex.'.option_id' => 'Disabled or hidden Options cannot be newly included.']);
+                        throw ValidationException::withMessages(['attributes.'.$index.'.options.'.$optionIndex.'.option_id' => 'Disabled or hidden Attribute Values cannot be newly included.']);
                     }
                 }
             }

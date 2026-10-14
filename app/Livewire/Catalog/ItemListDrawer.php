@@ -12,6 +12,8 @@ use App\Filament\Resources\Options\Pages\EditOption;
 use App\Filament\Resources\TablePresentation;
 use App\Models\Group;
 use App\Models\Option;
+use App\Models\RuleEffect;
+use App\RuleEffectKind;
 use App\Services\ItemListOrdering;
 use App\Services\ItemLists;
 use Filament\Actions\Action;
@@ -76,7 +78,11 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         $definition = $this->definition();
         $columns = [];
         foreach ($definition->columns as $field => $label) {
-            $columns[] = TextColumn::make($field)->label($label)->wrap()->searchable()->toggleable();
+            $column = TextColumn::make($field)->label($label)->wrap()->searchable()->toggleable();
+            if ($field === 'kind' && $definition->query instanceof Builder && $definition->query->getModel() instanceof RuleEffect) {
+                $column->formatStateUsing(fn (string $state): string => RuleEffectKind::tryFrom($state)?->getLabel() ?? $state);
+            }
+            $columns[] = $column;
         }
         if (is_array($definition->query)) {
             $table->records(function (int $page, int|string $recordsPerPage, ?string $search): LengthAwarePaginator|Collection {

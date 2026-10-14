@@ -31,14 +31,14 @@ class SaveCanonicalOption
                     'code' => ['required', 'string', 'regex:/\A[A-Za-z0-9]{2}\z/D', Rule::unique('options')->ignore($record->id)],
                 ])->validate();
                 if ($record->exists && ($record->attribute_id !== $attributeId || $record->value_id !== $valueId) && ConfiguratorOption::where('option_id', $record->id)->exists()) {
-                    throw ValidationException::withMessages(['option' => 'This Option is included in Configurators. Repair its references before changing its Attribute or Value.']);
+                    throw ValidationException::withMessages(['option' => 'This Attribute Value is included in Configurators. Repair its references before changing its Attribute or Master Value.']);
                 }
                 $record->fill($data)->save();
 
                 return $record;
             });
         } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['code' => 'This code or Attribute/Value pair was saved elsewhere. Reload and choose a unique Option.']);
+            throw ValidationException::withMessages(['code' => 'This code or Attribute/Value pair was saved elsewhere. Reload and choose a unique Attribute Value.']);
         }
     }
 }

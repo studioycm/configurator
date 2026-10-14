@@ -13,6 +13,17 @@ use Filament\Actions\Action;
 
 class DependencyActions
 {
+    public static function categoryLabel(string $category): string
+    {
+        return match ($category) {
+            'options' => 'Shared Attribute Values',
+            'inclusions' => 'Configurator uses',
+            'defaults' => 'Stored defaults',
+            'rules' => 'Blocking rules',
+            'groups' => 'Assigned groups',
+        };
+    }
+
     public static function canonical(Action $action, Attribute|Value|Option|null $record = null): Action
     {
         $resolveRecord = fn (): Attribute|Value|Option => $record ?? $action->getRecord();
@@ -35,7 +46,8 @@ class DependencyActions
                         continue;
                     }
                     $key = 'canonical-'.$type.'-'.$category;
-                    $actions[] = Action::make('blocking-'.$category)->label('View '.$category.' ('.$count.')')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')
+                    $label = self::categoryLabel($category);
+                    $actions[] = Action::make('blocking-'.$category)->label('View '.$label.' ('.$count.')')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Back')
                         ->modalContent(fn () => view('filament.resources.item-list-content', ['listKey' => $key, 'parentId' => $record->id]));
                 }
 

@@ -5,8 +5,8 @@ use App\Filament\Resources\Configurators\Pages\ListConfigurators;
 use App\Filament\Resources\Groups\Pages\ListGroups;
 use App\Filament\Resources\Options\Pages\ListOptions;
 use App\Filament\Resources\Products\Pages\ListProducts;
+use App\Filament\Resources\Values\Pages\ListValues;
 use App\Models\User;
-use Filament\Tables\Columns\Column;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\BaseFilter;
@@ -35,15 +35,21 @@ dataset('table-standards-pages', [
     ],
     'config attributes' => [
         'page' => ListAttributes::class,
-        'columns' => ['id' => 'ID', 'key' => 'Key', 'label' => 'Label', 'options_count' => 'Options', 'configurator_attributes_count' => 'Configurators', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id' => 'ID', 'key' => 'Key', 'label' => 'Attribute', 'options_count' => 'Values', 'configurator_attributes_count' => 'Used by', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
         'searchableColumns' => ['id', 'key', 'label'],
         'filters' => [],
     ],
     'config options' => [
         'page' => ListOptions::class,
-        'columns' => ['id' => 'ID', 'code' => 'Code', 'attribute.label' => 'Attribute', 'value.label' => 'Value', 'configurator_options_count' => 'Local uses', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'columns' => ['id' => 'ID', 'code' => 'Code', 'attribute.label' => 'Attribute', 'value.label' => 'UI Name', 'configurator_options_count' => 'Configurator uses', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
         'searchableColumns' => ['id', 'code', 'attribute.label', 'value.label'],
         'filters' => ['attribute_id' => 'Attribute'],
+    ],
+    'master values' => [
+        'page' => ListValues::class,
+        'columns' => ['id' => 'ID', 'label' => 'UI Name', 'description' => 'Specification', 'tags' => 'Tags', 'options_count' => 'Attributes', 'created_at' => 'Created At', 'updated_at' => 'Updated At'],
+        'searchableColumns' => ['id', 'label', 'description'],
+        'filters' => ['tags' => 'Tags'],
     ],
     'config profiles' => [
         'page' => ListConfigurators::class,
@@ -152,11 +158,11 @@ dataset('table-standards-pages', [
 
 it('applies the requested Filament table standards', function (string $page, array $columns, array $searchableColumns, array $filters) {
     $component = Livewire::test($page);
+    $table = $component->instance()->getTable();
 
-    foreach ($columns as $name => $label) {
-        $component->assertTableColumnExists($name, function (Column $column) use ($label): bool {
-            return $column->getLabel() === $label;
-        });
+    foreach ($columns as $name => $expectedLabel) {
+        $component->assertTableColumnExists($name);
+        expect($table->getColumn($name)->getLabel())->toBe($expectedLabel, "Unexpected label for column [{$name}] on [{$page}].");
     }
 
     $isCurrent = str_starts_with($page, 'App\\Filament\\');
@@ -178,8 +184,6 @@ it('applies the requested Filament table standards', function (string $page, arr
             return $filter->getLabel() === $label;
         });
     }
-
-    $table = $component->instance()->getTable();
 
     if ($isCurrent) {
         expect($table->getFiltersLayout())->toBe(FiltersLayout::Modal)

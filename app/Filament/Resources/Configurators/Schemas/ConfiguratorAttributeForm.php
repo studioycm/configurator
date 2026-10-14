@@ -31,7 +31,7 @@ class ConfiguratorAttributeForm
         $fields = self::components($owner, chooseCanonical: false);
         $default = array_pop($fields);
 
-        return [$default, Section::make('Local settings and Options')->compact()->collapsible()->collapsed()->schema($fields)];
+        return [$default, Section::make('Local settings and Values')->compact()->collapsible()->collapsed()->schema($fields)];
     }
 
     /** @return array<Component> */
@@ -72,17 +72,17 @@ class ConfiguratorAttributeForm
                 TextInput::make('label_override')->label('Local label')->maxLength(255)->hintAction(FormHints::make('Leave empty to use the shared Attribute label.')),
                 Textarea::make('help_text')->label('Local help')->maxLength(1000)->rows(3),
             ]),
-            ...($withOptions ? [FormOrderControls::make('options')->label('Included Options')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
+            ...($withOptions ? [FormOrderControls::make('options')->label('Included Values')->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
-                Select::make('option_id')->label('Canonical Option')->required()->rules(['integer'])->searchable()->live()
+                Select::make('option_id')->label('Shared Attribute Value')->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()
                     ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id'))),
-                TextInput::make('label_override')->label('Local option label')->maxLength(255),
+                TextInput::make('label_override')->label('Local UI Name')->maxLength(255),
                 TextInput::make('display_value_override')->label('Local display value')->maxLength(255),
                 TextInput::make('hint')->label('Local hint')->maxLength(1000),
                 Toggle::make('hidden_by_default')->label('Initially hidden')->default(false),
                 Toggle::make('disabled_by_default')->label('Initially disabled')->default(false),
-            ])->hintAction(FormHints::make('Reordering does not change the stored default. Repair defaults and rule references before removing an Option.'))] : []),
+            ])->hintAction(FormHints::make('Reordering does not change the stored default. Repair defaults and rule references before removing a value.'))] : []),
             Select::make('default_configurator_option_id')->label('Stored default')->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
                 if (! $withOptions) {
                     return $inclusion->options()->with('option.value')->orderBy('display_order')->get()
@@ -92,12 +92,12 @@ class ConfiguratorAttributeForm
                 $options = [];
                 foreach ($get('options') ?? [] as $row) {
                     if (isset($row['id'], $row['option_id'])) {
-                        $options[(string) $row['id']] = $canonical[$row['option_id']] ?? 'Unavailable Option — repair required';
+                        $options[(string) $row['id']] = $canonical[$row['option_id']] ?? 'Unavailable value — repair required';
                     }
                 }
                 $current = $get('default_configurator_option_id');
                 if (is_scalar($current) && (string) $current !== '' && ! isset($options[(string) $current])) {
-                    $options[(string) $current] = 'Removed Option — choose a replacement';
+                    $options[(string) $current] = 'Removed value — choose a replacement';
                 }
 
                 return $options;

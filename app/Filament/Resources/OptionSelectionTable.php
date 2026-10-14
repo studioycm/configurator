@@ -19,8 +19,9 @@ class OptionSelectionTable
         Gate::authorize('manage-catalog');
 
         return TablePresentation::configure($table->query(fn (Table $table) => Option::where('is_active', true)->where('is_hidden', false)->where('attribute_id', ConfiguratorAttribute::findOrFail((int) $table->getArguments()['owner_id'])->attribute_id)->whereNotIn('id', ConfiguratorAttribute::findOrFail((int) $table->getArguments()['owner_id'])->options()->select('option_id'))->with('value'))
-            ->columns([TextColumn::make('code')->label('Code')->searchable()->toggleable(), TextColumn::make('value.label')->label('Value')->searchable()->toggleable(), TextColumn::make('value.tags')->label('Tags')->badge()])
+            ->columns([TextColumn::make('code')->label('Code')->searchable()->toggleable(), TextColumn::make('value.label')->label('UI Name')->searchable()->toggleable(), TextColumn::make('value.tags')->label('Tags')->badge()])
             ->filters([Filter::make('tags')->schema(fn (): array => [ValuesTable::tagFilterField()])
+                ->indicateUsing(fn (array $data): ?string => empty($data['values']) ? null : 'Tags: '.implode(', ', $data['values']))
                 ->query(fn (Builder $query, array $data): Builder => $query->when(! empty($data['values']), fn (Builder $query): Builder => $query->whereHas('value', function (Builder $query) use ($data): void {
                     $query->where(function (Builder $query) use ($data): void {
                         foreach (array_filter($data['values'], 'is_string') as $tag) {

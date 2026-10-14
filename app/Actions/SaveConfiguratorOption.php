@@ -18,14 +18,14 @@ class SaveConfiguratorOption
     {
         $this->save->change($actor, $owner->configurator, function (array $draft) use ($owner, $id, $data): array {
             if (array_diff(array_keys($data), self::FIELDS) !== []) {
-                throw ValidationException::withMessages(['option' => 'Unsupported Option fields.']);
+                throw ValidationException::withMessages(['option' => 'Unsupported Included Value fields.']);
             }
             $attributeIndex = array_search((string) $owner->id, array_column($draft['attributes'], 'id'), true);
             abort_if($attributeIndex === false, 404);
             $attribute = $draft['attributes'][$attributeIndex];
             $index = array_search((string) $id, array_column($attribute['options'], 'id'), true);
             if ($id !== null && $index === false) {
-                throw ValidationException::withMessages(['option' => 'This Option does not belong to this Attribute.']);
+                throw ValidationException::withMessages(['option' => 'This Included Value does not belong to this Attribute.']);
             }
             foreach (['label_override', 'display_value_override', 'hint'] as $field) {
                 if (array_key_exists($field, $data) && blank($data[$field])) {

@@ -27,11 +27,18 @@ class OptionResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
-    protected static ?string $modelLabel = 'Option';
+    protected static ?string $modelLabel = 'Attribute Value';
 
-    protected static ?string $pluralModelLabel = 'Options';
+    protected static ?string $pluralModelLabel = 'Attribute Values';
+
+    protected static ?string $slug = 'options';
 
     protected static ?string $recordTitleAttribute = 'code';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function getNavigationBadge(): ?string
     {

@@ -74,12 +74,12 @@ class ConfiguratorDefinitionCompiler
                 $optionId = $this->claim($option, 'option', $seen, $optionPath);
                 $canonicalOptionId = $this->integer($option['option_id'] ?? null, $optionPath.'.option_id', 1);
                 $canonical = $canonicalOptions[$canonicalOptionId] ?? null;
-                $this->check($canonical !== null && $canonical['attribute_id'] === $canonicalId, $optionPath.'.option_id', 'Choose an Option belonging to this canonical Attribute.');
-                $this->unique($canonicalOptionId, $optionIds, $optionPath.'.option_id', 'An Option can only be included once.');
-                $this->check(is_string($canonical['code']) && preg_match('/\A[A-Za-z0-9]{2}\z/D', $canonical['code']) === 1, $optionPath.'.option_id', 'Repair the canonical Option code: exactly two ASCII alphanumerics are required.');
-                $this->unique($canonical['code'], $codes, $optionPath.'.option_id', 'Canonical Option codes must be globally unique and case-sensitive.');
+                $this->check($canonical !== null && $canonical['attribute_id'] === $canonicalId, $optionPath.'.option_id', 'Choose an Attribute Value belonging to this shared Attribute.');
+                $this->unique($canonicalOptionId, $optionIds, $optionPath.'.option_id', 'An Attribute Value can only be included once.');
+                $this->check(is_string($canonical['code']) && preg_match('/\A[A-Za-z0-9]{2}\z/D', $canonical['code']) === 1, $optionPath.'.option_id', 'Repair the shared Attribute Value code: exactly two ASCII alphanumerics are required.');
+                $this->unique($canonical['code'], $codes, $optionPath.'.option_id', 'Shared Attribute Value codes must be globally unique and case-sensitive.');
                 $order = $this->integer($option['display_order'] ?? null, $optionPath.'.display_order');
-                $this->unique($order, $optionOrders, $optionPath.'.display_order', 'Option display order must be unique.');
+                $this->unique($order, $optionOrders, $optionPath.'.display_order', 'Included Value display order must be unique.');
                 $options[$optionId] = new ConfiguratorOptionDTO($optionId, $canonicalOptionId, $canonical['code'], $order,
                     $this->text($option['label_override'] ?? null, $optionPath.'.label_override') ?? $canonical['label'],
                     $this->text($option['display_value_override'] ?? null, $optionPath.'.display_value_override') ?? $canonical['label'],
@@ -93,7 +93,7 @@ class ConfiguratorDefinitionCompiler
             if ($default === null && str_starts_with($id, 'new:')) {
                 $default = array_key_first($options);
             }
-            $this->check((is_int($default) || is_string($default)) && isset($options[(string) $default]), $path.'.default_configurator_option_id', 'Choose a default from this inclusion. Repair the default before removing its Option.');
+            $this->check((is_int($default) || is_string($default)) && isset($options[(string) $default]), $path.'.default_configurator_option_id', 'Choose a default from this inclusion. Repair the default before removing its value.');
             $row['default_configurator_option_id'] = (string) $default;
             $attributes[$id] = new ConfiguratorAttributeDTO($id, $canonicalId, $canonicalAttributes[$canonicalId]['key'], $label ?? $canonicalAttributes[$canonicalId]['label'], $input->value, $help, $display, $codeOrder, (string) $default, $options, $row['is_active'] && ($canonicalAttributes[$canonicalId]['is_active'] ?? true));
         }
@@ -140,7 +140,7 @@ class ConfiguratorDefinitionCompiler
                     $this->unique($this->integer($set['sort_order'] ?? null, $setPath.'.sort_order'), $setOrders, $setPath.'.sort_order', 'Set order must be unique.');
                     $sourceIds = $this->optionReferences($set['source_option_ids'] ?? null, $attributes[$driver], $setPath.'.source_option_ids');
                     foreach ($sourceIds as $sourceId) {
-                        $this->unique($sourceId, $usedSources, $setPath.'.source_option_ids', 'A source Option can belong to at most one set in this rule.');
+                        $this->unique($sourceId, $usedSources, $setPath.'.source_option_ids', 'A source value can belong to at most one set in this rule.');
                     }
                     $sets[] = new ConfiguratorMappingSetDTO($setId, $sourceIds, $this->optionReferences($set['target_option_ids'] ?? null, $attributes[$target], $setPath.'.target_option_ids'), $behavior);
                 }
@@ -160,7 +160,7 @@ class ConfiguratorDefinitionCompiler
                     $presentation = in_array($effectKind, [RuleEffectKind::SetLabel, RuleEffectKind::SetDisplayValue, RuleEffectKind::SetHint], true);
                     $this->check($presentation || ($effectKind === RuleEffectKind::HideAttribute ? $scope === RuleTargetScope::Attribute : $scope === RuleTargetScope::Options), $effectPath.'.target_scope', 'This effect has the wrong target scope.');
                     $optionIds = $scope === RuleTargetScope::Options ? $this->optionReferences($effect['option_ids'] ?? null, $attributes[$effectTarget], $effectPath.'.option_ids') : [];
-                    $this->check($scope !== RuleTargetScope::Attribute || ($effect['option_ids'] ?? []) === [], $effectPath.'.option_ids', 'Attribute effects cannot carry Option references.');
+                    $this->check($scope !== RuleTargetScope::Attribute || ($effect['option_ids'] ?? []) === [], $effectPath.'.option_ids', 'Attribute effects cannot carry Included Value references.');
                     $value = $this->text($effect['display_value'] ?? null, $effectPath.'.display_value', ! $presentation);
                     $this->check($presentation || $value === null, $effectPath.'.display_value', 'Only presentation effects accept text.');
                     $effects[] = new ConfiguratorEffectDTO($effectId, $effectTarget, $effectKind, $scope, $optionIds, $value);
@@ -274,9 +274,9 @@ class ConfiguratorDefinitionCompiler
             if ($selection) {
                 $attribute = $this->attributeReference($row['source_configurator_attribute_id'] ?? null, $attributes, $field.'.source_configurator_attribute_id');
                 $optionIds = $this->optionReferences($row['option_ids'] ?? null, $attributes[$attribute], $field.'.option_ids');
-                $this->check($operator !== ConditionOperator::Contains && ($list || count($optionIds) === 1) && $operand === null, $field.'.option_ids', 'Select one included Option for equality or a nonempty set for In/NotIn.');
+                $this->check($operator !== ConditionOperator::Contains && ($list || count($optionIds) === 1) && $operand === null, $field.'.option_ids', 'Select one Included Value for equality or a nonempty set for In/NotIn.');
             } else {
-                $this->check(($row['option_ids'] ?? []) === [], $field.'.option_ids', 'Only selection conditions accept Option references.');
+                $this->check(($row['option_ids'] ?? []) === [], $field.'.option_ids', 'Only selection conditions accept Included Value references.');
                 if ($source === ConditionSource::ProductProperty) {
                     $property = $row['property_key'] ?? null;
                     $this->check(is_string($property) && in_array($property, CatalogImportParser::propertyKeys(), true), $field.'.property_key', 'Choose a registered Product property.');
@@ -374,11 +374,11 @@ class ConfiguratorDefinitionCompiler
     /** @return list<string> */
     private function optionReferences(mixed $ids, ConfiguratorAttributeDTO $attribute, string $path): array
     {
-        $this->check(is_array($ids) && array_is_list($ids) && count($ids) > 0 && count($ids) <= 500, $path, 'Select at least one included Option.');
+        $this->check(is_array($ids) && array_is_list($ids) && count($ids) > 0 && count($ids) <= 500, $path, 'Select at least one Included Value.');
         $result = [];
         foreach ($ids as $id) {
-            $this->check((is_int($id) || is_string($id)) && isset($attribute->options[(string) $id]), $path, 'An Option belongs to a different Attribute or was removed. Repair this reference first.');
-            $this->check(! in_array((string) $id, $result, true), $path, 'Select distinct Options.');
+            $this->check((is_int($id) || is_string($id)) && isset($attribute->options[(string) $id]), $path, 'An Included Value belongs to a different Attribute or was removed. Repair this reference first.');
+            $this->check(! in_array((string) $id, $result, true), $path, 'Select distinct Included Values.');
             $result[] = (string) $id;
         }
 
