@@ -79,7 +79,7 @@ return [
             'product_groups_will_appear_here_when_they_are_available' => 'Product groups will appear here when they are available.',
             'product_pagination' => 'Product pagination',
             'product_properties' => 'Product properties',
-            'profiles' => 'profiles',
+            'profile_count_label' => 'profile|profiles',
             'reload_page' => 'Reload page',
             'reset' => 'RESET',
             'retry_filters' => 'Retry filters',
@@ -93,6 +93,7 @@ return [
             'updating_products' => 'Updating products…',
         ],
         'messages' => [
+            'still_changing' => 'The catalog is still changing. Please retry.',
             'catalog_changed' => 'The catalog changed. Retry to load current products.',
             'choices_adjusted' => 'Some catalog choices were adjusted to the current group settings.',
             'field_cleared' => 'Cleared :field to keep your newer choice.',
@@ -193,6 +194,9 @@ return [
             'presets' => 'Presets',
         ],
         'validation' => [
+            'row_not_owned' => 'This row does not belong to the current Group. Reload the editor.',
+            'choose_current_distinct_values' => 'Choose distinct values that currently exist in this Group. Remove stale values or reload the editor.',
+            'include_default_page_size' => 'Include the default page size in the available choices.',
             'a_group_supports_up_to_18_filters' => 'A Group supports up to 18 filters. Remove a filter before adding more.',
             'choose_move_up_or_move_down' => 'Choose move up or move down.',
             'reorder_the_complete_current_sibling_list_refresh' => 'Reorder the complete current sibling list. Refresh it if Groups were added, moved or removed.',

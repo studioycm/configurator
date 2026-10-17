@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { catalogLabels, catalogMessages } from '../Fixtures/catalog-labels.js';
+
 test('freshness uses the initialized component root after a child button owns the Alpine magic context', async () => {
     const originals = {document:globalThis.document, window:globalThis.window, fetch:globalThis.fetch, cancelAnimationFrame:globalThis.cancelAnimationFrame};
     const requested = [];
@@ -13,7 +15,7 @@ test('freshness uses the initialized component root after a child button owns th
         globalThis.fetch = async url => { requested.push(url); return {status:503, ok:false}; };
         await import('../../resources/js/catalog-filters.js');
         document.dispatchEvent(new Event('alpine:init'));
-        component.$el = {dataset:{datasetUrl:'/dashboard/catalog/groups/1/dataset',groupId:'1'}, querySelector:()=>null};
+        component.$el = {dataset:{catalogLabels, datasetUrl:'/dashboard/catalog/groups/1/dataset',groupId:'1'}, querySelector:()=>null};
         component.init();
         // Alpine resolves $el to the element whose expression invokes a method.
         component.$el = {dataset:{}};
@@ -58,7 +60,7 @@ test('only current cards can publish a properties notice and criteria, retry and
             rows:[['A',0],['B',1]], presets:[],
             settings:{max_results:'all',cards_per_row:4,products_debounce_ms:0}};
         const root = new EventTarget();
-        root.dataset = {datasetUrl:'/dataset', groupId:'1'};
+        root.dataset = {catalogLabels, datasetUrl:'/dataset', groupId:'1'};
         root.querySelector = () => ({textContent:JSON.stringify(snapshot), remove() {}});
         globalThis.document = new EventTarget();
         document.hidden = true;

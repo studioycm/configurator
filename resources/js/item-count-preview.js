@@ -20,11 +20,13 @@ export function itemCountPreview(key, parentId, labels) {
             tooltip.style.left = `${Math.max(8, Math.min(box.left, innerWidth - 280))}px`;
             tooltip.style.top = `${Math.min(box.bottom + 4, innerHeight - 150)}px`;
             tooltip.hidden = false;
+            let request;
             try {
-                const request = loaded ??= this.$wire.itemCountPreview(key, parentId);
+                request = loaded ??= this.$wire.itemCountPreview(key, parentId);
                 const lines = await request;
                 if (visible && loaded === request) tooltip.textContent = lines.join('\n');
             } catch {
+                if (loaded !== request) return;
                 loaded = null;
                 if (visible) tooltip.textContent = labels.unavailable;
             }

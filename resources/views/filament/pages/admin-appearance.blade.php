@@ -1,7 +1,7 @@
 <x-filament-panels::page>
-    <form wire:submit="save" class="space-y-2">
+    <form data-personal-appearance wire:submit="savePersonal" class="space-y-2">
         {{ $this->form }}
-        <div class="flex gap-2"><x-filament::button type="submit">{{ __('admin.appearance.copy.save_shared_defaults') }}</x-filament::button><x-filament::button color="gray" wire:click="resetDefaults">{{ __('admin.appearance.copy.reset_preview_to_defaults') }}</x-filament::button></div>
+        <div class="flex flex-wrap gap-2"><x-filament::button type="submit">{{ __('admin.appearance.copy.save_personal') }}</x-filament::button><x-filament::button color="gray" wire:click="resetPersonal">{{ __('admin.appearance.copy.reset_personal') }}</x-filament::button><x-filament::button color="gray" wire:click="save">{{ __('admin.appearance.copy.save_shared_defaults') }}</x-filament::button><x-filament::button color="gray" wire:click="resetDefaults">{{ __('admin.appearance.copy.reset_preview_to_defaults') }}</x-filament::button></div>
     </form>
     <div style="{{ app(\App\Services\AdminAppearance::class)->style($this->data) }}" class="catalog-appearance-preview">
         <p class="text-sm mb-2">{{ __('admin.appearance.copy.unsaved_preview_other_users_see_saved_defaults') }}</p>

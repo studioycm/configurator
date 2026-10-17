@@ -14,7 +14,7 @@
             <script type="application/json" data-catalog-snapshot>{!! \Illuminate\Support\Js::encode($snapshot?->data) !!}</script>
             <noscript><p>{{ __('catalog.frontend.copy.enable_javascript_to_use_the_product_filters') }}</p></noscript>
             <div x-cloak x-show="!available" role="status" class="mt-4 space-y-2">
-                <p x-text="unavailable"></p>
+                <p data-catalog-recovery x-text="unavailable">{{ __('catalog.frontend.messages.initialization_failed') }}</p>
                 <button type="button" x-show="!reloadRequired" @click="refreshSnapshot()" :disabled="refreshing" class="rounded-lg border px-3 py-2">{{ __('catalog.frontend.copy.retry_filters') }}</button>
                 <a x-show="reloadRequired" href="{{ route('catalog.groups.show', $group) }}" class="underline">{{ __('catalog.frontend.copy.reload_page') }}</a>
                 <a href="{{ route('catalog.index') }}" class="ml-3 underline">{{ __('catalog.frontend.copy.return_to_catalog') }}</a>
@@ -23,7 +23,7 @@
                 <div class="mb-3 flex items-stretch gap-2">
                     <div class="catalog-result-count" role="status" aria-live="polite" aria-atomic="true">
                         <p class="catalog-result-count__amount" data-catalog-total x-text="total === null ? '—' : total"></p>
-                        <p class="catalog-result-count__label">{{ __('catalog.frontend.copy.profiles') }}</p>
+                        <p class="catalog-result-count__label" x-text="total === 1 ? @js(trans_choice('catalog.frontend.copy.profile_count_label', 1)) : @js(trans_choice('catalog.frontend.copy.profile_count_label', 2))">{{ trans_choice('catalog.frontend.copy.profile_count_label', 2) }}</p>
                     </div>
                     <button x-ref="reset" type="button" @click="choose('reset')" class="catalog-filter-reset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">{{ __('catalog.frontend.copy.reset') }}</button>
                 </div>

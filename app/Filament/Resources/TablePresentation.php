@@ -12,6 +12,7 @@ use Filament\QueryBuilder\Constraints\TextConstraint;
 use Filament\QueryBuilder\Forms\Components\RuleBuilder;
 use Filament\Schemas\Components\StateCasts\OptionStateCast;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -62,6 +63,10 @@ class TablePresentation
         $widthKey = $key.':'.$context.':'.($component->listKey ?? '');
         $table->extraAttributes(['data-width-table' => $widthKey], merge: true);
         foreach ($table->getColumns() as $column) {
+            $column->wrapHeader();
+            if ($column instanceof TextColumn) {
+                $column->wrap();
+            }
             $column->extraHeaderAttributes(['data-width-column' => $column->getName(), 'data-width-label' => (string) $column->getLabel()], merge: true);
             $column->extraCellAttributes(['data-width-column' => $column->getName()], merge: true);
         }
@@ -143,7 +148,7 @@ class TablePresentation
             ->filtersLayout(FiltersLayout::Modal)->filtersFormColumns(1)->deferFilters()
             ->filtersTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.filters'))->iconButton()->tooltip(__('ui.tables.filters'))->slideOver()->stickyModalHeader()->stickyModalFooter())
             ->filtersResetAction(fn (Action $action): Action => $action->label(__('admin.workspace.labels.clear_filters')))
-            ->reorderableColumns()->columnManagerLayout(ColumnManagerLayout::Modal)->persistColumnsInSession()
+            ->reorderableColumns()->columnManagerLayout(ColumnManagerLayout::Modal)->persistInSession(method_exists($component, 'restoreTableBrowserProfile'))->persistColumnsInSession()
             ->columnManagerTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.columns'))->iconButton()->tooltip(__('ui.tables.columns'))->slideOver()->stickyModalHeader()->stickyModalFooter()->extraModalFooterActions([$table->getColumnManagerApplyAction()->alpineClickHandler("workspaceColumnManager(\$el, 'applyTableColumnManager'); close()"), Action::make('resetColumnManager')->label(__('admin.workspace.labels.reset_columns'))->color('danger')->alpineClickHandler("workspaceColumnManager(\$el, 'resetDeferredColumns'); \$wire.resetTableColumnManager(); ".'$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')'), Action::make('resetWidths')->label(__('admin.workspace.labels.reset_widths'))->color('gray')->alpineClickHandler('$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')')]));
     }
 

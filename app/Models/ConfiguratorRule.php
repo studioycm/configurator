@@ -75,7 +75,7 @@ class ConfiguratorRule extends Model
         $when = $predicates->isEmpty() ? __('configurator.rules.summary.always') : $predicates->implode(__('configurator.rules.summary.and_join'));
         if ($this->kind === 'Mapping') {
             $modes = $this->mappingSets->map(fn (MappingSet $set): string => __($set->disallowed_target_behavior?->value === 'Hide' ? 'configurator.copy.hide' : 'configurator.copy.disable'))->unique()->implode(' / ');
-            $then = __('configurator.rules.summary.mapping', ['driver' => $this->driverAttribute?->label_override ?? $this->driverAttribute?->attribute->label, 'target' => $this->targetAttribute?->label_override ?? $this->targetAttribute?->attribute->label, 'count' => $this->mappingSets->count(), 'modes' => $modes]);
+            $then = trans_choice('configurator.rules.summary.mapping', $this->mappingSets->count(), ['driver' => $this->driverAttribute?->label_override ?? $this->driverAttribute?->attribute->label, 'target' => $this->targetAttribute?->label_override ?? $this->targetAttribute?->attribute->label, 'count' => $this->mappingSets->count(), 'modes' => $modes]);
         } else {
             $then = $this->effects->map(function (RuleEffect $effect): string {
                 $target = $effect->targetAttribute?->label_override ?? $effect->targetAttribute?->attribute->label;

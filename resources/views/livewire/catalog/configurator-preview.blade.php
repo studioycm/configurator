@@ -1,8 +1,8 @@
-<div class="catalog-configurator-preview space-y-3" wire:loading.attr="aria-busy">
+<div x-data="localTraceProfile({{ \Illuminate\Support\Js::from(['user' => auth()->id()]) }})" class="catalog-configurator-preview space-y-3" wire:loading.attr="aria-busy">
     <div class="catalog-configurator-preview-toolbar rounded-lg border border-gray-200 p-2 dark:border-gray-700">
         <div class="catalog-configurator-preview-selection">
             @include('livewire.catalog.configurator-preview-product-search')
-            @php($catalogHint = $dashboardProduct ? __($productId === null ? 'configurator.preview.opens_first_product' : 'configurator.preview.opens_product', ['code' => $dashboardProduct->product_code]) : ($productId === null ? 'No dashboard Product is available in the assigned Groups.' : 'The selected Product is not available for this Configurator in the dashboard catalog.'))
+            @php($catalogHint = $dashboardProduct ? __($productId === null ? 'configurator.preview.opens_first_product' : 'configurator.preview.opens_product', ['code' => $dashboardProduct->product_code]) : __($productId === null ? 'configurator.preview.no_dashboard_product' : 'configurator.preview.selected_product_unavailable'))
             <div class="catalog-configurator-preview-catalog-actions">
                 <x-filament::icon-button color="gray" size="sm" icon="heroicon-o-information-circle" :label="$catalogHint" :tooltip="$catalogHint" />
                 @if ($dashboardProduct)
@@ -79,23 +79,23 @@
                 @if ($result?->definition)
                     <ul class="mt-2 space-y-2 text-xs">
                         @foreach ($result->definition->rules as $rule)
-                            <li wire:key="preview-rule-{{ $rule->id }}">{{ $rule->label }} · {{ $rule->kind->value }} · {{ $rule->active ? 'Enabled' : 'Disabled' }} · Priority {{ $rule->priority }}</li>
+                            <li wire:key="preview-rule-{{ $rule->id }}">{{ __('configurator.preview.rule_details', ['label' => $rule->label, 'kind' => __($rule->kind->value === 'Mapping' ? 'admin.workspace.labels.mapping' : 'admin.workspace.labels.advanced'), 'status' => __($rule->active ? 'ui.status.enabled' : 'ui.status.disabled'), 'priority' => $rule->priority]) }}</li>
                         @endforeach
                         @foreach ($result->attributes as $id => $state)
                             <li wire:key="preview-attribute-diagnostic-{{ $id }}">
-                                <p class="font-medium">{{ $state['label'] }} · {{ $state['applicable'] ? count($state['legal']).' legal values' : 'Inapplicable' }}</p>
-                                <p class="text-gray-500">Hidden: {{ collect($state['hidden'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: 'none' }} · Disabled: {{ collect($state['disabled'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: 'none' }}</p>
+                                <p class="font-medium">{{ $state['label'] }} · {{ $state['applicable'] ? trans_choice('configurator.preview.legal_values', count($state['legal'])) : __('configurator.preview.inapplicable') }}</p>
+                                <p class="text-gray-500">{{ __('configurator.preview.hidden_and_disabled', ['hidden' => collect($state['hidden'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: __('configurator.preview.none'), 'disabled' => collect($state['disabled'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: __('configurator.preview.none')]) }}</p>
                                 @if ($state['applicable'])
                                     @include('livewire.catalog.configurator-preview-notes', ['attribute' => $result->definition->attributes[$id], 'selectedId' => $result->selections[$id] ?? null])
                                 @endif
                             </li>
                         @endforeach
                         @foreach ($publicOnlyRules as $index => $label)
-                            <li wire:key="preview-public-rule-{{ $index }}">{{ $label }} · Future public only · Skipped in dashboard Preview</li>
+                            <li wire:key="preview-public-rule-{{ $index }}">{{ __('configurator.preview.skipped_public_rule', ['label' => $label]) }}</li>
                         @endforeach
                     </ul>
                 @else
-                    <span class="mt-2 block text-xs text-gray-500">{{ $result ? 'Unavailable' : 'Choose a Product' }}</span>
+                    <span class="mt-2 block text-xs text-gray-500">{{ __($result ? 'configurator.preview.unavailable' : 'configurator.preview.choose_product') }}</span>
                 @endif
             </section>
             <section class="min-w-0 rounded-lg border border-gray-200 p-2 break-words dark:border-gray-700" aria-labelledby="preview-trace-heading-{{ $this->getId() }}">
@@ -105,14 +105,14 @@
                         @foreach ($result->trace as $index => $entry)
                             <li wire:key="preview-trace-{{ $index }}">{{ $result->definition->attributes[$entry['attribute_id']]->label }} · {{ $entry['message'] }}
                                 @if (isset($entry['excluded']))
-                                    · Excluded: {{ collect($entry['excluded'])->map(fn ($id) => $result->definition->attributes[$entry['attribute_id']]->options[$id]->code)->implode(', ') ?: 'none' }}
+                                    · {{ __('configurator.preview.excluded_values', ['values' => collect($entry['excluded'])->map(fn ($id) => $result->definition->attributes[$entry['attribute_id']]->options[$id]->code)->implode(', ') ?: __('configurator.preview.none')]) }}
                                 @endif
                                 @if (isset($entry['choice_id'])) · {{ $result->definition->attributes[$entry['attribute_id']]->options[$entry['choice_id']]->code }} @endif
                             </li>
                         @endforeach
                     </ol>
                 @else
-                    <span class="mt-2 block text-xs text-gray-500">{{ ! $showTrace ? 'Trace is off' : ($result ? 'Unavailable' : 'Choose a Product') }}</span>
+                    <span class="mt-2 block text-xs text-gray-500">{{ __(! $showTrace ? 'configurator.preview.trace_off' : ($result ? 'configurator.preview.unavailable' : 'configurator.preview.choose_product')) }}</span>
                 @endif
             </section>
         </aside>

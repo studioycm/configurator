@@ -14,7 +14,7 @@ class BuildCatalogSnapshot
         $snapshot = DB::transaction(function () use ($groupId): CatalogSnapshot {
             app(CatalogAvailability::class)->assertGroup($groupId);
             $group = Group::query()->withExists('children')->findOrFail($groupId);
-            abort_if($group->children_exists, 409, 'This Group is now a branch.');
+            abort_if($group->children_exists, 409, __('catalog.messages.this_group_is_now_a_branch'));
             $registered = CatalogImportParser::propertyKeys();
             $filters = $group->filters()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($filter) => in_array($filter->property_key, $registered, true));
             $presets = $group->subGroups()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($preset) => in_array($preset->property_key, $registered, true));

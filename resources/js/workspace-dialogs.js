@@ -1,4 +1,6 @@
-const presets = { small: 640, medium: 960, large: 1280 };
+import { browserProfile } from './admin-profile.js';
+
+const presets = [480, 560, 640, 720, 800, 880, 960, 1120, 1280, 1440];
 
 export function workspaceColumnManager(element, operation) {
     const manager = element.closest('.fi-modal-window')?.querySelector('.fi-ta-col-manager');
@@ -9,12 +11,15 @@ export function workspaceColumnManager(element, operation) {
 export function workspaceDialog(config) {
     let windowElement, toolbar, resizeListener, observer;
     let destroyed = false;
-    const defaultWidth = config.width ?? 960;
+    const personal = config.allowPersonalWidth ? browserProfile(config.user, 'global').read()?.appearance?.settings : null;
+    const preferredWidth = { small: 640, medium: 960, large: 1280 }[personal?.[config.slideOver ? 'slide_over_width' : 'modal_width']];
+    const defaultWidth = preferredWidth ?? config.width ?? 960;
     let width = defaultWidth;
-    const storageKey = `aquestia:dialog:${config.user}:admin:${config.purpose}:v1`;
+    const legacyKey = `aquestia:dialog:${config.user}:admin:${config.purpose}:v1`;
+    const storageKey = window.location?.pathname ? `${legacyKey}:page:${window.location.pathname}` : legacyKey;
     const viewportMax = () => Math.max(280, window.innerWidth - (window.innerWidth < 640 ? 0 : 32));
     const clamp = value => Math.max(Math.min(320, viewportMax()), Math.min(viewportMax(), value));
-    const steps = () => [...new Set([...Object.values(presets), viewportMax()].map(clamp))].sort((a, b) => a - b);
+    const steps = () => [...new Set([...presets, viewportMax()].map(clamp))].sort((a, b) => a - b);
     const nextWidth = direction => direction < 0
         ? steps().filter(value => value < clamp(width)).at(-1)
         : steps().find(value => value > clamp(width));
@@ -42,14 +47,14 @@ export function workspaceDialog(config) {
         for (const [label, direction] of [[config.labels.narrower, -1], [config.labels.wider, 1]]) {
             button(label, () => { const next = nextWidth(direction); if (next === undefined) return; width = next; paint(); save(); }).dataset.widthStep = String(direction);
         }
-        button(config.labels.reset, () => { width = defaultWidth; try { localStorage.removeItem(storageKey); } catch {} paint(); });
+        button(config.labels.reset, () => { width = defaultWidth; try { localStorage.setItem(storageKey, 'null'); } catch {} paint(); });
         header.append(toolbar);
         paint();
     };
     return {
         init() {
             windowElement = this.$el;
-            try { const saved = JSON.parse(localStorage.getItem(storageKey)); if (Number.isFinite(saved) && saved >= 320 && saved <= 4096) width = saved; } catch {}
+            try { const saved = JSON.parse(localStorage.getItem(storageKey) ?? localStorage.getItem(legacyKey)); if (Number.isFinite(saved) && saved >= 320 && saved <= 4096) width = saved; } catch {}
             this.$nextTick(() => {
                 if (destroyed) return;
                 addControls();

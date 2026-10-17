@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFilterEngine, readDiscovery, discoveryUrl } from '../../resources/js/catalog-filter-engine.js';
 
+import { catalogMessages } from '../Fixtures/catalog-labels.js';
+
 const snapshot = {
     schema: 1, groupId: '9007199254740993', revision: '1',
     columns: [
@@ -18,7 +20,7 @@ const snapshot = {
     ],
 };
 snapshot.fields = snapshot.columns.slice(0, 3).map((c, i) => ({key: c.key, label: c.key, column: i, options: c.values.map((value, code)=>({value, label: value, code}))}));
-const engine = createFilterEngine(snapshot);
+const engine = createFilterEngine(snapshot, catalogMessages);
 function selectSequence(choices) {
     let state = engine.normalize({}).state;
     for (const [key, value] of choices) state = engine.change(state, {type:'filter', key, value}).state;
@@ -84,7 +86,7 @@ test('clear keeps preset and reset clears all without restoring discarded values
 test('zero codes exact strings missing values and duplicate row combinations remain distinct', () => {
     const values=['0','01','Case','case','"','עברית','<script>alert(1)</script>'];
     const typed={...snapshot, columns:[{key:'value',values}],fields:[{key:'value',label:'Value',column:0,options:values.map((value,code)=>({value,label:value,code}))}],presets:[], rows:values.map((_,i)=>[String(i),i]).concat([['duplicate',0],['missing',-1]])};
-    const e=createFilterEngine(typed);
+    const e=createFilterEngine(typed, catalogMessages);
     assert.equal(e.evaluate(e.normalize({}).state).total,9);
     const state=e.change(e.normalize({}).state,{type:'filter',key:'value',value:'0'}).state;
     assert.deepEqual(e.evaluate(state).ids,['0','duplicate']);
@@ -105,4 +107,25 @@ test('URL parsing is bounded canonical and preserves unrelated query parameters'
 test('removing obsolete pagination never changes valid selection precedence', () => {
     const raw = readDiscovery('https://catalog.test/?d[version]=1&d[filters][pressure]=25&d[filters][connection]=Flange&d[filters][size]=1&d[precedence][0]=filter:connection&d[precedence][1]=filter:pressure&d[precedence][2]=filter:size&d[page]=2');
     assert.deepEqual(engine.evaluate(engine.normalize(raw).state).ids, ['C']);
+});
+
+
+test('notices preserve literal labels and replace every translated placeholder', () => {
+    const custom = structuredClone(snapshot);
+    custom.fields[0].label = 'Cost $& $` $\' " עברית';
+    custom.presets[0].label = 'Preset $&';
+    const e = createFilterEngine(custom, {...catalogMessages, field_cleared: ':field / :field'});
+    const conflict = e.normalize({filters:{connection:'Flange', pressure:'25', size:'1'}, precedence:['filter:pressure','filter:connection','filter:size']});
+    assert.deepEqual(conflict.notices, [custom.fields[0].label + ' / ' + custom.fields[0].label]);
+    const singleton = e.normalize({filters:{connection:'Flange'}, subGroupId:'1'});
+    assert.ok(singleton.notices.includes('The preset now controls connection.'));
+    const cleared = e.normalize({filters:{pressure:'25', size:'1'}, subGroupId:'1', precedence:['subgroup:1','filter:size','filter:pressure']});
+    assert.ok(cleared.notices.includes('Cleared preset Preset $& to keep your newer choice.'));
+    assert.deepEqual(e.normalize({version:99}).notices, [catalogMessages.link_reset, catalogMessages.choices_adjusted]);
+});
+
+test('a missing or invalid notice dictionary fails explicitly instead of emitting blank notices', () => {
+    for (const labels of [undefined, null, [], {}, {...catalogMessages, field_cleared: ''}]) {
+        assert.throws(() => createFilterEngine(snapshot, labels), /labels/i);
+    }
 });

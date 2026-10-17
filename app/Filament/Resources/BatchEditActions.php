@@ -32,7 +32,7 @@ class BatchEditActions
                 Select::make('mode')->label(__('admin.batch.labels.change'))->default('unchanged')->required()->live()->options(function (Get $get) use ($fields): array {
                     $field = $fields[$get('field')] ?? [];
 
-                    return ['unchanged' => __('admin.batch.choices.unchanged'), 'set' => 'Set'] + (($field['nullable'] ?? false) ? ['clear' => __('admin.batch.choices.clear')] : []) + (($field['type'] ?? '') === 'tags' ? ['add' => __('admin.batch.choices.add_tags'), 'remove' => __('admin.batch.choices.remove_tags')] : []);
+                    return ['unchanged' => __('admin.batch.choices.unchanged'), 'set' => __('admin.batch.choices.set')] + (($field['nullable'] ?? false) ? ['clear' => __('admin.batch.choices.clear')] : []) + (($field['type'] ?? '') === 'tags' ? ['add' => __('admin.batch.choices.add_tags'), 'remove' => __('admin.batch.choices.remove_tags')] : []);
                 }),
                 Textarea::make('value')->label(__('admin.batch.labels.new_value'))->rows(2)->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'text' && $get('mode') === 'set')->columnSpanFull(),
                 TextInput::make('value')->label(__('admin.batch.labels.new_value'))->integer()->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'integer' && $get('mode') === 'set'),

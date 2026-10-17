@@ -1,4 +1,5 @@
 import { createFilterEngine, readDiscovery, discoveryUrl } from './catalog-filter-engine.js';
+import { requireLabels } from './ui-wording.js';
 
 function catalogFilters() {
     // Dataset rows, indexes, timers and transport identities never enter Alpine's proxy.
@@ -90,9 +91,14 @@ function catalogFilters() {
             if (initialized) return;
             initialized = true;
             root = this.$el;
-            labels = JSON.parse(root.dataset.catalogLabels);
             const source = root.querySelector('[data-catalog-snapshot]');
             try {
+                labels = requireLabels(JSON.parse(root.dataset.catalogLabels), [
+                    'catalog_changed', 'choices_adjusted', 'field_cleared', 'filters_unavailable',
+                    'format_changed', 'group_is_branch', 'group_unavailable', 'initialization_failed',
+                    'link_reset', 'preset_cleared', 'preset_controls', 'products_failed',
+                    'session_changed', 'still_changing', 'update_failed',
+                ]);
                 const initial = JSON.parse(source?.textContent ?? 'null');
                 source?.remove();
                 if (initial) {
@@ -103,8 +109,10 @@ function catalogFilters() {
                     this.publish(engine.normalize(readDiscovery(location.href)), 'replace');
                 } else this.unavailable = labels.filters_unavailable;
             } catch {
-                this.unavailable = labels.initialization_failed;
+                this.available = false;
+                this.unavailable = labels?.initialization_failed ?? root.querySelector('[data-catalog-recovery]')?.textContent.trim();
                 this.reloadRequired = true;
+                return;
             }
             listen(window, 'popstate', () => {
                 if (!alive || suspended || !engine) return;
@@ -249,7 +257,7 @@ function catalogFilters() {
                         const refreshed = await this.refreshSnapshot(true);
                         if (refreshed && current(id, revision)) this.scheduleCards();
                         else if (!refreshed && current(id, revision)) { this.cardStatus = 'error'; this.cardError = labels.catalog_changed; }
-                    } else { this.cardStatus = 'error'; this.cardError = 'The catalog is still changing. Please retry.'; }
+                    } else { this.cardStatus = 'error'; this.cardError = labels.still_changing; }
                     return;
                 }
                 if (!['ready','empty','above_threshold'].includes(response.status) || response.total !== this.total) throw new Error('Inconsistent catalog response');

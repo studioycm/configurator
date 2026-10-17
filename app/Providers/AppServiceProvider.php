@@ -14,6 +14,8 @@ use App\Services\AdminNavigationCounts;
 use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Support\Facades\Gate;
@@ -48,12 +50,24 @@ class AppServiceProvider extends ServiceProvider
         FilamentView::registerRenderHook(TablesRenderHook::TOOLBAR_AFTER, fn () => view('filament.resources.table-toolbar-tags'));
         Gate::define('manage-catalog', fn (User $user): bool => $user->canAccessPanel(Filament::getPanel('admin')));
 
+        Tabs::configureUsing(function (Tabs $tabs): void {
+            $tabs->extraAlpineAttributes(fn (Tabs $component): array => Filament::getCurrentPanel()?->getId() !== 'admin' || filled($component->getLivewireProperty()) ? [] : [
+                'x-effect' => 'rememberSchemaState($el, tab, '.Js::from(['user' => auth()->id(), 'kind' => 'tab', 'key' => $component->getKey(), 'query' => $component->getTabQueryStringKey()]).')',
+            ], merge: true);
+        });
+        Section::configureUsing(function (Section $section): void {
+            $section->extraAlpineAttributes(fn (Section $component): array => $component->isCollapsible() && Filament::getCurrentPanel()?->getId() === 'admin' ? [
+                'x-data' => 'localSectionProfile('.Js::from(['user' => auth()->id(), 'key' => $component->getKey()]).')',
+            ] : [], merge: true);
+        });
+
         Action::configureUsing(function (Action $action): void {
             $action->extraModalWindowAttributes(fn (Action $action): array => [
                 'x-data' => 'workspaceDialog('.Js::from([
                     'user' => auth()->id() ?? 0,
                     'purpose' => hash('sha256', $action->getName()),
                     'slideOver' => $action->isModalSlideOver(),
+                    'allowPersonalWidth' => ! $action->isConfirmationRequired(),
                     'labels' => [
                         'width' => __('admin.dialogs.width'),
                         'narrower' => __('admin.dialogs.narrower'),

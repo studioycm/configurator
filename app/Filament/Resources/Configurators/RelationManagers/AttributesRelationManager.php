@@ -390,7 +390,7 @@ class AttributesRelationManager extends RelationManager
                                 $default = collect($state['options'] ?? [])->firstWhere('id', $state['default_configurator_option_id'] ?? null);
                                 $option = $default ? Option::find($default['option_id']) : null;
 
-                                return __('configurator.inclusions.summary', ['attribute' => $attribute?->label ?? __('catalog.resources.attributes.singular'), 'key' => $attribute?->key ?? '', 'count' => count($state['options'] ?? []), 'code' => $option?->code ?? __('configurator.inclusions.choose_required')]);
+                                return trans_choice('configurator.inclusions.summary', count($state['options'] ?? []), ['attribute' => $attribute?->label ?? __('catalog.resources.attributes.singular'), 'key' => $attribute?->key ?? '', 'count' => count($state['options'] ?? []), 'code' => $option?->code ?? __('configurator.inclusions.choose_required')]);
                             })
                             ->schema(fn (): array => ConfiguratorAttributeForm::reviewComponents($this->owner()))->columnSpanFull(),
                     ])->action(fn (array $data) => $this->includeAttributes($data['selected'], $data['review'])),

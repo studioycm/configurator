@@ -131,7 +131,7 @@ class CatalogDiscovery
             if ($preset && count($preset->allowed_values) === 1 && array_key_exists($preset->property_key, $selected)) {
                 unset($selected[$preset->property_key]);
                 $precedence = array_values(array_diff($precedence, ['filter:'.$preset->property_key]));
-                $notices[] = 'The preset now controls '.$filters->get($preset->property_key)?->label.'.';
+                $notices[] = __('catalog.frontend.messages.preset_controls', ['field' => $filters->get($preset->property_key)?->label ?? $preset->property_key]);
                 $page = 1;
             }
             $constraints = [];
@@ -146,9 +146,9 @@ class CatalogDiscovery
                 if (str_starts_with($token, 'filter:')) {
                     $key = substr($token, 7);
                     unset($selected[$key]);
-                    $notices[] = 'Cleared '.$filters[$key]->label.' to keep your newer choice.';
+                    $notices[] = __('catalog.frontend.messages.field_cleared', ['field' => $filters[$key]->label]);
                 } else {
-                    $notices[] = 'Cleared preset '.$preset->label.' to keep your newer choice.';
+                    $notices[] = __('catalog.frontend.messages.preset_cleared', ['preset' => $preset->label]);
                     $presetId = null;
                     $preset = null;
                 }

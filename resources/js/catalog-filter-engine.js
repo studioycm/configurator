@@ -1,8 +1,11 @@
+import { interpolate, requireLabels } from './ui-wording.js';
+
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const own = (object, key) => Object.hasOwn(object, key);
 const emptyState = () => ({version: 1, filters: {}, subGroupId: null, precedence: []});
 
-export function createFilterEngine(snapshot, labels = {}) {
+export function createFilterEngine(snapshot, labels) {
+    requireLabels(labels, ['link_reset', 'preset_controls', 'field_cleared', 'preset_cleared', 'choices_adjusted']);
     if (snapshot?.schema !== 1) throw new Error('Unsupported catalog snapshot. Reload this page.');
     const fields = new Map(snapshot.fields.map(field => [field.key, field]));
     const presets = new Map(snapshot.presets.map(preset => [preset.id, preset]));
@@ -24,7 +27,7 @@ export function createFilterEngine(snapshot, labels = {}) {
         if (raw.version !== undefined && raw.version !== 1 && raw.version !== '1') {
             raw = {};
             adjusted = true;
-            notices.push(labels.link_reset ?? '');
+            notices.push(labels.link_reset);
         }
         const state = emptyState();
         if (raw.filters !== undefined && !record(raw.filters)) adjusted = true;
@@ -54,7 +57,7 @@ export function createFilterEngine(snapshot, labels = {}) {
         if (preset?.values.length === 1 && own(state.filters, preset.key)) {
             delete state.filters[preset.key];
             state.precedence = state.precedence.filter(token => token !== `filter:${preset.key}`);
-            notices.push((labels.preset_controls ?? '').replace(':field', fields.get(preset.key)?.label ?? preset.key));
+            notices.push(interpolate(labels.preset_controls, {field: fields.get(preset.key)?.label ?? preset.key}));
         }
         const accepted = [];
         const kept = [];
@@ -66,16 +69,16 @@ export function createFilterEngine(snapshot, labels = {}) {
             } else if (token.startsWith('filter:')) {
                 const key = token.slice(7);
                 delete state.filters[key];
-                notices.push((labels.field_cleared ?? '').replace(':field', fields.get(key).label));
+                notices.push(interpolate(labels.field_cleared, {field: fields.get(key).label}));
             } else {
-                notices.push((labels.preset_cleared ?? '').replace(':preset', presets.get(state.subGroupId).label));
+                notices.push(interpolate(labels.preset_cleared, {preset: presets.get(state.subGroupId).label}));
                 state.subGroupId = null;
             }
         }
         state.precedence = kept.reverse();
         // Stable field order gives one canonical URL and no duplicate no-op card requests.
         state.filters = Object.fromEntries([...fields.keys()].filter(key => own(state.filters, key)).map(key => [key, state.filters[key]]));
-        if (adjusted) notices.push(labels.choices_adjusted ?? '');
+        if (adjusted) notices.push(labels.choices_adjusted);
         return {state, notices, adjusted};
     }
 

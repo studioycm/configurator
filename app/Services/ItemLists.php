@@ -73,7 +73,7 @@ class ItemLists
         $lines = $rows->take(5)->map(fn (Model|array $row): string => implode(' · ', array_filter(array_map(fn (string $field): string => (string) data_get($row, $field), array_slice(array_keys($definition->columns), 0, 2)), fn (string $value): bool => $value !== '')))->all();
         if ($rows->count() > 5) {
             $total = is_array($definition->query) ? count($definition->query) : (clone $definition->query)->count();
-            $lines[] = __('admin.tables.more_items', ['count' => $total - 5]);
+            $lines[] = trans_choice('admin.tables.more_items', $total - 5);
         }
 
         return $lines === [] ? [__('admin.tables.no_items')] : $lines;

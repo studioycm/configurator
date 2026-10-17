@@ -81,7 +81,7 @@ class GroupForm
                     ->integer()->minValue(0)->maxValue(2147483600)->step(100)->rules(['multiple_of:100'])->default(0)->required()
                     ->hintAction(FormHints::make(__('catalog.groups.hints.0_requests_products_immediately_use_steps_of'))),
                 Select::make('catalog_settings.result_settings.max_results')->label(__('catalog.groups.labels.show_cards_when_results_are_at_most'))
-                    ->options(['all' => 'All'] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
+                    ->options(['all' => __('ui.choices.all')] + array_combine(range(1, CatalogPolicy::MAX_RESULT_THRESHOLD), range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)))
                     ->default('all')->required()->selectablePlaceholder(false)
                     ->hintAction(FormHints::make(__('catalog.groups.hints.all_shows_cards_immediately_a_number_shows'))),
             ])->columns(2)->columnSpanFull(),

@@ -171,7 +171,7 @@ test('presets are embedded once and card requests accept only an owned preset', 
     Product::factory()->count(2)->for($group)->sequence(['properties' => ['Working_Pressure' => '10']], ['properties' => ['Working_Pressure' => '16']])->create();
     $low = SubGroup::factory()->for($group)->create(['label' => 'Low pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10']]);
     $high = SubGroup::factory()->for($group)->create(['label' => 'High pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['16']]);
-    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee(__('ui.tables.filters'))->assertSee(__('catalog.frontend.copy.sub_groups'))->assertSee(__('catalog.frontend.copy.profiles'))->assertSee(__('catalog.frontend.copy.reset'))->assertDontSee('Clear subgroup')->assertDontSee(__('admin.workspace.labels.clear_filters'))->assertSet('groupId', (string) $group->id);
+    $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee(__('ui.tables.filters'))->assertSee(__('catalog.frontend.copy.sub_groups'))->assertSee(trans_choice('catalog.frontend.copy.profile_count_label', 2))->assertSee(__('catalog.frontend.copy.reset'))->assertDontSee('Clear subgroup')->assertDontSee(__('admin.workspace.labels.clear_filters'))->assertSet('groupId', (string) $group->id);
     expect(substr_count($page->html(), 'data-catalog-snapshot'))->toBe(1);
     expect(publicCatalogCards($group)['total'])->toBe(2);
     expect(publicCatalogCards($group, preset: (string) $low->id)['total'])->toBe(1);

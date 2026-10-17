@@ -88,19 +88,22 @@ return [
     'groups' => [
         'assign_named' => 'Assign :name',
         'assigned_to' => 'Assigned to :name',
-        'assignment_counts' => ':groups Groups · :products Products',
+        'assignment_counts' => 'Groups: :groups · Products: :products',
         'assignment_help' => 'Each leaf Group can use one Configurator. Its definition applies to every assigned Group. Groups assigned elsewhere are excluded; change those assignments from their Group.',
-        'available_count' => ':count unassigned leaf Groups',
+        'available_count' => '{1} :count unassigned leaf Group|[0,*] :count unassigned leaf Groups',
         'empty_assignment_help' => 'No Groups assigned. Use Assign groups to choose unassigned leaf Groups.',
         'notifications' => [
             'assigned' => 'Group assigned',
             'saved' => 'Group assignments saved',
             'unassigned' => 'Group unassigned',
         ],
-        'product_count' => ':count Products',
+        'product_count' => '{1} :count Product|[0,*] :count Products',
         'unassign_named' => 'Unassign :name',
     ],
     'headings' => [
+        'new_mapping_rule' => 'New mapping rule',
+        'new_advanced_rule' => 'New advanced rule',
+        'edit_rule' => 'Edit rule',
         'choices' => ':value1 choices',
         'driver_and_target' => 'Driver and target',
         'future_public_catalog_context' => 'Future public catalog context',
@@ -145,7 +148,7 @@ return [
             'default_ui_name' => 'Default UI Name',
         ],
         'inheritance_help' => 'Blank local fields inherit the shared Attribute Value. Save this Included Value separately from the Attribute.',
-        'summary' => ':attribute · :key · :count Values · Default: :code',
+        'summary' => '{1} :attribute · :key · :count Value · Default: :code|[0,*] :attribute · :key · :count Values · Default: :code',
         'values' => [
             'actions' => [
                 'include' => 'Include value',
@@ -229,6 +232,9 @@ return [
         'when_then' => 'When → Then',
     ],
     'mapping' => [
+        'set_count' => '{1} :count set|[0,*] :count sets',
+        'membership_count' => '{1} :count source membership|[0,*] :count source memberships',
+        'summary' => ':sets · :memberships',
         'drag' => 'Drag set :number to reorder; arrow keys move this set',
         'driver_label' => 'Set :number driver :label',
         'driver_list' => 'Set :number driver values',
@@ -275,6 +281,17 @@ return [
         'unmapped_source_no_added_restriction' => ':value1: unmapped source, no added restriction',
     ],
     'preview' => [
+        'no_dashboard_product' => 'No dashboard Product is available in the assigned Groups.',
+        'selected_product_unavailable' => 'The selected Product is not available for this Configurator in the dashboard catalog.',
+        'rule_details' => ':label · :kind · :status · Priority :priority',
+        'legal_values' => '{1} :count legal value|[0,*] :count legal values',
+        'inapplicable' => 'Inapplicable',
+        'none' => 'none',
+        'hidden_and_disabled' => 'Hidden: :hidden · Disabled: :disabled',
+        'excluded_values' => 'Excluded: :values',
+        'skipped_public_rule' => ':label · Future public only · Skipped in dashboard Preview',
+        'unavailable' => 'Unavailable',
+        'trace_off' => 'Trace is off',
         'rules_and_state_notes' => 'Rules & state notes',
         'show_diagnostics' => 'Show diagnostics',
         'hide_diagnostics' => 'Hide diagnostics',
@@ -350,7 +367,7 @@ return [
         'summary' => [
             'always' => 'Always',
             'and_join' => ' AND ',
-            'mapping' => ':driver → :target · :count sets · :modes disallowed',
+            'mapping' => '{1} :driver → :target · :count set · :modes disallowed|[0,*] :driver → :target · :count sets · :modes disallowed',
             'operators' => [
                 'Contains' => 'contains',
                 'Equals' => 'equals',

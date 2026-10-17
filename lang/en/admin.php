@@ -17,6 +17,9 @@ return [
             'related_records_and_controls' => 'Related records and controls',
             'reset_preview_to_defaults' => 'Reset preview to defaults',
             'save' => 'Save',
+            'save_personal' => 'Save for this browser',
+            'reset_personal' => 'Use shared appearance',
+            'personal_saved' => 'Appearance saved for this browser',
             'save_shared_defaults' => 'Save shared defaults',
             'search_filters_columns_actions' => 'Search · Filters · Columns · Actions',
             'slide_over_preview' => 'Slide-over preview',
@@ -45,7 +48,7 @@ return [
             'shared_appearance_saved' => 'Shared appearance saved',
         ],
         'hints' => [
-            'product_pages_keep_this_off_by_default' => 'Product pages keep this off by default. When enabled, the indicator uses reserved space beside the Configuration heading.',
+            'product_pages_keep_this_off_by_default' => 'This public product-page setting is saved only with Save shared defaults. When enabled, the indicator uses reserved space beside the Configuration heading.',
         ],
         'labels' => [
             'large_1280px' => 'Large · 1280px',
@@ -62,6 +65,7 @@ return [
     ],
     'batch' => [
         'choices' => [
+            'set' => 'Set',
             'add_tags' => 'Add tags',
             'clear' => 'Clear / use fallback',
             'remove_tags' => 'Remove tags',
@@ -126,16 +130,18 @@ return [
             'view' => 'View :value1 (:value2)',
         ],
         'preview' => [
-            'blocked' => ':count records are blocked. Nothing in this selection can be removed until the dependencies are repaired.',
-            'blocker' => ':name #:id: :count :category. Use View :category below.',
+            'blocked' => '{1} :count record is blocked. Nothing in this selection can be removed until the dependencies are repaired.|[0,*] :count records are blocked. Nothing in this selection can be removed until the dependencies are repaired.',
+            'blocker' => ':name #:id · :category: :count. Use View :category below.',
             'changed' => 'Changed',
             'help' => 'Preview changes to see before/after values. No changes have been saved.',
-            'impact' => 'Code change affects :count existing Configurators.',
-            'more_impact' => ':count more affected Configurators.',
-            'selected' => ':count selected records. Review each change before applying.',
+            'impact' => '{1} Code change affects :count existing Configurator.|[0,*] Code change affects :count existing Configurators.',
+            'more_impact' => '{1} :count more affected Configurator.|[0,*] :count more affected Configurators.',
+            'selected' => '{1} :count selected record. Review each change before applying.|[0,*] :count selected records. Review each change before applying.',
             'unchanged' => 'Unchanged',
         ],
         'validation' => [
+            'pattern_could_not_run' => 'Pattern could not run. Check the regular expression and try again.',
+            'choose_supported_replacement_options' => 'Choose a nonempty pattern and supported replacement options.',
             'a_selected_record_was_removed_or_does' => 'A selected record was removed or does not belong to this table. Refresh selection.',
             'addremove_applies_to_tags_only' => 'Add/remove applies to tags only.',
             'an_owner_is_required' => 'An owner is required.',
@@ -232,7 +238,7 @@ return [
         ],
     ],
     'tables' => [
-        'column_resize_help' => 'Width of :column. Arrow keys resize; Home small; End wide; Delete resets.',
+        'column_resize_help' => 'Width of :column. Drag or use arrow keys; Home small; End wide; double-click or Delete resets; Escape cancels.',
         'counts' => [
             'accessible' => ':matched matching records of :total total',
             'help' => 'Matching records after search and applied filters, out of the total before filtering. Both counts include all pages.',
@@ -241,13 +247,13 @@ return [
         ],
         'items_loading' => 'Loading items…',
         'items_unavailable' => 'Open list to inspect items',
-        'more_items' => ':count more items — open list',
+        'more_items' => '{1} :count more item — open list|[0,*] :count more items — open list',
         'no_items' => 'No items',
     ],
     'usage' => [
-        'configurators' => 'Used by :count Configurators',
+        'configurators' => '{1} Used by :count Configurator|[0,*] Used by :count Configurators',
         'defaults' => 'Stored defaults (:count)',
-        'definition_counts' => ' · :attributes Attributes · :rules rules',
+        'definition_counts' => ' · Attributes: :attributes · Rules: :rules',
         'group_names' => ' · Groups: :groups',
         'options' => 'Shared Attribute Values (:count)',
         'reference_limit_help' => 'Each list shows up to 100 references. Repair local defaults and rules before removing shared definitions.',

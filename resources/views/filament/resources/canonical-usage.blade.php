@@ -1,6 +1,6 @@
 <div class="space-y-6">
     <section>
-        <h3 class="font-semibold">{{ __('admin.usage.configurators', ['count' => $usage['configurator_count']]) }}</h3>
+        <h3 class="font-semibold">{{ trans_choice('admin.usage.configurators', $usage['configurator_count']) }}</h3>
         <ul class="mt-2 space-y-2">
             @forelse ($usage['configurators'] as $configurator)
                 <li>

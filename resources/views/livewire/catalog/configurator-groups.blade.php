@@ -17,7 +17,7 @@
                     <li class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0" wire:key="assigned-group-{{ $group->id }}">
                         <div>
                             <a class="font-medium underline-offset-4 hover:underline" href="{{ \App\Filament\Resources\Groups\GroupResource::getUrl('edit', ['record' => $group]) }}">{{ $group->name }}</a>
-                            <div class="mt-1 text-sm">{{ ($this->productsAction)(['group' => $group->id])->label(__('configurator.groups.product_count', ['count' => $group->products_count]))->link() }}</div>
+                            <div class="mt-1 text-sm">{{ ($this->productsAction)(['group' => $group->id])->label(trans_choice('configurator.groups.product_count', $group->products_count))->link() }}</div>
                         </div>
                         <x-filament::button color="gray" size="sm" wire:click="unassignGroup({{ $group->id }})" wire:loading.attr="disabled" aria-label="{{ __('configurator.groups.unassign_named', ['name' => $group->name]) }}">{{ __('configurator.copy.unassign') }}</x-filament::button>
                     </li>
@@ -26,13 +26,13 @@
                 @endforelse
             </ul>
         </x-filament::section>
-        <x-filament::section heading="{{ __('configurator.copy.available_groups') }}" :description="__('configurator.groups.available_count', ['count' => $available->count()])">
+        <x-filament::section heading="{{ __('configurator.copy.available_groups') }}" :description="trans_choice('configurator.groups.available_count', $available->count())">
             <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($available as $group)
                     <li class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0" wire:key="available-group-{{ $group->id }}">
                         <div>
                             <a class="font-medium underline-offset-4 hover:underline" href="{{ \App\Filament\Resources\Groups\GroupResource::getUrl('edit', ['record' => $group]) }}">{{ $group->name }}</a>
-                            <div class="mt-1 text-sm">{{ ($this->productsAction)(['group' => $group->id])->label(__('configurator.groups.product_count', ['count' => $group->products_count]))->link() }}</div>
+                            <div class="mt-1 text-sm">{{ ($this->productsAction)(['group' => $group->id])->label(trans_choice('configurator.groups.product_count', $group->products_count))->link() }}</div>
                         </div>
                         <x-filament::button size="sm" wire:click="assignGroup({{ $group->id }})" wire:loading.attr="disabled" aria-label="{{ __('configurator.groups.assign_named', ['name' => $group->name]) }}">{{ __('configurator.copy.assign') }}</x-filament::button>
                     </li>

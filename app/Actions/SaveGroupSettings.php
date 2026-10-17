@@ -76,14 +76,14 @@ class SaveGroupSettings
                 $owned = $bucket === 'filters' ? $filters : $presets;
                 foreach ($validated[$bucket] as $index => $row) {
                     if (isset($row['id']) && ! $owned->has($row['id'])) {
-                        $errors['settings.'.$bucket.'.'.$index.'.id'] = 'This row does not belong to the current Group. Reload the editor.';
+                        $errors['settings.'.$bucket.'.'.$index.'.id'] = __('catalog.groups.validation.row_not_owned');
                     }
                     $key = $row['property_key'];
                     $vocabulary[$key] ??= array_column($this->discovery->vocabulary($record->id, $key), 'value');
                     $values = $bucket === 'filters' ? array_column($row['values'], 'value') : $row['allowed_values'];
                     if (count(array_unique($values, SORT_STRING)) !== count($values) || array_diff($values, $vocabulary[$key]) !== []) {
                         $field = $bucket === 'filters' ? 'values' : 'allowed_values';
-                        $errors['settings.'.$bucket.'.'.$index.'.'.$field] = 'Choose distinct values that currently exist in this Group. Remove stale values or reload the editor.';
+                        $errors['settings.'.$bucket.'.'.$index.'.'.$field] = __('catalog.groups.validation.choose_current_distinct_values');
                     }
                 }
             }
@@ -100,7 +100,7 @@ class SaveGroupSettings
             $results['card_padding_block'] = (int) $results['card_padding_block'];
             $results['card_padding_inline'] = (int) $results['card_padding_inline'];
             if ($results['allow_page_size_change'] && ! in_array($results['default_page_size'], $results['page_size_options'], true)) {
-                $errors['settings.result_settings.page_size_options'] = 'Include the default page size in the available choices.';
+                $errors['settings.result_settings.page_size_options'] = __('catalog.groups.validation.include_default_page_size');
             }
             if ($errors !== []) {
                 throw ValidationException::withMessages($errors);

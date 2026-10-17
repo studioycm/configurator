@@ -15,6 +15,73 @@ trait InteractsWithScopedTableSearch
     #[Locked]
     public array $batchPreview = [];
 
+    /** @param array<string, mixed> $state */
+    public function restoreTableBrowserProfile(array $state): void
+    {
+        TableBrowserProfile::restore($this, $state);
+    }
+
+    public function mountInteractsWithScopedTableSearch(): void
+    {
+        $controls = session()->get(TableBrowserProfile::sessionKey($this, 'controls'), []);
+        foreach (['tableSearchScope', 'showSelection', 'showOrderControls'] as $property) {
+            if (property_exists($this, $property) && isset($controls[$property]) && get_debug_type($controls[$property]) === get_debug_type($this->{$property})) {
+                $this->{$property} = $controls[$property];
+            }
+        }
+    }
+
+    public function dehydrateInteractsWithScopedTableSearch(): void
+    {
+        $controls = [];
+        foreach (['tableSearchScope', 'showSelection', 'showOrderControls'] as $property) {
+            if (property_exists($this, $property)) {
+                $controls[$property] = $this->{$property};
+            }
+        }
+        session()->put(TableBrowserProfile::sessionKey($this, 'controls'), $controls);
+    }
+
+    public function getTableColumnsSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'columns');
+    }
+
+    public function getHasReorderedTableColumnsSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'reordered');
+    }
+
+    public function getTableSearchSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'search');
+    }
+
+    public function getTableColumnSearchesSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'column-search');
+    }
+
+    public function getTableSortSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'sort');
+    }
+
+    public function getTableFiltersSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'filters');
+    }
+
+    public function getTablePerPageSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'per-page');
+    }
+
+    public function getTableGroupingSessionKey(): string
+    {
+        return TableBrowserProfile::sessionKey($this, 'group');
+    }
+
     /** @return array<string, string> */
     public function scopedSearchColumns(): array
     {

@@ -270,7 +270,9 @@ class BatchCatalogChanges
             try {
                 $state[$field] = app(StringFieldTransformer::class)->replace($state[$field], $intent);
             } catch (InvalidArgumentException $exception) {
-                throw ValidationException::withMessages(['search' => $exception->getMessage()]);
+                throw ValidationException::withMessages(['search' => __($exception->getCode() === StringFieldTransformer::INVALID_PATTERN
+                    ? 'admin.batch.validation.pattern_could_not_run'
+                    : 'admin.batch.validation.choose_supported_replacement_options')]);
             }
         } elseif ($operation === 'edit') {
             $changes = $intent['changes'] ?? [];

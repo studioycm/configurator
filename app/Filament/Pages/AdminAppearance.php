@@ -56,7 +56,7 @@ class AdminAppearance extends Page
     {
         $ranges = app(Appearance::class)->ranges();
         $number = fn (string $key): TextInput => TextInput::make($key)->label(__('admin.appearance.fields.'.$key))->integer()->required()->minValue($ranges[$key][0])->maxValue($ranges[$key][1])->suffix('px')->live(onBlur: true);
-        $width = fn (string $key): Select => Select::make($key)->options(['small' => __('admin.appearance.labels.small_640px'), 'medium' => __('admin.appearance.labels.medium_960px'), 'large' => __('admin.appearance.labels.large_1280px')])->required()->live();
+        $width = fn (string $key): Select => Select::make($key)->label(__('admin.appearance.fields.'.$key))->options(['small' => __('admin.appearance.labels.small_640px'), 'medium' => __('admin.appearance.labels.medium_960px'), 'large' => __('admin.appearance.labels.large_1280px')])->required()->live();
 
         return $schema->statePath('data')->columns(1)->components([
             View::make('filament.forms.validation-summary'),
@@ -79,13 +79,30 @@ class AdminAppearance extends Page
         $this->form->fill(app(Appearance::class)->defaults());
     }
 
+    public function savePersonal(): void
+    {
+        Gate::authorize('manage-catalog');
+        $settings = ConfiguratorFormErrors::run(fn (): array => app(Appearance::class)->validate($this->form->getState()), $this->form, '/^settings\\./');
+        unset($settings['show_configurator_loading_indicator']);
+        $this->dispatch('admin-personal-appearance-saved', settings: $settings, variables: app(Appearance::class)->variables($settings));
+        Notification::make()->title(__('admin.appearance.copy.personal_saved'))->success()->send();
+    }
+
+    public function resetPersonal(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->resetValidation();
+        $this->form->fill(app(Appearance::class)->current());
+        $this->dispatch('admin-personal-appearance-saved', settings: null, variables: app(Appearance::class)->variables());
+    }
+
     public function save(): void
     {
         Gate::authorize('manage-catalog');
         $settings = $this->form->getState();
         $record = ConfiguratorFormErrors::run(fn () => app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $settings), $this->form, '/^settings\./');
         $this->form->fill($record->settings);
-        $this->dispatch('admin-appearance-saved', variables: app(Appearance::class)->variables($record->settings));
+        $this->dispatch('admin-appearance-saved', settings: $record->settings, variables: app(Appearance::class)->variables($record->settings));
         Notification::make()->title(__('admin.appearance.headings.shared_appearance_saved'))->success()->send();
     }
 }

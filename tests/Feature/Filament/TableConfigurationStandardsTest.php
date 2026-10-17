@@ -122,6 +122,13 @@ it('applies the requested Filament table standards', function (string $page, arr
     $table = $component->instance()->getTable();
 
     if ($isCurrent) {
+        foreach ($table->getColumns() as $column) {
+            expect($column->canHeaderWrap())->toBeTrue();
+            if ($column instanceof TextColumn) {
+                expect($column->canWrap())->toBeTrue();
+            }
+        }
+
         expect($table->getFiltersLayout())->toBe(FiltersLayout::Modal)
             ->and($table->hasDeferredFilters())->toBeTrue()
             ->and($table->hasReorderableColumns())->toBeTrue();

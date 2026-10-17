@@ -45,6 +45,14 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         InteractsWithTable::filterTableQuery as protected filterNormalTableQuery;
         InteractsWithScopedTableSearch::applyGlobalSearchToTableQuery insteadof InteractsWithTable;
         InteractsWithScopedTableSearch::resetTableColumnManager insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTableColumnsSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getHasReorderedTableColumnsSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTableSearchSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTableColumnSearchesSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTableSortSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTableFiltersSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTablePerPageSessionKey insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::getTableGroupingSessionKey insteadof InteractsWithTable;
     }
     use InteractsWithSchemas;
 
