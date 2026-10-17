@@ -52,6 +52,7 @@ return [
         'legacy_id' => 'Legacy ID',
         'occurrences' => 'Occurrences',
         'product_property' => 'Product property',
+        'semantic_id' => 'Semantic ID',
         'specification' => 'Specification',
         'tags' => 'Tags',
         'ui_name' => 'UI Name',
@@ -232,6 +233,7 @@ return [
         ],
         'help' => [
             'referenced_definitions_cannot_be_removed_use_view' => 'Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.',
+            'semantic_id' => 'Unique across all Master Values. Use lowercase letters, numbers and single underscores, e.g. asa_150_eu. Suggested from the UI Name once; kept when the name changes.',
         ],
         'hints' => [
             'press_enter_after_each_tag_tags_help' => 'Press Enter after each tag. Tags help filter the master value list.',
@@ -357,6 +359,7 @@ return [
         'this_attribute_key_was_saved_elsewhere_choose' => 'This Attribute key was saved elsewhere. Choose a unique key.',
         'this_preset_does_not_belong_to_this' => 'This preset does not belong to this Group.',
         'this_shared_definition_is_in_use_view' => 'This shared definition is in use:value1. View usage and repair its Attribute Values, defaults and rules before removing it.',
+        'this_value_semantic_id_was_saved_elsewhere_choose' => 'This Value semantic ID was saved elsewhere. Choose a unique semantic ID.',
         'unknown_item_list' => 'Unknown item list.',
     ],
 ];

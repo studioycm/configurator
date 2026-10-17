@@ -82,6 +82,7 @@ class OptionsRelationManager extends RelationManager
                 TextColumn::make('hint')->label(__('configurator.labels.hint'))->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('option.code')->label(__('catalog.fields.code'))->searchable(),
                 TextColumn::make('option.value.label')->label(__('catalog.fields.ui_name'))->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
+                TextColumn::make('option.value.semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->toggleable()->copyable(),
                 TextColumn::make('option.value.tags')->label(__('catalog.fields.tags'))->badge(),
                 IconColumn::make('stored_default')->label(__('ui.fields.default'))->boolean()->state(fn (ConfiguratorOption $record): bool => $record->id === $this->owner()->default_configurator_option_id),
                 IconColumn::make('hidden_by_default')->label(__('ui.status.hidden'))->boolean()->toggleable(isToggledHiddenByDefault: true),
@@ -151,7 +152,7 @@ class OptionsRelationManager extends RelationManager
                 ->options(fn (): array => Option::where('attribute_id', $owner->attribute_id)
                     ->when($option === null, fn ($query) => $query->where('is_active', true)->where('is_hidden', false))
                     ->whereNotIn('id', $owner->options()->when($option, fn ($query) => $query->whereKeyNot($option->id))->pluck('option_id'))
-                    ->with('value')->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->code.' · '.$row->value->label])->all()),
+                    ->with('value')->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->code.' · '.$row->value->labelWithSemanticId()])->all()),
             TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255),
             TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255),
             TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),

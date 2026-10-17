@@ -38,7 +38,7 @@ class ConfiguratorRuleForm
         foreach ($owner->attributes()->with(['attribute', 'options.option.value'])->orderBy('display_order')->get() as $attribute) {
             $attributes[$attribute->id] = ($attribute->label_override ?? $attribute->attribute->label).' · '.$attribute->attribute->key;
             foreach ($attribute->options->sortBy('display_order') as $option) {
-                $options[$attribute->id][$option->id] = $option->option->code.' · '.($option->label_override ?? $option->option->value->label);
+                $options[$attribute->id][$option->id] = $option->option->code.' · '.$option->option->value->labelWithSemanticId($option->label_override);
             }
         }
         $context = app(ConfiguratorDefinitionCompiler::class)->resolveContext($owner->context_schema ?? [], $owner->hidden_context_options ?? [], CatalogContextSettings::current()->choices);

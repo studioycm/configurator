@@ -19,7 +19,7 @@ class OptionSelectionTable
         Gate::authorize('manage-catalog');
 
         return TablePresentation::configure($table->query(fn (Table $table) => Option::where('is_active', true)->where('is_hidden', false)->where('attribute_id', ConfiguratorAttribute::findOrFail((int) $table->getArguments()['owner_id'])->attribute_id)->whereNotIn('id', ConfiguratorAttribute::findOrFail((int) $table->getArguments()['owner_id'])->options()->select('option_id'))->with('value'))
-            ->columns([TextColumn::make('code')->label(__('catalog.fields.code'))->searchable()->toggleable(), TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->searchable()->toggleable(), TextColumn::make('value.tags')->label(__('catalog.fields.tags'))->badge()])
+            ->columns([TextColumn::make('code')->label(__('catalog.fields.code'))->searchable()->toggleable(), TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->searchable()->toggleable(), TextColumn::make('value.semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->toggleable(), TextColumn::make('value.tags')->label(__('catalog.fields.tags'))->badge()])
             ->filters([Filter::make('tags')->label(__('catalog.fields.tags'))->schema(fn (): array => [ValuesTable::tagFilterField()])
                 ->indicateUsing(fn (array $data): ?string => empty($data['values']) ? null : __('catalog.filters.tags_indicator', ['tags' => implode(', ', $data['values'])]))
                 ->query(fn (Builder $query, array $data): Builder => $query->when(! empty($data['values']), fn (Builder $query): Builder => $query->whereHas('value', function (Builder $query) use ($data): void {

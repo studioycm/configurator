@@ -19,6 +19,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\View;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 
@@ -45,6 +46,7 @@ class OptionsRelationManager extends RelationManager
         return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('value'))
             ->columns([
                 TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->searchable(),
+                TextColumn::make('value.semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->sortable()->toggleable(),
                 TextColumn::make('code')->label(__('catalog.fields.code'))->searchable()->toggleable(),
             ])->headerActions([
                 $this->optionAction('create')->label(__('catalog.attributes.labels.add_value')),
@@ -66,8 +68,8 @@ class OptionsRelationManager extends RelationManager
         return Action::make($name)->authorize('manage-catalog')->schema([
             View::make('filament.forms.validation-summary'),
             Select::make('value_id')->label(__('catalog.fields.ui_name'))->required()->searchable()
-                ->getSearchResultsUsing(fn (string $search): array => Value::where('label', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Value $value): array => [$value->id => $value->label.' · #'.$value->id])->all())
-                ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Value::find($value)?->label : null),
+                ->getSearchResultsUsing(fn (string $search): array => Value::query()->where(fn (Builder $query) => $query->where('label', 'like', '%'.$search.'%')->orWhere('semantic_id', 'like', '%'.$search.'%'))->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Value $value): array => [$value->id => $value->labelWithSemanticId()])->all())
+                ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Value::find($value)?->labelWithSemanticId() : null),
             TextInput::make('code')->label(__('catalog.fields.code'))->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D'),
         ])->action(function (array $data, ?Option $record): void {
             abort_if($record && $record->attribute_id !== $this->getOwnerRecord()->id, 404);

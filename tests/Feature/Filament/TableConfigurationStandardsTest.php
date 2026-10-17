@@ -40,14 +40,14 @@ dataset('table-standards-pages', [
     ],
     'config options' => [
         'page' => ListOptions::class,
-        'columns' => ['id', 'code', 'attribute.label', 'value.label', 'configurator_options_count', 'created_at', 'updated_at'],
-        'searchableColumns' => ['id', 'code', 'attribute.label', 'value.label'],
+        'columns' => ['id', 'code', 'attribute.label', 'value.label', 'value.semantic_id', 'configurator_options_count', 'created_at', 'updated_at'],
+        'searchableColumns' => ['id', 'code', 'attribute.label', 'value.label', 'value.semantic_id'],
         'filters' => ['attribute_id'],
     ],
     'master values' => [
         'page' => ListValues::class,
-        'columns' => ['id', 'label', 'description', 'tags', 'options_count', 'created_at', 'updated_at'],
-        'searchableColumns' => ['id', 'label', 'description'],
+        'columns' => ['id', 'label', 'semantic_id', 'description', 'tags', 'options_count', 'created_at', 'updated_at'],
+        'searchableColumns' => ['id', 'label', 'semantic_id', 'description'],
         'filters' => ['tags'],
     ],
     'config profiles' => [

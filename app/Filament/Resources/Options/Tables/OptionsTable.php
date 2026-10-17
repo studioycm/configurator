@@ -21,6 +21,7 @@ class OptionsTable
             TextColumn::make('code')->label(__('catalog.fields.code'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true)->copyable(),
             TextColumn::make('attribute.label')->label(__('catalog.resources.attributes.singular'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
             TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
+            TextColumn::make('value.semantic_id')->label(__('catalog.fields.semantic_id'))->sortable()->toggleable()->searchable()->copyable(),
             ItemCountColumn::make('configurator_options_count', __('catalog.usage.headings.configurator_uses'), 'option-inclusions')->sortable()->toggleable(),
             TextColumn::make('created_at')->label(__('ui.fields.created_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('updated_at')->label(__('ui.fields.updated_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),

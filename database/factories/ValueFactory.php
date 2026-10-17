@@ -11,6 +11,6 @@ class ValueFactory extends Factory
     /** @return array<string, mixed> */
     public function definition(): array
     {
-        return ['label' => fake()->words(2, true), 'description' => null];
+        return ['label' => fake()->words(2, true), 'semantic_id' => fake()->unique()->lexify('value_????????????'), 'description' => null];
     }
 }

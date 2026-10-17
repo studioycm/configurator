@@ -36,10 +36,10 @@ test('workspace ordering and selection toggles preserve search and editor drafts
 
     expect($manager->instance()->getTable()->isSelectionEnabled())->toBeFalse()
         ->and(array_map(fn ($action) => $action->getName(), array_slice($manager->instance()->getTable()->getRecordActions(), 0, 3)))->toBe(['moveUp', 'moveDown', 'edit']);
-    $manager->callTableAction('reorderRows')->assertSet('showOrderControls', false)->assertSet('isTableReordering', false)
+    $manager->callAction(TestAction::make('reorderRows')->table())->assertSet('showOrderControls', false)->assertSet('isTableReordering', false)
         ->assertSet('tableSearch', 'A')->assertSet('editorData.label_override', 'Keep draft')
-        ->callTableAction('toggleSelection')->assertSet('showSelection', true)
-        ->set('selectedTableRecords', [(string) $attribute->id])->callTableAction('toggleSelection')
+        ->callAction(TestAction::make('toggleSelection')->table())->assertSet('showSelection', true)
+        ->set('selectedTableRecords', [(string) $attribute->id])->callAction(TestAction::make('toggleSelection')->table())
         ->assertSet('selectedTableRecords', [])->assertSet('editorData.label_override', 'Keep draft');
 
     foreach ([OptionsRelationManager::class => $attribute, RulesRelationManager::class => $configurator] as $class => $owner) {
@@ -224,7 +224,7 @@ test('attribute side editor saves its fields without overwriting options edited 
     $attribute = $configurator->attributes()->orderBy('display_order')->first();
     $option = $attribute->options()->first();
     $editor = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $attribute)->assertSet('selectedAttributeId', $attribute->id)
+        ->callAction(TestAction::make('edit')->table($attribute))->assertSet('selectedAttributeId', $attribute->id)
         ->fillForm(['label_override' => 'Local attribute label'], 'editorForm');
     $editor->call('selectOption', $attribute->id, $option->id)->fillForm(['label_override' => 'Local option label'], 'optionEditorForm')
         ->call('saveOptionEditor')->assertHasNoFormErrors(form: 'optionEditorForm');
@@ -244,15 +244,15 @@ test('related options can be included reordered and removed while preserving the
     $canonical = Option::factory()->create(['attribute_id' => $attribute->attribute_id, 'code' => 'AX']);
     $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
 
-    $manager->callTableAction('include', data: ['option_id' => $canonical->id])->assertHasNoTableActionErrors();
+    $manager->callAction(TestAction::make('include')->table(), data: ['option_id' => $canonical->id])->assertHasNoFormErrors();
     $included = $attribute->options()->where('option_id', $canonical->id)->sole();
     $ids = $attribute->options()->orderBy('display_order')->pluck('id')->all();
     $manager->call('reorderTable', array_reverse($ids))->assertHasNoErrors();
     expect($attribute->options()->orderBy('display_order')->pluck('id')->all())->toBe(array_reverse($ids));
     expect($attribute->fresh()->default_configurator_option_id)->toBe($default);
-    $manager->callTableAction('remove', $included)->assertHasNoTableActionErrors();
+    $manager->callAction(TestAction::make('remove')->table($included))->assertHasNoFormErrors();
     expect($included->fresh())->toBeNull();
-    $manager->mountTableAction('remove', $attribute->options()->findOrFail($default));
+    $manager->mountAction(TestAction::make('remove')->table($attribute->options()->findOrFail($default)));
     expect($manager->instance()->getMountedAction()->getModalSubmitAction()->isDisabled())->toBeTrue();
     $manager->call('removeOption', $default)->assertHasErrors();
     expect($attribute->options()->whereKey($default)->exists())->toBeTrue();
@@ -265,14 +265,14 @@ test('rule side editor creates a staged rule and cancel leaves the saved definit
     $source = $saved['attributes'][0];
     $target = $saved['attributes'][1];
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('addMapping')->assertSet('editorKind', 'Mapping');
+        ->callAction(TestAction::make('addMapping')->table())->assertSet('editorKind', 'Mapping');
     expect($configurator->rules()->count())->toBe(0);
     $manager->fillForm([
         'label' => 'New mapping', 'driver_configurator_attribute_id' => $source['id'], 'target_configurator_attribute_id' => $target['id'],
         'sets' => [['id' => 'new:set', 'label' => 'Allowed', 'source_option_ids' => [$source['options'][0]['id']], 'target_option_ids' => [$target['options'][0]['id']]]],
     ], 'editorForm')->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
     $rule = $configurator->rules()->sole();
-    $manager->callTableAction('edit', $rule)->fillForm(['label' => 'Unsaved name'], 'editorForm')->call('closeEditor')->assertSet('editorKind', null);
+    $manager->callAction(TestAction::make('edit')->table($rule))->fillForm(['label' => 'Unsaved name'], 'editorForm')->call('closeEditor')->assertSet('editorKind', null);
     expect($rule->fresh()->label)->toBe('New mapping');
 });
 
@@ -313,7 +313,7 @@ test('rule side editor does not drop invalid hidden builder blocks before saving
     $rule = $configurator->rules()->sole();
 
     Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $rule)->set('editorData.condition_blocks', [['type' => 'unknown', 'data' => []]])
+        ->callAction(TestAction::make('edit')->table($rule))->set('editorData.condition_blocks', [['type' => 'unknown', 'data' => []]])
         ->call('saveEditor')->assertHasFormErrors(form: 'editorForm');
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
 });
@@ -353,7 +353,7 @@ test('batch removal closes only the deleted Attribute editor and keeps other sta
         ->call('selectAttribute', $attributes[1]->id)->fillForm(['help_text' => 'Keep another draft'], 'editorForm')
         ->call('selectAttribute', $attributes[0]->id)->selectTableRecords([$attributes[0]])
         ->mountAction(TestAction::make('batchRemove')->table()->bulk())
-        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()
         ->assertSet('selectedAttributeId', null);
     expect($attributes[0]->fresh())->toBeNull();
     $manager->call('selectAttribute', $attributes[1]->id)->assertSet('editorData.help_text', 'Keep another draft');
@@ -367,11 +367,11 @@ test('clean Attribute editors reconcile successful batches and dirty editors can
     $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])
         ->call('selectAttribute', $attribute->id)->selectTableRecords([$attribute])
         ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm($data)
-        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()
         ->assertSet('editorData.label_override', 'Batch label');
     $manager->fillForm(['help_text' => 'Unsaved help'], 'editorForm')->selectTableRecords([$attribute])
         ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'label_override', 'mode' => 'set', 'value' => 'New batch label']]])
-        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()
         ->assertSet('editorData.help_text', 'Unsaved help')->call('saveEditor')->assertHasErrors();
     expect($attribute->fresh()->label_override)->toBe('New batch label')->and($attribute->fresh()->help_text)->toBeNull();
     $manager->call('reloadEditor')->assertSet('editorData.label_override', 'New batch label');
@@ -386,14 +386,14 @@ test('Rule batch reconciliation preserves new-kind drafts and protects a dirty s
         ->call('createRule', 'Advanced')->fillForm(['label' => 'Keep new draft'], 'editorForm')
         ->call('selectRule', $rule->id)->selectTableRecords([$rule])
         ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'is_active', 'mode' => 'set', 'value' => false]]])
-        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()->assertSet('editorData.is_active', false);
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()->assertSet('editorData.is_active', false);
     $manager->fillForm(['label' => 'Keep dirty saved rule'], 'editorForm')->selectTableRecords([$rule])
         ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'label', 'mode' => 'set', 'value' => 'Batch rule']]])
-        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()
         ->call('saveEditor')->assertHasErrors();
     expect($rule->fresh()->label)->toBe('Batch rule')->and($rule->fresh()->is_active)->toBeFalse();
     $manager->selectTableRecords([$rule])->mountAction(TestAction::make('batchRemove')->table()->bulk())
-        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoActionErrors()->assertSet('editorKind', null);
+        ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()->assertSet('editorKind', null);
     expect($rule->fresh())->toBeNull();
     $manager->call('createRule', 'Advanced')->assertSet('editorData.label', 'Keep new draft');
 });
@@ -484,12 +484,12 @@ test('related option updates refresh the rule choices while preserving its draft
     $attribute = $configurator->attributes()->orderBy('display_order')->first();
     $option = $attribute->options()->orderBy('display_order')->first();
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callTableAction('edit', $rule)->fillForm(['label' => 'Unsaved rule'], 'editorForm');
+        ->callAction(TestAction::make('edit')->table($rule))->fillForm(['label' => 'Unsaved rule'], 'editorForm');
     Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->call('selectAttribute', $attribute->id)->call('selectOption', $attribute->id, $option->id)
         ->fillForm(['label_override' => 'Updated option'], 'optionEditorForm')->call('saveOptionEditor')->assertHasNoErrors();
 
     $manager->dispatch('configurator-updated')->assertSchemaStateSet(['label' => 'Unsaved rule'], 'editorForm')
-        ->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$option->id] === 'A0 · Updated option');
+        ->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$option->id] === 'A0 · Updated option - '.$option->option->value->semantic_id);
     expect($rule->fresh()->label)->toBe('map');
 });

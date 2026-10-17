@@ -99,7 +99,7 @@ test('canonical forms create separate shared records and preserve exact manual O
         ->fillForm(['key' => 'connection', 'label' => 'Connection'])->call('create')->assertHasNoFormErrors();
     $attribute = Attribute::where('key', 'connection')->sole();
     Livewire\Livewire::test(CreateValue::class)
-        ->fillForm(['label' => 'Threaded', 'description' => 'A distinct meaning'])->call('create')->assertHasNoFormErrors();
+        ->fillForm(['label' => 'Threaded', 'semantic_id' => 'threaded', 'description' => 'A distinct meaning'])->call('create')->assertHasNoFormErrors();
     $value = Value::where('label', 'Threaded')->sole();
     Livewire\Livewire::test(CreateOption::class)
         ->fillForm(['attribute_id' => $attribute->id, 'value_id' => $value->id, 'code' => 'Aa'])->call('create')->assertHasNoFormErrors();

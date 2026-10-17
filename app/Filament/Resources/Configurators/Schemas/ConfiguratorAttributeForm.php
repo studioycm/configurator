@@ -43,7 +43,7 @@ class ConfiguratorAttributeForm
                 return [];
             }
 
-            return $labels[(int) $attributeId] ??= Option::with('value')->where('attribute_id', $attributeId)->orderBy('code')->get()->mapWithKeys(fn (Option $option): array => [$option->id => $option->code.' · '.$option->value->label])->all();
+            return $labels[(int) $attributeId] ??= Option::with('value')->where('attribute_id', $attributeId)->orderBy('code')->get()->mapWithKeys(fn (Option $option): array => [$option->id => $option->code.' · '.$option->value->labelWithSemanticId()])->all();
         };
 
         return [
@@ -86,7 +86,7 @@ class ConfiguratorAttributeForm
             Select::make('default_configurator_option_id')->label(__('configurator.labels.stored_default'))->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
                 if (! $withOptions) {
                     return $inclusion->options()->with('option.value')->orderBy('display_order')->get()
-                        ->mapWithKeys(fn ($option): array => [$option->id => $option->option->code.' · '.($option->label_override ?? $option->option->value->label)])->all();
+                        ->mapWithKeys(fn ($option): array => [$option->id => $option->option->code.' · '.$option->option->value->labelWithSemanticId($option->label_override)])->all();
                 }
                 $canonical = $optionLabels($get('attribute_id'));
                 $options = [];

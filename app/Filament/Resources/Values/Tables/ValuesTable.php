@@ -21,6 +21,7 @@ class ValuesTable
         return TablePresentation::configure($table->columns([
             TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
             TextColumn::make('label')->label(__('catalog.fields.ui_name'))->sortable()->toggleable()->searchable(),
+            TextColumn::make('semantic_id')->label(__('catalog.fields.semantic_id'))->sortable()->toggleable()->searchable()->copyable(),
             TextColumn::make('description')->label(__('catalog.fields.specification'))->searchable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('tags')->label(__('catalog.fields.tags'))->badge(),
             ItemCountColumn::make('options_count', __('catalog.resources.attributes.plural'), 'value-options')->sortable()->toggleable(),

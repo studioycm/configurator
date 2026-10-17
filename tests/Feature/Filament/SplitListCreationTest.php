@@ -19,9 +19,9 @@ beforeEach(function () {
 
 test('the table plus opens creation in the right editor and cancel restores the selected record', function (string $listPage, string $createPage, string $model) {
     $record = $model::factory()->create();
-    $list = Livewire::test($listPage)->callTableAction('select', $record)->searchTable('retained search');
+    $list = Livewire::test($listPage)->callAction(TestAction::make('select')->table($record))->searchTable('retained search');
 
-    $list->callAction(TestAction::make('create')->table())->assertHasNoActionErrors()
+    $list->callAction(TestAction::make('create')->table())->assertHasNoFormErrors()
         ->assertSet('isCreatingRecord', true)->assertSet('selectedRecord', (string) $record->getKey())
         ->assertSet('tableSearch', 'retained search')->assertNoRedirect()->assertDispatched('catalog-editor-opened');
     expect($list->instance()->editorComponent())->toBe($createPage);
@@ -48,7 +48,7 @@ test('embedded creation persists through the canonical handler and selects the n
     $editor->call('create');
     $this->assertDatabaseCount($record->getTable(), 1);
 })->with([
-    'master values' => [ListValues::class, CreateValue::class, Value::class, ['label' => 'New shared meaning', 'description' => 'Exact description']],
+    'master values' => [ListValues::class, CreateValue::class, Value::class, ['label' => 'New shared meaning', 'semantic_id' => 'new_shared_meaning', 'description' => 'Exact description']],
     'attributes' => [ListAttributes::class, CreateAttribute::class, Attribute::class, ['key' => 'new-attribute', 'label' => 'New Attribute']],
 ]);
 
