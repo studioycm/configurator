@@ -3,7 +3,7 @@
 use App\Filament\Pages\Dashboard;
 use App\Models\User;
 use App\Notifications\SystemTestNotification;
-use Filament\Actions\Testing\TestAction;
+use App\Notifications\UserMessageNotification;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\SendQueuedNotifications;
@@ -16,48 +16,51 @@ use Livewire\Livewire;
 beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     config(['app.name' => 'Mail Test App', 'mail.default' => 'resend', 'services.resend.key' => 'test-resend-key']);
+    $this->recipient = User::factory()->create();
+    $this->messageData = ['recipient_id' => $this->recipient->id, 'subject' => 'Catalog update', 'message' => '<p>The <strong>catalog</strong> is ready.</p>'];
 });
 
-test('the admin dashboard offers a test notification to the signed in account only', function () {
+test('the dashboard replaces the self test with a notification addressed to the selected user', function () {
     $admin = User::factory()->create(['email' => 'ycm@data4.work']);
-    $other = User::factory()->create();
     $this->actingAs($admin);
     Notification::fake();
 
-    $this->get(route('filament.admin.pages.dashboard'))->assertOk()->assertSee('Send test notification to me');
+    $this->get(route('filament.admin.pages.dashboard'))->assertOk()->assertSee('Send notification to user')->assertDontSee('Send test notification to me');
 
     Livewire::test(Dashboard::class)
-        ->callAction(TestAction::make('sendTestNotification')->arguments(['email' => $other->email]))
-        ->assertNotified('Test notification queued');
+        ->assertActionDoesNotExist('sendTestNotification')
+        ->callAction('sendNotification', $this->messageData)
+        ->assertHasNoFormErrors()
+        ->assertNotified('Notification queued');
 
-    Notification::assertSentTo($admin, SystemTestNotification::class, fn ($notification, array $channels): bool => $notification instanceof ShouldQueue && $channels === ['database', 'mail'] && Str::isUuid($notification->reference));
-    Notification::assertNotSentTo($other, SystemTestNotification::class);
+    Notification::assertSentTo($this->recipient, UserMessageNotification::class, fn ($notification, array $channels): bool => $notification instanceof ShouldQueue && $channels === ['database', 'mail'] && $notification->subject === 'Catalog update' && $notification->message === $this->messageData['message'] && Str::isUuid($notification->reference));
+    Notification::assertNotSentTo($admin, UserMessageNotification::class);
 });
 
-test('test notification sends are limited per account across dashboard instances for one minute', function () {
+test('notification sends are limited per account across dashboard instances for one minute', function () {
     $this->freezeTime();
     $first = User::factory()->create(['email' => 'ycm@data4.work']);
     $second = User::factory()->create(['email' => 'beny.cr@gmail.com']);
     Notification::fake();
     $this->actingAs($first);
 
-    Livewire::test(Dashboard::class)->callAction('sendTestNotification');
-    Livewire::test(Dashboard::class)->callAction('sendTestNotification')->assertNotified('Please wait before sending another test');
-    Notification::assertSentToTimes($first, SystemTestNotification::class, 1);
+    Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData);
+    Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData)->assertNotified('Please wait before sending another notification');
+    Notification::assertSentToTimes($this->recipient, UserMessageNotification::class, 1);
 
     $this->actingAs($second);
-    Livewire::test(Dashboard::class)->callAction('sendTestNotification');
-    Notification::assertSentToTimes($second, SystemTestNotification::class, 1);
+    Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData);
+    Notification::assertSentToTimes($this->recipient, UserMessageNotification::class, 2);
 
     $this->travel(61)->seconds();
     $this->actingAs($first);
-    Livewire::test(Dashboard::class)->callAction('sendTestNotification');
-    Notification::assertSentToTimes($first, SystemTestNotification::class, 2);
+    Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData);
+    Notification::assertSentToTimes($this->recipient, UserMessageNotification::class, 3);
 });
 
 test('an account losing admin access cannot submit a mounted test notification action', function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
-    $page = Livewire::test(Dashboard::class)->mountAction('sendTestNotification');
+    $page = Livewire::test(Dashboard::class)->mountAction('sendNotification');
     $this->actingAs(User::factory()->create());
     Notification::fake();
 
@@ -74,14 +77,14 @@ test('overlapping sends for the same account queue only one notification pair', 
     Queue::createPayloadUsing(function () use (&$overlappingRequestStarted): array {
         if (! $overlappingRequestStarted) {
             $overlappingRequestStarted = true;
-            Livewire::test(Dashboard::class)->callAction('sendTestNotification');
+            Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData);
         }
 
         return [];
     });
 
     try {
-        Livewire::test(Dashboard::class)->callAction('sendTestNotification');
+        Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData);
 
         $this->assertDatabaseCount('jobs', 2);
     } finally {
@@ -89,12 +92,12 @@ test('overlapping sends for the same account queue only one notification pair', 
     }
 });
 
-test('a log mailer or missing Resend key cannot report a queued test', function (array $configuration) {
+test('a log mailer or missing Resend key cannot report a queued notification', function (array $configuration) {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
     config($configuration);
     Notification::fake();
 
-    Livewire::test(Dashboard::class)->callAction('sendTestNotification')->assertNotified('Email is not configured');
+    Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData)->assertNotified('Email is not configured');
 
     Notification::assertNothingSent();
 })->with([
@@ -107,7 +110,7 @@ test('a test notification queues database and email delivery separately with the
     $this->actingAs($admin);
     Queue::fake();
 
-    Livewire::test(Dashboard::class)->callAction('sendTestNotification');
+    Livewire::test(Dashboard::class)->callAction('sendNotification', $this->messageData);
 
     $jobs = Queue::pushed(SendQueuedNotifications::class);
     expect($jobs)->toHaveCount(2);
@@ -132,4 +135,53 @@ test('test notification content reaches the Filament inbox and renders a matchin
     expect($email->getSubject())->toBe('Mail Test App test notification');
     expect($email->getHtmlBody())
         ->toContain($reference, route('filament.admin.pages.dashboard'), 'Mail Test App');
+});
+
+test('a notification requires a valid recipient subject and nonempty message', function (array $invalid, array $errors) {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    Notification::fake();
+
+    Livewire::test(Dashboard::class)
+        ->callAction('sendNotification', array_replace($this->messageData, $invalid))
+        ->assertHasFormErrors($errors);
+
+    Notification::assertNothingSent();
+})->with([
+    'missing recipient' => [['recipient_id' => null], ['recipient_id' => 'required']],
+    'unknown recipient' => [['recipient_id' => 999999], ['recipient_id']],
+    'missing subject' => [['subject' => ''], ['subject' => 'required']],
+    'long subject' => [['subject' => str_repeat('x', 256)], ['subject' => 'max']],
+    'header injection' => [['subject' => "Update\r\nBcc: other@example.com"], ['subject']],
+    'missing message' => [['message' => ''], ['message']],
+    'empty editor' => [['message' => '<p>&nbsp;</p>'], ['message']],
+    'script only' => [['message' => '<p></p><script>alert(1)</script>'], ['message']],
+    'long message' => [['message' => str_repeat('x', 20001)], ['message']],
+]);
+
+test('user messages render the same sanitized content and subject in the inbox and email', function () {
+    config(['mail.default' => 'array']);
+    $reference = (string) Str::uuid();
+    $message = '<p>Hello <strong>team</strong>.</p><script>alert(1)</script><a href="javascript:alert(2)" onclick="alert(3)">Unsafe link</a>';
+    $this->recipient->notifyNow(new UserMessageNotification('Catalog update', $message, $reference));
+
+    $stored = $this->recipient->notifications()->sole();
+    expect($stored->data['format'])->toBe('filament');
+    expect($stored->data['title'])->toBe('Catalog update');
+    expect($stored->data['body'])->toContain('<strong>team</strong>')->not->toContain('<script', 'javascript:', 'onclick=');
+    $email = Mail::mailer()->getSymfonyTransport()->messages()->sole()->getOriginalMessage();
+    expect($email->getTo()[0]->getAddress())->toBe($this->recipient->email);
+    expect($email->getSubject())->toBe('Catalog update');
+    expect($email->getHtmlBody())->toContain('<strong', 'team</strong>', $reference)->not->toContain('<script', 'javascript:', 'onclick=');
+    expect($email->getTextBody())->toContain('Hello team.', $reference);
+});
+
+test('literal angle bracket text is accepted as notification content', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    Notification::fake();
+
+    Livewire::test(Dashboard::class)
+        ->callAction('sendNotification', array_replace($this->messageData, ['message' => '<p>&lt;catalog&gt;</p>']))
+        ->assertHasNoFormErrors();
+
+    Notification::assertSentTo($this->recipient, UserMessageNotification::class);
 });

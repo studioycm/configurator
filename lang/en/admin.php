@@ -164,6 +164,18 @@ return [
         'wider' => 'Wider',
         'width' => 'Dialog width',
     ],
+    'user_notification' => [
+        'send_to_user' => 'Send notification to user',
+        'send' => 'Send notification',
+        'help' => 'Send an in-app notification and an email to an existing user. You can send one notification per minute.',
+        'recipient' => 'User',
+        'subject' => 'Subject',
+        'message' => 'Message',
+        'message_required' => 'Enter a message with text.',
+        'queued' => 'Notification queued',
+        'queued_body' => 'Notification and email queued for :email. Reference: :reference',
+        'rate_limited' => 'Please wait before sending another notification',
+    ],
     'mail_test' => [
         'confirm' => 'Send a test to your notification inbox and to :email.',
         'database_body' => 'Reference: :reference. Email delivery is processed separately; check your email inbox too.',
