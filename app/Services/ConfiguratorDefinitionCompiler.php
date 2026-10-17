@@ -25,7 +25,7 @@ class ConfiguratorDefinitionCompiler
     /**
      * @param  array<string, mixed>  $data
      * @param  array<int, array{key: string, label: string}>  $canonicalAttributes
-     * @param  array<int, array{attribute_id: int, code: string, label: string}>  $canonicalOptions
+     * @param  array<int, array{attribute_id: int, code: string, label: string, semantic_id?: string, is_active?: bool, is_hidden?: bool}>  $canonicalOptions
      * @param  array<string, list<array{value: string, label: string}>>  $globalContext
      */
     public function compile(array $data, array $canonicalAttributes, array $canonicalOptions, bool $authoring = false, array $globalContext = []): ConfiguratorDefinition
@@ -86,7 +86,7 @@ class ConfiguratorDefinitionCompiler
                     $this->text($option['hint'] ?? null, $optionPath.'.hint', true, 5000),
                     $this->boolean($option['hidden_by_default'] ?? false, $optionPath.'.hidden_by_default'),
                     $this->boolean($option['disabled_by_default'] ?? false, $optionPath.'.disabled_by_default'),
-                    $canonical['is_active'] ?? true, $canonical['is_hidden'] ?? false);
+                    $canonical['is_active'] ?? true, $canonical['is_hidden'] ?? false, $canonical['semantic_id'] ?? null);
             }
             uasort($options, fn (ConfiguratorOptionDTO $a, ConfiguratorOptionDTO $b): int => [$a->displayOrder, $a->id] <=> [$b->displayOrder, $b->id]);
             $default = $row['default_configurator_option_id'] ?? null;

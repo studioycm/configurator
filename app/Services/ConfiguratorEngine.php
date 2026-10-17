@@ -104,6 +104,9 @@ final class ConfiguratorEngine
                     foreach ($rule->sets as $set) {
                         if (in_array($selections[$rule->driverId], $set->sources, true)) {
                             $matchedSet = true;
+                            $previousHidden = $hidden;
+                            $previousDisabled = $disabled;
+                            $previousLegal = $legal;
                             $legal = array_values(array_intersect($legal, $set->targets));
                             if ($set->disallowedTargetBehavior === MappingTargetBehavior::Hide) {
                                 $hidden = [...$hidden, ...array_diff($all, $set->targets)];
@@ -114,7 +117,10 @@ final class ConfiguratorEngine
                             if ($input->trace) {
                                 $trace[] = ['type' => 'mapping', 'attribute_id' => $id, 'rule_id' => $rule->id, 'set_id' => $set->id,
                                     'message' => __('configurator.messages.set_disallowed_targets', ['value1' => $rule->label, 'value2' => $set->id, 'value3' => $set->disallowedTargetBehavior->value]),
-                                    'excluded' => array_values(array_diff($all, $set->targets)), 'legal' => $legal];
+                                    'excluded' => array_values(array_diff($all, $set->targets)), 'legal' => $legal,
+                                    'effect_kind' => $set->disallowedTargetBehavior === MappingTargetBehavior::Hide ? RuleEffectKind::HideOptions->value : RuleEffectKind::DisableOptions->value,
+                                    'restricted_options' => array_values(array_diff($previousLegal, $legal)),
+                                    'affected_options' => $set->disallowedTargetBehavior === MappingTargetBehavior::Hide ? array_values(array_diff($hidden, $previousHidden)) : array_values(array_diff($disabled, $previousDisabled, $hidden))];
                             }
                             break;
                         }
@@ -129,9 +135,10 @@ final class ConfiguratorEngine
                     if ($effect->attributeId !== $id) {
                         continue;
                     }
-                    if ($input->trace && ! in_array($effect->kind, [RuleEffectKind::SetLabel, RuleEffectKind::SetDisplayValue, RuleEffectKind::SetHint], true)) {
-                        $trace[] = ['type' => 'effect', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.': '.$effect->kind->getLabel(), 'options' => $effect->optionIds];
-                    }
+                    $previousHidden = $hidden;
+                    $previousDisabled = $disabled;
+                    $previousApplicable = $applicable;
+                    $previousLegal = $legal;
                     if ($effect->kind === RuleEffectKind::HideAttribute) {
                         $applicable = false;
                         $contributors[] = $rule->id;
@@ -147,6 +154,12 @@ final class ConfiguratorEngine
                         } else {
                             $disabled = [...$disabled, ...$effect->optionIds];
                         }
+                    }
+                    if ($input->trace && ! in_array($effect->kind, [RuleEffectKind::SetLabel, RuleEffectKind::SetDisplayValue, RuleEffectKind::SetHint], true)) {
+                        $trace[] = ['type' => 'effect', 'attribute_id' => $id, 'rule_id' => $rule->id, 'message' => $rule->label.': '.$effect->kind->getLabel(), 'options' => $effect->optionIds,
+                            'effect_kind' => $effect->kind->value, 'changed_applicability' => $previousApplicable !== $applicable,
+                            'restricted_options' => array_values(array_diff($previousLegal, $legal)),
+                            'affected_options' => $effect->kind === RuleEffectKind::HideOptions ? array_values(array_diff($hidden, $previousHidden)) : array_values(array_diff($disabled, $previousDisabled, $hidden))];
                     }
                 }
             }
@@ -179,7 +192,8 @@ final class ConfiguratorEngine
             if ($choice !== null) {
                 $selections[$id] = $choice;
                 if ((is_string($prior[$id] ?? null) || is_int($prior[$id] ?? null)) && (string) $prior[$id] !== $choice) {
-                    $diagnostics[] = ['code' => 'selection_adjusted', 'message' => __('configurator.messages.choice_for_was_updated_to_because_the', ['value1' => $attribute->label, 'value2' => $attribute->options[$choice]->label]), 'attribute_id' => $id];
+                    $diagnostics[] = ['code' => 'selection_adjusted', 'message' => __('configurator.messages.choice_for_was_updated_to_because_the', ['value1' => $attribute->label, 'value2' => $attribute->options[$choice]->label]), 'attribute_id' => $id,
+                        'rule_ids' => array_values(array_unique($contributors)), 'previous_choice_id' => (string) $prior[$id], 'choice_id' => $choice];
                 }
             } else {
                 $diagnostics[] = ['code' => 'no_legal_options', 'message' => __('configurator.messages.no_legal_value_remains_for', ['value1' => $attribute->label]), 'attribute_id' => $id, 'rule_ids' => array_values(array_unique($contributors))];
@@ -283,7 +297,9 @@ final class ConfiguratorEngine
                     }
                     if ($traceEnabled) {
                         $trace[] = ['type' => 'presentation', 'attribute_id' => (string) $attributeId,
-                            'message' => count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1 ? __('configurator.messages.presentation_tie_base_retained', ['value1' => $field]) : __('configurator.messages.presentation_from_rule', ['value1' => $field, 'value2' => implode(', ', array_column($winners, 'rule'))])];
+                            'message' => count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1 ? __('configurator.messages.presentation_tie_base_retained', ['value1' => $field]) : __('configurator.messages.presentation_from_rule', ['value1' => $field, 'value2' => implode(', ', array_column($winners, 'rule'))]),
+                            'rule_ids' => array_column($winners, 'rule'), 'field' => $field, 'target' => $target,
+                            'value' => $winners[0]['value'], 'conflict' => count(array_unique(array_column($winners, 'value'), SORT_STRING)) > 1];
                     }
                 }
             }

@@ -7,8 +7,12 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-.catalog-configurator-preview { container-type: inline-size; }
+.catalog-configurator-preview { container: preview / inline-size; }
+.catalog-configurator-preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.catalog-configurator-preview-selection { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; flex: 1 1 30rem; min-width: 0; }
+.catalog-configurator-preview-catalog-actions { display: flex; align-items: center; gap: 4px; margin-top: 20px; }
 .catalog-configurator-preview-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.catalog-configurator-preview-controls { container: preview-controls / inline-size; }
 .catalog-configurator-preview-diagnostics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
 .catalog-configurator-preview-form > .fi-sc { row-gap: 8px; }
 .catalog-configurator-preview-attributes > .fi-sc { row-gap: 8px; }
@@ -21,17 +25,22 @@
 .catalog-configurator-preview-attributes .fi-fo-toggle-buttons label.fi-btn.fi-disabled { text-decoration: none !important; }
 .catalog-configurator-preview-form .fi-fo-field { grid-template-columns: minmax(0, 1fr); gap: 4px 12px; }
 .catalog-configurator-preview-form .fi-fo-field-content-col { grid-column: auto; min-width: 0; }
-@container (min-width: 580px) {
-    .catalog-configurator-preview-form .fi-fo-field-has-inline-label { grid-template-columns: 15rem minmax(0, 1fr); }
+@container preview (max-width: 460px) {
+    .catalog-configurator-preview-catalog-label { display: none; }
+}
+@container preview-controls (min-width: 440px) {
+    .catalog-configurator-preview-form .fi-fo-field-has-inline-label { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
     .catalog-configurator-preview-form .fi-fo-field-has-inline-label .fi-fo-field-content-col { grid-column: 2; }
 }
-@container (min-width: 1040px) {
-    .catalog-configurator-preview-layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+@container preview (min-width: 1040px) {
+    .catalog-configurator-preview-layout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .catalog-configurator-preview-controls { grid-column: span 2; }
+    .catalog-configurator-preview-layout-with-diagnostics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .catalog-configurator-preview-layout-with-diagnostics .catalog-configurator-preview-state-notes { grid-column: span 1; }
     .catalog-configurator-preview-controls { position: sticky; top: 8px; display: flex; flex-direction: column; max-height: calc(100dvh - 16px); }
     .catalog-configurator-preview-controls > :not(.catalog-configurator-preview-form) { flex-shrink: 0; }
     .catalog-configurator-preview-form { min-height: 0; display: flex; flex-direction: column; }
     .catalog-configurator-preview-form > .fi-sc { display: flex; flex-direction: column; min-height: 0; }
-    .catalog-configurator-preview-form > .fi-sc > .fi-grid-col:first-child { flex-shrink: 0; }
     .catalog-configurator-preview-form > .fi-sc > .fi-grid-col:has(.catalog-configurator-preview-attributes),
     .catalog-configurator-preview-form .fi-sc-component:has(> .catalog-configurator-preview-attributes) { display: flex; flex-direction: column; min-height: 0; }
     .catalog-configurator-preview-attributes { min-height: 0; overflow-y: auto; }

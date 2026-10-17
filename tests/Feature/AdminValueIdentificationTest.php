@@ -96,12 +96,16 @@ test('Mapping and Advanced Rule choices identify Values while preserving stored 
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
 });
 
-test('dashboard Product configurator and user-facing Preview keep names and codes free of semantic IDs', function () {
+test('dashboard Product configurator keeps semantic IDs private while Admin Preview offers selected Value identities', function () {
     [$configurator] = adminValueIdentificationFixture();
     $product = Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
 
-    foreach ([Livewire::test(ProductConfigurator::class, ['productId' => $product->id]), Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)] as $component) {
-        $component->assertSee('Local Viton')->assertSee('Polypropylene')->assertSee('A0-B1-C0')
-            ->assertDontSee('viton_body')->assertDontSee('viton_seal')->assertDontSee('polypropylene_float');
-    }
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])
+        ->assertSee('Local Viton')->assertSee('Polypropylene')->assertSee('A0-B1-C0')
+        ->assertDontSee('viton_body')->assertDontSee('viton_seal')->assertDontSee('polypropylene_float');
+
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->call('chooseProduct', $product->id)
+        ->assertSee('Local Viton')->assertSee('Polypropylene')->assertSee('A0-B1-C0')
+        ->assertSee('viton_body')->assertSee('polypropylene_float')->assertDontSee('viton_seal');
 });

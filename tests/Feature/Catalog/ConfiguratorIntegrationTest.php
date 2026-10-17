@@ -7,6 +7,7 @@ use App\Livewire\Catalog\ContextSelector;
 use App\Livewire\Catalog\ProductConfigurator;
 use App\Models\Configurator;
 use App\Models\Group;
+use App\Models\Option;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\AdminAppearance;
@@ -59,10 +60,13 @@ test('saved edits reconcile Product choices silently and retain explanations in 
     $public = Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->call('selectOption', $b['id'], $b['options'][1]['id'])->assertSee('A0-B1-C0');
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)
         ->call('selectOption', $b['id'], $b['options'][1]['id']);
+    $diagnostics = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('toggleTrace')
+        ->call('selectOption', $b['id'], $b['options'][1]['id']);
     $draft['attributes'][1]['options'][1]['disabled_by_default'] = true;
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $draft);
     $public->call('refreshDefinition')->assertSee('A0-B0-C0')->assertDontSee('Choice for B was updated');
-    $preview->call('refreshDefinition')->assertSee('A0-B0-C0')->assertSee('Choice for B was updated');
+    $preview->call('refreshDefinition')->assertSee('A0-B0-C0')->assertDontSeeText('Choice for B was updated');
+    $diagnostics->call('refreshDefinition')->assertSee('A0-B0-C0')->assertSee('Choice for B was updated');
     $product->group->update(['configurator_id' => null]);
     $public->call('refreshDefinition')->assertSee('Configuration is not available')->assertDontSee('A0-B0-C0');
 });
@@ -154,9 +158,10 @@ test('Preview reauthorizes and rejects a Product outside its currently assigned 
     $foreign = Product::factory()->create();
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
     $preview->call('chooseProduct', $foreign->id)->assertHasErrors(['product']);
-    $preview->call('chooseProduct', $product->id)->assertSee('A0-B0-C0');
+    $preview->call('chooseProduct', $product->id)->assertHasNoErrors()->assertSee('A0-B0-C0');
     $product->group->update(['configurator_id' => null]);
-    $preview->call('refreshDefinition')->assertSee('no longer assigned')->assertDontSee('A0-B0-C0');
+    $preview->call('refreshDefinition')->assertSee(__('configurator.copy.configuration_is_not_available_for_this_product'))->assertDontSee('A0-B0-C0')
+        ->call('toggleTrace')->assertSee('no longer assigned');
     $this->actingAs(User::factory()->create());
     $preview->call('refreshDefinition')->assertForbidden();
 });
@@ -171,7 +176,8 @@ test('Preview opens the selected dashboard Product and restores the ordered fall
     Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id, 'sort_order' => 1]))->create(['product_code' => '00-LATER-GROUP']);
 
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
-    $preview->assertSee(__('configurator.copy.view_in_dashboard_catalog'))->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null)
+    $preview->assertSee(__('configurator.copy.view_in_dashboard_catalog'))->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', $first->id)
+        ->assertSee('A0-B0-C0')
         ->call('chooseProduct', $selected->id)->assertSee(route('catalog.products.show', $selected), false)
         ->call('chooseProduct', null)->assertSee(route('catalog.products.show', $first), false)->assertSet('productId', null);
 });
@@ -207,15 +213,14 @@ test('unassigned Product pages keep facts separate from the unavailable configur
     $this->get(route('catalog.products.show', $product))->assertOk()->assertSee('Real imported name')->assertSee('REAL-001')->assertSee('Configuration is not available');
 });
 
-test('Preview initializes and reacts to the actual form paths used by the browser', function () {
+test('Preview initializes the default Product and reacts to choices and Product changes', function () {
     [$configurator, $product, $draft] = publicConfigurationFixture();
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
-    expect($preview->get('formState'))->toHaveKey('product');
-    $preview->set('formState.product', $product->id)->assertSee('A0-B0-C0');
+    $preview->assertSet('productId', $product->id)->assertSee('A0-B0-C0');
     $a = $draft['attributes'][0];
     $preview->set('formState.choices.'.$a['id'], $a['options'][1]['id'])->assertSee('A1-B0-C0');
-    $preview->set('formState.product', null)->assertSet('productId', null)->assertDontSee('A1-B0-C0');
-    expect($preview->get('formState'))->toHaveKey('product');
+    $preview->call('chooseProduct', null)->assertSet('productId', null)->assertDontSee('A1-B0-C0');
+    $preview->call('chooseProduct', $product->id)->assertSee('A0-B0-C0');
 });
 
 test('Preview Product search ignores casing while preserving codes and assigned Group scope', function () {
@@ -229,18 +234,30 @@ test('Preview Product search ignores casing while preserving codes and assigned 
 
     try {
         $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
-        $select = $preview->instance()->form->getComponentByStatePath('product');
-
         foreach (['product-', 'PRODUCT-', 'pRoDuCt-'] as $search) {
-            expect($select->getSearchResults($search))->toBe([$product->id => 'PRODUCT-ONLY', $mixed->id => 'pRoDuCt-MiXeD']);
+            $preview->call('searchProducts', $search)->assertReturned([
+                ['id' => (string) $product->id, 'label' => 'PRODUCT-ONLY'],
+                ['id' => (string) $mixed->id, 'label' => 'pRoDuCt-MiXeD'],
+            ]);
         }
-        expect($select->getSearchResults("' OR 1=1 --"))->toBe([]);
+        $preview->call('searchProducts', "' OR 1=1 --")->assertReturned([]);
         expect($mixed->fresh()->product_code)->toBe('pRoDuCt-MiXeD');
     } finally {
         if ($connection->getDriverName() === 'sqlite') {
             $connection->statement('PRAGMA case_sensitive_like = OFF');
         }
     }
+});
+
+test('Preview search is capped and reauthorizes each request', function () {
+    [$configurator, $product] = publicConfigurationFixture();
+    Product::factory()->count(51)->for($product->group)->sequence(fn ($sequence) => ['product_code' => sprintf('MATCH-%02d', $sequence->index)])->create();
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+
+    $preview->call('searchProducts', 'match-')->assertReturned(fn (array $results): bool => count($results) === 50 && $results[0]['label'] === 'MATCH-00' && $results[49]['label'] === 'MATCH-49');
+
+    $this->actingAs(User::factory()->create());
+    $preview->call('searchProducts', 'match-')->assertForbidden();
 });
 
 test('saved Preview marks mutations stale and refreshes with an optional engine trace without writes', function () {
@@ -250,6 +267,7 @@ test('saved Preview marks mutations stale and refreshes with an optional engine 
         $draft['rules'] = [$rule];
     });
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id);
+    $preview->assertDontSeeText(__('configurator.copy.rule_diagnostics'))->assertDontSeeText(__('configurator.copy.engine_trace'));
     $baseline = $preview->get('runtime');
     $writes = [];
     DB::listen(function ($event) use (&$writes): void {
@@ -258,17 +276,64 @@ test('saved Preview marks mutations stale and refreshes with an optional engine 
         }
     });
     $preview->dispatch('configurator-updated')->assertSet('definitionStale', true)->assertSee('Saved changes are available')
-        ->call('refreshDefinition')->assertSet('definitionStale', false)->call('toggleTrace')->assertSee('Hide disallowed targets');
+        ->call('refreshDefinition')->assertSet('definitionStale', false)->call('toggleTrace')->assertSee('Hide disallowed targets')
+        ->assertSee(__('configurator.copy.rule_diagnostics'))->assertSee(__('configurator.copy.engine_trace'))
+        ->call('toggleTrace')->assertDontSeeText(__('configurator.copy.rule_diagnostics'))->assertSee('A0-B1-C0');
     expect($preview->get('runtime'))->toBe($baseline)->and($writes)->toBe([]);
 });
 
-test('saved Preview shows escaped current option presentation alongside public rendering', function () {
+test('saved Preview keeps authored guidance in diagnostics and public rendering escapes it', function () {
     [$configurator, $product] = publicConfigurationFixture(function (array &$draft): void {
         $draft['attributes'][0]['help_text'] = 'Attribute guidance';
         $draft['attributes'][0]['options'][0]['display_value_override'] = 'Operating value';
         $draft['attributes'][0]['options'][0]['hint'] = '<b>Option guidance</b>';
     });
-    foreach ([Livewire::test(ProductConfigurator::class, ['productId' => $product->id]), Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)] as $component) {
+    $public = Livewire::test(ProductConfigurator::class, ['productId' => $product->id]);
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->assertDontSeeText('Operating value')->assertDontSeeText('Attribute guidance')->assertDontSeeText('<b>Option guidance</b>')
+        ->call('toggleTrace');
+    foreach ([$public, $preview] as $component) {
         $component->assertSee('Operating value')->assertSee('Attribute guidance')->assertSee('<b>Option guidance</b>')->assertDontSee('<b>Option guidance</b>', false);
     }
+});
+
+test('Preview keeps direct selection warnings visible while diagnostics are hidden', function () {
+    [$configurator, , $draft] = publicConfigurationFixture(fn (array &$draft) => $draft['rules'] = [fixtureMapping()]);
+    $target = $draft['attributes'][1];
+
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->call('selectOption', $target['id'], $target['options'][0]['id'])
+        ->assertSee('That value is not currently available. Choices have been refreshed.')
+        ->assertDontSeeText(__('configurator.copy.rule_diagnostics'));
+});
+
+test('Preview explains selection effects with semantic IDs and retains replacement warnings across diagnostics toggles', function () {
+    [$configurator, $product, $draft] = publicConfigurationFixture(function (array &$draft): void {
+        $rule = fixtureMapping('selection-map');
+        $rule['label'] = 'Selection mapping';
+        $rule['sets'][0]['disallowed_target_behavior'] = 'Hide';
+        $rule['sets'][] = ['id' => 'new:second-set', 'label' => null, 'sort_order' => 1, 'source_option_ids' => ['new:A1'], 'target_option_ids' => ['new:B0']];
+        $draft['rules'] = [$rule];
+    });
+    $a = $draft['attributes'][0];
+    $b = $draft['attributes'][1];
+    Option::findOrFail($b['options'][0]['option_id'])->value->update(['semantic_id' => 'b_zero']);
+    Option::findOrFail($b['options'][1]['option_id'])->value->update(['semantic_id' => 'b_one']);
+
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->assertSee('Hidden values')->assertSee('b_zero (B0)')->assertSee('Selection mapping')
+        ->assertDontSeeText(__('configurator.copy.rule_diagnostics'))
+        ->call('selectOption', $a['id'], $a['options'][1]['id'])
+        ->assertSee('B changed from b_one (B1) to b_zero (B0) because the previous value is unavailable.')
+        ->call('toggleTrace')->assertSee('B changed from b_one (B1) to b_zero (B0)')
+        ->call('toggleTrace')->assertSee('B changed from b_one (B1) to b_zero (B0)')
+        ->call('refreshDefinition')->assertDontSeeText('B changed from b_one (B1) to b_zero (B0)')
+        ->call('chooseProduct', null)->assertDontSeeText('Selection mapping')->assertDontSeeText('b_zero (B0)');
+});
+
+test('Preview escapes selection driven explanatory text', function () {
+    [$configurator] = publicConfigurationFixture(fn (array &$draft) => $draft['rules'] = [fixtureAdvanced('hint-rule', [fixtureCondition('a0')], 'B', 'SetHint', [], '<b>Selection explanation</b>')]);
+
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->assertSee('Selection note')->assertSee('<b>Selection explanation</b>')->assertDontSee('<b>Selection explanation</b>', false);
 });

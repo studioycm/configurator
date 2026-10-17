@@ -16,5 +16,6 @@ final readonly class ConfiguratorOptionDTO
         public bool $disabled,
         public bool $active = true,
         public bool $lifecycleHidden = false,
+        public ?string $semanticId = null,
     ) {}
 }

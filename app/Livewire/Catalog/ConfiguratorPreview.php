@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\CatalogAvailability;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
+use App\Services\ConfiguratorPreviewNotes;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Group;
@@ -21,6 +22,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 
 class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
 {
@@ -38,6 +40,10 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     #[Locked]
     public bool $showTrace = false;
 
+    /** @var list<array<string, mixed>> */
+    #[Locked]
+    public array $selectionWarnings = [];
+
     #[On('configurator-updated')]
     public function markDefinitionStale(): void
     {
@@ -48,6 +54,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     public function refreshDefinition(): void
     {
         Gate::authorize('manage-catalog');
+        $this->selectionWarnings = [];
         parent::refreshDefinition();
         $this->definitionStale = false;
     }
@@ -56,36 +63,57 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     {
         Gate::authorize('manage-catalog');
         $this->showTrace = ! $this->showTrace;
-        $this->refreshDefinition();
     }
 
     public function mount(int $configuratorId): void
     {
         Gate::authorize('manage-catalog');
         $this->configuratorId = Configurator::findOrFail($configuratorId)->id;
-        $this->form->fill();
+        $product = $this->dashboardProduct() ?? $this->firstProduct($this->products());
+        $this->chooseProduct($product?->id);
     }
 
-    public function chooseProduct(int|string|null $productId): void
+    /** @return list<array{id: string, label: string}> */
+    #[Renderless]
+    public function searchProducts(string $search): array
+    {
+        return $this->products()->whereRaw('LOWER(product_code) LIKE ?', ['%'.Str::lower($search).'%'])
+            ->orderBy('product_code')->orderBy('id')->limit(50)->get(['id', 'product_code'])
+            ->map(fn (Product $product): array => ['id' => (string) $product->id, 'label' => $product->product_code])->all();
+    }
+
+    public function chooseProduct(int|string|null $productId): ?int
     {
         Gate::authorize('manage-catalog');
         $this->definitionStale = false;
+        $this->resetValidation('product');
         if ($productId === null || $productId === '') {
+            $this->selectionWarnings = [];
             $this->productId = null;
             $this->runtime = [];
             $this->preparedResult = null;
             $this->cachedSchemas = [];
             $this->form->fill();
 
-            return;
+            return null;
         }
         $product = $this->products()->find($productId);
         if ($product === null) {
             throw ValidationException::withMessages(['product' => __('configurator.validation.choose_a_product_from_a_currently_assigned')]);
         }
         $this->productId = $product->id;
+        $this->selectionWarnings = [];
         $this->runtime = [];
         $this->evaluate(['kind' => 'Initialize']);
+
+        return $this->productId;
+    }
+
+    public function selectOption(string $attributeId, string $optionId): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->selectionWarnings = [];
+        parent::selectOption($attributeId, $optionId);
     }
 
     /** @param array<string, mixed> $intent */
@@ -98,22 +126,23 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
 
         $input = app(ConfiguratorDefinitionLoader::class)->forPreview(auth()->user(), $this->configuratorId, $this->productId, $this->runtime, $intent);
 
-        return new ConfiguratorEvaluationInput($input->definition, $input->properties, $input->context, $input->selections, $input->remembered, $input->intent, $input->configuratorId, $input->diagnostics, trace: $this->showTrace);
+        return new ConfiguratorEvaluationInput($input->definition, $input->properties, $input->context, $input->selections, $input->remembered, $input->intent, $input->configuratorId, $input->diagnostics, trace: true);
     }
 
     protected function evaluated(): void
     {
         $this->formState = ['product' => $this->productId, 'choices' => $this->runtime['selections']];
         $this->cachedSchemas = [];
+        $warnings = app(ConfiguratorPreviewNotes::class)->build($this->preparedResult)['warnings'];
+        if ($warnings !== [] || $this->preparedResult?->definition === null) {
+            $this->selectionWarnings = $warnings;
+        }
     }
 
     public function form(Schema $schema): Schema
     {
         Gate::authorize('manage-catalog');
-        $fields = [Select::make('product')->label(__('configurator.labels.product_code'))->searchable()
-            ->getSearchResultsUsing(fn (string $search): array => $this->products()->whereRaw('LOWER(product_code) LIKE ?', ['%'.Str::lower($search).'%'])->orderBy('product_code')->limit(50)->pluck('product_code', 'id')->all())
-            ->getOptionLabelUsing(fn ($value): ?string => $this->products()->find($value)?->product_code)
-            ->live()->afterStateUpdated(fn ($state) => $this->chooseProduct($state))->columnSpanFull()];
+        $fields = [];
         $attributeFields = [];
         if ($this->productId !== null) {
             $result = $this->preparedResult ?? app(ConfiguratorEngine::class)->evaluate($this->input(['kind' => 'Reevaluate']));
@@ -160,6 +189,11 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
             return $products->find($this->productId);
         }
 
+        return $this->firstProduct($products);
+    }
+
+    private function firstProduct(Builder $products): ?Product
+    {
         return $products->join('groups', 'groups.id', '=', 'products.group_id')
             ->orderBy('groups.sort_order')->orderBy('groups.id')->orderBy('products.product_code')->orderBy('products.id')
             ->first(['products.id', 'products.product_code']);
@@ -169,9 +203,13 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     {
         Gate::authorize('manage-catalog');
 
+        $result = $this->productId === null ? null : $this->result();
+
         return view('livewire.catalog.configurator-preview', [
-            'result' => $this->productId === null ? null : $this->result(),
+            'result' => $result,
+            'notes' => app(ConfiguratorPreviewNotes::class)->build($result),
             'dashboardProduct' => $this->dashboardProduct(),
+            'selectedProductCode' => $this->productId === null ? '' : ($this->products()->find($this->productId)?->product_code ?? ''),
             'publicOnlyRules' => Configurator::findOrFail($this->configuratorId)->rules()->whereHas('conditions', fn (Builder $query): Builder => $query->whereIn('source_kind', ['Territory', 'Application']))->orderByDesc('priority')->pluck('label')->all(),
         ]);
     }

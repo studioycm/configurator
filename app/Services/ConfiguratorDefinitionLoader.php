@@ -200,7 +200,7 @@ class ConfiguratorDefinitionLoader
             $optionQuery->lockForUpdate();
         }
         $attributes = $attributeQuery->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->only(['key', 'label', 'is_active'])])->all();
-        $options = $optionQuery->get()->mapWithKeys(fn (Option $option): array => [$option->id => ['attribute_id' => $option->attribute_id, 'code' => $option->code, 'label' => $option->value->label, 'is_active' => $option->is_active, 'is_hidden' => $option->is_hidden]])->all();
+        $options = $optionQuery->get()->mapWithKeys(fn (Option $option): array => [$option->id => ['attribute_id' => $option->attribute_id, 'code' => $option->code, 'label' => $option->value->label, 'semantic_id' => $option->value->semantic_id, 'is_active' => $option->is_active, 'is_hidden' => $option->is_hidden]])->all();
 
         return [$attributes, $options];
     }

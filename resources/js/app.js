@@ -4,10 +4,12 @@ import { itemCountPreview } from './item-count-preview';
 import { workspaceDialog, workspaceColumnManager } from './workspace-dialogs';
 import { tableColumnWidths } from './table-column-widths';
 import { workspaceSplit } from './workspace-split';
+import { configuratorProductSearch } from './configurator-product-search';
 
 window.workspaceColumnManager = workspaceColumnManager;
 
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('configuratorProductSearch', configuratorProductSearch);
     window.Alpine.data('catalogShell', catalogShell);
     window.Alpine.data('itemCountPreview', itemCountPreview);
     window.Alpine.data('workspaceDialog', workspaceDialog);
@@ -16,6 +18,7 @@ document.addEventListener('alpine:init', () => {
 }, { once: true });
 
 if (window.Alpine) {
+    window.Alpine.data('configuratorProductSearch', configuratorProductSearch);
     window.Alpine.data('itemCountPreview', itemCountPreview);
     window.Alpine.data('workspaceDialog', workspaceDialog);
     window.Alpine.data('tableColumnWidths', tableColumnWidths);
