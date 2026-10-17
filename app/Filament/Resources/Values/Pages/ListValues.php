@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Values\Pages;
 
+use App\Filament\CatalogDataActions;
+use App\Filament\Exports\ValueExporter;
+use App\Filament\Imports\ValueImporter;
 use App\Filament\Resources\SplitListRecords;
 use App\Filament\Resources\Values\Tables\ValuesTable;
 use App\Filament\Resources\Values\ValueResource;
@@ -15,7 +18,7 @@ class ListValues extends SplitListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [CatalogDataActions::import('import', ValueImporter::class), CatalogDataActions::export('export', ValueExporter::class)];
     }
 
     public function inlineTagsForm(Schema $schema): Schema

@@ -15,16 +15,19 @@ use Illuminate\Validation\ValidationException;
 
 class SaveCanonicalOption
 {
-    public function handle(User $actor, ?Option $option, int $attributeId, int $valueId, string $code): Option
+    public function handle(User $actor, ?Option $option, int $attributeId, int $valueId, string $code, bool $preserveIdentity = false): Option
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
         try {
-            return DB::transaction(function () use ($option, $attributeId, $valueId, $code): Option {
+            return DB::transaction(function () use ($option, $attributeId, $valueId, $code, $preserveIdentity): Option {
                 if ($option !== null) {
                     Configurator::whereHas('attributes.options', fn ($query) => $query->where('option_id', $option->id))->orderBy('id')->lockForUpdate()->get();
                 }
                 $record = $option === null ? new Option : Option::whereKey($option->id)->lockForUpdate()->firstOrFail();
+                if ($preserveIdentity && $record->exists && ($record->attribute_id !== $attributeId || $record->value_id !== $valueId || $record->code !== $code)) {
+                    throw ValidationException::withMessages(['code' => __('data_exchange.validation.existing_code')]);
+                }
                 $data = Validator::make(['attribute_id' => $attributeId, 'value_id' => $valueId, 'code' => $code], [
                     'attribute_id' => ['required', 'integer', 'exists:attributes,id'],
                     'value_id' => ['required', 'integer', 'exists:values,id', Rule::unique('options')->where('attribute_id', $attributeId)->ignore($record->id)],
