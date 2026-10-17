@@ -124,7 +124,11 @@ class RulesRelationManager extends RelationManager
                 $this->previewOriginals[$key] = $saved;
                 $this->editorOriginals[$key] = hash('sha256', json_encode($saved, JSON_THROW_ON_ERROR));
                 if (! $matches && $current !== null) {
-                    $this->editorDrafts[$key] = $current;
+                    $rebased = $changes->rebase('rule', $current, $row['after'], $saved);
+                    $this->editorDrafts[$key] = $rebased;
+                    if ($activeKey === $key) {
+                        $this->editorData = $rebased;
+                    }
                 }
                 if ($activeKey === $key) {
                     $this->selectRule((int) $row['id'], reload: $matches);

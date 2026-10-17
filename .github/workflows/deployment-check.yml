@@ -53,6 +53,9 @@ jobs:
           npm ci
           npm run build
 
+      - name: Run JavaScript tests
+        run: npm test
+
       - name: Compile deployment caches
         run: |
           php artisan key:generate --force --no-interaction

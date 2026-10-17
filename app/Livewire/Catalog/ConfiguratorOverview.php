@@ -54,11 +54,12 @@ class ConfiguratorOverview extends Component implements HasSchemas
             }
             $current = $this->data;
             $saved = $this->owner()->only(ConfiguratorEditorChanges::OVERVIEW_FIELDS);
-            $this->previewOriginal = $saved;
+            $this->form->fill($saved);
+            $this->previewOriginal = $this->data;
             if ($changes->normalize('overview', $current) == $changes->normalize('overview', $row['after'])) {
-                $this->form->fill($saved);
-                $this->previewOriginal = $this->data;
                 $this->dispatch('catalog-overview-saved');
+            } else {
+                $this->form->fill($changes->rebase('overview', $current, $row['after'], $this->previewOriginal));
             }
         }
     }

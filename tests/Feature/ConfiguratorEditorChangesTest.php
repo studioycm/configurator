@@ -226,3 +226,69 @@ test('new Rule confirmation uses UI labels and omits irrelevant empty fields', f
     expect($fields)->not->toHaveKeys(['driver_configurator_attribute_id', 'target_configurator_attribute_id', 'sets']);
     expect($fields['effects']['after_text'])->toContain('Set hint', 'Whole Attribute')->not->toContain('SetHint', 'Values: —');
 });
+
+test('Rule reconciliation preserves a separately saved disable while retaining later label edits', function (bool $buffered) {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $data['rules'][] = fixtureAdvanced('original-rule', [], 'C', 'SetHint', [], 'Original hint');
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $data);
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectRule', $rule->id)->fillForm(['label' => 'Tested label'], 'editorForm');
+    $capture = null;
+    $manager->call('exportPreviewChanges')->assertReturned(function (array $result) use (&$capture): bool {
+        $capture = $result;
+
+        return true;
+    });
+    $rule->update(['is_active' => false]);
+    $changes = app(ConfiguratorEditorChanges::class);
+    $prepared = $changes->prepare($configurator->fresh(), [$capture]);
+    expect($prepared['data']['rules'][0]['is_active'])->toBeFalse();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
+    $manager->fillForm(['label' => 'Typed after collection'], 'editorForm');
+    if ($buffered) {
+        $manager->call('createRule', 'Mapping');
+    }
+
+    $manager->dispatch('configurator-preview-saved', configuratorId: $configurator->id, captures: [$capture], newRules: [])
+        ->call('exportPreviewChanges')->assertReturned(function (array $result) use (&$capture): bool {
+            $capture = $result;
+
+            return true;
+        });
+    $remaining = $changes->prepare($configurator->fresh(), [$capture]);
+
+    expect(array_keys($remaining['changes'][0]['fields']))->toBe(['label']);
+    expect($remaining['data']['rules'][0]['is_active'])->toBeFalse();
+    $manager->call('selectRule', $rule->id)
+        ->assertSchemaStateSet(['label' => 'Typed after collection', 'is_active' => false], 'editorForm');
+})->with(['open Rule' => false, 'buffered Rule' => true]);
+
+test('Overview keeps a separately saved name while retaining a later description edit', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $data);
+    $manager = Livewire::test(ConfiguratorOverview::class, ['configuratorId' => $configurator->id])->fillForm(['description' => 'Tested description']);
+    $capture = null;
+    $manager->call('exportPreviewChanges')->assertReturned(function (array $result) use (&$capture): bool {
+        $capture = $result;
+
+        return true;
+    });
+    $configurator->update(['name' => 'Renamed elsewhere']);
+    $changes = app(ConfiguratorEditorChanges::class);
+    $prepared = $changes->prepare($configurator->fresh(), [$capture]);
+    expect($prepared['data']['name'])->toBe('Renamed elsewhere');
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
+    $manager->fillForm(['description' => 'Typed after collection']);
+
+    $manager->dispatch('configurator-preview-saved', configuratorId: $configurator->id, captures: [$capture], newRules: [])
+        ->call('exportPreviewChanges')->assertReturned(function (array $result) use (&$capture): bool {
+            $capture = $result;
+
+            return true;
+        });
+    $remaining = $changes->prepare($configurator->fresh(), [$capture]);
+
+    expect(array_keys($remaining['changes'][0]['fields']))->toBe(['description']);
+    expect($remaining['data']['name'])->toBe('Renamed elsewhere');
+});
