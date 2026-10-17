@@ -17,6 +17,7 @@
         "laravel/tinker": "^3.0",
         "livewire/flux": "^2.1.1",
         "livewire/livewire": "^4.0",
+        "resend/resend-php": "^1.16",
         "solution-forest/filament-simplelightbox": "^1.0"
     },
     "require-dev": {

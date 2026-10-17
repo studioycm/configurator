@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\ContextSettings;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\DataExchange;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Configurators\ConfiguratorResource;
@@ -19,7 +20,6 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
