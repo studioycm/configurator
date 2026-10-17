@@ -13,6 +13,8 @@
 .catalog-configurator-preview-catalog-actions { display: flex; align-items: center; gap: 4px; margin-top: 20px; }
 .catalog-configurator-preview-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 .catalog-configurator-preview-controls { container: preview-controls / inline-size; }
+.catalog-configurator-preview-result { position: sticky; top: 8px; z-index: 20; background: var(--color-white); }
+.dark .catalog-configurator-preview-result { background: var(--color-gray-900); }
 .catalog-configurator-preview-diagnostics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
 .catalog-configurator-preview-form > .fi-sc { row-gap: 8px; }
 .catalog-configurator-preview-attributes > .fi-sc { row-gap: 8px; }
@@ -33,6 +35,8 @@
     .catalog-configurator-preview-form .fi-fo-field-has-inline-label .fi-fo-field-content-col { grid-column: 2; }
 }
 @container preview (min-width: 1040px) {
+    .catalog-configurator-preview-result { position: static; }
+    .catalog-configurator-preview-mobile-feedback { display: none; }
     .catalog-configurator-preview-layout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .catalog-configurator-preview-controls { grid-column: span 2; }
     .catalog-configurator-preview-layout-with-diagnostics { grid-template-columns: repeat(4, minmax(0, 1fr)); }

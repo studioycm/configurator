@@ -1,4 +1,5 @@
 <div x-data="localTraceProfile({{ \Illuminate\Support\Js::from(['user' => auth()->id()]) }})" class="catalog-configurator-preview space-y-3" wire:loading.attr="aria-busy">
+    <div wire:key="preview-workspace-controls" class="space-y-3" x-data="configuratorPreviewWorkspace({{ $configuratorId }})" x-on:configurator-preview-visibility.window="visibility($event.detail)">
     <div class="catalog-configurator-preview-toolbar rounded-lg border border-gray-200 p-2 dark:border-gray-700">
         <div class="catalog-configurator-preview-selection">
             @include('livewire.catalog.configurator-preview-product-search')
@@ -10,32 +11,78 @@
                 @endif
             </div>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm font-medium">{{ __('configurator.copy.saved_definition') }}</span>
-            <x-filament::icon-button color="gray" size="sm" icon="heroicon-o-question-mark-circle" label="{{ __('configurator.copy.about_saved_preview') }}"
-                tooltip="{{ __('configurator.preview.saved_definition_help') }}" />
-            <x-filament::button color="gray" size="sm" wire:click="refreshDefinition" wire:loading.attr="disabled" wire:target="refreshDefinition">{{ __('configurator.copy.refresh_saved_definition') }}</x-filament::button>
+        <div class="flex flex-wrap items-end gap-2">
+            <fieldset class="min-w-0">
+                <legend class="mb-1 text-xs font-medium">{{ __('configurator.preview.test_using') }}</legend>
+                <div class="flex flex-wrap items-center gap-1">
+                    <x-filament::button size="sm" :color="$previewSource === 'saved' ? 'primary' : 'gray'" aria-pressed="{{ $previewSource === 'saved' ? 'true' : 'false' }}" x-on:click="rebuild('saved')" x-bind:disabled="collecting">{{ __('configurator.preview.saved_source') }}</x-filament::button>
+                    <x-filament::button size="sm" :color="$previewSource === 'unsaved' ? 'primary' : 'gray'" aria-pressed="{{ $previewSource === 'unsaved' ? 'true' : 'false' }}" x-on:click="rebuild('unsaved')" x-bind:disabled="collecting">{{ __('configurator.preview.unsaved_source') }}</x-filament::button>
+                    <x-filament::icon-button color="gray" size="sm" icon="heroicon-o-question-mark-circle" :label="__('configurator.preview.source_help')" :tooltip="__('configurator.preview.source_help')" />
+                </div>
+            </fieldset>
+            <x-filament::button color="gray" size="sm" x-on:click="rebuild()" x-bind:disabled="collecting">{{ __('configurator.preview.rebuild') }}</x-filament::button>
+            @if ($previewSource === 'unsaved' && $previewChanges !== [])
+                <x-filament::button size="sm" x-on:click="review()" x-bind:disabled="collecting" :disabled="! $this->canSaveTestedChanges()">{{ __('configurator.preview.save_tested') }}</x-filament::button>
+            @endif
             <x-filament::button color="gray" size="sm" wire:click="toggleTrace" wire:loading.attr="disabled" wire:target="toggleTrace" aria-controls="preview-diagnostics-{{ $this->getId() }}" aria-expanded="{{ $showTrace ? 'true' : 'false' }}">{{ __($showTrace ? 'configurator.preview.hide_diagnostics' : 'configurator.preview.show_diagnostics') }}</x-filament::button>
         </div>
     </div>
+    @if ($productResetNotice)
+        <p role="status" class="text-xs text-gray-500">{{ $productResetNotice }}</p>
+    @endif
+    <p x-cloak x-show="collecting" role="status" class="text-xs text-gray-500">{{ __('configurator.preview.collecting') }}</p>
+    <p x-cloak x-show="collectionFailed" role="alert" class="text-sm text-danger-600">{{ __('configurator.preview.collection_failed') }}</p>
+    @if ($previewSource === 'unsaved' && $previewChanges !== [])
+        <p class="text-xs text-gray-500">{{ trans_choice('configurator.preview.pending_count', count($previewChanges), ['count' => count($previewChanges)]) }} · {{ __('configurator.preview.tested_scope') }}</p>
+    @elseif ($previewSource === 'unsaved' && $previewErrors === [])
+        <p class="text-xs text-gray-500">{{ __('configurator.preview.no_unsaved') }}</p>
+    @endif
+    @if ($previewErrors !== [])
+        <div id="preview-errors-{{ $this->getId() }}" tabindex="-1" role="alert" class="scroll-mt-6 rounded-lg border border-danger-300 p-3 text-sm text-danger-700 dark:text-danger-400">
+            <p class="font-medium">{{ __('configurator.preview.invalid_edits') }}</p>
+            <ul class="mt-1 list-inside list-disc">@foreach ($previewErrors as $index => $error)<li wire:key="preview-build-error-{{ $index }}">{{ $error }}</li>@endforeach</ul>
+        </div>
+    @endif
+    @if ($previewErrors === [] && $blockingIssues !== [])
+        <div id="preview-errors-{{ $this->getId() }}" tabindex="-1" role="alert" class="scroll-mt-6 space-y-2 rounded-lg border border-danger-300 p-3 text-sm text-danger-700 dark:text-danger-400">
+            <ul>@foreach ($blockingIssues as $index => $issue)<li wire:key="preview-issue-{{ $index }}">{{ $issue }}</li>@endforeach</ul>
+            @foreach ($notes['conflicts'] as $conflict)
+                @if ($conflict['rules'] !== [])<p>{{ __('configurator.preview.conflicting_rules', ['rules' => implode(' · ', $conflict['rules'])]) }}</p>@endif
+            @endforeach
+            @if ($notes['conflicts'] !== [])<x-filament::button color="gray" size="sm" x-on:click="explainConflicts()">{{ __('configurator.preview.view_conflict_details') }}</x-filament::button>@endif
+        </div>
+    @endif
     @if ($definitionStale)
         <p role="status" class="rounded-md border border-amber-300 p-2 text-sm">{{ __('configurator.copy.saved_changes_are_available_refresh_to_retest_your_choices') }}</p>
     @endif
     <div @class(['catalog-configurator-preview-layout', 'catalog-configurator-preview-layout-with-diagnostics' => $showTrace])>
-        <div class="catalog-configurator-preview-controls min-w-0 space-y-3">
+        <div id="preview-choices-{{ $this->getId() }}" tabindex="-1" class="catalog-configurator-preview-controls min-w-0 scroll-mt-6 space-y-3">
             @if ($result)
-                <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
+                <div class="catalog-configurator-preview-result rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
                     @if ($result->definition)
                         <x-catalog.configuration-result :result="$result" inline :show-diagnostics="false" />
-                    @else
+                    @elseif ($previewErrors === [])
                         <p class="text-sm">{{ __('configurator.copy.configuration_is_not_available_for_this_product') }}</p>
                     @endif
+                    @php($feedbackErrors = count($previewErrors ?: $blockingIssues))
+                    <div class="catalog-configurator-preview-mobile-feedback mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-2 text-xs dark:border-gray-700" aria-live="polite">
+                        @if ($feedbackErrors)
+                            <span class="font-medium text-danger-600">{{ trans_choice('configurator.preview.feedback_errors', $feedbackErrors, ['count' => $feedbackErrors]) }}</span>
+                            <a class="text-primary-600 underline" href="#preview-errors-{{ $this->getId() }}">{{ __('configurator.preview.view_errors') }}</a>
+                        @else
+                            <span>{{ trans_choice('configurator.preview.feedback_notices', count($selectionWarnings), ['count' => count($selectionWarnings)]) }} · {{ trans_choice('configurator.preview.feedback_effects', count($notes['effects']), ['count' => count($notes['effects'])]) }}</span>
+                            <a class="text-primary-600 underline" href="#preview-notes-heading-{{ $this->getId() }}">{{ __('configurator.preview.view_notes') }}</a>
+                        @endif
+                    </div>
                 </div>
             @endif
             <div class="catalog-configurator-preview-form">{{ $this->form }}</div>
         </div>
         <section class="catalog-configurator-preview-state-notes min-w-0 rounded-lg border border-gray-200 p-3 text-xs break-words dark:border-gray-700" aria-labelledby="preview-notes-heading-{{ $this->getId() }}">
-            <h3 id="preview-notes-heading-{{ $this->getId() }}" class="text-sm font-medium">{{ __('configurator.preview.rules_and_state_notes') }}</h3>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="preview-notes-heading-{{ $this->getId() }}" tabindex="-1" class="scroll-mt-6 text-sm font-medium">{{ __('configurator.preview.rules_and_state_notes') }}</h3>
+                <a class="catalog-configurator-preview-mobile-feedback text-primary-600 underline" href="#preview-choices-{{ $this->getId() }}">{{ __('configurator.preview.back_to_choices') }}</a>
+            </div>
             @if ($selectionWarnings !== [])
                 <ul class="mt-2 space-y-1" aria-live="polite">
                     @foreach ($selectionWarnings as $index => $diagnostic)<li wire:key="preview-note-{{ $index }}">{{ $diagnostic['message'] }}</li>@endforeach
@@ -54,10 +101,10 @@
                     @endforeach
                 </ul>
             @elseif ($selectionWarnings === [])
-                <p class="mt-2 text-gray-500">{{ __($result?->definition ? 'configurator.preview.no_selection_effects' : 'configurator.preview.choose_product') }}</p>
+                <p class="mt-2 text-gray-500">{{ __($result?->definition ? 'configurator.preview.no_selection_effects' : ($productId === null ? 'configurator.preview.choose_product' : 'configurator.preview.unavailable')) }}</p>
             @endif
             @if ($notes['selected_values'] !== [])
-                <details class="mt-3 border-t border-gray-200 pt-2 dark:border-gray-700">
+                <details wire:key="preview-selected-value-ids" wire:ignore.self class="mt-3 border-t border-gray-200 pt-2 dark:border-gray-700">
                     <summary class="cursor-pointer font-medium">{{ __('configurator.preview.selected_value_ids') }}</summary>
                     <dl class="mt-2 space-y-2">
                         @foreach ($notes['selected_values'] as $index => $value)
@@ -69,6 +116,21 @@
         </section>
         @if ($showTrace)
         <aside id="preview-diagnostics-{{ $this->getId() }}" class="catalog-configurator-preview-diagnostics min-w-0 text-sm" aria-label="{{ __('configurator.copy.preview_diagnostics') }}">
+            @if ($notes['conflicts'] !== [])
+                <section data-preview-conflicts tabindex="-1" class="scroll-mt-6 space-y-3 rounded-lg border border-danger-300 p-3 text-xs" aria-label="{{ __('configurator.preview.unavailable_values_heading') }}">
+                    <h3 class="font-medium">{{ __('configurator.preview.unavailable_values_heading') }}</h3>
+                    <p>{{ __('configurator.preview.all_restrictions_apply') }}</p>
+                    @foreach ($notes['conflicts'] as $conflict)
+                        <div wire:key="preview-conflict-{{ $conflict['attribute_id'] }}" class="space-y-2">
+                            <h4 class="font-semibold">{{ $conflict['attribute'] }}</h4>
+                            @foreach ($conflict['causes'] as $cause)<p><span class="font-medium">{{ $cause['rule'] }}</span><br>{{ $cause['conditions'] }}</p>@endforeach
+                            <dl class="space-y-2">
+                                @foreach ($conflict['values'] as $value)<div><dt class="font-medium">{{ $value['value'] }}</dt><dd>{{ implode(' · ', $value['reasons']) }}</dd></div>@endforeach
+                            </dl>
+                        </div>
+                    @endforeach
+                </section>
+            @endif
             <section class="min-w-0 rounded-lg border border-gray-200 p-2 break-words dark:border-gray-700" aria-labelledby="preview-rules-heading-{{ $this->getId() }}">
                 <h3 id="preview-rules-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.rule_diagnostics') }}</h3>
                 @if ($result)
@@ -117,5 +179,7 @@
             </section>
         </aside>
         @endif
+    </div>
+    <x-filament-actions::modals />
     </div>
 </div>

@@ -20,6 +20,7 @@ use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
 use App\Models\Option;
 use App\Services\ConfiguratorDefinitionLoader;
+use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorInclusionDrafts;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -41,6 +42,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 
 class AttributesRelationManager extends RelationManager
 {
@@ -73,6 +75,10 @@ class AttributesRelationManager extends RelationManager
     /** @var array<int, array<string, mixed>> */
     #[Locked]
     public array $editorDrafts = [];
+
+    /** @var array<string, array<string, mixed>> */
+    #[Locked]
+    public array $previewOriginals = [];
 
     /** @var array<int, string> */
     #[Locked]
@@ -144,6 +150,7 @@ class AttributesRelationManager extends RelationManager
         $this->cacheSchema('optionEditorForm')->fill($this->optionEditorDrafts[$attributeId][$optionId] ?? $option->only(SaveConfiguratorOption::FIELDS));
         if ($reload || ! isset($this->optionEditorOriginals[$attributeId][$optionId])) {
             $this->optionEditorOriginals[$attributeId][$optionId] = hash('sha256', json_encode($this->optionEditorData, JSON_THROW_ON_ERROR));
+            $this->previewOriginals['value:'.$optionId] = $this->optionEditorData;
         }
         $this->dispatch('configurator-option-editor-filled');
     }
@@ -192,6 +199,77 @@ class AttributesRelationManager extends RelationManager
         $this->selectOption($this->selectedAttributeId, $this->selectedOptionId, reload: true);
     }
 
+    /** @param list<array<string, mixed>> $captures @param array<string, array<string, mixed>> $newRules */
+    #[On('configurator-preview-saved')]
+    public function acceptPreviewSave(int $configuratorId, array $captures, array $newRules = []): void
+    {
+        Gate::authorize('manage-catalog');
+        if ($configuratorId !== $this->owner()->id) {
+            return;
+        }
+        $changes = app(ConfiguratorEditorChanges::class);
+        foreach ($changes->savedRows($configuratorId, $captures) as $row) {
+            $id = (int) $row['id'];
+            if ($row['type'] === 'attribute') {
+                $current = $this->selectedAttributeId === $id ? $this->editorData : ($this->editorDrafts[$id] ?? null);
+                $this->previewOriginals['attribute:'.$id] = $row['after'];
+                $this->editorOriginals[$id] = hash('sha256', json_encode($row['after'], JSON_THROW_ON_ERROR));
+                if ($current !== null && $changes->normalize('attribute', $current) == $changes->normalize('attribute', $row['after'])) {
+                    unset($this->editorDrafts[$id], $this->editorStaleRows[$id]);
+                    if ($this->selectedAttributeId === $id) {
+                        $this->selectAttribute($id, reload: true);
+                    }
+                }
+            } elseif ($row['type'] === 'value') {
+                $value = ConfiguratorOption::whereHas('configuratorAttribute', fn ($query) => $query->where('configurator_id', $configuratorId))->findOrFail($id);
+                $attributeId = $value->configurator_attribute_id;
+                $current = $this->selectedOptionId === $id ? $this->optionEditorData : ($this->optionEditorDrafts[$attributeId][$id] ?? null);
+                $this->previewOriginals['value:'.$id] = $row['after'];
+                $this->optionEditorOriginals[$attributeId][$id] = hash('sha256', json_encode($row['after'], JSON_THROW_ON_ERROR));
+                if ($current !== null && $changes->normalize('value', $current) == $changes->normalize('value', $row['after'])) {
+                    unset($this->optionEditorDrafts[$attributeId][$id], $this->optionEditorStaleRows[$id]);
+                    if ($this->selectedOptionId === $id) {
+                        $this->selectOption($attributeId, $id, reload: true);
+                    }
+                }
+            }
+        }
+        $this->flushCachedTableRecords();
+        $this->dispatch('configurator-options-updated');
+    }
+
+    /** @return array<string, mixed> */
+    #[Renderless]
+    public function exportPreviewChanges(): array
+    {
+        Gate::authorize('manage-catalog');
+        $attributes = $this->editorDrafts;
+        if ($this->selectedAttributeId !== null) {
+            $attributes[$this->selectedAttributeId] = $this->editorData;
+        }
+        $values = $this->optionEditorDrafts;
+        if ($this->selectedAttributeId !== null && $this->selectedOptionId !== null) {
+            $values[$this->selectedAttributeId][$this->selectedOptionId] = $this->optionEditorData;
+        }
+        $rows = [];
+        foreach ($attributes as $id => $state) {
+            $before = $this->previewOriginals['attribute:'.$id] ?? $state;
+            if ($state != $before) {
+                $rows[] = ['type' => 'attribute', 'id' => (string) $id, 'before' => $before, 'after' => $state];
+            }
+        }
+        foreach ($values as $attributeValues) {
+            foreach ($attributeValues as $id => $state) {
+                $before = $this->previewOriginals['value:'.$id] ?? $state;
+                if ($state != $before) {
+                    $rows[] = ['type' => 'value', 'id' => (string) $id, 'before' => $before, 'after' => $state];
+                }
+            }
+        }
+
+        return app(ConfiguratorEditorChanges::class)->capture($this->owner()->id, $rows);
+    }
+
     public function editorForm(Schema $schema): Schema
     {
         return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->selectedAttributeId === null ? [] : ConfiguratorAttributeForm::components($this->owner(), $this->selectedAttribute(), withOptions: false));
@@ -228,6 +306,7 @@ class AttributesRelationManager extends RelationManager
         $this->cacheSchema('editorForm')->fill($data);
         if ($reload || ! isset($this->editorOriginals[$id])) {
             $this->editorOriginals[$id] = hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR));
+            $this->previewOriginals['attribute:'.$id] = $this->editorData;
         }
         $this->dispatch('configurator-editor-filled');
         if ($this->selectedOptionId === null && isset($this->selectedOptions[$id])) {

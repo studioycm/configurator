@@ -1,4 +1,4 @@
-<x-catalog.related-editor>
+<x-catalog.related-editor data-preview-editor="attributes">
     <x-slot:list>{{ $this->table }}</x-slot:list>
     @if ($attribute = $this->selectedAttribute())
         <div class="space-y-6" wire:key="attribute-editor-{{ $attribute->id }}">

@@ -12,14 +12,14 @@ use App\RuleEffectKind;
 
 /**
  * @phpstan-type EffectNote array{attribute: string, message: string, text: string, values: list<string>, sources: list<string>, rule: string}
- * @phpstan-type PreviewReport array{effects: list<EffectNote>, warnings: list<array<string, mixed>>, diagnostics: list<array<string, mixed>>, selected_values: list<array{attribute: string, value: string}>}
+ * @phpstan-type PreviewReport array{effects: list<EffectNote>, warnings: list<array<string, mixed>>, diagnostics: list<array<string, mixed>>, selected_values: list<array{attribute: string, value: string}>, conflicts: list<array<string, mixed>>}
  */
 class ConfiguratorPreviewNotes
 {
     /** @return PreviewReport */
     public function build(?ConfiguratorEvaluationResult $result): array
     {
-        $report = ['effects' => [], 'warnings' => [], 'diagnostics' => [], 'selected_values' => []];
+        $report = ['effects' => [], 'warnings' => [], 'diagnostics' => [], 'selected_values' => [], 'conflicts' => []];
         if ($result === null) {
             return $report;
         }
@@ -123,16 +123,12 @@ class ConfiguratorPreviewNotes
             $relevantOptions = $diagnostic['code'] === 'selection_adjusted' ? [$diagnostic['previous_choice_id']] : $baseLegal;
             $system = $systemRestrictions[$diagnostic['attribute_id'] ?? ''] ?? [];
             $hasSystemCause = array_intersect($relevantOptions, [...($system['hidden'] ?? []), ...($system['unavailable'] ?? [])]) !== [];
-            $selectionDriven = in_array($diagnostic['code'], ['selection_rejected', 'interaction_rejected'], true)
+            $selectionDriven = in_array($diagnostic['code'], ['selection_rejected', 'interaction_rejected', 'selection_adjusted'], true)
                 || (in_array($diagnostic['code'], ['selection_adjusted', 'no_legal_options'], true) && $ruleIds !== [] && ! $hasSystemCause && array_diff($ruleIds, array_keys($selectionRules)) === []);
             if (! $selectionDriven) {
                 $report['diagnostics'][] = $diagnostic;
 
                 continue;
-            }
-            if ($diagnostic['code'] === 'selection_adjusted') {
-                $attribute = $result->definition->attributes[$diagnostic['attribute_id']];
-                $diagnostic['message'] = __('configurator.preview.selection_replaced', ['attribute' => $result->attributes[$attribute->id]['label'], 'previous' => $this->identity($attribute->options[$diagnostic['previous_choice_id']] ?? null), 'current' => $this->identity($attribute->options[$diagnostic['choice_id']])]);
             }
             $report['warnings'][] = $diagnostic;
         }
@@ -142,9 +138,93 @@ class ConfiguratorPreviewNotes
             if (isset($result->selections[$id])) {
                 $report['selected_values'][] = ['attribute' => $result->attributes[$id]['label'], 'value' => $this->identity($attribute->options[$result->selections[$id]])];
             }
+            if ($result->attributes[$id]['applicable'] && $result->attributes[$id]['legal'] === []) {
+                $report['conflicts'][] = $this->conflict($result, $id);
+            }
         }
 
         return $report;
+    }
+
+    /** @return array<string, mixed> */
+    private function conflict(ConfiguratorEvaluationResult $result, string $attributeId): array
+    {
+        $attribute = $result->definition->attributes[$attributeId];
+        $causes = [];
+        $values = [];
+        $rules = [];
+        foreach ($result->definition->rules as $rule) {
+            $rules[$rule->id] = $rule;
+        }
+        foreach ($attribute->options as $id => $option) {
+            $reasons = [];
+            if ($option->hidden) {
+                $reasons[] = __('configurator.preview.initially_hidden_reason');
+            }
+            if ($option->disabled) {
+                $reasons[] = __('configurator.preview.initially_disabled_reason');
+            }
+            if (! $option->active || $option->lifecycleHidden) {
+                $reasons[] = __('configurator.preview.canonical_unavailable_reason');
+            }
+            foreach ($result->trace as $entry) {
+                if (($entry['attribute_id'] ?? null) !== $attributeId || ! isset($entry['effect_kind'], $entry['rule_id'])) {
+                    continue;
+                }
+                $kind = RuleEffectKind::from($entry['effect_kind']);
+                $restricted = $entry['excluded'] ?? ($kind === RuleEffectKind::AllowOptions ? array_diff(array_keys($attribute->options), $entry['options']) : $entry['options']);
+                if (! in_array((string) $id, array_map('strval', $restricted), true)) {
+                    continue;
+                }
+                $rule = $rules[$entry['rule_id']];
+                $reasons[] = $rule->label.' · '.$kind->getLabel();
+                if (isset($causes[$rule->id])) {
+                    continue;
+                }
+                $conditions = $this->conditionDescription($rule->conditions, $result);
+                if (isset($entry['set_id']) && $rule->driverId !== null) {
+                    $driver = $result->definition->attributes[$rule->driverId];
+                    $setLabel = '';
+                    foreach ($result->definition->data['rules'] as $row) {
+                        if ($row['id'] !== $rule->id) {
+                            continue;
+                        }
+                        foreach ($row['sets'] as $index => $set) {
+                            if ($set['id'] === $entry['set_id']) {
+                                $setLabel = $set['label'] ?: __('configurator.preview.mapping_set', ['number' => $index + 1]);
+                            }
+                        }
+                    }
+                    $matched = $result->attributes[$rule->driverId]['label'].': '.$this->identity($driver->options[$result->selections[$rule->driverId]]).' · '.$setLabel;
+                    $conditions = $matched.($conditions === __('configurator.preview.unconditional') ? '' : ' · '.$conditions);
+                }
+                $causes[$rule->id] = ['rule' => $rule->label, 'conditions' => $conditions];
+            }
+            $values[] = ['value' => $this->identity($option), 'reasons' => array_values(array_unique($reasons))];
+        }
+
+        return ['attribute_id' => $attributeId, 'attribute' => $result->attributes[$attributeId]['label'], 'rules' => array_column($causes, 'rule'), 'causes' => array_values($causes), 'values' => $values];
+    }
+
+    private function conditionDescription(ConfiguratorConditionDTO|ConfiguratorConditionGroupDTO $condition, ConfiguratorEvaluationResult $result): string
+    {
+        if ($condition instanceof ConfiguratorConditionGroupDTO) {
+            if ($condition->conditions === []) {
+                return __('configurator.preview.unconditional');
+            }
+
+            return $condition->operator->value.' ('.implode('; ', array_map(fn ($child): string => $this->conditionDescription($child, $result), $condition->conditions)).')';
+        }
+        if ($condition->attributeId !== null) {
+            $attribute = $result->definition->attributes[$condition->attributeId];
+            $field = $result->attributes[$attribute->id]['label'];
+            $value = implode(', ', array_map(fn (string $id): string => $this->identity($attribute->options[$id]), $condition->optionIds));
+        } else {
+            $field = $condition->source->getLabel().': '.str_replace('_', ' ', $condition->propertyKey ?? $condition->contextDimension ?? '');
+            $value = implode(', ', (array) $condition->operand);
+        }
+
+        return $field.' '.$condition->operator->getLabel().' '.$value;
     }
 
     /** @return list<string>|null */

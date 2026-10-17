@@ -34,9 +34,9 @@ class ConfiguratorDefinitionLoader
     }
 
     /** @param array<string, mixed> $state @param array<string, mixed> $intent */
-    private function productInput(int $productId, array $state, array $intent, bool $withPublicContext): ConfiguratorEvaluationInput
+    private function productInput(int $productId, array $state, array $intent, bool $withPublicContext, ?array $definitionData = null): ConfiguratorEvaluationInput
     {
-        return DB::transaction(function () use ($productId, $state, $intent, $withPublicContext): ConfiguratorEvaluationInput {
+        return DB::transaction(function () use ($productId, $state, $intent, $withPublicContext, $definitionData): ConfiguratorEvaluationInput {
             $this->assertSnapshotIsolation();
             $product = Product::with('group')->findOrFail($productId);
             if (! app(CatalogAvailability::class)->productIsVisible($product)) {
@@ -67,7 +67,7 @@ class ConfiguratorDefinitionLoader
                 if (! $configurator->is_active) {
                     return new ConfiguratorEvaluationInput(null, properties: $product->properties, configuratorId: $configuratorId, diagnostics: [['code' => 'inactive_configurator', 'message' => __('configurator.messages.the_assigned_configurator_is_disabled')]]);
                 }
-                $data = $this->draft($configurator);
+                $data = $definitionData ?? $this->draft($configurator);
                 if (! $withPublicContext) {
                     $data['context_schema'] = ['territory' => [], 'application' => []];
                     $data['hidden_context_options'] = ['territory' => [], 'application' => []];
@@ -85,18 +85,18 @@ class ConfiguratorDefinitionLoader
     }
 
     /** @param array<string, mixed> $state @param array<string, mixed> $intent */
-    public function forPreview(User $actor, int $configuratorId, int $productId, array $state = [], array $intent = []): ConfiguratorEvaluationInput
+    public function forPreview(User $actor, int $configuratorId, int $productId, array $state = [], array $intent = [], ?array $definitionData = null): ConfiguratorEvaluationInput
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($configuratorId, $productId, $state, $intent): ConfiguratorEvaluationInput {
+        return DB::transaction(function () use ($configuratorId, $productId, $state, $intent, $definitionData): ConfiguratorEvaluationInput {
             $this->assertSnapshotIsolation();
             $available = Product::whereKey($productId)->whereHas('group', fn ($query) => $query->where('configurator_id', $configuratorId)->doesntHave('children'))->exists();
             if (! $available) {
                 return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_unavailable', 'message' => __('configurator.messages.this_product_is_no_longer_assigned_to')]]);
             }
 
-            return $this->forDashboardProduct($productId, $state, $intent);
+            return $this->productInput($productId, $state, $intent, withPublicContext: false, definitionData: $definitionData);
         });
     }
 

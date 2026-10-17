@@ -39,7 +39,7 @@ function publicConfigurationFixture(?Closure $change = null): array
 test('public and saved Preview share the same settled selections code and context without database writes', function () {
     [$configurator, $product, $draft] = publicConfigurationFixture(fn (array &$draft) => $draft['rules'] = [fixtureMapping()]);
     $public = Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('A0-B1-C0');
-    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)->assertSee(__('configurator.copy.saved_definition'))->assertSee('A0-B1-C0');
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('chooseProduct', $product->id)->assertSee(__('configurator.preview.saved_source'))->assertSee('A0-B1-C0');
     $writes = [];
     DB::listen(function ($event) use (&$writes): void {
         if (preg_match('/^\s*(insert|update|delete|replace)\b/i', $event->sql)) {
@@ -65,7 +65,7 @@ test('saved edits reconcile Product choices silently and retain explanations in 
     $draft['attributes'][1]['options'][1]['disabled_by_default'] = true;
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $draft);
     $public->call('refreshDefinition')->assertSee('A0-B0-C0')->assertDontSee('Choice for B was updated');
-    $preview->call('refreshDefinition')->assertSee('A0-B0-C0')->assertDontSeeText('Choice for B was updated');
+    $preview->call('refreshDefinition')->assertSee('A0-B0-C0')->assertSee('Choice for B was updated');
     $diagnostics->call('refreshDefinition')->assertSee('A0-B0-C0')->assertSee('Choice for B was updated');
     $product->group->update(['configurator_id' => null]);
     $public->call('refreshDefinition')->assertSee('Configuration is not available')->assertDontSee('A0-B0-C0');
@@ -324,10 +324,10 @@ test('Preview explains selection effects with semantic IDs and retains replaceme
         ->assertSee('Hidden values')->assertSee('b_zero (B0)')->assertSee('Selection mapping')
         ->assertDontSeeText(__('configurator.copy.rule_diagnostics'))
         ->call('selectOption', $a['id'], $a['options'][1]['id'])
-        ->assertSee('B changed from b_one (B1) to b_zero (B0) because the previous value is unavailable.')
-        ->call('toggleTrace')->assertSee('B changed from b_one (B1) to b_zero (B0)')
-        ->call('toggleTrace')->assertSee('B changed from b_one (B1) to b_zero (B0)')
-        ->call('refreshDefinition')->assertDontSeeText('B changed from b_one (B1) to b_zero (B0)')
+        ->assertSee('Choice for B was updated')
+        ->call('toggleTrace')->assertSee('Choice for B was updated')
+        ->call('toggleTrace')->assertSee('Choice for B was updated')
+        ->call('refreshDefinition')->assertDontSeeText('Choice for B was updated')
         ->call('chooseProduct', null)->assertDontSeeText('Selection mapping')->assertDontSeeText('b_zero (B0)');
 });
 

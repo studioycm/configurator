@@ -1,4 +1,4 @@
-<x-catalog.related-editor workspace="rules">
+<x-catalog.related-editor data-preview-editor="rules" workspace="rules">
     <x-slot:list>{{ $this->table }}</x-slot:list>
     @if ($editorKind !== null)
         <x-filament::section :heading="__($selectedRuleId !== null ? 'configurator.headings.edit_rule' : ($editorKind === 'Mapping' ? 'configurator.headings.new_mapping_rule' : 'configurator.headings.new_advanced_rule'))" wire:key="rule-editor-{{ $selectedRuleId ?? $editorKind }}">

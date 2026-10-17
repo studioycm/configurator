@@ -3,6 +3,7 @@
 use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorEvaluationResult;
 use App\Services\ConfiguratorDefinitionCompiler;
+use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorEngine;
 use App\Services\ConfiguratorPreviewNotes;
 use Tests\TestCase;
@@ -80,23 +81,24 @@ test('overlapping product restrictions stay in diagnostics regardless of rule or
 
     $notes = app(ConfiguratorPreviewNotes::class)->build($result);
 
-    expect($notes['effects'])->toBe([])->and($notes['warnings'])->toBe([]);
-    expect(array_column($notes['diagnostics'], 'code'))->toContain('selection_adjusted');
+    expect($notes['effects'])->toBe([]);
+    expect(array_column($notes['warnings'], 'code'))->toContain('selection_adjusted');
+    expect(array_column($notes['diagnostics'], 'code'))->not->toContain('selection_adjusted');
 })->with(['selection first' => false, 'product first' => true]);
 
-test('Preview reports selection driven adjustments and conflicts without treating default repairs as user effects', function () {
+test('Preview reports all choice adjustments and selection conflicts in state notes', function () {
     $result = previewNotesResult(fn (array &$data) => $data['rules'] = [fixtureMapping('replace')], selections: ['new:A' => 'new:A0', 'new:B' => 'new:B0']);
     $notes = app(ConfiguratorPreviewNotes::class)->build($result);
 
     expect($notes['warnings'])->toHaveCount(1);
-    expect($notes['warnings'][0]['message'])->toContain('b0_value (B0)', 'b1_value (B1)');
+    expect($notes['warnings'][0]['message'])->toContain('Choice for B was updated');
     expect($notes['diagnostics'])->toBe([]);
 
     $conflict = previewNotesResult(fn (array &$data) => $data['rules'] = [fixtureAdvanced('block-all', [fixtureCondition('a0')], 'B', 'DisableOptions', ['new:B0', 'new:B1'])]);
     expect(array_column(app(ConfiguratorPreviewNotes::class)->build($conflict)['warnings'], 'code'))->toContain('no_legal_options');
 
     $system = previewNotesResult(fn (array &$data) => $data['attributes'][1]['options'][0]['disabled_by_default'] = true, selections: ['new:B' => 'new:B0']);
-    expect(app(ConfiguratorPreviewNotes::class)->build($system)['warnings'])->toBe([]);
+    expect(array_column(app(ConfiguratorPreviewNotes::class)->build($system)['warnings'], 'code'))->toContain('selection_adjusted');
 
     $noop = previewNotesResult(fn (array &$data) => $data['rules'] = [fixtureAdvanced('selection', [fixtureCondition('a0')], 'B', 'DisableOptions', ['new:B0']), fixtureAdvanced('system-noop', [], 'B', 'AllowOptions', ['new:B0', 'new:B1'])], selections: ['new:B' => 'new:B0']);
     expect(array_column(app(ConfiguratorPreviewNotes::class)->build($noop)['warnings'], 'code'))->toContain('selection_adjusted');
@@ -125,4 +127,59 @@ test('Preview shows only winning selection driven presentation and leaves produc
     $tie = previewNotesResult(fn (array &$data) => $data['rules'] = [fixtureAdvanced('one', [fixtureCondition('a0')], 'B', 'SetHint', [], 'One'), fixtureAdvanced('two', [fixtureCondition('a0-again')], 'B', 'SetHint', [], 'Two')]);
     $tieNotes = app(ConfiguratorPreviewNotes::class)->build($tie);
     expect($tieNotes['effects'])->toBe([])->and(array_column($tieNotes['diagnostics'], 'code'))->toContain('presentation_priority_tie');
+});
+
+test('Preview traces every overlapping restriction when no legal values remain', function (bool $productFirst) {
+    $result = previewNotesResult(function (array &$data) use ($productFirst): void {
+        $selection = fixtureAdvanced('usa-body', [fixtureCondition('usa')], 'B', 'HideOptions', ['new:B0', 'new:B1']);
+        $selection['label'] = 'USA hides body';
+        $product = fixtureAdvanced('metal-body', [['id' => 'new:metal', 'source_kind' => 'ProductProperty', 'property_key' => 'Automatic_Type', 'context_dimension' => null, 'operator' => 'Equals', 'operand' => 'Metal Shell', 'source_configurator_attribute_id' => null, 'option_ids' => []]], 'B', 'HideOptions', ['new:B1']);
+        $product['label'] = 'Metal Shell restriction';
+        $selection['priority'] = $productFirst ? 1 : 0;
+        $product['priority'] = $productFirst ? 0 : 1;
+        $data['rules'] = [$selection, $product];
+    }, ['Automatic_Type' => 'Metal Shell']);
+
+    $conflict = app(ConfiguratorPreviewNotes::class)->build($result)['conflicts'][0];
+
+    expect($conflict['attribute'])->toBe('B');
+    expect($conflict['rules'])->toContain('USA hides body', 'Metal Shell restriction');
+    expect($conflict['values'][0]['reasons'])->toHaveCount(1);
+    expect(implode(' ', $conflict['values'][1]['reasons']))->toContain('USA hides body', 'Metal Shell restriction');
+    expect($conflict['values'][1]['value'])->toBe('b1_value (B1)');
+})->with([false, true]);
+
+test('Preview explains initial hidden values even without a restricting Rule', function () {
+    $result = previewNotesResult(function (array &$data): void {
+        foreach ($data['attributes'][1]['options'] as &$value) {
+            $value['hidden_by_default'] = true;
+        }
+    });
+
+    $conflict = app(ConfiguratorPreviewNotes::class)->build($result)['conflicts'][0];
+    expect($conflict['rules'])->toBe([]);
+    expect($conflict['values'][0]['reasons'])->toContain(__('configurator.preview.initially_hidden_reason'));
+});
+
+test('a replacement notice stays informational when another Attribute has a blocking conflict', function () {
+    $result = previewNotesResult(function (array &$data): void {
+        $data['rules'] = [fixtureMapping('replace-b'), fixtureAdvanced('block-c', [], 'C', 'HideOptions', ['new:C0', 'new:C1'])];
+    }, selections: ['new:B' => 'new:B0']);
+
+    $issues = app(ConfiguratorEditorChanges::class)->blockingIssues($result);
+
+    expect($result->isComplete)->toBeFalse();
+    expect($issues)->toHaveCount(1)->and($issues[0])->toContain('No legal value remains for C');
+});
+
+test('a Mapping conflict identifies its matched driver and set rather than an unconditional cause', function () {
+    $result = previewNotesResult(function (array &$data): void {
+        $mapping = fixtureMapping('driver-map');
+        $mapping['sets'][0]['label'] = 'Selected source set';
+        $data['rules'] = [$mapping, fixtureAdvanced('block-remaining', [], 'B', 'HideOptions', ['new:B1'])];
+    });
+
+    $conflict = app(ConfiguratorPreviewNotes::class)->build($result)['conflicts'][0];
+    $mapping = collect($conflict['causes'])->firstWhere('rule', 'driver-map');
+    expect($mapping['conditions'])->toContain('A', 'a0_value (A0)', 'Selected source set');
 });

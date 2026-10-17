@@ -2,21 +2,30 @@
 
 namespace App\Livewire\Catalog;
 
+use App\Actions\SaveTestedConfiguratorChanges;
 use App\DTO\ConfiguratorEvaluationInput;
+use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Models\Configurator;
 use App\Models\Product;
 use App\Services\CatalogAvailability;
 use App\Services\ConfiguratorDefinitionLoader;
+use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorEngine;
 use App\Services\ConfiguratorPreviewNotes;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -24,8 +33,9 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 
-class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
+class ConfiguratorPreview extends ProductConfigurator implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
     use InteractsWithSchemas;
 
     #[Locked]
@@ -43,6 +53,140 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     /** @var list<array<string, mixed>> */
     #[Locked]
     public array $selectionWarnings = [];
+
+    #[Locked]
+    public string $previewSource = 'saved';
+
+    /** @var list<array<string, mixed>> */
+    #[Locked]
+    public array $previewCaptures = [];
+
+    /** @var array<string, mixed>|null */
+    #[Locked]
+    public ?array $previewData = null;
+
+    /** @var list<array<string, mixed>> */
+    #[Locked]
+    public array $previewChanges = [];
+
+    /** @var list<string> */
+    #[Locked]
+    public array $previewErrors = [];
+
+    /** @var array<string, array<string, mixed>> */
+    #[Locked]
+    public array $sourceRuntimes = [];
+
+    #[Locked]
+    public ?string $testedFingerprint = null;
+
+    #[Locked]
+    public ?string $reviewedFingerprint = null;
+
+    /** @var array<string, mixed> */
+    #[Locked]
+    public array $reviewedTest = [];
+
+    #[Locked]
+    public ?string $productResetNotice = null;
+
+    /** @param list<array<string, mixed>> $captures */
+    public function rebuildPreview(array $captures = [], string $source = 'saved'): bool
+    {
+        Gate::authorize('manage-catalog');
+        abort_unless(in_array($source, ['saved', 'unsaved'], true), 422);
+        $this->sourceRuntimes[$this->previewSource] = $this->runtime;
+        $this->runtime = $this->sourceRuntimes[$source] ?? $this->runtime;
+        $this->previewSource = $source;
+        $this->previewCaptures = $captures;
+        $this->previewData = null;
+        $this->previewChanges = [];
+        $this->previewErrors = [];
+        $this->selectionWarnings = [];
+        $this->testedFingerprint = null;
+        $this->reviewedFingerprint = null;
+        $this->reviewedTest = [];
+        $this->definitionStale = false;
+        $this->preparedResult = null;
+        $this->cachedSchemas = [];
+        try {
+            DB::transaction(function (): void {
+                $configurator = Configurator::findOrFail($this->configuratorId);
+                if ($this->previewSource === 'unsaved') {
+                    $prepared = app(ConfiguratorEditorChanges::class)->prepare($configurator, $this->previewCaptures);
+                    $this->previewData = $prepared['data'];
+                    $this->previewChanges = $prepared['changes'];
+                }
+                $this->evaluate(['kind' => 'Reevaluate']);
+                if ($this->productId !== null) {
+                    $this->testedFingerprint = app(ConfiguratorEditorChanges::class)->fingerprint($configurator, $this->productId);
+                }
+            });
+        } catch (ValidationException $exception) {
+            $this->previewErrors = array_values(array_unique(Arr::flatten($exception->errors())));
+            $this->previewData = null;
+            $this->preparedResult = null;
+            $this->evaluate(['kind' => 'Reevaluate']);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public function canSaveTestedChanges(): bool
+    {
+        return $this->previewSource === 'unsaved' && $this->previewErrors === [] && $this->previewChanges !== []
+            && $this->testedFingerprint !== null && $this->productId !== null
+            && app(ConfiguratorEditorChanges::class)->blockingIssues($this->result()) === [];
+    }
+
+    /** @param list<array<string, mixed>> $captures */
+    public function reviewChanges(array $captures): void
+    {
+        Gate::authorize('manage-catalog');
+        if (! $this->rebuildPreview($captures, 'unsaved') || ! $this->canSaveTestedChanges()) {
+            Notification::make()->title(__('configurator.preview.test_errors'))->danger()->send();
+
+            return;
+        }
+        $this->reviewedFingerprint = $this->testedFingerprint;
+        $this->reviewedTest = [
+            'product' => $this->products()->findOrFail($this->productId)->product_code,
+            'source' => __('configurator.preview.unsaved_source'),
+            'code' => $this->result()->configurationCode,
+            'values' => app(ConfiguratorPreviewNotes::class)->build($this->result())['selected_values'],
+            'runtime' => $this->runtime,
+        ];
+        $this->mountAction('saveTestedChanges');
+    }
+
+    public function saveTestedChangesAction(): Action
+    {
+        return Action::make('saveTestedChanges')->label(__('configurator.preview.save_tested'))->authorize('manage-catalog')
+            ->requiresConfirmation()->modalHeading(__('configurator.preview.confirm_save'))
+            ->modalDescription(__('configurator.preview.confirm_save_help'))
+            ->modalContent(fn (): View => view('livewire.catalog.configurator-preview-changes', ['changes' => $this->previewChanges, 'tested' => $this->reviewedTest]))
+            ->modalSubmitActionLabel(__('configurator.preview.confirm_save_submit'))
+            ->mountUsing(function (): void {
+                if ($this->reviewedFingerprint === null || ! $this->canSaveTestedChanges()) {
+                    throw ValidationException::withMessages(['preview' => __('configurator.preview.test_errors')]);
+                }
+            })
+            ->action(function (): void {
+                if ($this->reviewedFingerprint === null || ! $this->canSaveTestedChanges()) {
+                    throw ValidationException::withMessages(['preview' => __('configurator.preview.test_errors')]);
+                }
+                $newRules = app(SaveTestedConfiguratorChanges::class)->handle(auth()->user(), $this->configuratorId, $this->productId, $this->previewCaptures, $this->reviewedFingerprint, $this->reviewedTest['runtime']);
+                $captures = $this->previewCaptures;
+                $this->previewCaptures = [];
+                $this->sourceRuntimes = [];
+                $this->rebuildPreview([], 'saved');
+                $this->dispatch('configurator-preview-saved', configuratorId: $this->configuratorId, captures: $captures, newRules: $newRules);
+                $this->dispatch('configurator-updated')->to(EditConfigurator::class);
+                Notification::make()->title(__('configurator.preview.changes_saved'))->success()->send();
+            });
+    }
 
     #[On('configurator-updated')]
     public function markDefinitionStale(): void
@@ -63,6 +207,12 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     {
         Gate::authorize('manage-catalog');
         $this->showTrace = ! $this->showTrace;
+    }
+
+    public function showConflictDetails(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->showTrace = true;
     }
 
     public function mount(int $configuratorId): void
@@ -88,6 +238,9 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
         $this->definitionStale = false;
         $this->resetValidation('product');
         if ($productId === null || $productId === '') {
+            $this->productResetNotice = null;
+            $this->reviewedFingerprint = null;
+            $this->reviewedTest = [];
             $this->selectionWarnings = [];
             $this->productId = null;
             $this->runtime = [];
@@ -101,7 +254,11 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
         if ($product === null) {
             throw ValidationException::withMessages(['product' => __('configurator.validation.choose_a_product_from_a_currently_assigned')]);
         }
+        $this->productResetNotice = $this->productId === null ? null : __('configurator.preview.product_reset', ['code' => $product->product_code]);
         $this->productId = $product->id;
+        $this->sourceRuntimes = [];
+        $this->reviewedFingerprint = null;
+        $this->reviewedTest = [];
         $this->selectionWarnings = [];
         $this->runtime = [];
         $this->evaluate(['kind' => 'Initialize']);
@@ -112,6 +269,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
     public function selectOption(string $attributeId, string $optionId): void
     {
         Gate::authorize('manage-catalog');
+        $this->productResetNotice = null;
         $this->selectionWarnings = [];
         parent::selectOption($attributeId, $optionId);
     }
@@ -124,7 +282,10 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
             return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'preview_product_required', 'message' => __('configurator.messages.choose_a_product_from_an_assigned_group')]]);
         }
 
-        $input = app(ConfiguratorDefinitionLoader::class)->forPreview(auth()->user(), $this->configuratorId, $this->productId, $this->runtime, $intent);
+        if ($this->previewErrors !== []) {
+            return new ConfiguratorEvaluationInput(null, diagnostics: [['code' => 'invalid_editor_changes', 'message' => __('configurator.preview.invalid_edits')]]);
+        }
+        $input = app(ConfiguratorDefinitionLoader::class)->forPreview(auth()->user(), $this->configuratorId, $this->productId, $this->runtime, $intent, $this->previewSource === 'unsaved' ? $this->previewData : null);
 
         return new ConfiguratorEvaluationInput($input->definition, $input->properties, $input->context, $input->selections, $input->remembered, $input->intent, $input->configuratorId, $input->diagnostics, trace: true);
     }
@@ -162,6 +323,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
                 }
                 $field = $attribute->inputType === 'select' ? Select::make('choices.'.$attribute->id)->selectablePlaceholder(false) : ToggleButtons::make('choices.'.$attribute->id)->inline();
                 $attributeFields[] = $field->label($state['label'])->options($options)
+                    ->helperText($state['legal'] === [] ? __('configurator.preview.no_available_values') : null)
                     ->disableOptionWhen(fn ($value): bool => ! in_array((string) $value, $state['legal'], true))
                     ->live()->afterStateUpdated(fn ($state) => $this->selectOption($attribute->id, (string) $state))->columnSpanFull();
             }
@@ -207,6 +369,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasSchemas
 
         return view('livewire.catalog.configurator-preview', [
             'result' => $result,
+            'blockingIssues' => $result === null ? [] : app(ConfiguratorEditorChanges::class)->blockingIssues($result),
             'notes' => app(ConfiguratorPreviewNotes::class)->build($result),
             'dashboardProduct' => $this->dashboardProduct(),
             'selectedProductCode' => $this->productId === null ? '' : ($this->products()->find($this->productId)?->product_code ?? ''),

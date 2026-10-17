@@ -8,6 +8,7 @@ import { tableColumnWidths } from './table-column-widths';
 import { workspaceSplit } from './workspace-split';
 import { tablePagination } from './table-pagination';
 import { configuratorProductSearch } from './configurator-product-search';
+import { configuratorPreviewWorkspace } from './configurator-preview-workspace';
 
 window.uiInterpolate = interpolate;
 window.workspaceColumnManager = workspaceColumnManager;
@@ -16,6 +17,7 @@ window.rememberOrderControls = rememberOrderControls;
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('configuratorProductSearch', configuratorProductSearch);
+    window.Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
     window.Alpine.data('catalogShell', catalogShell);
     window.Alpine.data('itemCountPreview', itemCountPreview);
     window.Alpine.data('workspaceDialog', workspaceDialog);
@@ -31,6 +33,7 @@ document.addEventListener('alpine:init', () => {
 
 if (window.Alpine) {
     window.Alpine.data('configuratorProductSearch', configuratorProductSearch);
+    window.Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
     window.Alpine.data('itemCountPreview', itemCountPreview);
     window.Alpine.data('workspaceDialog', workspaceDialog);
     window.Alpine.data('tableColumnWidths', tableColumnWidths);

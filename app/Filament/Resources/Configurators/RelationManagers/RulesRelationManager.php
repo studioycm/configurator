@@ -12,6 +12,7 @@ use App\Filament\Resources\TablePresentation;
 use App\Models\Configurator;
 use App\Models\ConfiguratorRule;
 use App\Services\ConfiguratorDefinitionLoader;
+use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorRuleDraft;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -32,6 +33,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 
 class RulesRelationManager extends RelationManager
 {
@@ -68,6 +70,10 @@ class RulesRelationManager extends RelationManager
     #[Locked]
     public array $editorDrafts = [];
 
+    /** @var array<string, array<string, mixed>> */
+    #[Locked]
+    public array $previewOriginals = [];
+
     /** @var array<string, string> */
     #[Locked]
     public array $editorOriginals = [];
@@ -75,6 +81,80 @@ class RulesRelationManager extends RelationManager
     /** @var array<string, bool> */
     #[Locked]
     public array $editorStaleRows = [];
+
+    /** @param list<array<string, mixed>> $captures @param array<string, array<string, mixed>> $newRules */
+    #[On('configurator-preview-saved')]
+    public function acceptPreviewSave(int $configuratorId, array $captures, array $newRules = []): void
+    {
+        Gate::authorize('manage-catalog');
+        if ($configuratorId !== $this->owner()->id) {
+            return;
+        }
+        $changes = app(ConfiguratorEditorChanges::class);
+        foreach ($changes->savedRows($configuratorId, $captures) as $row) {
+            if ($row['type'] !== 'rule') {
+                continue;
+            }
+            $new = str_starts_with((string) $row['id'], 'new:');
+            $key = $new ? 'new:'.$row['after']['kind'] : 'rule:'.$row['id'];
+            $activeKey = $this->editorKind === null ? null : ($this->selectedRuleId === null ? 'new:'.$this->editorKind : 'rule:'.$this->selectedRuleId);
+            $current = $activeKey === $key ? $this->editorData : ($this->editorDrafts[$key] ?? null);
+            $matches = $current !== null && $current == $row['after'];
+            unset($this->editorDrafts[$key], $this->editorOriginals[$key], $this->previewOriginals[$key], $this->editorStaleRows[$key]);
+            if ($new) {
+                $savedId = $newRules[$row['id']]['id'] ?? null;
+                if ($savedId === null) {
+                    continue;
+                }
+                $saved = $this->ruleDraft((int) $savedId);
+                if ($current !== null && ! $matches) {
+                    $rebased = $changes->rebase('rule', $current, $row['after'], $saved);
+                    $this->editorDrafts['rule:'.$savedId] = $rebased;
+                    $this->previewOriginals['rule:'.$savedId] = $saved;
+                    $this->editorOriginals['rule:'.$savedId] = hash('sha256', json_encode($saved, JSON_THROW_ON_ERROR));
+                }
+                if ($activeKey === $key) {
+                    $this->selectedRuleId = null;
+                    $this->editorKind = null;
+                    $this->editorData = [];
+                    $this->selectRule((int) $savedId, reload: $matches);
+                }
+            } else {
+                $saved = $this->ruleDraft((int) $row['id']);
+                $this->previewOriginals[$key] = $saved;
+                $this->editorOriginals[$key] = hash('sha256', json_encode($saved, JSON_THROW_ON_ERROR));
+                if (! $matches && $current !== null) {
+                    $this->editorDrafts[$key] = $current;
+                }
+                if ($activeKey === $key) {
+                    $this->selectRule((int) $row['id'], reload: $matches);
+                }
+            }
+        }
+        $this->flushCachedTableRecords();
+    }
+
+    /** @return array<string, mixed> */
+    #[Renderless]
+    public function exportPreviewChanges(): array
+    {
+        Gate::authorize('manage-catalog');
+        $states = $this->editorDrafts;
+        if ($this->editorKind !== null) {
+            $key = $this->selectedRuleId === null ? 'new:'.$this->editorKind : 'rule:'.$this->selectedRuleId;
+            $states[$key] = $this->editorData;
+        }
+        $rows = [];
+        foreach ($states as $key => $state) {
+            $original = $this->previewOriginals[$key] ?? $state;
+            if ($state != $original) {
+                $new = str_starts_with($key, 'new:');
+                $rows[] = ['type' => 'rule', 'id' => $new ? $state['id'] : substr($key, 5), 'before' => $new ? [] : $original, 'after' => $state];
+            }
+        }
+
+        return app(ConfiguratorEditorChanges::class)->capture($this->owner()->id, $rows);
+    }
 
     public function editorForm(Schema $schema): Schema
     {
@@ -94,6 +174,7 @@ class RulesRelationManager extends RelationManager
         $this->cacheSchema('editorForm')->fill($this->editorDrafts['rule:'.$id] ?? $this->ruleDraft($id));
         if ($reload || ! isset($this->editorOriginals['rule:'.$id])) {
             $this->editorOriginals['rule:'.$id] = hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR));
+            $this->previewOriginals['rule:'.$id] = $this->editorData;
         }
         $this->dispatch('configurator-editor-filled');
     }
@@ -108,6 +189,7 @@ class RulesRelationManager extends RelationManager
         $this->resetValidation();
         $this->cacheSchema('editorForm')->fill($this->editorDrafts['new:'.$kind] ?? app(ConfiguratorRuleDraft::class)->fromRule(['id' => 'new:'.Str::uuid(), 'label' => '', 'kind' => $kind, 'is_active' => true, 'priority' => 0, 'driver_configurator_attribute_id' => null, 'target_configurator_attribute_id' => null, 'conditions' => [], 'effects' => [], 'sets' => []]));
         $this->editorOriginals['new:'.$kind] ??= hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR));
+        $this->previewOriginals['new:'.$kind] ??= $this->editorData;
         $this->dispatch('configurator-editor-filled');
     }
 
@@ -136,7 +218,7 @@ class RulesRelationManager extends RelationManager
         foreach ($ids as $id) {
             $key = 'rule:'.$id;
             if ($removed) {
-                unset($this->editorDrafts[$key], $this->editorOriginals[$key], $this->editorStaleRows[$key]);
+                unset($this->editorDrafts[$key], $this->editorOriginals[$key], $this->previewOriginals[$key], $this->editorStaleRows[$key]);
                 if ($this->selectedRuleId === $id) {
                     $this->selectedRuleId = null;
                     $this->editorKind = null;
@@ -162,6 +244,7 @@ class RulesRelationManager extends RelationManager
         $this->editorData = [];
         $this->editorDrafts = [];
         $this->editorOriginals = [];
+        $this->previewOriginals = [];
         $this->editorStaleRows = [];
         $this->resetValidation();
         $this->dispatch('configurator-editor-filled');
@@ -178,7 +261,7 @@ class RulesRelationManager extends RelationManager
         $state = $this->editorForm->getRawState();
         $this->saveRule($this->selectedRuleId, $this->editorKind, $state instanceof Arrayable ? $state->toArray() : $state);
         if ($this->selectedRuleId === null) {
-            unset($this->editorDrafts['new:'.$this->editorKind], $this->editorOriginals['new:'.$this->editorKind]);
+            unset($this->editorDrafts['new:'.$this->editorKind], $this->editorOriginals['new:'.$this->editorKind], $this->previewOriginals['new:'.$this->editorKind]);
             $this->editorKind = null;
             $this->editorData = [];
             $this->dispatch('configurator-editor-filled');
