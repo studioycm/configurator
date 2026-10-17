@@ -32,6 +32,7 @@
     @endif
     <p x-cloak x-show="collecting" role="status" class="text-xs text-gray-500">{{ __('configurator.preview.collecting') }}</p>
     <p x-cloak x-show="collectionFailed" role="alert" class="text-sm text-danger-600">{{ __('configurator.preview.collection_failed') }}</p>
+    <p x-cloak x-show="navigationFailed" role="alert" class="text-sm text-danger-600">{{ __('configurator.preview.source_unavailable') }}</p>
     @if ($previewSource === 'unsaved' && $previewChanges !== [])
         <p class="text-xs text-gray-500">{{ trans_choice('configurator.preview.pending_count', count($previewChanges), ['count' => count($previewChanges)]) }} · {{ __('configurator.preview.tested_scope') }}</p>
     @elseif ($previewSource === 'unsaved' && $previewErrors === [])
@@ -47,7 +48,19 @@
         <div id="preview-errors-{{ $this->getId() }}" tabindex="-1" role="alert" class="scroll-mt-6 space-y-2 rounded-lg border border-danger-300 p-3 text-sm text-danger-700 dark:text-danger-400">
             <ul>@foreach ($blockingIssues as $index => $issue)<li wire:key="preview-issue-{{ $index }}">{{ $issue }}</li>@endforeach</ul>
             @foreach ($notes['conflicts'] as $conflict)
-                @if ($conflict['rules'] !== [])<p>{{ __('configurator.preview.conflicting_rules', ['rules' => implode(' · ', $conflict['rules'])]) }}</p>@endif
+                <div class="space-y-2" wire:key="preview-conflict-actions-{{ $conflict['attribute_id'] }}">
+                    @if (count($notes['conflicts']) > 1)<p class="font-medium">{{ $conflict['attribute'] }}</p>@endif
+                    @foreach ($conflict['causes'] as $cause)
+                        <x-catalog.configurator-preview-cause :cause="$cause" :name="$cause['rule']">{{ $cause['rule'] }}</x-catalog.configurator-preview-cause>
+                    @endforeach
+                    @foreach ($conflict['values'] as $value)
+                        @foreach ($value['causes'] as $cause)
+                            @if (($cause['target']['type'] ?? null) !== 'rule')
+                                <x-catalog.configurator-preview-cause :cause="$cause" :name="$value['value']">{{ $value['value'] }} · {{ $cause['message'] }}</x-catalog.configurator-preview-cause>
+                            @endif
+                        @endforeach
+                    @endforeach
+                </div>
             @endforeach
             @if ($notes['conflicts'] !== [])<x-filament::button color="gray" size="sm" x-on:click="explainConflicts()">{{ __('configurator.preview.view_conflict_details') }}</x-filament::button>@endif
         </div>
@@ -123,9 +136,17 @@
                     @foreach ($notes['conflicts'] as $conflict)
                         <div wire:key="preview-conflict-{{ $conflict['attribute_id'] }}" class="space-y-2">
                             <h4 class="font-semibold">{{ $conflict['attribute'] }}</h4>
-                            @foreach ($conflict['causes'] as $cause)<p><span class="font-medium">{{ $cause['rule'] }}</span><br>{{ $cause['conditions'] }}</p>@endforeach
+                            @foreach ($conflict['causes'] as $cause)
+                                <x-catalog.configurator-preview-cause :cause="$cause" :name="$cause['rule']"><p><span class="font-medium">{{ $cause['rule'] }}</span><br>{{ $cause['conditions'] }}</p></x-catalog.configurator-preview-cause>
+                            @endforeach
                             <dl class="space-y-2">
-                                @foreach ($conflict['values'] as $value)<div><dt class="font-medium">{{ $value['value'] }}</dt><dd>{{ implode(' · ', $value['reasons']) }}</dd></div>@endforeach
+                                @foreach ($conflict['values'] as $value)
+                                    <div><dt class="font-medium">{{ $value['value'] }}</dt><dd class="space-y-1">
+                                        @foreach ($value['causes'] as $cause)
+                                            <x-catalog.configurator-preview-cause :cause="$cause" :name="($cause['target']['type'] ?? null) === 'rule' ? $cause['message'] : $value['value']">{{ $cause['message'] }}</x-catalog.configurator-preview-cause>
+                                        @endforeach
+                                    </dd></div>
+                                @endforeach
                             </dl>
                         </div>
                     @endforeach

@@ -165,6 +165,32 @@ class RulesRelationManager extends RelationManager
         return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->editorKind === null ? [] : ConfiguratorRuleForm::components($this->owner(), $this->editorKind));
     }
 
+    public function openPreviewSource(string $id): bool
+    {
+        Gate::authorize('manage-catalog');
+        if (str_starts_with($id, 'new:')) {
+            $drafts = $this->editorDrafts;
+            if ($this->editorKind !== null && $this->selectedRuleId === null) {
+                $drafts['new:'.$this->editorKind] = $this->editorData;
+            }
+            foreach (['Mapping', 'Advanced'] as $kind) {
+                if (($drafts['new:'.$kind]['id'] ?? null) === $id) {
+                    $this->createRule($kind);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        if (! ctype_digit($id) || ! $this->owner()->rules()->whereKey($id)->exists()) {
+            return false;
+        }
+        $this->selectRule((int) $id);
+
+        return true;
+    }
+
     public function selectRule(int $id, bool $reload = false): void
     {
         $rule = $this->owner()->rules()->findOrFail($id);

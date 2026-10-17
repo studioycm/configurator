@@ -5,6 +5,7 @@ use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Livewire\Catalog\ConfiguratorOverview;
+use App\Models\Configurator;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEditorChanges;
@@ -25,6 +26,74 @@ function editorChangesFixture(): array
 
     return [$configurator, app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())];
 }
+
+test('opening conflict Rules preserves saved Rule edits and the exact unsaved new Rule', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $first = $configurator->rules()->create(['label' => 'First Rule', 'kind' => 'Advanced', 'is_active' => true, 'priority' => 0]);
+    $second = $configurator->rules()->create(['label' => 'Second Rule', 'kind' => 'Advanced', 'is_active' => true, 'priority' => 1]);
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('createRule', 'Advanced')->fillForm(['label' => 'Unsaved new Rule'], 'editorForm');
+    $newId = $manager->get('editorData.id');
+
+    $manager->call('openPreviewSource', (string) $first->id)->assertReturned(true)
+        ->fillForm(['label' => 'Pending first Rule'], 'editorForm')
+        ->call('openPreviewSource', (string) $second->id)->assertReturned(true)
+        ->fillForm(['label' => 'Pending second Rule'], 'editorForm')
+        ->call('openPreviewSource', (string) $first->id)->assertReturned(true)
+        ->assertSet('editorData.label', 'Pending first Rule')
+        ->call('openPreviewSource', $newId)->assertReturned(true)
+        ->assertSet('selectedRuleId', null)->assertSet('editorData.id', $newId)
+        ->assertSet('editorData.label', 'Unsaved new Rule');
+
+    expect($first->fresh()->label)->toBe('First Rule');
+    expect($second->fresh()->label)->toBe('Second Rule');
+    expect($configurator->rules()->count())->toBe(2);
+});
+
+test('opening conflict Values preserves both Attribute drafts and all other Value drafts without saving', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    [$a, $b] = $saved['attributes'];
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', (int) $a['id'])->fillForm(['help_text' => 'Pending A'], 'editorForm')
+        ->call('selectOption', (int) $a['id'], (int) $a['options'][0]['id'])->fillForm(['hint' => 'Pending A0'], 'optionEditorForm')
+        ->call('selectAttribute', (int) $b['id'])->fillForm(['help_text' => 'Pending B'], 'editorForm');
+
+    $manager->call('openPreviewSource', (int) $a['id'], (int) $a['options'][1]['id'])->assertReturned(true)
+        ->assertSet('editorData.help_text', 'Pending A')
+        ->fillForm(['hint' => 'Pending A1'], 'optionEditorForm')
+        ->call('openPreviewSource', (int) $a['id'], (int) $a['options'][0]['id'])->assertReturned(true)
+        ->assertSet('optionEditorData.hint', 'Pending A0')
+        ->call('openPreviewSource', (int) $b['id'], (int) $b['options'][0]['id'])->assertReturned(true)
+        ->assertSet('editorData.help_text', 'Pending B')
+        ->call('openPreviewSource', (int) $a['id'], (int) $a['options'][1]['id'])->assertReturned(true)
+        ->assertSet('optionEditorData.hint', 'Pending A1');
+
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+});
+
+test('unavailable or foreign conflict sources leave the current unsaved editor untouched', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $foreign = Configurator::factory()->create()->rules()->create(['label' => 'Foreign Rule', 'kind' => 'Advanced', 'is_active' => true, 'priority' => 0]);
+    $rules = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('createRule', 'Advanced')->fillForm(['label' => 'Keep new Rule'], 'editorForm');
+    $rules->call('openPreviewSource', (string) $foreign->id)->assertReturned(false)
+        ->call('openPreviewSource', 'new:missing')->assertReturned(false)->assertSet('editorData.label', 'Keep new Rule');
+    [$a, $b] = $saved['attributes'];
+    Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', (int) $a['id'])->fillForm(['help_text' => 'Keep Attribute draft'], 'editorForm')
+        ->call('openPreviewSource', (int) $a['id'], (int) $b['options'][0]['id'])->assertReturned(false)
+        ->assertSet('selectedAttributeId', (int) $a['id'])->assertSet('editorData.help_text', 'Keep Attribute draft');
+});
+
+test('conflict source navigation requires catalog management access', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $rules = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
+    $values = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
+    $this->actingAs(User::factory()->create(['email' => 'unauthorized@example.test']));
+
+    $rules->call('openPreviewSource', '1')->assertForbidden();
+    $values->call('openPreviewSource', (int) $saved['attributes'][0]['id'], (int) $saved['attributes'][0]['options'][0]['id'])->assertForbidden();
+});
 
 test('editor changes overlay all edited fields while preserving saved structure without writes', function () {
     [$configurator, $saved] = editorChangesFixture();

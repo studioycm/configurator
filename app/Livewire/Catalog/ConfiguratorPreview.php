@@ -209,6 +209,13 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
         $this->showTrace = ! $this->showTrace;
     }
 
+    #[Renderless]
+    public function notifyNavigationFailure(): void
+    {
+        Gate::authorize('manage-catalog');
+        Notification::make()->title(__('configurator.preview.source_unavailable'))->warning()->send();
+    }
+
     public function showConflictDetails(): void
     {
         Gate::authorize('manage-catalog');

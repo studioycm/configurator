@@ -282,6 +282,11 @@ return [
     ],
     'preview' => [
         'test_using' => 'Test using',
+        'edit_rule' => 'Edit Rule',
+        'edit_value' => 'Edit Value',
+        'edit_source_named' => ':action: :name',
+        'back_to_preview' => 'Back to Preview & Test',
+        'source_unavailable' => 'This Rule or Value could not be opened. Your edits were kept. Return to Preview & Test and rebuild the preview.',
         'yes' => 'Yes',
         'no' => 'No',
         'saved_source' => 'Saved configuration',

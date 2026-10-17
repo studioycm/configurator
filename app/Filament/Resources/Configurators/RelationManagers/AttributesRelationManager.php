@@ -135,6 +135,19 @@ class AttributesRelationManager extends RelationManager
         });
     }
 
+    public function openPreviewSource(int $attributeId, int $optionId): bool
+    {
+        Gate::authorize('manage-catalog');
+        $attribute = $this->owner()->attributes()->find($attributeId);
+        if ($attribute === null || ! $attribute->options()->whereKey($optionId)->exists()) {
+            return false;
+        }
+        $this->selectAttribute($attributeId);
+        $this->selectOption($attributeId, $optionId);
+
+        return true;
+    }
+
     #[On('configurator-option-selected')]
     public function selectOption(int $attributeId, int $optionId, bool $reload = false): void
     {

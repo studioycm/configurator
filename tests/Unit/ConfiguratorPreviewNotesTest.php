@@ -183,3 +183,30 @@ test('a Mapping conflict identifies its matched driver and set rather than an un
     $mapping = collect($conflict['causes'])->firstWhere('rule', 'driver-map');
     expect($mapping['conditions'])->toContain('A', 'a0_value (A0)', 'Selected source set');
 });
+
+test('conflict navigation identifies Rule and local Value causes separately', function () {
+    $result = previewNotesResult(function (array &$data): void {
+        $data['attributes'][1]['options'][0]['hidden_by_default'] = true;
+        $data['rules'] = [fixtureAdvanced('restrict-b', [], 'B', 'HideOptions', ['new:B1'])];
+    });
+    $conflict = app(ConfiguratorPreviewNotes::class)->build($result)['conflicts'][0];
+
+    expect($conflict['causes'][0]['target'])->toBe(['type' => 'rule', 'id' => 'new:restrict-b']);
+    expect($conflict['values'][0]['causes'][0]['target'])->toBe(['type' => 'value', 'attribute_id' => 'new:B', 'id' => 'new:B0']);
+    expect($conflict['values'][1]['causes'][0]['target'])->toBe(['type' => 'rule', 'id' => 'new:restrict-b']);
+});
+
+test('shared library unavailability does not offer a misleading local Value editor', function () {
+    [$data, $attributes, $options] = compiledDefinitionFixture();
+    $data['attributes'][1]['options'][0]['hidden_by_default'] = true;
+    $options[4]['is_hidden'] = true;
+    $options[7] = [...$options[4], 'code' => 'B2', 'is_hidden' => false, 'is_active' => false];
+    $data['attributes'][1]['options'][] = [...$data['attributes'][1]['options'][1], 'id' => 'new:B2', 'option_id' => 7, 'display_order' => 2];
+    $definition = app(ConfiguratorDefinitionCompiler::class)->compile($data, $attributes, $options);
+    $result = app(ConfiguratorEngine::class)->evaluate(new ConfiguratorEvaluationInput($definition, trace: true));
+    $conflict = app(ConfiguratorPreviewNotes::class)->build($result)['conflicts'][0];
+
+    expect($conflict['values'][1]['causes'][0]['target'])->toBeNull();
+    expect($conflict['values'][2]['causes'][0]['target'])->toBeNull();
+    expect($conflict['values'][1]['causes'][0]['message'])->toBe(__('configurator.preview.canonical_unavailable_reason'));
+});

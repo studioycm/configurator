@@ -158,14 +158,19 @@ class ConfiguratorPreviewNotes
         }
         foreach ($attribute->options as $id => $option) {
             $reasons = [];
+            $valueCauses = [];
+            $valueTarget = ['type' => 'value', 'attribute_id' => $attributeId, 'id' => (string) $id];
             if ($option->hidden) {
                 $reasons[] = __('configurator.preview.initially_hidden_reason');
+                $valueCauses[] = ['message' => __('configurator.preview.initially_hidden_reason'), 'target' => $valueTarget];
             }
             if ($option->disabled) {
                 $reasons[] = __('configurator.preview.initially_disabled_reason');
+                $valueCauses[] = ['message' => __('configurator.preview.initially_disabled_reason'), 'target' => $valueTarget];
             }
             if (! $option->active || $option->lifecycleHidden) {
                 $reasons[] = __('configurator.preview.canonical_unavailable_reason');
+                $valueCauses[] = ['message' => __('configurator.preview.canonical_unavailable_reason'), 'target' => null];
             }
             foreach ($result->trace as $entry) {
                 if (($entry['attribute_id'] ?? null) !== $attributeId || ! isset($entry['effect_kind'], $entry['rule_id'])) {
@@ -178,6 +183,8 @@ class ConfiguratorPreviewNotes
                 }
                 $rule = $rules[$entry['rule_id']];
                 $reasons[] = $rule->label.' · '.$kind->getLabel();
+                $target = ['type' => 'rule', 'id' => $rule->id];
+                $valueCauses[] = ['message' => $rule->label.' · '.$kind->getLabel(), 'target' => $target];
                 if (isset($causes[$rule->id])) {
                     continue;
                 }
@@ -198,9 +205,9 @@ class ConfiguratorPreviewNotes
                     $matched = $result->attributes[$rule->driverId]['label'].': '.$this->identity($driver->options[$result->selections[$rule->driverId]]).' · '.$setLabel;
                     $conditions = $matched.($conditions === __('configurator.preview.unconditional') ? '' : ' · '.$conditions);
                 }
-                $causes[$rule->id] = ['rule' => $rule->label, 'conditions' => $conditions];
+                $causes[$rule->id] = ['rule' => $rule->label, 'conditions' => $conditions, 'target' => $target];
             }
-            $values[] = ['value' => $this->identity($option), 'reasons' => array_values(array_unique($reasons))];
+            $values[] = ['value' => $this->identity($option), 'reasons' => array_values(array_unique($reasons)), 'causes' => $valueCauses];
         }
 
         return ['attribute_id' => $attributeId, 'attribute' => $result->attributes[$attributeId]['label'], 'rules' => array_column($causes, 'rule'), 'causes' => array_values($causes), 'values' => $values];
