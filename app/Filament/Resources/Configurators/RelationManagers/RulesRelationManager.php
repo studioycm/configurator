@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Configurators\RelationManagers;
 
 use App\Actions\SaveConfiguratorDefinition;
+use App\Filament\ConfiguratorRuleDataActions;
+use App\Filament\InteractsWithConfiguratorRuleImport;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorRuleForm;
@@ -37,6 +39,7 @@ use Livewire\Attributes\Renderless;
 
 class RulesRelationManager extends RelationManager
 {
+    use InteractsWithConfiguratorRuleImport;
     use InteractsWithConfiguratorTable;
     use InteractsWithScopedTableSearch;
 
@@ -332,7 +335,7 @@ class RulesRelationManager extends RelationManager
                 default => $query,
             })])->defaultSort('priority', 'desc')->reorderable('priority', direction: 'desc')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorRule $record): ?string => $record->id === $this->selectedRuleId ? 'catalog-selected-row' : null)
-            ->headerActions([ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label(__('configurator.labels.add_rule'))->icon(Heroicon::OutlinedPlus)->tooltip(__('configurator.help.add_rule'))])
+            ->headerActions([ConfiguratorRuleDataActions::import(selectConfigurators: false), ConfiguratorRuleDataActions::export($this->owner()->id), ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label(__('configurator.labels.add_rule'))->icon(Heroicon::OutlinedPlus)->tooltip(__('configurator.help.add_rule'))])
             ->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveRule($id, $direction)),
                 Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')
@@ -450,6 +453,27 @@ class RulesRelationManager extends RelationManager
         Gate::authorize('manage-catalog');
 
         return Configurator::findOrFail($this->getOwnerRecord()->getKey());
+    }
+
+    protected function ruleImportScope(): ?int
+    {
+        return (int) $this->owner()->id;
+    }
+
+    protected function ruleImportApplied(): void
+    {
+        $updatedIds = [];
+        foreach ($this->ruleImportPreview['configurators'] as $configurator) {
+            foreach ($configurator['changes'] as $change) {
+                if ($change['rule_id'] !== null) {
+                    $updatedIds[] = $change['rule_id'];
+                }
+            }
+        }
+        $this->reconcileBatchChanges($updatedIds, removed: false);
+        $this->orderedWorkspaceRows = null;
+        $this->flushCachedTableRecords();
+        $this->dispatch('configurator-updated');
     }
 
     private function saved(): void

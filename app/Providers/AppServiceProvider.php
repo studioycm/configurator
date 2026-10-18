@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Filament\Exports\ConfiguratorRuleExporter;
+use App\Filament\Exports\Jobs\CreateConfiguratorRulesXlsxFile;
 use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\Group;
@@ -13,11 +15,13 @@ use App\Services\AdminAppearance;
 use App\Services\AdminNavigationCounts;
 use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
+use Filament\Actions\Exports\Jobs\CreateXlsxFile;
 use Filament\Facades\Filament;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\View\TablesRenderHook;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Js;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +33,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(CreateXlsxFile::class, function (Application $app, array $parameters): CreateXlsxFile {
+            if ($parameters['export']->exporter === ConfiguratorRuleExporter::class) {
+                return $app->make(CreateConfiguratorRulesXlsxFile::class, $parameters);
+            }
+
+            return new CreateXlsxFile($parameters['export'], $parameters['columnMap'], $parameters['options'] ?? []);
+        });
         $this->app->scoped(CatalogRevisions::class);
         $this->app->scoped(AdminAppearance::class);
     }

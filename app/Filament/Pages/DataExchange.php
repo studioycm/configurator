@@ -3,12 +3,14 @@
 namespace App\Filament\Pages;
 
 use App\Filament\CatalogDataActions;
+use App\Filament\ConfiguratorRuleDataActions;
 use App\Filament\Exports\AttributeExporter;
 use App\Filament\Exports\AttributeValueExporter;
 use App\Filament\Exports\ValueExporter;
 use App\Filament\Imports\AttributeImporter;
 use App\Filament\Imports\AttributeValueImporter;
 use App\Filament\Imports\ValueImporter;
+use App\Filament\InteractsWithConfiguratorRuleImport;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Options\OptionResource;
 use App\Filament\Resources\Values\ValueResource;
@@ -22,6 +24,8 @@ use Illuminate\Support\Facades\Gate;
 
 class DataExchange extends Page
 {
+    use InteractsWithConfiguratorRuleImport;
+
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowPathRoundedSquare;
 
     protected static ?int $navigationSort = 5;
@@ -56,6 +60,9 @@ class DataExchange extends Page
     public function content(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make(__('data_exchange.rules.title'))->description(__('data_exchange.rules.help'))->schema([
+                Actions::make([ConfiguratorRuleDataActions::import(), ConfiguratorRuleDataActions::export()]),
+            ]),
             Section::make(__('catalog.resources.master_values.plural'))->description(__('data_exchange.help.values'))->schema([
                 Actions::make([
                     CatalogDataActions::import('importValues', ValueImporter::class),
