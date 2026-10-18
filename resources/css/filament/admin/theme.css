@@ -11,6 +11,7 @@
 .catalog-configurator-preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .catalog-configurator-preview-selection { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; flex: 1 1 30rem; min-width: 0; }
 .catalog-configurator-preview-catalog-actions { display: flex; align-items: center; gap: 4px; margin-top: 20px; }
+.catalog-configurator-preview-feedback { block-size: 2.5rem; overflow-y: auto; scrollbar-gutter: stable; overflow-wrap: anywhere; }
 .catalog-configurator-preview-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 .catalog-configurator-preview-controls { container: preview-controls / inline-size; }
 .catalog-configurator-preview-result { position: sticky; top: 8px; z-index: 20; background: var(--color-white); }
@@ -29,6 +30,9 @@
 .catalog-configurator-preview-form .fi-fo-field-content-col { grid-column: auto; min-width: 0; }
 @container preview (max-width: 460px) {
     .catalog-configurator-preview-catalog-label { display: none; }
+}
+@container preview (max-width: 700px) {
+    .catalog-configurator-preview-feedback { block-size: 5.5rem; }
 }
 @container preview-controls (min-width: 440px) {
     .catalog-configurator-preview-form .fi-fo-field-has-inline-label { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }

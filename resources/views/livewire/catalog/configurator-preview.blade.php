@@ -27,17 +27,20 @@
             <x-filament::button color="gray" size="sm" wire:click="toggleTrace" wire:loading.attr="disabled" wire:target="toggleTrace" aria-controls="preview-diagnostics-{{ $this->getId() }}" aria-expanded="{{ $showTrace ? 'true' : 'false' }}">{{ __($showTrace ? 'configurator.preview.hide_diagnostics' : 'configurator.preview.show_diagnostics') }}</x-filament::button>
         </div>
     </div>
-    @if ($productResetNotice)
-        <p role="status" class="text-xs text-gray-500">{{ $productResetNotice }}</p>
-    @endif
-    <p x-cloak x-show="collecting" role="status" class="text-xs text-gray-500">{{ __('configurator.preview.collecting') }}</p>
-    <p x-cloak x-show="collectionFailed" role="alert" class="text-sm text-danger-600">{{ __('configurator.preview.collection_failed') }}</p>
-    <p x-cloak x-show="navigationFailed" role="alert" class="text-sm text-danger-600">{{ __('configurator.preview.source_unavailable') }}</p>
-    @if ($previewSource === 'unsaved' && $previewChanges !== [])
-        <p class="text-xs text-gray-500">{{ trans_choice('configurator.preview.pending_count', count($previewChanges), ['count' => count($previewChanges)]) }} · {{ __('configurator.preview.tested_scope') }}</p>
-    @elseif ($previewSource === 'unsaved' && $previewErrors === [])
-        <p class="text-xs text-gray-500">{{ __('configurator.preview.no_unsaved') }}</p>
-    @endif
+    <div wire:key="preview-feedback" class="catalog-configurator-preview-feedback space-y-1 text-xs text-gray-500" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" tabindex="0">
+        <p x-cloak x-show="collecting" role="status">{{ __('configurator.preview.collecting') }}</p>
+        <p x-cloak x-show="collectionFailed" role="alert" class="text-danger-600">{{ __('configurator.preview.collection_failed') }}</p>
+        <p x-cloak x-show="navigationFailed" role="alert" class="text-danger-600">{{ __('configurator.preview.source_unavailable') }}</p>
+        <div x-show="!collecting" role="status">
+            @if ($previewSource === 'unsaved' && $previewChanges !== [])
+                <p>{{ trans_choice('configurator.preview.pending_count', count($previewChanges), ['count' => count($previewChanges)]) }} · {{ __('configurator.preview.tested_scope') }}</p>
+            @elseif ($previewSource === 'unsaved' && $previewErrors === [])
+                <p>{{ __('configurator.preview.no_unsaved') }}</p>
+            @endif
+        </div>
+        @if ($productResetNotice)<p role="status">{{ $productResetNotice }}</p>@endif
+        @if ($definitionStale)<p role="status" class="text-warning-600">{{ __('configurator.copy.saved_changes_are_available_refresh_to_retest_your_choices') }}</p>@endif
+    </div>
     @if ($previewErrors !== [])
         <div id="preview-errors-{{ $this->getId() }}" tabindex="-1" role="alert" class="scroll-mt-6 rounded-lg border border-danger-300 p-3 text-sm text-danger-700 dark:text-danger-400">
             <p class="font-medium">{{ __('configurator.preview.invalid_edits') }}</p>
@@ -64,9 +67,6 @@
             @endforeach
             @if ($notes['conflicts'] !== [])<x-filament::button color="gray" size="sm" x-on:click="explainConflicts()">{{ __('configurator.preview.view_conflict_details') }}</x-filament::button>@endif
         </div>
-    @endif
-    @if ($definitionStale)
-        <p role="status" class="rounded-md border border-amber-300 p-2 text-sm">{{ __('configurator.copy.saved_changes_are_available_refresh_to_retest_your_choices') }}</p>
     @endif
     <div @class(['catalog-configurator-preview-layout', 'catalog-configurator-preview-layout-with-diagnostics' => $showTrace])>
         <div id="preview-choices-{{ $this->getId() }}" tabindex="-1" class="catalog-configurator-preview-controls min-w-0 scroll-mt-6 space-y-3">

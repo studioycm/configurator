@@ -294,6 +294,7 @@ return [
         'source_help' => 'Includes unsaved values from editors on this page. Nothing is saved until you confirm Save tested changes.',
         'rebuild' => 'Rebuild preview',
         'collecting' => 'Gathering editor values…',
+        'feedback_label' => 'Preview feedback',
         'capture_expired' => 'Editor values could not be verified. Rebuild the preview and try again.',
         'editor_conflict' => 'A saved field changed or was removed while you were editing. Reload that editor, review your values and rebuild the preview.',
         'saved_conflict' => 'Saved configuration or Product data changed after this test. Rebuild the preview and review the changes again.',
