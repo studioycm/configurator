@@ -2,13 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Values\Tables\ValuesTable;
 use App\Models\Value;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 
 class ValueSelectionTable
@@ -25,13 +21,7 @@ class ValueSelectionTable
                 TextColumn::make('semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->sortable()->toggleable(),
                 TextColumn::make('tags')->label(__('catalog.fields.tags'))->badge()->toggleable(),
             ])->filters([
-                Filter::make('tags')->label(__('catalog.fields.tags'))->schema([ValuesTable::tagFilterField()])
-                    ->query(fn (Builder $query, array $data): Builder => $query->when($data['values'] ?? [], fn (Builder $query, array $tags): Builder => $query->where(function (Builder $query) use ($tags): void {
-                        foreach ($tags as $tag) {
-                            $query->orWhereJsonContains('tags', $tag);
-                        }
-                    })))
-                    ->indicateUsing(fn (array $data): array => empty($data['values']) ? [] : [Indicator::make(__('catalog.filters.tags_indicator', ['tags' => implode(', ', $data['values'])]))->removeField('values')]),
+                ValueTagFilter::make(),
             ])->defaultSort('label')->paginationPageOptions([10, 25, 50]), 'select-value', true);
     }
 }

@@ -266,7 +266,32 @@
 .catalog-workspace-table .fi-ta-header-toolbar .fi-icon-btn { margin: 0; flex-shrink: 0; min-width: var(--aquestia-shell-desktop-target); min-height: var(--aquestia-shell-desktop-target); }
 .catalog-item-preview { position: fixed; z-index: 100; pointer-events: none; max-width: 280px; padding: 8px 10px; white-space: pre-line; font-size: 12px; line-height: 18px; border-radius: 6px; background: #17212c; color: white; box-shadow: 0 4px 16px #0003; }
 .catalog-workspace-table .fi-ta-header-ctn { border: 0; }
-.catalog-inline-tag-filter { padding: 0 10px 6px; }
+.catalog-inline-tag-filter { display: flex; align-items: flex-start; gap: 6px; padding: 10px 10px 6px; }
+.catalog-inline-tag-filter > .fi-sc { flex: 1; min-width: 0; }
+.catalog-tag-operator { flex-shrink: 0; }
+.catalog-tag-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.catalog-tag-workspace.has-editor { grid-template-columns: minmax(230px, .7fr) minmax(0, 1.3fr); }
+.catalog-tag-list, .catalog-tag-values { min-width: 0; }
+.catalog-tag-values { border: 1px solid var(--gray-200); border-radius: 10px; background: white; overflow: clip; }
+.dark .catalog-tag-values { border-color: var(--gray-700); background: var(--gray-900); }
+.catalog-tag-editor-heading, .catalog-tag-editor-toolbar, .catalog-tag-change-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.catalog-tag-editor-heading, .catalog-tag-editor-toolbar { padding: 12px; }
+.catalog-tag-editor-heading { border-bottom: 1px solid var(--gray-200); }
+.dark .catalog-tag-editor-heading { border-color: var(--gray-700); }
+.catalog-tag-editor-heading h2 { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.catalog-tag-global-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.catalog-tag-change { display: grid; gap: 12px; padding: 12px; border-block: 1px solid var(--gray-200); background: var(--gray-50); }
+.dark .catalog-tag-change { border-color: var(--gray-700); background: var(--gray-950); }
+.catalog-tag-change h3 { font-weight: 600; }
+.catalog-tag-change-actions { justify-content: flex-start; }
+.catalog-tag-impact { display: grid; gap: 8px; font-size: 12px; }
+.catalog-tag-impact > div { display: grid; gap: 3px; }
+.catalog-tag-row-editor { display: grid; grid-template-columns: minmax(140px, 1fr) 58px; align-items: start; gap: 8px; width: 100%; min-width: 0; padding: 6px; }
+.catalog-tag-row-actions { display: grid; gap: 4px; justify-items: center; }
+.catalog-tag-values .fi-ta-header-ctn { border-radius: 0; }
+@media (max-width: 900px) {
+    .catalog-tag-workspace.has-editor { grid-template-columns: minmax(0, 1fr); }
+}
 .catalog-inline-tag-filter .fi-fo-field { gap: 4px; }
 .fi-modal-window .catalog-modal-tag-filter { display: none; }
 .catalog-workspace-table { container-type: inline-size; container-name: catalog-table; }

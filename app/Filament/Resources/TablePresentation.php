@@ -155,6 +155,10 @@ class TablePresentation
 
     private static function configureValueTags(Table $table, string $key): void
     {
+        $scope = $table->getLivewire()->listKey ?? $key;
+        if (in_array($scope, ['value-options', 'canonical-value-options', 'value-option-inclusions'], true)) {
+            return;
+        }
         $columns = $table->getColumns();
         $relationship = match (true) {
             isset($columns['value.label']) => 'value',
@@ -167,10 +171,6 @@ class TablePresentation
         }
         if ($table->getFilter('tags') === null) {
             $table->pushFilters([ValueTagFilter::make($relationship)]);
-        }
-        $component = $table->getLivewire();
-        if (method_exists($component, 'tagFilterPreferencesAction')) {
-            $table->pushHeaderActions([$component->tagFilterPreferencesAction()]);
         }
     }
 

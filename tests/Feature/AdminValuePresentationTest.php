@@ -29,7 +29,7 @@ beforeEach(function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
 });
 
-test('Value tables expose saved tag buttons that filter immediately within their parent', function (string $surface) {
+test('Value tables expose all tag buttons that filter immediately within their parent', function (string $surface) {
     $attribute = Attribute::factory()->create();
     $metal = Value::factory()->create(['tags' => ['metal']]);
     $polymer = Value::factory()->create(['tags' => ['polymer']]);
@@ -59,7 +59,7 @@ test('Value tables expose saved tag buttons that filter immediately within their
         ->assertSeeHtml('catalog-inline-tag-filter')
         ->set('tableFilters.tags.values', ['metal'])
         ->assertCanSeeTableRecords([$visible])->assertCanNotSeeTableRecords([$hidden]);
-    expect(array_keys($page->instance()->inlineTagsForm->getFlatFields()['values']->getOptions()))->toBe(['polymer', 'metal']);
+    expect(array_keys($page->instance()->inlineTagsForm->getFlatFields()['values']->getOptions()))->toBe(['metal', 'polymer']);
     $page->call('removeTableFilter', 'tags', 'values')
         ->assertCanSeeTableRecords([$visible, $hidden]);
     if (! in_array($surface, ['values', 'values-picker', 'options'], true)) {
@@ -101,7 +101,17 @@ test('nested Value tables keep independent tag label associations', function () 
         ->not->toBe($drawer->instance()->inlineTagsForm->getFlatFields()['values']->getId());
 });
 
-test('table pickers retain tag preferences and describe the selected object collection', function () {
+test('obsolete tag visibility utilities are absent while selected record actions remain grouped', function () {
+    Value::factory()->create(['tags' => ['metal']]);
+    $page = Livewire::test(ListValues::class);
+    $actions = collect($page->instance()->getTable()->getHeaderActions());
+
+    expect($actions->contains(fn ($action): bool => ! $action instanceof ActionGroup && $action->getName() === 'tagFilterPreferences'))->toBeFalse();
+    expect($actions->filter(fn ($action): bool => $action instanceof ActionGroup)->flatMap(fn (ActionGroup $group): array => $group->getFlatActions())->map->getName()->all())
+        ->toContain('batchEdit', 'batchReplace');
+});
+
+test('table pickers show all tags without visibility preferences and describe their object collection', function () {
     $attribute = Attribute::factory()->create(['label' => 'Body material']);
     $inclusion = ConfiguratorAttribute::factory()->for($attribute)->create(['label_override' => 'Local body']);
     $values = Livewire::test(WorkspaceTablePicker::class, ['tableConfiguration' => base64_encode(ValueSelectionTable::class), 'tableArguments' => ['owner_id' => 'create'], 'state' => []]);
@@ -112,7 +122,7 @@ test('table pickers retain tag preferences and describe the selected object coll
     foreach ([$values, $options] as $page) {
         $actions = collect($page->instance()->getTable()->getHeaderActions())
             ->flatMap(fn ($action) => $action instanceof ActionGroup ? $action->getFlatActions() : [$action]);
-        expect($actions->map->getName()->all())->toContain('tagFilterPreferences');
+        expect($actions->map->getName()->all())->not->toContain('tagFilterPreferences');
     }
 });
 

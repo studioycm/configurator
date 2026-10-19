@@ -167,28 +167,21 @@ test('form ordering visibility persists without draft data and survives regenera
     assert.equal(localOrderProfile({ user: 2, key: 'data.filters' }).showDragOrder, false);
 });
 
-test('personal tag filter preferences retain ordered and intentionally empty lists without sharing references', () => {
-    const tags = ['third', 'first'];
-    const profile = tableProfileState({ tableTagFilters: tags });
-    assert.deepEqual(profile.tagFilters, ['third', 'first']);
-    tags.push('second');
-    assert.deepEqual(profile.tagFilters, ['third', 'first']);
-    assert.deepEqual(tableProfileState({ tableTagFilters: [] }).tagFilters, []);
-    assert.equal(tableProfileState({ tableTagFilters: null }).tagFilters, null);
-    assert.equal(Object.hasOwn(tableProfileState({}), 'tagFilters'), false);
+test('table profiles preserve tag selection and operators without obsolete visibility settings', () => {
+    const filters = { tags: { values: ['metal', 'standard'], operator: 'and' } };
+    const profile = tableProfileState({ tableTagFilters: [], tableFilters: filters });
+    assert.equal(Object.hasOwn(profile, 'tagFilters'), false);
+    assert.deepEqual(profile.filters, filters);
+    filters.tags.values.push('third');
+    assert.deepEqual(profile.filters.tags.values, ['metal', 'standard']);
 });
 
-test('personal ordered tag filters restore through the existing per-table profile', async t => {
+test('legacy tag visibility is discarded while other table preferences still restore', async t => {
     const { store, calls, wire } = tableEnvironment(t);
-    wire.tableTagFilters = null;
-    const originalCall = wire.$call;
-    wire.$call = async function (name, changes) {
-        await originalCall.call(this, name, changes);
-        if (Object.hasOwn(changes, 'tagFilters')) this.tableTagFilters = changes.tagFilters;
-    };
-    browserProfile(1, 'table:values', store).save({ tagFilters: ['third', 'first'] });
+    browserProfile(1, 'table:values', store).save({ tagFilters: [], search: 'metal' });
     const controller = localTableProfile({ user: 1, scope: 'values' }); controller.$wire = wire;
     await controller.init();
-    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { tagFilters: ['third', 'first'] } }]);
-    assert.deepEqual(browserProfile(1, 'table:values', store).read().tagFilters, ['third', 'first']);
+    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { search: 'metal' } }]);
+    assert.equal(Object.hasOwn(browserProfile(1, 'table:values', store).read(), 'tagFilters'), false);
+    assert.equal(browserProfile(1, 'table:values', store).read().search, 'metal');
 });

@@ -120,7 +120,7 @@ test('tag filters remain buttons beyond six choices and match any selected tag',
     $b = Value::factory()->create(['label' => 'Flange beta', 'tags' => ['beta']]);
     $c = Value::factory()->create(['label' => 'Flange gamma', 'tags' => ['gamma', 'delta', 'epsilon', 'zeta']]);
     $page = Livewire::test(ListValues::class);
-    expect($page->instance()->getTable()->getFilter('tags')->getSchemaComponents()[0])->toBeInstanceOf(ToggleButtons::class);
+    expect(collect($page->instance()->getTable()->getFilter('tags')->getSchemaComponents())->first(fn ($field): bool => $field->getName() === 'values'))->toBeInstanceOf(ToggleButtons::class);
     $page->filterTable('tags', ['values' => ['alpha', 'beta']])
         ->assertCanSeeTableRecords([$a, $b])->assertCanNotSeeTableRecords([$c]);
     $seventh = Value::factory()->create(['tags' => ['seventh']]);

@@ -1,5 +1,5 @@
 <div class="space-y-2" aria-live="polite">
-    @include('filament.forms.validation-summary')
+    @include('filament.forms.validation-summary', ['getLivewire' => fn () => $this])
     @if ($this->tagPreview['token'] ?? null)
         <p>{{ __('tags.impact', ['count' => $this->tagPreview['affected']]) }}</p>
         @if ($this->tagPreview['destination_usage'])
@@ -17,6 +17,6 @@
             </table>
         </div>
     @else
-        <p>{{ __('tags.preview_first') }}</p>
+        <p>{{ __('tags.complete_change') }}</p>
     @endif
 </div>

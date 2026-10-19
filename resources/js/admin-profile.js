@@ -36,12 +36,11 @@ export function tableProfileState(state) {
         filters: clone(state.tableFilters && Object.keys(state.tableFilters).length ? state.tableFilters : {}),
         perPage: Number(state.tableRecordsPerPage ?? 10),
     };
-    if (state.tableTagFilters === null || Array.isArray(state.tableTagFilters)) result.tagFilters = state.tableTagFilters === null ? null : [...state.tableTagFilters];
     for (const name of ['showSelection', 'showOrderControls']) if (typeof state[name] === 'boolean') result[name] = state[name];
     return result;
 }
 
-const properties = ['tableColumns', 'tableSort', 'tableSearch', 'tableSearchScope', 'tableFilters', 'tableRecordsPerPage', 'showSelection', 'showOrderControls', 'tableTagFilters'];
+const properties = ['tableColumns', 'tableSort', 'tableSearch', 'tableSearchScope', 'tableFilters', 'tableRecordsPerPage', 'showSelection', 'showOrderControls'];
 
 export function localTableProfile(config) {
     let profile, unsubscribe, restoring = false, destroyed = false;

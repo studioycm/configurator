@@ -3,6 +3,7 @@
 use App\Actions\ManageValueTags;
 use App\Filament\Pages\ManageTags;
 use App\Filament\Resources\Values\Pages\ListValues;
+use App\Livewire\Catalog\TagValues;
 use App\Models\User;
 use App\Models\Value;
 use Filament\Actions\Testing\TestAction;
@@ -84,7 +85,7 @@ test('global operations authorize again when applying an already reviewed previe
     expect($value->fresh()->tags)->toBe(['old']);
 });
 
-test('central tag list searches counts distinct Values and links to the applied Values filter', function () {
+test('central tag list searches counts distinct Values and selects a tag inside the workspace', function () {
     Value::factory()->create(['tags' => ['Common', 'Unique']]);
     Value::factory()->create(['tags' => ['Common']]);
     $page = Livewire::test(ManageTags::class);
@@ -92,23 +93,20 @@ test('central tag list searches counts distinct Values and links to the applied 
     expect(collect($records)->firstWhere('tag', 'Common')['usage'])->toBe(2);
     $page->searchTable('unique');
     expect(collect($page->instance()->getTableRecords())->pluck('tag')->all())->toBe(['Unique']);
-    expect(ManageTags::valuesUrl('Common'))->toContain('filters%5Btags%5D%5Bvalues%5D%5B0%5D=Common');
+    $page->call('selectTag', hash('sha256', 'Unique'))->assertSet('selectedTag', 'Unique')->assertNoRedirect();
 });
 
-test('personal tag filter ordering persists separately from shared tags and keeps active tags available', function () {
+test('obsolete visibility settings are ignored and all tag choices remain available across accounts', function () {
     Value::factory()->create(['tags' => ['a', 'b', 'c']]);
     $page = Livewire::test(ListValues::class)
-        ->call('restoreTableBrowserProfile', ['tagFilters' => ['c', 'a']])
-        ->assertHasNoErrors()->assertSet('tableTagFilters', ['c', 'a']);
-    expect(array_keys($page->instance()->personalTagFilterOptions()))->toBe(['c', 'a']);
+        ->call('restoreTableBrowserProfile', ['tagFilters' => ['c', 'a']])->assertHasNoErrors();
+    expect(array_keys($page->instance()->tagFilterOptions()))->toBe(['a', 'b', 'c']);
     $page->filterTable('tags', ['values' => ['b']]);
-    expect(array_keys($page->instance()->personalTagFilterOptions()))->toBe(['c', 'a', 'b']);
-    Livewire::test(ListValues::class)->assertSet('tableTagFilters', ['c', 'a']);
-    expect(array_keys(Value::tagOptions()))->toBe(['a', 'b', 'c']);
-    $page->call('restoreTableBrowserProfile', ['tagFilters' => []])->assertSet('tableTagFilters', []);
-    $page->call('restoreTableBrowserProfile', ['tagFilters' => null])->assertSet('tableTagFilters', null);
+    expect(array_keys($page->instance()->tagFilterOptions()))->toBe(['a', 'b', 'c']);
+    $page->call('restoreTableBrowserProfile', ['tagFilters' => []])->assertHasNoErrors();
+    expect(array_keys($page->instance()->tagFilterOptions()))->toBe(['a', 'b', 'c']);
     $this->actingAs(User::factory()->create(['email' => 'beny.cr@gmail.com']));
-    Livewire::test(ListValues::class)->assertSet('tableTagFilters', null);
+    expect(array_keys(Livewire::test(ListValues::class)->instance()->tagFilterOptions()))->toBe(['a', 'b', 'c']);
 });
 
 test('selected Values have a direct tag assignment action with add remove and replace previews', function (string $mode, array $tags, array $expected) {
@@ -128,20 +126,19 @@ test('selected Values have a direct tag assignment action with add remove and re
     ['set', [], []],
 ]);
 
-test('the global tag dialog requires an impact preview and applies the confirmed rename', function () {
+test('global tag editing shows impact in the workspace and applies the confirmed rename', function () {
     $value = Value::factory()->create(['tags' => ['old']]);
-    $page = Livewire::test(ManageTags::class)
-        ->mountAction(TestAction::make('rename')->table(hash('sha256', 'old')))
-        ->fillForm(['target' => 'new'])
-        ->callMountedAction(['preview' => true])->assertHasNoFormErrors();
+    $page = Livewire::test(TagValues::class, ['tag' => 'old'])
+        ->call('beginGlobal', 'rename')->set('globalData.target', 'new')
+        ->call('refreshGlobalPreview')->assertHasNoErrors();
     expect($value->fresh()->tags)->toBe(['old'])->and($page->get('tagPreview.affected'))->toBe(1);
-    $page->callMountedAction()->assertHasNoFormErrors()->assertDispatched('catalog-tags-updated');
+    $page->call('applyGlobal')->assertHasNoErrors()->assertDispatched('catalog-tags-updated')->assertSet('tag', 'new');
     expect($value->fresh()->tags)->toBe(['new']);
 });
 
-test('tag preferences reject malformed lists before changing personal state', function () {
+test('malformed obsolete tag preferences do not prevent restoring other settings', function () {
     Livewire::test(ListValues::class)->call('restoreTableBrowserProfile', ['tagFilters' => ['a', 'a']])
-        ->assertHasErrors()->assertSet('tableTagFilters', null);
+        ->assertHasNoErrors();
 });
 
 test('refreshing tag choices keeps a removed active filter visible without broadening the results', function () {
@@ -149,7 +146,7 @@ test('refreshing tag choices keeps a removed active filter visible without broad
     $page = Livewire::test(ListValues::class)->filterTable('tags', ['values' => ['old']]);
     $value->update(['tags' => []]);
     $page->call('refreshTagFilters')->assertSet('tableFilters.tags.values', ['old']);
-    expect($page->instance()->personalTagFilterOptions())->toBe(['old' => 'old (unused)']);
+    expect($page->instance()->tagFilterOptions())->toBe(['old' => 'old (unused)']);
     $page->assertCanNotSeeTableRecords([$value]);
 });
 
@@ -169,11 +166,10 @@ test('global tag writes roll back all Values when a later save fails', function 
 
 test('an affected Value changed after the global modal preview cannot be silently updated', function () {
     $value = Value::factory()->create(['tags' => ['old']]);
-    $page = Livewire::test(ManageTags::class)
-        ->mountAction(TestAction::make('rename')->table(hash('sha256', 'old')))
-        ->fillForm(['target' => 'new'])->callMountedAction(['preview' => true]);
+    $page = Livewire::test(TagValues::class, ['tag' => 'old'])
+        ->call('beginGlobal', 'rename')->set('globalData.target', 'new')->call('refreshGlobalPreview');
     $value->update(['tags' => ['old', 'changed']]);
-    $page->callMountedAction()->assertHasErrors(['preview']);
+    $page->call('applyGlobal')->assertHasErrors(['preview']);
     expect($value->fresh()->tags)->toBe(['old', 'changed'])->and($page->get('tagPreview'))->toBe([]);
 });
 
@@ -184,11 +180,10 @@ test('the central tag page and its mutations deny accounts outside catalog admin
 
 test('a source tag removed after the global modal preview reports a validation error', function () {
     $value = Value::factory()->create(['tags' => ['old']]);
-    $page = Livewire::test(ManageTags::class)
-        ->mountAction(TestAction::make('rename')->table(hash('sha256', 'old')))
-        ->fillForm(['target' => 'new'])->callMountedAction(['preview' => true]);
+    $page = Livewire::test(TagValues::class, ['tag' => 'old'])
+        ->call('beginGlobal', 'rename')->set('globalData.target', 'new')->call('refreshGlobalPreview');
     $value->update(['tags' => []]);
-    $page->callMountedAction()->assertHasErrors();
+    $page->call('applyGlobal')->assertHasErrors();
     expect($value->fresh()->tags)->toBe([]);
 });
 
@@ -200,15 +195,15 @@ test('global tag management preserves the exact identity of existing spaced tags
     expect($value->fresh()->tags)->toBe(['new', 'other']);
 });
 
-test('tag usage links apply the native filters URL alias ahead of a previously saved table filter', function () {
+test('selecting a tag keeps an independently saved Values filter intact', function () {
     $metal = Value::factory()->create(['tags' => ['metal']]);
     $other = Value::factory()->create(['tags' => ['saved']]);
     Livewire::test(ListValues::class)
         ->call('restoreTableBrowserProfile', ['filters' => ['tags' => ['values' => ['saved']]]]);
-    parse_str(parse_url(ManageTags::valuesUrl('metal'), PHP_URL_QUERY), $query);
-    expect($query)->toBe(['filters' => ['tags' => ['values' => ['metal']]]]);
-    Livewire::withQueryParams($query)->test(ListValues::class)
-        ->assertSet('tableFilters.tags.values', ['metal'])
-        ->assertCanSeeTableRecords([$metal])
-        ->assertCanNotSeeTableRecords([$other]);
+
+    Livewire::test(ManageTags::class)->call('selectTag', hash('sha256', 'metal'))
+        ->assertSet('selectedTag', 'metal')->assertNoRedirect();
+
+    Livewire::test(ListValues::class)->assertSet('tableFilters.tags.values', ['saved'])
+        ->assertCanSeeTableRecords([$other])->assertCanNotSeeTableRecords([$metal]);
 });

@@ -2,16 +2,10 @@
 
 namespace App\Filament\Pages;
 
-use App\Actions\ManageValueTags;
-use App\Filament\Resources\Values\ValueResource;
 use App\Models\Value;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\View;
-use Filament\Support\ArrayRecord;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -19,25 +13,22 @@ use Filament\Tables\Table;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 
 class ManageTags extends Page implements HasTable
 {
-    use InteractsWithTable {
-        resolveTableRecord as protected resolveCurrentTagRecord;
-    }
+    use InteractsWithTable;
 
     protected static bool $shouldRegisterNavigation = false;
 
     protected string $view = 'filament.pages.manage-tags';
 
-    /** @var array<string, mixed> */
     #[Locked]
-    public array $tagPreview = [];
+    public ?string $selectedTag = null;
 
     #[Locked]
-    public ?string $tagActionSource = null;
+    public bool $isCreatingTag = false;
 
     public static function canAccess(): bool
     {
@@ -54,14 +45,10 @@ class ManageTags extends Page implements HasTable
         return __('tags.title');
     }
 
-    public static function valuesUrl(string $tag): string
-    {
-        return ValueResource::getUrl('index', ['filters' => ['tags' => ['values' => [$tag]]]]);
-    }
-
     protected function getHeaderActions(): array
     {
-        return [Action::make('values')->label(__('tags.values'))->url(ValueResource::getUrl('index'))];
+        return [Action::make('createTag')->label(__('tags.new_tag'))->icon(Heroicon::OutlinedPlus)
+            ->extraAttributes(['data-tag-transition' => true])->action(fn () => $this->createTag())];
     }
 
     public function table(Table $table): Table
@@ -80,67 +67,48 @@ class ManageTags extends Page implements HasTable
             return collect($counts)->filter(fn (array $row): bool => blank($search) || Str::contains(Str::lower($row['tag']), Str::lower($search)))->sortBy('tag', SORT_NATURAL | SORT_FLAG_CASE);
         })->columns([
             TextColumn::make('tag')->label(__('tags.tag'))->wrap(),
-            TextColumn::make('usage')->label(__('tags.usage'))->numeric()->url(fn (array $record): string => self::valuesUrl($record['tag'])),
-        ])->searchable()->paginated(false)->recordActions([
-            Action::make('values')->label(__('tags.values'))->url(fn (array $record): string => self::valuesUrl($record['tag'])),
-            $this->tagAction('rename')->schema([
-                TextInput::make('target')->label(__('tags.new_name'))->required()->maxLength(80),
-                View::make('filament.pages.tag-impact'),
-            ]),
-            $this->tagAction('merge')->schema([
-                Select::make('target')->label(__('tags.destination'))->options(fn (array $record): array => array_diff_key(Value::tagOptions(), [$record['tag'] => true]))->searchable()->required(),
-                View::make('filament.pages.tag-impact'),
-            ]),
-            $this->tagAction('remove')->color('danger')->schema([View::make('filament.pages.tag-impact')]),
-        ]);
+            TextColumn::make('usage')->label(__('tags.usage'))->numeric(),
+        ])->searchable()->paginated(false)->recordAction('selectTag')->recordActions([])
+            ->recordClasses(fn (array $record): ?string => $record['tag'] === $this->selectedTag ? 'catalog-selected-row' : null);
     }
 
-    /** @return array<string, mixed>|null */
-    protected function resolveTableRecord(?string $key): ?array
+    public function selectTag(string $key): void
     {
-        $record = $this->resolveCurrentTagRecord($key);
-        if ($record !== null) {
-            return $record;
-        }
-        if ($this->tagActionSource !== null && hash('sha256', $this->tagActionSource) === $key) {
-            return [ArrayRecord::getKeyName() => $key, 'tag' => $this->tagActionSource, 'usage' => 0];
-        }
-
-        return null;
+        Gate::authorize('manage-catalog');
+        $record = $this->getTableRecord($key);
+        abort_unless($record !== null, 404);
+        $this->selectedTag = $record['tag'];
+        $this->isCreatingTag = false;
     }
 
-    private function tagAction(string $operation): Action
+    public function createTag(): void
     {
-        return Action::make($operation)->label(__('tags.'.$operation))->authorize('manage-catalog')
-            ->modalHeading(fn (array $record): string => __('tags.'.$operation).' · '.$record['tag'])
-            ->modalSubmitActionLabel(__('tags.apply'))
-            ->modalSubmitAction(fn (Action $action): Action => $action->disabled(empty($this->tagPreview['token'])))
-            ->beforeFormFilled(function (array $record): void {
-                $this->tagActionSource = $record['tag'];
-                $this->tagPreview = [];
-            })
-            ->extraModalFooterActions(fn (Action $action): array => [$action->makeModalSubmitAction('previewTags', arguments: ['preview' => true])->label(__('tags.preview'))->color('gray')])
-            ->action(function (Action $action, array $record, array $data, array $arguments) use ($operation): void {
-                Gate::authorize('manage-catalog');
-                $service = app(ManageValueTags::class);
-                $target = $data['target'] ?? null;
-                if ($arguments['preview'] ?? false) {
-                    $this->tagPreview = $service->preview(auth()->user(), $operation, $record['tag'], $target);
-                    $action->halt();
-                }
-                if (empty($this->tagPreview['token'])) {
-                    throw ValidationException::withMessages(['preview' => __('tags.preview_first')]);
-                }
-                try {
-                    $service->apply(auth()->user(), $operation, $record['tag'], $target, $this->tagPreview['token']);
-                } catch (ValidationException $exception) {
-                    $this->tagPreview = [];
-                    throw $exception;
-                }
-                $this->tagPreview = [];
-                $this->resetTable();
-                $this->dispatch('catalog-tags-updated');
-                Notification::make()->title(__('tags.saved'))->success()->send();
-            });
+        Gate::authorize('manage-catalog');
+        $this->selectedTag = null;
+        $this->isCreatingTag = true;
+    }
+
+    #[On('close-tag-workspace')]
+    public function closeTag(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->selectedTag = null;
+        $this->isCreatingTag = false;
+    }
+
+    #[On('tag-workspace-selected')]
+    public function followTag(string $tag): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->selectedTag = $tag;
+        $this->isCreatingTag = false;
+        $this->flushCachedTableRecords();
+    }
+
+    #[On('catalog-tags-updated')]
+    public function refreshTags(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->flushCachedTableRecords();
     }
 }
