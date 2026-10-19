@@ -25,6 +25,11 @@ class Option extends Model
         return ['is_active' => 'boolean', 'is_hidden' => 'boolean'];
     }
 
+    public function displayName(?string $valueLabel = null, ?string $attributeLabel = null): string
+    {
+        return $this->code.' - '.(filled($valueLabel) ? $valueLabel : $this->value->label).' | '.(filled($attributeLabel) ? $attributeLabel : $this->attribute->label);
+    }
+
     public function attribute(): BelongsTo
     {
         return $this->belongsTo(Attribute::class);

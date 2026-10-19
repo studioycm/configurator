@@ -491,6 +491,6 @@ test('related option updates refresh the rule choices while preserving its draft
         ->fillForm(['label_override' => 'Updated option'], 'optionEditorForm')->call('saveOptionEditor')->assertHasNoErrors();
 
     $manager->dispatch('configurator-updated')->assertSchemaStateSet(['label' => 'Unsaved rule'], 'editorForm')
-        ->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$option->id] === 'A0 · Updated option - '.$option->option->value->semantic_id);
+        ->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$option->id] === 'A0 - Updated option | A');
     expect($rule->fresh()->label)->toBe('map');
 });

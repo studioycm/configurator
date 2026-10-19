@@ -37,13 +37,15 @@ class ConfiguratorAttributeForm
     /** @return array<Component> */
     public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true, bool $chooseCanonical = true): array
     {
-        $labels = [];
-        $optionLabels = function (mixed $attributeId) use (&$labels): array {
+        $optionsByAttribute = [];
+        $optionLabels = function (mixed $attributeId, ?string $attributeLabel = null, array $overrides = []) use (&$optionsByAttribute): array {
             if (! is_numeric($attributeId)) {
                 return [];
             }
 
-            return $labels[(int) $attributeId] ??= Option::with('value')->where('attribute_id', $attributeId)->orderBy('code')->get()->mapWithKeys(fn (Option $option): array => [$option->id => $option->code.' · '.$option->value->labelWithSemanticId()])->all();
+            $optionsByAttribute[(int) $attributeId] ??= Option::with(['value', 'attribute'])->where('attribute_id', $attributeId)->orderBy('code')->get();
+
+            return $optionsByAttribute[(int) $attributeId]->mapWithKeys(fn (Option $option): array => [$option->id => $option->displayName($overrides[$option->id] ?? null, $attributeLabel)])->all();
         };
 
         return [
@@ -76,7 +78,7 @@ class ConfiguratorAttributeForm
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                 Select::make('option_id')->label(__('catalog.attribute_values.headings.shared'))->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()
-                    ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id'))),
+                    ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id'), $get('../../label_override'), [$get('option_id') => $get('label_override')])),
                 TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255),
                 TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255),
                 TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
@@ -85,10 +87,10 @@ class ConfiguratorAttributeForm
             ])->hintAction(FormHints::make(__('configurator.hints.reordering_does_not_change_the_stored_default')))] : []),
             Select::make('default_configurator_option_id')->label(__('configurator.labels.stored_default'))->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
                 if (! $withOptions) {
-                    return $inclusion->options()->with('option.value')->orderBy('display_order')->get()
-                        ->mapWithKeys(fn ($option): array => [$option->id => $option->option->code.' · '.$option->option->value->labelWithSemanticId($option->label_override)])->all();
+                    return $inclusion->options()->with(['option.value', 'option.attribute'])->orderBy('display_order')->get()
+                        ->mapWithKeys(fn ($option): array => [$option->id => $option->option->displayName($option->label_override, $get('label_override') ?? $inclusion->attribute->label)])->all();
                 }
-                $canonical = $optionLabels($get('attribute_id'));
+                $canonical = $optionLabels($get('attribute_id'), $get('label_override'), array_column($get('options') ?? [], 'label_override', 'option_id'));
                 $options = [];
                 foreach ($get('options') ?? [] as $row) {
                     if (isset($row['id'], $row['option_id'])) {

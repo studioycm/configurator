@@ -65,7 +65,7 @@ class OptionsRelationManager extends RelationManager
 
     public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
-        return __('configurator.inclusions.values.heading');
+        return __('configurator.inclusions.values.for_attribute', ['attribute' => $ownerRecord->label_override ?? $ownerRecord->attribute->label]);
     }
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
@@ -81,7 +81,7 @@ class OptionsRelationManager extends RelationManager
                 TextColumn::make('display_value_override')->label(__('configurator.labels.display_value'))->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('hint')->label(__('configurator.labels.hint'))->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('option.code')->label(__('catalog.fields.code'))->searchable(),
-                TextColumn::make('option.value.label')->label(__('catalog.fields.ui_name'))->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
+                TextColumn::make('option.value.label')->label(__('catalog.fields.value_ui_name'))->tooltip(__('configurator.inclusions.values.fields.name_source'))->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
                 TextColumn::make('option.value.semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->toggleable()->copyable(),
                 TextColumn::make('option.value.tags')->label(__('catalog.fields.tags'))->badge(),
                 IconColumn::make('stored_default')->label(__('ui.fields.default'))->boolean()->state(fn (ConfiguratorOption $record): bool => $record->id === $this->owner()->default_configurator_option_id),
@@ -107,7 +107,6 @@ class OptionsRelationManager extends RelationManager
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)->recordAction('edit')
             ->recordClasses(fn (ConfiguratorOption $record): ?string => $record->id === $this->selectedOptionId ? 'catalog-selected-row' : null)
             ->headerActions([
-                $this->tagFilterPreferencesAction(),
                 Action::make('includeMany')->label(__('configurator.inclusions.values.actions.include_many'))->authorize('manage-catalog')->slideOver()
                     ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
                     ->action(fn (array $data) => $this->includeOptions($data['selected'])),
@@ -153,7 +152,7 @@ class OptionsRelationManager extends RelationManager
                 ->options(fn (): array => Option::where('attribute_id', $owner->attribute_id)
                     ->when($option === null, fn ($query) => $query->where('is_active', true)->where('is_hidden', false))
                     ->whereNotIn('id', $owner->options()->when($option, fn ($query) => $query->whereKeyNot($option->id))->pluck('option_id'))
-                    ->with('value')->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->code.' · '.$row->value->labelWithSemanticId()])->all()),
+                    ->with(['value', 'attribute'])->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->displayName($option?->option_id === $row->id ? $option->label_override : null, $owner->label_override ?? $owner->attribute->label)])->all()),
             TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255),
             TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255),
             TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),

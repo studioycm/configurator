@@ -1,4 +1,4 @@
-@if ($this instanceof \App\Filament\Resources\Values\Pages\ListValues)
+@if ($this->getTable()->getFilter('tags') && method_exists($this, 'inlineTagsForm'))
     <div class="catalog-inline-tag-filter" wire:key="{{ $this->getId() }}.inline-tags">
         {{ $this->inlineTagsForm }}
     </div>

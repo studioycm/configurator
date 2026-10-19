@@ -17,11 +17,11 @@ class ValueSelectionTable
     {
         Gate::authorize('manage-catalog');
 
-        return TablePresentation::configure($table->query(fn (Table $table) => Value::query()
+        return TablePresentation::configure($table->heading(__('attribute-options.selected'))->query(fn (Table $table) => Value::query()
             ->when($table->getArguments()['attribute_id'] ?? null, fn ($query, $id) => $query->whereDoesntHave('options', fn ($options) => $options->where('attribute_id', $id)))
             ->whereNotIn('id', $table->getArguments()['excluded_ids'] ?? []))
             ->columns([
-                TextColumn::make('label')->label(__('catalog.fields.ui_name'))->searchable()->sortable(),
+                TextColumn::make('label')->label(__('catalog.fields.value_ui_name'))->searchable()->sortable(),
                 TextColumn::make('semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->sortable()->toggleable(),
                 TextColumn::make('tags')->label(__('catalog.fields.tags'))->badge()->toggleable(),
             ])->filters([

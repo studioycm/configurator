@@ -65,9 +65,9 @@ test('Admin Configurator Values keep local names and add their Master Value iden
 
     Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->call('selectAttribute', $attribute->id)
-        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 · Local Viton - viton_body')
+        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 - Local Viton | A')
         ->call('selectOption', $attribute->id, $option->id)
-        ->assertSee('Viton - viton_body')
+        ->assertSee('A0 - Local Viton | A')
         ->assertSchemaStateSet(['label_override' => 'Local Viton'], 'optionEditorForm');
 });
 
@@ -84,13 +84,13 @@ test('Mapping and Advanced Rule choices identify Values while preserving stored 
         $conditionField = collect($manager->instance()->editorForm->getFlatFields(withHidden: true))
             ->first(fn ($field): bool => $field->getStatePath() === 'editorData.condition_blocks.'.$conditionKey.'.data.option_ids');
         expect($conditionField)->toBeInstanceOf(Select::class);
-        expect($conditionField->getOptions()[$source->id])->toBe('A0 · Local Viton - viton_body');
+        expect($conditionField->getOptions()[$source->id])->toBe('A0 - Local Viton | A');
 
         if ($rule->kind === 'Mapping') {
-            $manager->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$source->id] === 'A0 · Local Viton - viton_body' && $field->getTargetChoices()[$target->id] === 'B1 · Polypropylene - polypropylene_float');
+            $manager->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$source->id] === 'A0 - Local Viton | A' && $field->getTargetChoices()[$target->id] === 'B1 - Polypropylene | B');
         } else {
             $effectKey = array_key_first($manager->get('editorData.effects'));
-            $manager->assertFormFieldExists('effects.'.$effectKey.'.option_ids', 'editorForm', fn (Select $field): bool => $field->getOptions()[$target->id] === 'B1 · Polypropylene - polypropylene_float');
+            $manager->assertFormFieldExists('effects.'.$effectKey.'.option_ids', 'editorForm', fn (Select $field): bool => $field->getOptions()[$target->id] === 'B1 - Polypropylene | B');
         }
 
         $manager->call('saveEditor')->assertHasNoErrors();
@@ -111,4 +111,16 @@ test('dashboard Product configurator keeps semantic IDs private while Admin Prev
         ->call('chooseProduct', $product->id)
         ->assertSee('Local Viton')->assertSee('Polypropylene')->assertSee('A0-B1-C0')
         ->assertSee('viton_body')->assertSee('polypropylene_float')->assertDontSee('viton_seal');
+});
+
+test('Configurator Option labels follow local Attribute names and unsaved Value name overrides', function () {
+    [$configurator, $attribute] = adminValueIdentificationFixture();
+    $attribute->update(['label_override' => 'Local body']);
+    $option = $attribute->options()->orderBy('display_order')->first();
+    $page = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)
+        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 - Local Viton | Local body')
+        ->set('editorData.label_override', 'Draft body')
+        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 - Local Viton | Draft body');
+    expect($attribute->fresh()->label_override)->toBe('Local body');
 });

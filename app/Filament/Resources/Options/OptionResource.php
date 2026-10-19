@@ -29,6 +29,11 @@ class OptionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'code';
 
+    public static function getRecordTitle(?Model $record): string
+    {
+        return $record instanceof Option ? $record->displayName() : static::getModelLabel();
+    }
+
     public static function getModelLabel(): string
     {
         return __('catalog.resources.attribute_values.singular');

@@ -40,10 +40,10 @@ class AttributeForm
                     }),
             ])->schema([
                 Repeater::make('pending_options')->hiddenLabel()->default([])->addable(false)->reorderable(false)->compact()
-                    ->table([TableColumn::make(__('catalog.fields.ui_name').' / '.__('catalog.fields.semantic_id')), TableColumn::make(__('catalog.fields.code'))])
+                    ->table([TableColumn::make(__('catalog.fields.value_ui_name')), TableColumn::make(__('catalog.fields.code'))])
                     ->schema([
                         Hidden::make('value_id')->required()->rules(['integer'])->distinct(),
-                        TextInput::make('name')->label(__('catalog.fields.ui_name'))->readOnly()->dehydrated(false),
+                        TextInput::make('name')->label(__('catalog.fields.value_ui_name'))->readOnly()->dehydrated(false),
                         TextInput::make('code')->label(__('catalog.fields.code'))->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D')->distinct()->unique('options', 'code', ignoreRecord: false)
                             ->helperText(__('attribute-options.code_help')),
                     ]),

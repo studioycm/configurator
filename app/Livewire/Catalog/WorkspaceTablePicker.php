@@ -12,6 +12,11 @@ class WorkspaceTablePicker extends TableSelectLivewireComponent
 
     public function table(Table $table): Table
     {
-        return parent::table($table)->persistInSession();
+        $table = parent::table($table)->persistInSession();
+        if ($table->getFilter('tags') !== null) {
+            $table->pushHeaderActions([$this->tagFilterPreferencesAction()]);
+        }
+
+        return $table;
     }
 }

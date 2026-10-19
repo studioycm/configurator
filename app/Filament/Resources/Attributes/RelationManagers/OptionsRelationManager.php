@@ -43,9 +43,9 @@ class OptionsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('value'))
+        return TablePresentation::configure($table->heading(__('catalog.attribute_values.headings.for_attribute', ['attribute' => $this->getOwnerRecord()->label]))->recordTitle(fn (Option $record): string => $record->displayName())->modifyQueryUsing(fn ($query) => $query->with(['value', 'attribute']))
             ->columns([
-                TextColumn::make('value.label')->label(__('catalog.fields.ui_name'))->searchable(),
+                TextColumn::make('value.label')->label(__('catalog.fields.value_ui_name'))->searchable(),
                 TextColumn::make('value.semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->sortable()->toggleable(),
                 TextColumn::make('code')->label(__('catalog.fields.code'))->searchable()->toggleable(),
             ])->headerActions([
@@ -65,9 +65,9 @@ class OptionsRelationManager extends RelationManager
 
     private function optionAction(string $name): Action
     {
-        return Action::make($name)->authorize('manage-catalog')->schema([
+        return Action::make($name)->authorize('manage-catalog')->modalHeading(fn (?Option $record): string => $record?->displayName() ?? __('catalog.attributes.labels.add_value'))->schema([
             View::make('filament.forms.validation-summary'),
-            Select::make('value_id')->label(__('catalog.fields.ui_name'))->required()->searchable()
+            Select::make('value_id')->label(__('catalog.fields.master_value'))->required()->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Value::query()->where(fn (Builder $query) => $query->where('label', 'like', '%'.$search.'%')->orWhere('semantic_id', 'like', '%'.$search.'%'))->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Value $value): array => [$value->id => $value->labelWithSemanticId()])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Value::find($value)?->labelWithSemanticId() : null),
             TextInput::make('code')->label(__('catalog.fields.code'))->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D'),

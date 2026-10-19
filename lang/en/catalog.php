@@ -3,9 +3,10 @@
 return [
     'attribute_values' => [
         'headings' => [
-            'shared' => 'Shared Attribute Value',
+            'shared' => 'Attribute Value',
             'shared_definition_usage' => 'Shared definition usage',
-            'shared_plural' => 'Shared Attribute Values',
+            'shared_plural' => 'Attribute Values',
+            'for_attribute' => 'Attribute Values — :attribute',
         ],
         'help' => [
             'referenced_definitions_cannot_be_removed_use_view' => 'Referenced definitions cannot be removed. Use View usage to review and repair dependencies first.',
@@ -56,6 +57,8 @@ return [
         'specification' => 'Specification',
         'tags' => 'Tags',
         'ui_name' => 'UI Name',
+        'value_ui_name' => 'Value UI Name',
+        'master_value' => 'Master Value',
     ],
     'filters' => [
         'choice_help' => 'Muted choices have no matches with your other choices. A newer choice may clear incompatible earlier choices. Click a selected choice again to clear it. RESET clears all filters and the Sub Group.',

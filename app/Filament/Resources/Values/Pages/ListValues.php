@@ -7,10 +7,8 @@ use App\Filament\Exports\ValueExporter;
 use App\Filament\Imports\ValueImporter;
 use App\Filament\Pages\ManageTags;
 use App\Filament\Resources\SplitListRecords;
-use App\Filament\Resources\Values\Tables\ValuesTable;
 use App\Filament\Resources\Values\ValueResource;
 use Filament\Actions\Action;
-use Filament\Schemas\Schema;
 use Livewire\Attributes\On;
 
 class ListValues extends SplitListRecords
@@ -21,14 +19,7 @@ class ListValues extends SplitListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('manageTags')->label(__('tags.manage'))->url(ManageTags::getUrl()), $this->tagFilterPreferencesAction(), CatalogDataActions::import('import', ValueImporter::class), CatalogDataActions::export('export', ValueExporter::class)];
-    }
-
-    public function inlineTagsForm(Schema $schema): Schema
-    {
-        return $schema->statePath('tableFilters.tags')->live()->components([
-            ValuesTable::tagFilterField()->options(fn (): array => $this->personalTagFilterOptions())->label(__('catalog.fields.tags'))->hiddenLabel(),
-        ]);
+        return [Action::make('manageTags')->label(__('tags.manage'))->url(ManageTags::getUrl()), CatalogDataActions::import('import', ValueImporter::class), CatalogDataActions::export('export', ValueExporter::class)];
     }
 
     #[On('catalog-tags-updated')]
@@ -36,17 +27,5 @@ class ListValues extends SplitListRecords
     public function refreshTagFilters(): void
     {
         $this->flushCachedTableRecords();
-    }
-
-    public function updatedTableFilters(mixed $value = null, ?string $key = null): void
-    {
-        if ($key === 'tags' || str_starts_with($key ?? '', 'tags.')) {
-            $this->tableDeferredFilters['tags'] = $this->tableFilters['tags'];
-            $this->handleTableFilterUpdates();
-
-            return;
-        }
-
-        parent::updatedTableFilters();
     }
 }

@@ -43,7 +43,10 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         InteractsWithRowOrdering::rowOrderingActions as protected baseRowOrderingActions;
         InteractsWithRowOrdering::toggleTableReordering insteadof InteractsWithTable;
         InteractsWithTable::filterTableQuery as protected filterNormalTableQuery;
+        InteractsWithTable::removeTableFilter as protected removeNativeTableFilter;
         InteractsWithScopedTableSearch::applyGlobalSearchToTableQuery insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::updatedTableFilters insteadof InteractsWithTable;
+        InteractsWithScopedTableSearch::removeTableFilter insteadof InteractsWithTable;
         InteractsWithScopedTableSearch::resetTableColumnManager insteadof InteractsWithTable;
         InteractsWithScopedTableSearch::getTableColumnsSessionKey insteadof InteractsWithTable;
         InteractsWithScopedTableSearch::getHasReorderedTableColumnsSessionKey insteadof InteractsWithTable;

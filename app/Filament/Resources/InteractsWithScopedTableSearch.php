@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Values\Tables\ValuesTable;
 use App\Models\Value;
 use App\Services\ItemLists;
 use Filament\Actions\Action;
@@ -9,6 +10,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
@@ -36,6 +38,44 @@ trait InteractsWithScopedTableSearch
         }
 
         return $visible;
+    }
+
+    public function inlineTagsForm(Schema $schema): Schema
+    {
+        return $schema->statePath('tableFilters.tags')->live()->components([
+            ValuesTable::tagFilterField()->id('table-tags-'.$this->getId())->options(fn (): array => $this->personalTagFilterOptions())->hiddenLabel(),
+        ]);
+    }
+
+    public function updatedTableFilters(mixed $value = null, ?string $key = null): void
+    {
+        if ($this->getTable()->hasDeferredFilters()) {
+            $name = explode('.', $key ?? '')[0];
+            $quick = ['tags', ...(method_exists($this, 'workspaceQuickFilterNames') ? $this->workspaceQuickFilterNames() : [])];
+            if (in_array($name, $quick, true)) {
+                $this->tableDeferredFilters[$name] = $this->tableFilters[$name] ?? [];
+            } else {
+                $this->tableDeferredFilters = $this->tableFilters;
+            }
+        }
+        $this->handleTableFilterUpdates();
+    }
+
+    public function removeTableFilter(string $filterName, ?string $field = null, bool $isRemovingAllFilters = false): void
+    {
+        $preservePending = ! $isRemovingAllFilters && $this->getTable()->hasDeferredFilters();
+        $pending = $this->tableDeferredFilters;
+        if ($preservePending) {
+            $this->tableDeferredFilters = $this->tableFilters;
+        }
+        if (method_exists($this, 'removeNativeTableFilter')) {
+            $this->removeNativeTableFilter($filterName, $field, $isRemovingAllFilters);
+        } else {
+            parent::removeTableFilter($filterName, $field, $isRemovingAllFilters);
+        }
+        if ($preservePending) {
+            $this->tableDeferredFilters = [...$pending, $filterName => $this->tableFilters[$filterName]];
+        }
     }
 
     public function tagFilterPreferencesAction(): Action

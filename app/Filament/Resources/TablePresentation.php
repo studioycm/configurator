@@ -32,6 +32,7 @@ class TablePresentation
         }
         StatusActions::configure($table, $key);
         $component = $table->getLivewire();
+        self::configureValueTags($table, $key);
         $configuratorWorkspace = method_exists($component, 'workspaceVisibilityActions');
         if ($configuratorWorkspace) {
             $table->selectable(fn (): bool => $component->showSelection);
@@ -150,6 +151,27 @@ class TablePresentation
             ->filtersResetAction(fn (Action $action): Action => $action->label(__('admin.workspace.labels.clear_filters')))
             ->reorderableColumns()->columnManagerLayout(ColumnManagerLayout::Modal)->persistInSession(method_exists($component, 'restoreTableBrowserProfile'))->persistColumnsInSession()
             ->columnManagerTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.columns'))->iconButton()->tooltip(__('ui.tables.columns'))->slideOver()->stickyModalHeader()->stickyModalFooter()->extraModalFooterActions([$table->getColumnManagerApplyAction()->alpineClickHandler("workspaceColumnManager(\$el, 'applyTableColumnManager'); close()"), Action::make('resetColumnManager')->label(__('admin.workspace.labels.reset_columns'))->color('danger')->alpineClickHandler("workspaceColumnManager(\$el, 'resetDeferredColumns'); \$wire.resetTableColumnManager(); ".'$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')'), Action::make('resetWidths')->label(__('admin.workspace.labels.reset_widths'))->color('gray')->alpineClickHandler('$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')')]));
+    }
+
+    private static function configureValueTags(Table $table, string $key): void
+    {
+        $columns = $table->getColumns();
+        $relationship = match (true) {
+            isset($columns['value.label']) => 'value',
+            isset($columns['option.value.label']) => 'option.value',
+            in_array($key, ['values', 'select-value'], true) => '',
+            default => null,
+        };
+        if ($relationship === null) {
+            return;
+        }
+        if ($table->getFilter('tags') === null) {
+            $table->pushFilters([ValueTagFilter::make($relationship)]);
+        }
+        $component = $table->getLivewire();
+        if (method_exists($component, 'tagFilterPreferencesAction')) {
+            $table->pushHeaderActions([$component->tagFilterPreferencesAction()]);
+        }
     }
 
     private static function configureQuickFilters(Table $table): void

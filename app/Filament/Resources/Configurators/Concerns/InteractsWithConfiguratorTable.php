@@ -137,33 +137,8 @@ trait InteractsWithConfiguratorTable
 
     public function quickFiltersForm(Schema $schema): Schema
     {
-        return $schema->statePath('tableFilters')->live()->columns(1)->components(fn (): array => collect($this->workspaceQuickFilterNames())->map(fn (string $name) => $this->getTable()->getFilter($name))
+        return $schema->statePath('tableFilters')->live()->columns(1)->components(fn (): array => collect($this->workspaceQuickFilterNames())->reject(fn (string $name): bool => $name === 'tags')->map(fn (string $name) => $this->getTable()->getFilter($name))
             ->filter()->map(fn ($filter) => Group::make(array_map(fn (Field $field): Field => $filter->getName() === 'tags' ? (clone $field)->options(fn (): array => $this->personalTagFilterOptions())->hiddenLabel() : (clone $field)->hiddenLabel(), $filter->getSchemaComponents()))->key('workspace-'.$this->getId().'-'.$filter->getName())->statePath($filter->getName()))->all()
         );
-    }
-
-    public function updatedTableFilters(mixed $value = null, ?string $key = null): void
-    {
-        $name = explode('.', $key ?? '')[0];
-        if (in_array($name, $this->workspaceQuickFilterNames(), true)) {
-            $this->tableDeferredFilters[$name] = $this->tableFilters[$name];
-            $this->handleTableFilterUpdates();
-
-            return;
-        }
-        parent::updatedTableFilters();
-    }
-
-    public function removeTableFilter(string $filterName, ?string $field = null, bool $isRemovingAllFilters = false): void
-    {
-        if ($isRemovingAllFilters || ! $this->getTable()->hasDeferredFilters()) {
-            parent::removeTableFilter($filterName, $field, $isRemovingAllFilters);
-
-            return;
-        }
-        $pending = $this->tableDeferredFilters;
-        $this->tableDeferredFilters = $this->tableFilters;
-        parent::removeTableFilter($filterName, $field);
-        $this->tableDeferredFilters = [...$pending, $filterName => $this->tableFilters[$filterName]];
     }
 }
