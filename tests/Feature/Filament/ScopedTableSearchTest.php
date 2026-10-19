@@ -125,7 +125,7 @@ test('tag filters remain buttons beyond six choices and match any selected tag',
         ->assertCanSeeTableRecords([$a, $b])->assertCanNotSeeTableRecords([$c]);
     $seventh = Value::factory()->create(['tags' => ['seventh']]);
     $page = Livewire::test(ListValues::class);
-    $field = $page->instance()->getTable()->getFilter('tags')->getSchemaComponents()[0];
+    $field = $page->instance()->getTableFiltersForm()->getComponent('tags.values', withHidden: true);
     expect($field)->toBeInstanceOf(ToggleButtons::class);
     expect($field->getOptions())->toHaveKey('seventh');
     $page->filterTable('tags', ['values' => ['seventh']])

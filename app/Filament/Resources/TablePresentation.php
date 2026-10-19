@@ -142,7 +142,7 @@ class TablePresentation
             $table->headerActions($directActions);
         }
 
-        return $table->extraAttributes(['class' => 'catalog-workspace-table'.($narrow ? ' catalog-narrow-table' : ''), 'data-workspace-table' => $key, 'data-reordering' => (int) $component->isTableReordering], merge: true)
+        return $table->recordAction(null)->recordUrl(null)->extraAttributes(['class' => 'catalog-workspace-table'.($narrow ? ' catalog-narrow-table' : ''), 'data-workspace-table' => $key, 'data-reordering' => (int) $component->isTableReordering], merge: true)
             ->header(view('filament.resources.table-native-header'))
             ->searchable(false)->searchPlaceholder(__('ui.tables.search'))->deselectAllRecordsWhenFiltered(false)
             ->filtersLayout(FiltersLayout::Modal)->filtersFormColumns(1)->deferFilters()

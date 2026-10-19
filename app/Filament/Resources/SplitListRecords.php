@@ -132,7 +132,7 @@ abstract class SplitListRecords extends ListRecords
 
         return $table
             ->recordUrl(null)
-            ->recordAction('select')
+            ->recordAction(null)
             ->recordClasses(fn (Model $record): ?string => ! $this->isCreatingRecord && (string) $record->getKey() === $this->selectedRecord ? 'catalog-selected-row' : null)
             ->recordActions([
                 Action::make('select')->label($hasEditPage ? __('ui.actions.edit') : __('admin.workspace.labels.view'))

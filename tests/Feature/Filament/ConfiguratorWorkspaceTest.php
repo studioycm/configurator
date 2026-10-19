@@ -214,7 +214,8 @@ test('configurator list links to the full edit page without embedding an editor'
     $record = Configurator::factory()->create();
     $list = Livewire::test(ListConfigurators::class)->assertCanSeeTableRecords([$record]);
 
-    expect($list->instance()->getTable()->getRecordUrl($record))->toBe(ConfiguratorResource::getUrl('edit', ['record' => $record]));
+    expect($list->instance()->getTable()->getRecordUrl($record))->toBeNull();
+    expect($list->instance()->getTable()->getAction('edit')->record($record)->getUrl())->toBe(ConfiguratorResource::getUrl('edit', ['record' => $record]));
     $this->get(ConfiguratorResource::getUrl('index', ['record' => $record->id]))->assertDontSeeLivewire(EditConfigurator::class);
 });
 

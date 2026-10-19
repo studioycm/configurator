@@ -130,5 +130,5 @@ test('a missing semantic identity fails the whole snapshot instead of emitting a
     RuleCondition::factory()->for($rule, 'rule')->create();
     DB::table('values')->where('id', $option->option->value_id)->update(['semantic_id' => '']);
 
-    expect(fn () => app(ConfiguratorRuleExchange::class)->snapshot($rule))->toThrow(RuntimeException::class, 'semantic ID');
+    expect(fn () => app(ConfiguratorRuleExchange::class)->snapshot($rule))->toThrow(RuntimeException::class, 'ID Name');
 });

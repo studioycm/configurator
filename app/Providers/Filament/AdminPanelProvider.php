@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\ContextSettings;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\DataExchange;
+use App\Filament\Pages\ManageTags;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Groups\GroupResource;
@@ -79,6 +80,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
                 ContextSettings::class,
                 DataExchange::class,
+                ManageTags::class,
                 \App\Filament\Pages\AdminAppearance::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

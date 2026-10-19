@@ -44,7 +44,7 @@ class ConfiguratorRuleExchange
                 foreach ($attribute['options'] as $option) {
                     $value = $canonicalOptions[$option['option_id']] ?? throw new RuntimeException('Missing Attribute-Value reference.');
                     if (! is_string($value['semantic_id'] ?? null) || $value['semantic_id'] === '') {
-                        throw new RuntimeException('An included Value is missing its semantic ID.');
+                        throw new RuntimeException('An included Value is missing its ID Name.');
                     }
                     $options[$option['id']] = ['attribute_id' => $attribute['id'], 'semantic_id' => $value['semantic_id'], 'label' => $option['label_override'] ?? $value['label'], 'code' => $value['code']];
                     $lookups[] = ['configurator_id' => (string) $configurator->id, 'configurator_name' => $configurator->name, 'reference_type' => 'AttributeValue', 'attribute_key' => $canonical['key'], 'attribute_label' => $attributes[$attribute['id']]['label'], 'value_semantic_id' => $value['semantic_id'], 'value_label' => $options[$option['id']]['label'], 'reference_code' => $value['code'], 'field' => '', 'literal' => ''];

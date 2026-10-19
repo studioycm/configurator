@@ -120,7 +120,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         }
 
         if ($this->localEditorComponent($definition) !== null) {
-            $table->recordAction('select')->recordUrl(null)
+            $table->recordAction(null)->recordUrl(null)
                 ->recordClasses(fn (Model|array $record): ?string => $record instanceof Model && (string) $record->getKey() === $this->selectedRecordId ? 'catalog-selected-row' : null)
                 ->recordActions([
                     Action::make('select')->label($this->listKey === 'group-card-properties' ? __('catalog.labels.edit_presentation') : __('ui.actions.edit_here'))

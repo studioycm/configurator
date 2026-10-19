@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Attributes\Pages;
 
+use App\Actions\AddAttributeValues;
 use App\Actions\DeleteCanonicalDefinition;
-use App\Actions\SaveCanonicalDefinition;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
@@ -26,6 +26,7 @@ class EditAttribute extends EditRecord
 
     protected function afterSave(): void
     {
+        $this->data['pending_options'] = [];
         $this->rememberBatchEditor();
         $this->dispatch('catalog-record-saved');
         $this->dispatch('catalog-editor-saved');
@@ -39,7 +40,7 @@ class EditAttribute extends EditRecord
     {
 
         try {
-            return app(SaveCanonicalDefinition::class)->handle(auth()->user(), $record, $data);
+            return app(AddAttributeValues::class)->saveDefinition(auth()->user(), $record, $data);
         } catch (ValidationException $exception) {
             $errors = [];
             foreach ($exception->errors() as $key => $messages) {

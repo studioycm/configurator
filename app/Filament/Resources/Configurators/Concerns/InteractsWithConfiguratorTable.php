@@ -138,7 +138,7 @@ trait InteractsWithConfiguratorTable
     public function quickFiltersForm(Schema $schema): Schema
     {
         return $schema->statePath('tableFilters')->live()->columns(1)->components(fn (): array => collect($this->workspaceQuickFilterNames())->map(fn (string $name) => $this->getTable()->getFilter($name))
-            ->filter()->map(fn ($filter) => Group::make(array_map(fn (Field $field): Field => (clone $field)->hiddenLabel(), $filter->getSchemaComponents()))->key('workspace-'.$this->getId().'-'.$filter->getName())->statePath($filter->getName()))->all()
+            ->filter()->map(fn ($filter) => Group::make(array_map(fn (Field $field): Field => $filter->getName() === 'tags' ? (clone $field)->options(fn (): array => $this->personalTagFilterOptions())->hiddenLabel() : (clone $field)->hiddenLabel(), $filter->getSchemaComponents()))->key('workspace-'.$this->getId().'-'.$filter->getName())->statePath($filter->getName()))->all()
         );
     }
 

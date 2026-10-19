@@ -95,7 +95,7 @@ class ConfiguratorRule extends Model
             'ProductProperty' => __('configurator.rules.summary.product_field', ['key' => $condition->property_key]),
             default => ConditionSource::tryFrom($condition->source_kind)?->getLabel() ?? $condition->source_kind,
         };
-        $operand = $condition->source_kind === 'SelectionOption'
+        $operand = in_array($condition->source_kind, ['SelectionOption', 'SelectionCode'], true)
             ? $condition->optionReferences->map(fn (RuleConditionOption $reference): string => $reference->configuratorOption->option->code)->implode(', ')
             : (is_array($condition->operand) ? implode(', ', $condition->operand) : (string) $condition->operand);
 

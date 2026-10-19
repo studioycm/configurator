@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Attributes\Pages;
 
-use App\Actions\SaveCanonicalDefinition;
+use App\Actions\AddAttributeValues;
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Filament\Resources\SplitCreateRecord;
 use App\Models\Attribute;
@@ -17,7 +17,7 @@ class CreateAttribute extends SplitCreateRecord
     {
         $record = new Attribute;
         try {
-            return app(SaveCanonicalDefinition::class)->handle(auth()->user(), $record, $data);
+            return app(AddAttributeValues::class)->saveDefinition(auth()->user(), $record, $data);
         } catch (ValidationException $exception) {
             $errors = [];
             foreach ($exception->errors() as $key => $messages) {

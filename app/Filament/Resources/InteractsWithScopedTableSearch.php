@@ -2,14 +2,57 @@
 
 namespace App\Filament\Resources;
 
+use App\Models\Value;
 use App\Services\ItemLists;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 
 trait InteractsWithScopedTableSearch
 {
     public string $tableSearchScope = 'all';
+
+    /** @var list<string>|null */
+    #[Locked]
+    public ?array $tableTagFilters = null;
+
+    /** @return array<string, string> */
+    public function personalTagFilterOptions(): array
+    {
+        $options = Value::tagOptions();
+        $active = array_values(array_filter($this->tableFilters['tags']['values'] ?? [], 'is_string'));
+        $ordered = $this->tableTagFilters ?? array_keys($options);
+        $visible = [];
+        foreach (array_unique([...$ordered, ...$active]) as $tag) {
+            if (isset($options[$tag]) || in_array($tag, $active, true)) {
+                $visible[$tag] = isset($options[$tag]) ? $options[$tag] : __('tags.unused_filter', ['tag' => $tag]);
+            }
+        }
+
+        return $visible;
+    }
+
+    public function tagFilterPreferencesAction(): Action
+    {
+        return Action::make('tagFilterPreferences')->label(__('tags.preferences'))->authorize('manage-catalog')
+            ->fillForm(fn (): array => ['all' => $this->tableTagFilters === null, 'tags' => array_map(fn (string $tag): array => ['tag' => $tag], array_values(array_intersect($this->tableTagFilters ?? [], array_keys(Value::tagOptions()))))])
+            ->schema([
+                Toggle::make('all')->label(__('tags.all_filters'))->live(),
+                Repeater::make('tags')->label(__('tags.chosen_filters'))->helperText(__('tags.preferences_help'))
+                    ->visible(fn (Get $get): bool => ! $get('all'))->defaultItems(0)->reorderableWithButtons()
+                    ->schema([Select::make('tag')->label(__('tags.tag'))->options(fn (): array => Value::tagOptions())->searchable()->required()->disableOptionsWhenSelectedInSiblingRepeaterItems()]),
+            ])
+            ->action(function (array $data): void {
+                Gate::authorize('manage-catalog');
+                $this->restoreTableBrowserProfile(['tagFilters' => ($data['all'] ?? false) ? null : array_column($data['tags'] ?? [], 'tag')]);
+            });
+    }
 
     /** @var array<string, mixed> */
     #[Locked]
@@ -24,6 +67,9 @@ trait InteractsWithScopedTableSearch
     public function mountInteractsWithScopedTableSearch(): void
     {
         $controls = session()->get(TableBrowserProfile::sessionKey($this, 'controls'), []);
+        if (array_key_exists('tableTagFilters', $controls) && (is_array($controls['tableTagFilters']) || $controls['tableTagFilters'] === null)) {
+            $this->tableTagFilters = $controls['tableTagFilters'];
+        }
         foreach (['tableSearchScope', 'showSelection', 'showOrderControls'] as $property) {
             if (property_exists($this, $property) && isset($controls[$property]) && get_debug_type($controls[$property]) === get_debug_type($this->{$property})) {
                 $this->{$property} = $controls[$property];
@@ -33,7 +79,7 @@ trait InteractsWithScopedTableSearch
 
     public function dehydrateInteractsWithScopedTableSearch(): void
     {
-        $controls = [];
+        $controls = ['tableTagFilters' => $this->tableTagFilters];
         foreach (['tableSearchScope', 'showSelection', 'showOrderControls'] as $property) {
             if (property_exists($this, $property)) {
                 $controls[$property] = $this->{$property};

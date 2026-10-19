@@ -52,7 +52,7 @@ return [
         'legacy_id' => 'Legacy ID',
         'occurrences' => 'Occurrences',
         'product_property' => 'Product property',
-        'semantic_id' => 'Semantic ID',
+        'semantic_id' => 'ID Name',
         'specification' => 'Specification',
         'tags' => 'Tags',
         'ui_name' => 'UI Name',
@@ -363,7 +363,7 @@ return [
         'this_attribute_key_was_saved_elsewhere_choose' => 'This Attribute key was saved elsewhere. Choose a unique key.',
         'this_preset_does_not_belong_to_this' => 'This preset does not belong to this Group.',
         'this_shared_definition_is_in_use_view' => 'This shared definition is in use:value1. View usage and repair its Attribute Values, defaults and rules before removing it.',
-        'this_value_semantic_id_was_saved_elsewhere_choose' => 'This Value semantic ID was saved elsewhere. Choose a unique semantic ID.',
+        'this_value_semantic_id_was_saved_elsewhere_choose' => 'This Value ID Name was saved elsewhere. Choose a unique ID Name.',
         'unknown_item_list' => 'Unknown item list.',
     ],
 ];

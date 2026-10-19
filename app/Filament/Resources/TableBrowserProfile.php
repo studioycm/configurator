@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Models\Value;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -13,7 +14,7 @@ class TableBrowserProfile
     {
         $owner = method_exists($component, 'getOwnerRecord') ? $component->getOwnerRecord()->getKey() : ($component->parentId ?? $component->tableArguments['owner_id'] ?? 'list');
 
-        return $component::class.':'.$owner.':'.($component->listKey ?? '');
+        return $component::class.':'.$owner.':'.($component->listKey ?? ($component->tableConfiguration ?? ''));
     }
 
     public static function sessionKey(Component $component, string $setting): string
@@ -27,7 +28,7 @@ class TableBrowserProfile
         Gate::authorize('manage-catalog');
         Validator::make(['state' => $state, 'size' => strlen(json_encode($state, JSON_THROW_ON_ERROR))], [
             'size' => ['integer', 'max:32768'],
-            'state' => ['array:columns,sort,search,searchScope,filters,perPage,showSelection,showOrderControls'],
+            'state' => ['array:columns,sort,search,searchScope,filters,perPage,showSelection,showOrderControls,tagFilters'],
             'state.columns' => ['sometimes', 'array', 'max:100'],
             'state.columns.*.name' => ['required', 'string', 'max:255'],
             'state.columns.*.isToggled' => ['required', 'boolean'],
@@ -39,8 +40,13 @@ class TableBrowserProfile
             'state.perPage' => ['sometimes', 'integer'],
             'state.showSelection' => ['sometimes', 'boolean'],
             'state.showOrderControls' => ['sometimes', 'boolean'],
+            'state.tagFilters' => ['nullable', 'array', 'list', 'max:300'],
+            'state.tagFilters.*' => ['required', 'string', 'max:80', 'distinct'],
         ])->validate();
 
+        if (array_key_exists('tagFilters', $state) && property_exists($component, 'tableTagFilters')) {
+            $component->tableTagFilters = $state['tagFilters'] === null ? null : array_values(array_intersect($state['tagFilters'], array_keys(Value::tagOptions())));
+        }
         $table = $component->getTable();
         if (isset($state['columns'])) {
             $defaults = collect($component->getDefaultTableColumnState())->keyBy('name');

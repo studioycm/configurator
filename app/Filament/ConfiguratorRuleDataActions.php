@@ -15,6 +15,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 
@@ -24,7 +25,7 @@ class ConfiguratorRuleDataActions
     {
         $invalidate = fn (Component $livewire) => $livewire->resetRuleImportPreview();
 
-        return Action::make('importRules')->label(__('data_exchange.rules.import'))
+        return Action::make('importRules')->label(__('data_exchange.rules.import'))->icon(Heroicon::OutlinedArrowDownTray)
             ->authorize('manage-catalog')->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel(__('data_exchange.rules.confirm_action'))
             ->beforeFormFilled(fn (Component $livewire) => $livewire->resetRuleImportPreview())

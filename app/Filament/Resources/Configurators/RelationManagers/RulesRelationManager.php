@@ -345,7 +345,7 @@ class RulesRelationManager extends RelationManager
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription(__('configurator.help.remove_this_rule_and_its_owned_conditions'))
                     ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
-            ]), 'configurator-rules', true, ['addMapping', 'addAdvanced']);
+            ]), 'configurator-rules', true, ['addMapping', 'addAdvanced', 'importRules']);
     }
 
     private function createAction(string $kind): Action

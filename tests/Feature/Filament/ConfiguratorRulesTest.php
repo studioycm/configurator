@@ -220,3 +220,36 @@ test('context operator changes keep the previous operand visible until explicitl
     'single to list' => ['Equals', 'EU', 'In', 'operand_text', null, 'operand_list', ['EU'], 'context-value'],
     'list to single' => ['In', ['EU'], 'Equals', 'operand_list', [], 'operand_text', 'EU', 'context-values'],
 ]);
+
+test('changing selection operators remounts the browser picker and preserves all referenced Values', function (string $operator, bool $grouped) {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $condition = fixtureCondition('choice');
+    $conditions = $grouped ? [['id' => 'new:group', 'operator' => 'All', 'conditions' => [$condition]]] : [$condition];
+    $data['rules'] = [fixtureAdvanced('membership', $conditions, 'B', 'SetHint', ['new:B1'], 'Hint')];
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
+    $rule = $configurator->rules()->sole();
+    $options = $configurator->attributes()->whereHas('attribute', fn ($query) => $query->where('key', 'A'))->sole()->options()->orderBy('id')->pluck('id')->map('strval')->all();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id);
+    $path = function () use ($manager, $grouped): string {
+        $blocks = $manager->get('editorData.condition_blocks');
+        $key = array_key_first($blocks);
+
+        return 'editorData.condition_blocks.'.$key.'.data.'.($grouped ? 'conditions.'.array_key_first($blocks[$key]['data']['conditions']).'.' : '');
+    };
+    $field = fn () => collect($manager->instance()->editorForm->getFlatComponents(withHidden: true))->first(fn ($component): bool => $component instanceof Select && $component->getStatePath() === $path().'option_ids');
+    $singleKey = $field()->getLivewireKey();
+    $manager->set($path().'operator', $operator);
+    expect($field()->getLivewireKey())->not->toBe($singleKey);
+    expect($field()->getMaxItems())->toBe(500);
+    $manager->set($path().'option_ids', $options)->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm');
+    expect($rule->conditions()->sole()->optionReferences()->count())->toBe(2);
+    $listKey = $field()->getLivewireKey();
+    $manager->set($path().'operator', 'Equals');
+    expect($field()->getLivewireKey())->not->toBe($listKey);
+    expect($field()->getMaxItems())->toBe(1);
+    $manager->call('saveEditor')->assertHasFormErrors(form: 'editorForm');
+    expect($rule->conditions()->sole()->operator)->toBe($operator);
+})->with([
+    'In root' => ['In', false], 'NotIn root' => ['NotIn', false],
+    'In group' => ['In', true], 'NotIn group' => ['NotIn', true],
+]);

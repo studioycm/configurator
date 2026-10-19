@@ -81,7 +81,10 @@ test('Mapping and Advanced Rule choices identify Values while preserving stored 
     foreach ($configurator->rules()->get() as $rule) {
         $manager->call('selectRule', $rule->id);
         $conditionKey = array_key_first($manager->get('editorData.condition_blocks'));
-        $manager->assertFormFieldExists('condition_blocks.'.$conditionKey.'.data.option_ids', 'editorForm', fn (Select $field): bool => $field->getOptions()[$source->id] === 'A0 · Local Viton - viton_body');
+        $conditionField = collect($manager->instance()->editorForm->getFlatFields(withHidden: true))
+            ->first(fn ($field): bool => $field->getStatePath() === 'editorData.condition_blocks.'.$conditionKey.'.data.option_ids');
+        expect($conditionField)->toBeInstanceOf(Select::class);
+        expect($conditionField->getOptions()[$source->id])->toBe('A0 · Local Viton - viton_body');
 
         if ($rule->kind === 'Mapping') {
             $manager->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$source->id] === 'A0 · Local Viton - viton_body' && $field->getTargetChoices()[$target->id] === 'B1 · Polypropylene - polypropylene_float');

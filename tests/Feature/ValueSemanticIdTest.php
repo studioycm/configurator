@@ -124,7 +124,7 @@ test('Attribute Options table distinguishes equal names and searches by semantic
     $floatOption = Option::factory()->for($attribute)->for($float)->create();
 
     Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditAttribute::class])
-        ->assertTableColumnExists('value.semantic_id', fn (TextColumn $column): bool => $column->getLabel() === 'Semantic ID' && $column->isGloballySearchable())
+        ->assertTableColumnExists('value.semantic_id', fn (TextColumn $column): bool => $column->getLabel() === 'ID Name' && $column->isGloballySearchable())
         ->assertSee('polypropylene_body')->assertSee('polypropylene_float')
         ->searchTable('polypropylene_float')
         ->assertCanSeeTableRecords([$floatOption])->assertCanNotSeeTableRecords([$bodyOption]);

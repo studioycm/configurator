@@ -40,7 +40,7 @@ class ConfiguratorRuleImportBuilder
             $attributeMap[$key] = $attribute['id'];
             foreach ($attribute['options'] as $option) {
                 $semantic = $options[$option['option_id']]['semantic_id'] ?? null;
-                $this->check(is_string($semantic) && $semantic !== '' && ! isset($optionMap[$key][$semantic]), 'Missing or ambiguous included Value semantic ID.');
+                $this->check(is_string($semantic) && $semantic !== '' && ! isset($optionMap[$key][$semantic]), 'Missing or ambiguous included Value ID Name.');
                 $optionMap[$key][$semantic] = $option['id'];
             }
         }

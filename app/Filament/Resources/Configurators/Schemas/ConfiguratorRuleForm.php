@@ -103,7 +103,8 @@ class ConfiguratorRuleForm
             Select::make('source_kind')->label(__('configurator.labels.source'))->options([
                 __('configurator.rules.sources.dashboard') => collect(ConditionSource::cases())->reject(fn (ConditionSource $source): bool => in_array($source->value, ['Territory', 'Application'], true))->mapWithKeys(fn (ConditionSource $source): array => [$source->value => $source->getLabel()])->all(),
                 __('configurator.labels.future_public_catalog') => ['Territory' => __('configurator.labels.territory'), 'Application' => __('configurator.labels.application')],
-            ])->hintAction(FormHints::make(__('configurator.hints.separate_territory_and_application_conditions_apply_only')))->required()->live()
+            ])->hintAction(FormHints::make(__('configurator.hints.separate_territory_and_application_conditions_apply_only')))
+                ->helperText(fn (Get $get): ?string => $selection($get) ? __('configurator.hints.selection_source_difference') : null)->required()->live()
                 ->afterStateUpdated(fn (mixed $state, Set $set) => $set('context_dimension', match ($state) {
                     'Territory' => 'territory', 'Application' => 'application', default => null
                 })),
@@ -113,7 +114,7 @@ class ConfiguratorRuleForm
             Select::make('property_key')->label(__('catalog.fields.product_property'))->options(array_combine(CatalogImportParser::propertyKeys(), CatalogImportParser::propertyKeys()))->searchable()->default(null)
                 ->visible(fn (Get $get): bool => $get('source_kind') === 'ProductProperty' || filled($get('property_key')))->dehydratedWhenHidden(),
             Hidden::make('context_dimension')->default(null),
-            Select::make('option_ids')->label(__('configurator.labels.included_values_exact_codes'))->multiple()->searchable()->default([])
+            Select::make('option_ids')->key(fn (Get $get): string => 'condition-values-'.($list($get) ? 'list' : 'single'))->label(__('configurator.labels.included_values_exact_codes'))->multiple()->searchable()->default([])
                 ->options(fn (Get $get): array => self::withStale($options[$get('source_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))
                 ->maxItems(fn (Get $get): int => $list($get) ? 500 : 1)
                 ->visible(fn (Get $get): bool => $selection($get) || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),

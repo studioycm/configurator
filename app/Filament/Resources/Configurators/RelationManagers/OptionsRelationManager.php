@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Configurators\RelationManagers;
 
 use App\Actions\SaveConfiguratorDefinition;
 use App\Actions\SaveConfiguratorOption;
+use App\Filament\Forms\Components\WorkspaceTableSelect as TableSelect;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
@@ -18,7 +19,6 @@ use App\Services\ConfiguratorInclusionDrafts;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TableSelect;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -107,6 +107,7 @@ class OptionsRelationManager extends RelationManager
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)->recordAction('edit')
             ->recordClasses(fn (ConfiguratorOption $record): ?string => $record->id === $this->selectedOptionId ? 'catalog-selected-row' : null)
             ->headerActions([
+                $this->tagFilterPreferencesAction(),
                 Action::make('includeMany')->label(__('configurator.inclusions.values.actions.include_many'))->authorize('manage-catalog')->slideOver()
                     ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
                     ->action(fn (array $data) => $this->includeOptions($data['selected'])),
