@@ -29,8 +29,7 @@ trait InteractsWithCompactListHeader
         return [
             'matched' => $records instanceof LengthAwarePaginator ? $records->total() : $records->count(),
             'total' => $this->getTable()->getQuery()->toBase()->getCountForPagination(),
-            'filtered' => filled($this->getTableSearch()) || collect($this->tableFilters ?? [])->flatten()
-                ->contains(fn (mixed $value): bool => $value !== false && filled($value)),
+            'filtered' => filled($this->getTableSearch()) || $this->getTable()->isFiltered(),
         ];
     }
 }

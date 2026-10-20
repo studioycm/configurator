@@ -61,9 +61,24 @@ test('empty resource lists keep a visible zero count and their creation action',
     Livewire::test(ListConfigurators::class)->assertSee(__('admin.tables.counts.total', ['total' => 0]))->assertActionExists(TestAction::make('create')->table());
 });
 
-test('an applied tag remains visible in the count even when every record matches', function () {
-    Value::factory()->create(['tags' => ['metal']]);
+test('tag counts ignore the operator alone and show applied tags even when every record matches', function (string $page, string $operator) {
+    $value = Value::factory()->create(['tags' => ['metal']]);
+    if ($page === ListOptions::class) {
+        Option::factory()->for($value)->create();
+    }
 
-    Livewire::test(ListValues::class)->set('tableFilters.tags.values', ['metal'])->assertSee(__('admin.tables.counts.matched', ['matched' => 1, 'total' => 1]))
-        ->set('tableFilters.tags.values', [])->assertSee(__('admin.tables.counts.total', ['total' => 1]));
-});
+    $list = Livewire::test($page)->set('tableFilters.tags.operator', $operator)
+        ->assertSee(__('admin.tables.counts.total', ['total' => 1]));
+    expect($list->instance()->resourceTableCounts)->toBe(['matched' => 1, 'total' => 1, 'filtered' => false]);
+
+    $list->set('tableFilters.tags.values', ['metal'])->assertSee(__('admin.tables.counts.matched', ['matched' => 1, 'total' => 1]));
+    expect($list->instance()->resourceTableCounts)->toBe(['matched' => 1, 'total' => 1, 'filtered' => true]);
+
+    $list->set('tableFilters.tags.values', [])->assertSee(__('admin.tables.counts.total', ['total' => 1]));
+    expect($list->instance()->resourceTableCounts)->toBe(['matched' => 1, 'total' => 1, 'filtered' => false]);
+})->with([
+    'master values with OR' => [ListValues::class, 'or'],
+    'master values with AND' => [ListValues::class, 'and'],
+    'options with OR' => [ListOptions::class, 'or'],
+    'options with AND' => [ListOptions::class, 'and'],
+]);
