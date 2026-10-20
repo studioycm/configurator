@@ -157,7 +157,7 @@ test('attribute list opens its existing editor and options beside the table', fu
     Livewire\Livewire::test(ListAttributes::class)
         ->call('selectRecord', (string) $attribute->id)
         ->assertSet('selectedRecord', (string) $attribute->id)
-        ->assertSee(__('catalog.attributes.headings.shared_attribute'))->assertSee($value->label)->assertSee($option->code);
+        ->assertSee($attribute->label)->assertSee($value->label)->assertSee($option->code);
     Livewire\Livewire::test(EditAttribute::class, ['record' => $attribute->id])
         ->fillForm(['key' => $attribute->key, 'label' => 'Updated in panel'])->call('save')->assertHasNoFormErrors()->assertDispatched('catalog-record-saved');
     expect($attribute->fresh()->label)->toBe('Updated in panel');

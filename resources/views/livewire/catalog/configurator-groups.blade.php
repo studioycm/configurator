@@ -1,9 +1,8 @@
 <div class="space-y-2">
-    {{ $this->membershipAction }}
     <x-filament-actions::modals />
-    <div class="flex items-center gap-2">
-        <h2 class="text-base font-semibold">{{ __('configurator.copy.group_assignments') }}</h2>
+    <div class="flex flex-wrap items-center justify-end gap-2">
         {{ \App\Filament\Resources\FormHints::make(__('configurator.groups.assignment_help')) }}
+        {{ $this->membershipAction }}
     </div>
     @if ($errors->any())
         <div role="alert" tabindex="-1" x-data x-init="$nextTick(() => $el.focus())" class="rounded-lg border border-danger-300 p-4 text-sm">
@@ -11,7 +10,7 @@
         </div>
     @endif
     <div class="grid gap-2 md:grid-cols-2">
-        <x-filament::section :heading="__('configurator.groups.assigned_to', ['name' => $configurator->name])" :description="__('configurator.groups.assignment_counts', ['groups' => $assigned->count(), 'products' => $assigned->sum('products_count')])">
+        <x-filament::section heading-tag="h2" :heading="__('configurator.groups.assigned')" :description="__('configurator.groups.assignment_counts', ['groups' => $assigned->count(), 'products' => $assigned->sum('products_count')])">
             <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($assigned as $group)
                     <li class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0" wire:key="assigned-group-{{ $group->id }}">
@@ -26,7 +25,7 @@
                 @endforelse
             </ul>
         </x-filament::section>
-        <x-filament::section heading="{{ __('configurator.copy.available_groups') }}" :description="trans_choice('configurator.groups.available_count', $available->count())">
+        <x-filament::section heading-tag="h2" heading="{{ __('configurator.copy.available_groups') }}" :description="trans_choice('configurator.groups.available_count', $available->count())">
             <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($available as $group)
                     <li class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0" wire:key="available-group-{{ $group->id }}">

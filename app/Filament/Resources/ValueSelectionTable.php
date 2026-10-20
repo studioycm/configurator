@@ -13,7 +13,7 @@ class ValueSelectionTable
     {
         Gate::authorize('manage-catalog');
 
-        return TablePresentation::configure($table->heading(__('attribute-options.selected'))->query(fn (Table $table) => Value::query()
+        return TablePresentation::configure($table->heading('')->query(fn (Table $table) => Value::query()
             ->when($table->getArguments()['attribute_id'] ?? null, fn ($query, $id) => $query->whereDoesntHave('options', fn ($options) => $options->where('attribute_id', $id)))
             ->whereNotIn('id', $table->getArguments()['excluded_ids'] ?? []))
             ->columns([

@@ -118,6 +118,10 @@ class TablePresentation
                     $remainingActions[] = $headerAction;
                 }
             }
+            if (count($remainingActions) === 1 && $remainingActions[0] instanceof Action) {
+                $action = array_pop($remainingActions);
+                $directActions[] = $action->iconButton()->icon($action->getIcon() ?? Heroicon::OutlinedAdjustmentsHorizontal)->tooltip($action->getLabel());
+            }
             $selectionActions = $table->getToolbarActions();
             $table->toolbarActions([]);
             foreach ($selectionActions as $selectionAction) {

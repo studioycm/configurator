@@ -40,7 +40,7 @@ class ConfiguratorRuleDataActions
                         ->multiple()->searchable()->required()->minItems(1)
                         ->options(fn (): array => Configurator::orderBy('name')->pluck('name', 'id')->all())
                         ->helperText(__('data_exchange.rules.import_configurators_help'))->live()->afterStateUpdated($invalidate)] : []),
-                    Checkbox::make('allow_create')->label(__('data_exchange.rules.allow_create'))->default(true)->live()->afterStateUpdated($invalidate),
+                    Checkbox::make('allow_create')->label(__('data_exchange.rules.allow_create'))->default(true)->helperText(__('data_exchange.rules.create_help'))->live()->afterStateUpdated($invalidate),
                     Checkbox::make('allow_update')->label(__('data_exchange.rules.allow_update'))->helperText(__('data_exchange.rules.update_help'))->default(false)->live()->afterStateUpdated($invalidate),
                     Checkbox::make('keep_new_disabled')->label(__('data_exchange.rules.keep_new_disabled'))->default(true)->live()->afterStateUpdated($invalidate),
                     Checkbox::make('restore_spreadsheet_text')->label(__('data_exchange.actions.restore_spreadsheet_text'))->helperText(__('data_exchange.help.restore_spreadsheet_text'))->default(false)->live()->afterStateUpdated($invalidate),

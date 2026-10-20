@@ -284,7 +284,7 @@ test('the central page exports all records while resource export follows the cur
 });
 
 test('Data Exchange is available to catalog managers and denies other users', function () {
-    $this->get(DataExchange::getUrl())->assertSee('Attribute-Values');
+    $this->get(DataExchange::getUrl())->assertSee('Attribute Values');
 
     $this->actingAs(User::factory()->create());
     $this->get(DataExchange::getUrl())->assertForbidden();

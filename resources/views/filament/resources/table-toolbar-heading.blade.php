@@ -11,7 +11,8 @@
         >{{ $counts['filtered'] ? __('admin.tables.counts.matched', ['matched' => number_format($counts['matched']), 'total' => number_format($counts['total'])]) : __('admin.tables.counts.total', ['total' => number_format($counts['total'])]) }}</span>
     @elseif ($this->getTable()->getHeading() !== '')
         <div class="catalog-table-heading" x-show="! getSelectedRecordsCount()">
-            <h3>{{ $this->getTable()->getHeading() ?? $this->getTable()->getPluralModelLabel() }}</h3>
+            @php($headingTag = 'h'.max(2, min(6, (int) ($this->getTable()->getExtraAttributes()['data-heading-level'] ?? 3))))
+            <{{ $headingTag }}>{{ $this->getTable()->getHeading() ?? $this->getTable()->getPluralModelLabel() }}</{{ $headingTag }}>
             @if ($this->getTable()->getDescription())
                 <span class="catalog-table-description">{{ $this->getTable()->getDescription() }}</span>
             @endif

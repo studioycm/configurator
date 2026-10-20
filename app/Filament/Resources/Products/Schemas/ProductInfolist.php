@@ -13,7 +13,7 @@ class ProductInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make(__('catalog.resources.products.singular'))->key(fn (Section $component): string => 'product::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
+            Section::make(__('ui.tabs.details'))->key(fn (Section $component): string => 'product::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 TextEntry::make('product_code')->label(__('catalog.products.labels.product_code'))->copyable(),
                 TextEntry::make('product_name')->label(__('catalog.products.labels.product_name')),
                 TextEntry::make('description')->label(__('catalog.fields.description'))->columnSpanFull(),

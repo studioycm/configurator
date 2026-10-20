@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -65,6 +66,7 @@ class AdminAppearance extends Page
                 Tab::make(__('admin.appearance.headings.navigation'))->key(fn (Tab $component): string => 'navigation::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->schema(array_map($number, ['header_height', 'logo_height', 'page_title_size', 'sidebar_width', 'collapsed_sidebar_width', 'navigation_padding_block'])),
                 Tab::make(__('admin.appearance.headings.dialogs'))->key(fn (Tab $component): string => 'dialogs::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->schema([$width('modal_width'), $width('slide_over_width')]),
                 Tab::make(__('configurator.resource.singular'))->key(fn (Tab $component): string => 'configurator::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([
+                    Text::make(__('admin.appearance.copy.configurator_shared_scope'))->columnSpanFull(),
                     Toggle::make('show_configurator_loading_indicator')->label(__('admin.appearance.labels.show_configurator_loading_indicator'))->default(false)
                         ->helperText(__('admin.appearance.hints.product_pages_keep_this_off_by_default')),
                 ]),

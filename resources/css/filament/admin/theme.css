@@ -382,10 +382,47 @@
 .catalog-dialog-width-controls button { font-size: 11px; padding: 4px 6px; min-height: 28px; border-radius: 4px; background: #64748b12; }
 .catalog-dialog-width-controls button:hover, .catalog-dialog-width-controls button:focus-visible { background: #0877e825; outline: 1px solid #0877e8; }
 .catalog-dialog-width-controls button:disabled { opacity: .4; cursor: default; }
+.fi-modal-header:has(> .catalog-dialog-width-controls) { flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding-inline-end: 52px; }
+.fi-modal-header > .catalog-dialog-width-controls { flex-shrink: 0; margin-top: 0; }
+.fi-modal-header:has(> .catalog-dialog-width-controls) > div:not(.catalog-dialog-width-controls) { min-width: 0; }
 .catalog-help-trigger.fi-icon-btn { margin: 0; width: 24px; height: 24px; }
+.fi-fo-field-label-col { min-height: 24px; }
+.fi-fo-table-repeater .fi-fo-field-label-col { min-height: 0; }
+.catalog-configurator-preview-attributes .fi-fo-field-label-col { min-height: 24px; padding-block: 0; display: flex; align-items: center; }
+.catalog-configurator-preview-attributes .fi-fo-field-label { padding-block: 0; }
+.catalog-context-choices { height: 100%; }
+.catalog-context-choices > .fi-section { height: 100%; display: flex; flex-direction: column; }
+.catalog-context-choices .fi-section-content-ctn { flex: 1; display: grid; }
+.catalog-context-choices .fi-section-content { height: 100%; grid-template-rows: 1fr auto; }
+.fi-fo-table-repeater > table > thead > tr > th { text-align: start; }
+@container (min-width: 26rem) {
+    .catalog-filter-values > table { display: table; }
+    .catalog-filter-values > table > thead { display: table-header-group; }
+    .catalog-filter-values > table > tbody { display: table-row-group; }
+    .catalog-filter-values > table > tbody > tr { display: table-row; padding: 0; }
+    .catalog-filter-values > table > tbody > tr > td { display: table-cell; padding: 4px; vertical-align: middle; }
+    .catalog-filter-values .fi-fo-field-label-col { display: none; }
+    .catalog-filter-values .fi-fo-field { row-gap: 0; }
+    .catalog-filter-values .fi-fo-table-repeater-actions { gap: 4px; }
+}
+.catalog-record-header { align-items: center; justify-content: space-between; gap: var(--aquestia-shell-gap); }
+.catalog-record-header h3.fi-header-heading { font-size: 1rem; line-height: 1.5rem; }
+.catalog-record-header .fi-header-actions-ctn:empty { display: none; }
+.catalog-compact-repeater .fi-fo-repeater-item { position: relative; }
+.catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item { padding-inline-start: 76px; padding-inline-end: 36px; }
+.catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header { display: contents; }
+.catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-start-actions { position: absolute; inset-inline-start: 8px; top: 50%; transform: translateY(-50%); }
+.catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); }
+.catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content { padding: 8px; }
+.catalog-workspace-table .fi-ta-cell:has(> .fi-ta-actions) { width: auto; min-width: max-content; white-space: nowrap; }
+.catalog-workspace-table .fi-ta-actions { flex-wrap: nowrap; gap: 4px; }
 @media (max-width: 639px) {
     .catalog-dialog-width-controls button { min-height: 44px; }
     .catalog-help-trigger.fi-icon-btn { width: 44px; height: 44px; }
+    .fi-fo-field-label-col { min-height: 44px; }
+    .catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item { padding-inline: 0; }
+    .catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header { display: flex; padding: 4px 8px; }
+    .catalog-compact-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header > :is(.fi-fo-repeater-item-header-start-actions, .fi-fo-repeater-item-header-end-actions) { position: static; transform: none; }
 }
 /* Saved widths use a definite table width so the browser cannot redistribute a dragged column. */
 .catalog-workspace-table th[data-width-column] { position: relative; min-width: 72px; padding-inline-end: 12px; }

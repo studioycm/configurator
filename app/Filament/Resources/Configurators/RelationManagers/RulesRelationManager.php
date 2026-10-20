@@ -165,7 +165,7 @@ class RulesRelationManager extends RelationManager
 
     public function editorForm(Schema $schema): Schema
     {
-        return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->editorKind === null ? [] : ConfiguratorRuleForm::components($this->owner(), $this->editorKind));
+        return $schema->statePath('editorData')->rootHeadingLevel(3)->columns(1)->components(fn (): array => $this->editorKind === null ? [] : ConfiguratorRuleForm::components($this->owner(), $this->editorKind));
     }
 
     public function openPreviewSource(string $id): bool

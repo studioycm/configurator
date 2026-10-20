@@ -79,8 +79,8 @@ class ConfiguratorAttributeForm
                 Select::make('option_id')->label(__('catalog.attribute_values.headings.shared'))->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()
                     ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id'), $get('../../label_override'), [$get('option_id') => $get('label_override')])),
-                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255),
-                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255),
+                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255)->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_ui_name'))),
+                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255)->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_display_value'))),
                 TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
                 Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden'))->default(false),
                 Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled'))->default(false),

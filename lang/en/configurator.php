@@ -6,6 +6,7 @@ return [
     ],
     'context' => [
         'application_options' => 'Application options',
+        'global_choices' => 'Global choices',
         'headings' => [
             'applications' => 'Applications',
             'context_choices' => 'Context choices',
@@ -87,8 +88,11 @@ return [
     ],
     'groups' => [
         'assign_named' => 'Assign :name',
+        'assigned' => 'Assigned Groups',
         'assigned_to' => 'Assigned to :name',
         'assignment_counts' => 'Groups: :groups · Products: :products',
+        'assignment_heading' => 'Group assignments for :name',
+        'save_assignments' => 'Save assignments',
         'assignment_help' => 'Each leaf Group can use one Configurator. Its definition applies to every assigned Group. Groups assigned elsewhere are excluded; change those assignments from their Group.',
         'available_count' => '{1} :count unassigned leaf Group|[0,*] :count unassigned leaf Groups',
         'empty_assignment_help' => 'No Groups assigned. Use Assign groups to choose unassigned leaf Groups.',
@@ -143,6 +147,7 @@ return [
     ],
     'inclusions' => [
         'choose_required' => 'choose required',
+        'choose_shared_attributes' => 'Choose shared Attributes not already included.',
         'editor_heading' => 'Included Value: :code · :label',
         'fields' => [
             'default_code' => 'Default code',
@@ -151,6 +156,10 @@ return [
         'inheritance_help' => 'Blank local fields inherit the shared Attribute Value. Save this Included Value separately from the Attribute.',
         'summary' => '{1} :attribute · :key · :count Value · Default: :code|[0,*] :attribute · :key · :count Values · Default: :code',
         'values' => [
+            'hints' => [
+                'local_ui_name' => 'The choice text shown in this Configurator and Preview. Leave blank to use the Master Value UI Name. Rules may override this text.',
+                'local_display_value' => 'Additional text beneath a choice, or beneath the selected dropdown value. Leave blank to use the Master Value UI Name. It is shown only when different from the choice text; rules may override it.',
+            ],
             'actions' => [
                 'include' => 'Include value',
                 'include_many' => 'Include Values',
@@ -161,6 +170,7 @@ return [
                 'name_source' => 'Local Value UI Name when set; otherwise Master Value UI Name.',
             ],
             'heading' => 'Included Attribute Values',
+            'include_heading' => 'Include Attribute Values for :attribute',
             'for_attribute' => 'Included Attribute Values — :attribute',
             'removed' => 'Removed value — choose a replacement',
             'unavailable' => 'Unavailable value — repair required',

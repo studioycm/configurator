@@ -8,6 +8,8 @@ use Livewire\Attributes\Locked;
 
 abstract class SplitCreateRecord extends CreateRecord
 {
+    use InteractsWithRecordPresentation;
+
     protected string $view = 'filament.resources.record-editor';
 
     #[Locked]

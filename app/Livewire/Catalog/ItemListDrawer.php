@@ -69,13 +69,17 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
     public bool $allowLocalEditing = false;
 
     #[Locked]
+    public bool $showTableHeading = true;
+
+    #[Locked]
     public ?string $selectedRecordId = null;
 
-    public function mount(string $listKey, int $parentId, bool $allowLocalEditing = false): void
+    public function mount(string $listKey, int $parentId, bool $allowLocalEditing = false, bool $showTableHeading = true): void
     {
         $this->listKey = $listKey;
         $this->parentId = $parentId;
         $this->allowLocalEditing = $allowLocalEditing;
+        $this->showTableHeading = $showTableHeading;
         $this->definition();
     }
 
@@ -155,7 +159,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
                 ->extraAttributes(['data-item-editor-transition' => true])->action(fn () => $this->editPresentation()));
         }
 
-        return TablePresentation::configure($table->heading($definition->title)->columns($columns)
+        return TablePresentation::configure($table->heading($this->showTableHeading ? $definition->title : '')->pluralModelLabel($definition->title)->columns($columns)
             ->paginationPageOptions([10, 25, 50])
             ->headerActions($headerActions), (is_array($definition->query) ? 'array-' : 'items-').$this->listKey, true);
     }

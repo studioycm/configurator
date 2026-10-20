@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Services\ItemLists;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ class ItemCountColumn
     {
         return TextColumn::make($name)->label($label)->numeric()->toggleable()
             ->extraCellAttributes(fn (Model $record): array => ['x-data' => 'itemCountPreview('.Js::from($listKey).', '.$record->getKey().', '.Js::from(['loading' => __('admin.tables.items_loading'), 'unavailable' => __('admin.tables.items_unavailable')]).')', 'x-on:mouseenter' => 'show()', 'x-on:focusin' => 'show()', 'x-on:mouseleave' => 'hide()', 'x-on:focusout' => 'hide()'], merge: true)
-            ->action(Action::make('items-'.$listKey)->label(__('catalog.labels.view', ['value1' => $label]))->authorize('manage-catalog')->slideOver()->stickyModalHeader()->stickyModalFooter()->modalHeading($label)->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.close'))
-                ->modalContent(fn (Model $record) => view('filament.resources.item-list-content', ['listKey' => $listKey, 'parentId' => $record->getKey(), 'allowLocalEditing' => true])));
+            ->action(Action::make('items-'.$listKey)->label(__('catalog.labels.view', ['value1' => $label]))->authorize('manage-catalog')->slideOver()->stickyModalHeader()->stickyModalFooter()->modalHeading(fn (Model $record): string => app(ItemLists::class)->modalHeading($listKey, $record))->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.close'))
+                ->modalContent(fn (Model $record) => view('filament.resources.item-list-content', ['listKey' => $listKey, 'parentId' => $record->getKey(), 'allowLocalEditing' => true, 'showTableHeading' => false])));
     }
 }

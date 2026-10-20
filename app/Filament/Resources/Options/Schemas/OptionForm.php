@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Options\Schemas;
 
 use App\Filament\Resources\FormHints;
 use App\Models\Attribute;
-use App\Models\Option;
 use App\Models\Value;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -17,8 +16,8 @@ class OptionForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components([Section::make(fn (?Option $record): string => $record?->exists ? $record->displayName() : __('catalog.attribute_values.headings.shared'))->key(fn (Section $component): string => 'shared-attribute-value::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->afterHeader([FormHints::make(__('catalog.attribute_values.hints.the_attribute_master_value_and_exact_code'))])->compact()->columns(2)->schema([
-            Select::make('attribute_id')->label(__('catalog.resources.attributes.singular'))->required()->rules(['integer'])->searchable()
+        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'shared-attribute-value::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(2)->schema([
+            Select::make('attribute_id')->label(__('catalog.resources.attributes.singular'))->hintAction(FormHints::make(__('catalog.attribute_values.hints.the_attribute_master_value_and_exact_code')))->required()->rules(['integer'])->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Attribute::where('label', 'like', '%'.$search.'%')->orWhere('key', 'like', '%'.$search.'%')->orderBy('label')->limit(50)->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => is_scalar($value) ? Attribute::find($value)?->label : null),
             Select::make('value_id')->label(__('catalog.fields.master_value'))->required()->rules(['integer'])->searchable()

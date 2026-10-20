@@ -13,6 +13,7 @@ use App\Services\CatalogDiscovery;
 use App\Services\CatalogImportParser;
 use App\Services\CatalogPolicy;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -120,14 +121,15 @@ class GroupForm
                         $set('catalog_settings.filters', $rows);
                         $set('filter_properties_to_add', []);
                     })->columnSpanFull(),
-                FormOrderControls::make('catalog_settings.filters')->label(__('ui.tables.filters'))->hintAction(FormHints::make(__('catalog.groups.hints.only_these_properties_appear_as_discovery_filters')))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
+                FormOrderControls::make('catalog_settings.filters')->label(__('ui.tables.filters'))->hiddenLabel()->hintAction(FormHints::make(__('catalog.groups.hints.only_these_properties_appear_as_discovery_filters')))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live()
                         ->afterStateUpdated(function (Set $set, mixed $state, ?Group $record): void {
                             $set('values', array_map(fn (string $value): array => ['value' => $value, 'label' => ''], self::values($record, $state)));
                         }),
                     TextInput::make('label')->label(__('catalog.groups.labels.filter_label'))->required()->maxLength(255),
-                    FormOrderControls::make('values')->label(__('catalog.groups.labels.value_order_and_labels'))->defaultItems(0)->addable(false)->reorderableWithButtons()->columnSpanFull()
+                    FormOrderControls::make('values')->label(__('catalog.groups.labels.value_order_and_labels'))->extraAttributes(['class' => 'catalog-filter-values'])->defaultItems(0)->addable(false)->reorderableWithButtons()->columnSpanFull()
+                        ->table([TableColumn::make(__('catalog.groups.labels.source_value'))->markAsRequired(), TableColumn::make(__('catalog.groups.labels.display_label'))])->compact()
                         ->hintAction(FormHints::make(__('catalog.groups.hints.canonical_values_are_read_only_remove_stale_values')))
                         ->schema([
                             TextInput::make('value')->label(__('catalog.groups.labels.source_value'))->readOnly()->required(),
@@ -136,7 +138,7 @@ class GroupForm
                 ])->columns(2),
             ])->columnSpanFull(),
             Section::make(__('catalog.groups.headings.subgroups'))->key(fn (Section $component): string => 'subgroups::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
-                FormOrderControls::make('catalog_settings.sub_groups')->label(__('catalog.groups.tabs.presets'))->hintAction(FormHints::make(__('catalog.groups.hints.named_presets_select_an_allowed_set_for')))->defaultItems(0)->reorderableWithButtons()->schema([
+                FormOrderControls::make('catalog_settings.sub_groups')->label(__('catalog.groups.tabs.presets'))->hiddenLabel()->extraAttributes(['class' => 'catalog-compact-repeater'])->hintAction(FormHints::make(__('catalog.groups.hints.named_presets_select_an_allowed_set_for')))->defaultItems(0)->reorderableWithButtons()->schema([
                     Hidden::make('id'),
                     TextInput::make('label')->label(__('catalog.groups.labels.preset_label'))->required()->maxLength(255),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live(),

@@ -93,7 +93,7 @@
         </div>
         <section class="catalog-configurator-preview-state-notes min-w-0 rounded-lg border border-gray-200 p-3 text-xs break-words dark:border-gray-700" aria-labelledby="preview-notes-heading-{{ $this->getId() }}">
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <h3 id="preview-notes-heading-{{ $this->getId() }}" tabindex="-1" class="scroll-mt-6 text-sm font-medium">{{ __('configurator.preview.rules_and_state_notes') }}</h3>
+                <h2 id="preview-notes-heading-{{ $this->getId() }}" tabindex="-1" class="scroll-mt-6 text-sm font-medium">{{ __('configurator.preview.rules_and_state_notes') }}</h2>
                 <a class="catalog-configurator-preview-mobile-feedback text-primary-600 underline" href="#preview-choices-{{ $this->getId() }}">{{ __('configurator.preview.back_to_choices') }}</a>
             </div>
             @if ($selectionWarnings !== [])
@@ -153,7 +153,7 @@
                 </section>
             @endif
             <section class="min-w-0 rounded-lg border border-gray-200 p-2 break-words dark:border-gray-700" aria-labelledby="preview-rules-heading-{{ $this->getId() }}">
-                <h3 id="preview-rules-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.rule_diagnostics') }}</h3>
+                <h2 id="preview-rules-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.rule_diagnostics') }}</h2>
                 @if ($result)
                     <ul class="mt-2 space-y-1 text-xs">
                         @foreach ($notes['diagnostics'] as $index => $diagnostic)<li wire:key="preview-system-diagnostic-{{ $index }}">{{ $diagnostic['message'] }}</li>@endforeach
@@ -182,7 +182,7 @@
                 @endif
             </section>
             <section class="min-w-0 rounded-lg border border-gray-200 p-2 break-words dark:border-gray-700" aria-labelledby="preview-trace-heading-{{ $this->getId() }}">
-                <h3 id="preview-trace-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.engine_trace') }}</h3>
+                <h2 id="preview-trace-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.engine_trace') }}</h2>
                 @if ($showTrace && $result?->definition)
                     <ol class="mt-2 space-y-2 text-xs">
                         @foreach ($result->trace as $index => $entry)

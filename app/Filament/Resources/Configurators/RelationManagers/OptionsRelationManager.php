@@ -99,7 +99,8 @@ class OptionsRelationManager extends RelationManager
             ->recordClasses(fn (ConfiguratorOption $record): ?string => $record->id === $this->selectedOptionId ? 'catalog-selected-row' : null)
             ->headerActions([
                 Action::make('includeMany')->label(__('configurator.inclusions.values.actions.include_many'))->authorize('manage-catalog')->slideOver()
-                    ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
+                    ->modalHeading(fn (): string => __('configurator.inclusions.values.include_heading', ['attribute' => $this->owner()->label_override ?? $this->owner()->attribute->label]))
+                    ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->hiddenLabel()->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
                     ->action(fn (array $data) => $this->includeOptions($data['selected'])),
                 Action::make('include')->label(__('configurator.inclusions.values.actions.include'))->icon(Heroicon::OutlinedPlus)->authorize('manage-catalog')->schema(fn (): array => $this->optionFields())
                     ->action(fn (array $data) => $this->saveOption(null, $data)),

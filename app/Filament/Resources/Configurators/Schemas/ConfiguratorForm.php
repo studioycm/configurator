@@ -32,7 +32,7 @@ class ConfiguratorForm
             $global = CatalogContextSettings::current()->choices;
             $contextSections = [];
             foreach (['territory' => __('configurator.labels.territory'), 'application' => __('configurator.labels.application')] as $dimension => $label) {
-                $contextSections[] = Section::make(__('configurator.headings.choices', ['value1' => $label]))
+                $contextSections[] = Section::make(__('configurator.headings.choices', ['value1' => $label]))->contained(false)->extraAttributes(['class' => 'catalog-context-choices'])
                     ->afterHeader([FormHints::make(__('configurator.hints.all_global_options_are_available_by_default'))])
                     ->schema([
                         CheckboxList::make('hidden_context_options.'.$dimension)->label(__('configurator.labels.hide_global_options'))
@@ -46,7 +46,7 @@ class ConfiguratorForm
                             })->columns(['default' => 1, 'sm' => 2])->default([])
                             ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
                             ->hintAction(FormHints::make(__('configurator.hints.checked_options_are_hidden_here_only_all'))),
-                        self::contextChoices($dimension, __('configurator.context.local_options'))
+                        self::contextChoices($dimension, __('configurator.context.local_options'))->extraAttributes(['class' => 'catalog-context-local-options'])
                             ->hintAction(FormHints::make(__('configurator.hints.add_choices_for_this_configurator_only_using'))),
                     ]);
             }

@@ -24,6 +24,25 @@ use Illuminate\Support\Facades\Gate;
 
 class ItemLists
 {
+    public function modalHeading(string $key, Model $record): string
+    {
+        return match ($key) {
+            'value-options' => __('item-lists.headings.value_options', ['value' => $record->label]),
+            'attribute-options' => __('item-lists.headings.attribute_options', ['attribute' => $record->label]),
+            'attribute-inclusions' => __('item-lists.headings.attribute_inclusions', ['attribute' => $record->label]),
+            'option-inclusions' => __('item-lists.headings.option_inclusions', ['option' => $record->displayName()]),
+            'configurator-groups' => __('item-lists.headings.configurator_groups', ['configurator' => $record->name]),
+            'configurator-attributes' => __('item-lists.headings.configurator_attributes', ['configurator' => $record->name]),
+            'configurator-rules' => __('item-lists.headings.configurator_rules', ['configurator' => $record->name]),
+            'inclusion-options' => __('item-lists.headings.inclusion_options', ['attribute' => $record->label_override ?? $record->attribute->label, 'configurator' => $record->configurator->name]),
+            'group-card-properties' => __('item-lists.headings.group_card_properties', ['group' => $record->name]),
+            'rule-mappings' => __('item-lists.headings.rule_mappings', ['rule' => $record->label, 'configurator' => $record->configurator->name]),
+            'rule-effects' => __('item-lists.headings.rule_effects', ['rule' => $record->label, 'configurator' => $record->configurator->name]),
+            'group-products' => __('item-lists.headings.group_products', ['group' => $record->name]),
+            default => abort(404, __('catalog.validation.unknown_item_list')),
+        };
+    }
+
     public function definition(User $actor, string $key, int $parentId): ItemListDefinition
     {
         Gate::forUser($actor)->authorize('manage-catalog');
@@ -41,12 +60,12 @@ class ItemLists
             };
         }
         $optionColumns = ['code' => __('catalog.fields.code'), 'value.label' => __('catalog.fields.value_ui_name')];
-        $inclusionColumns = ['configurator.name' => __('configurator.resource.singular'), 'attribute.label' => __('catalog.resources.attributes.singular'), 'label_override' => __('configurator.inclusions.values.fields.local_ui_name')];
+        $inclusionColumns = ['configurator.name' => __('configurator.resource.singular'), 'attribute.label' => __('catalog.resources.attributes.singular'), 'label_override' => __('configurator.labels.local_label')];
 
         if ($key === 'inclusion-options') {
             $inclusion = ConfiguratorAttribute::with('attribute')->findOrFail($parentId);
 
-            return new ItemListDefinition(__('configurator.inclusions.values.for_attribute', ['attribute' => $inclusion->label_override ?? $inclusion->attribute->label]),
+            return new ItemListDefinition(__('item-lists.tables.attribute_values'),
                 $inclusion->options()->getQuery()->with(['option.value', 'configuratorAttribute.configurator']),
                 ['option.code' => __('catalog.fields.code'), 'option.value.label' => __('configurator.inclusions.values.fields.shared_ui_name'), 'label_override' => __('configurator.inclusions.values.fields.local_ui_name')],
                 $this->recordUrl($inclusion));
@@ -56,19 +75,19 @@ class ItemLists
             'inclusion-blocking-rules' => new ItemListDefinition(__('catalog.usage.headings.blocking_rules'), app(InclusionUsage::class)->rules(ConfiguratorAttribute::findOrFail($parentId))->with('configurator'), ['label' => __('configurator.rules.singular'), 'kind' => __('ui.fields.kind')]),
             'local-option-blocking-rules' => new ItemListDefinition(__('catalog.usage.headings.blocking_rules'), app(InclusionUsage::class)->rules(ConfiguratorOption::findOrFail($parentId))->with('configurator'), ['label' => __('configurator.rules.singular'), 'kind' => __('ui.fields.kind')]),
             'local-option-defaults' => new ItemListDefinition(__('catalog.usage.headings.stored_defaults'), app(InclusionUsage::class)->defaults(ConfiguratorOption::findOrFail($parentId))->with(['configurator', 'attribute']), ['configurator.name' => __('configurator.resource.singular'), 'attribute.label' => __('catalog.resources.attributes.singular')]),
-            'group-card-properties' => new ItemListDefinition(__('catalog.headings.selected_card_properties'), collect(CatalogPolicy::resultSettings(Group::findOrFail($parentId)->result_settings)['card_properties'])->mapWithKeys(fn (string $property): array => [$property => ['property_key' => $property, 'label' => str_replace('_', ' ', $property)]])->all(), ['property_key' => __('catalog.labels.property'), 'label' => __('ui.fields.label')], GroupResource::getUrl('edit', ['record' => $parentId, 'group-tab' => 'form.group-settings.presentation::data::tab'])),
-            'rule-mappings' => new ItemListDefinition(__('catalog.headings.mapping_sets'), ConfiguratorRule::findOrFail($parentId)->mappingSets()->getQuery()->with('rule'), ['label' => __('catalog.labels.set'), 'sort_order' => __('ui.fields.order')]),
-            'rule-effects' => new ItemListDefinition(__('catalog.headings.rule_effects'), ConfiguratorRule::findOrFail($parentId)->effects()->getQuery()->with(['targetAttribute.attribute', 'rule']), ['kind' => __('configurator.rules.fields.effect'), 'targetAttribute.attribute.label' => __('configurator.rules.fields.target_attribute')]),
-            'attribute-options' => new ItemListDefinition(__('catalog.attribute_values.headings.for_attribute', ['attribute' => Attribute::findOrFail($parentId)->label]), Attribute::findOrFail($parentId)->options()->getQuery()->with('value'), $optionColumns, OptionResource::getUrl('index', ['tableFilters' => ['attribute_id' => ['value' => $parentId]]])),
-            'value-options' => new ItemListDefinition(__('catalog.headings.attribute_values_using_this_master_value'), Value::findOrFail($parentId)->options()->getQuery()->with(['attribute', 'value']), ['attribute.label' => __('catalog.resources.attributes.singular'), ...$optionColumns]),
-            'attribute-inclusions' => new ItemListDefinition(__('catalog.headings.configurator_inclusions'), Attribute::findOrFail($parentId)->inclusions()->getQuery()->with(['attribute', 'configurator']), $inclusionColumns),
+            'group-card-properties' => new ItemListDefinition(__('item-lists.tables.card_properties'), collect(CatalogPolicy::resultSettings(Group::findOrFail($parentId)->result_settings)['card_properties'])->mapWithKeys(fn (string $property): array => [$property => ['property_key' => $property, 'label' => str_replace('_', ' ', $property)]])->all(), ['property_key' => __('catalog.labels.property'), 'label' => __('ui.fields.label')], GroupResource::getUrl('edit', ['record' => $parentId, 'group-tab' => 'form.group-settings.presentation::data::tab'])),
+            'rule-mappings' => new ItemListDefinition(__('item-lists.tables.mapping_sets'), ConfiguratorRule::findOrFail($parentId)->mappingSets()->getQuery()->with('rule'), ['label' => __('catalog.labels.set'), 'sort_order' => __('ui.fields.order')]),
+            'rule-effects' => new ItemListDefinition(__('item-lists.tables.effects'), ConfiguratorRule::findOrFail($parentId)->effects()->getQuery()->with(['targetAttribute.attribute', 'rule']), ['kind' => __('configurator.rules.fields.effect'), 'targetAttribute.attribute.label' => __('configurator.rules.fields.target_attribute')]),
+            'attribute-options' => new ItemListDefinition(__('item-lists.tables.attribute_values'), Attribute::findOrFail($parentId)->options()->getQuery()->with('value'), $optionColumns, OptionResource::getUrl('index', ['tableFilters' => ['attribute_id' => ['value' => $parentId]]])),
+            'value-options' => new ItemListDefinition(__('item-lists.tables.attribute_values'), Value::findOrFail($parentId)->options()->getQuery()->with(['attribute', 'value']), ['attribute.label' => __('catalog.resources.attributes.singular'), ...$optionColumns]),
+            'attribute-inclusions' => new ItemListDefinition(__('item-lists.tables.configurator_uses'), Attribute::findOrFail($parentId)->inclusions()->getQuery()->with(['attribute', 'configurator']), $inclusionColumns),
             'value-option-inclusions' => new ItemListDefinition(__('catalog.headings.configurator_uses_of_this_master_value'), ConfiguratorOption::whereIn('option_id', Value::findOrFail($parentId)->options()->select('id'))->with(['configuratorAttribute.configurator', 'option.value']), ['configuratorAttribute.configurator.name' => __('configurator.resource.singular'), 'option.code' => __('catalog.fields.code'), 'option.value.label' => __('catalog.fields.value_ui_name')]),
-            'option-inclusions' => new ItemListDefinition(__('catalog.usage.headings.configurator_uses'), Option::findOrFail($parentId)->inclusions()->getQuery()->with(['option.value', 'configuratorAttribute.configurator', 'configuratorAttribute.attribute']), ['configuratorAttribute.configurator.name' => __('configurator.resource.singular'), 'configuratorAttribute.attribute.label' => __('catalog.resources.attributes.singular'), 'option.code' => __('catalog.fields.code'), 'option.value.label' => __('catalog.fields.value_ui_name')]),
-            'configurator-groups' => new ItemListDefinition(__('catalog.headings.assigned_groups'), Configurator::findOrFail($parentId)->groups()->getQuery(), ['name' => __('catalog.resources.groups.singular')], GroupResource::getUrl('index', ['tableFilters' => ['configurator_id' => ['value' => $parentId]]])),
+            'option-inclusions' => new ItemListDefinition(__('item-lists.tables.configurator_uses'), Option::findOrFail($parentId)->inclusions()->getQuery()->with(['option.value', 'configuratorAttribute.configurator', 'configuratorAttribute.attribute']), ['configuratorAttribute.configurator.name' => __('configurator.resource.singular'), 'configuratorAttribute.attribute.label' => __('catalog.resources.attributes.singular'), 'option.code' => __('catalog.fields.code'), 'option.value.label' => __('catalog.fields.value_ui_name')]),
+            'configurator-groups' => new ItemListDefinition(__('item-lists.tables.groups'), Configurator::findOrFail($parentId)->groups()->getQuery(), ['name' => __('catalog.resources.groups.singular')], GroupResource::getUrl('index', ['tableFilters' => ['configurator_id' => ['value' => $parentId]]])),
             'configurator-products' => new ItemListDefinition(__('catalog.headings.products_in_assigned_groups'), Product::whereIn('group_id', Configurator::findOrFail($parentId)->groups()->select('id')), ['product_code' => __('catalog.labels.product_code'), 'product_name' => __('catalog.labels.product_name')]),
-            'configurator-attributes' => new ItemListDefinition(__('catalog.headings.included_attributes'), Configurator::findOrFail($parentId)->attributes()->getQuery()->with(['attribute', 'configurator']), $inclusionColumns, ConfiguratorResource::getUrl('edit', ['record' => $parentId, 'tab' => 'attributes::data::tab'])),
-            'configurator-rules' => new ItemListDefinition(__('configurator.rules.plural'), Configurator::findOrFail($parentId)->rules()->getQuery()->with('configurator'), ['label' => __('configurator.rules.singular'), 'kind' => __('ui.fields.kind'), 'priority' => __('configurator.rules.fields.priority')], ConfiguratorResource::getUrl('edit', ['record' => $parentId, 'tab' => 'rules::data::tab'])),
-            'group-products' => new ItemListDefinition(__('catalog.headings.products_in_this_group'), Group::findOrFail($parentId)->products()->getQuery(), ['product_code' => __('catalog.labels.product_code'), 'product_name' => __('catalog.labels.product_name')], ProductResource::getUrl('index', ['tableFilters' => ['group_id' => ['value' => $parentId]]])),
+            'configurator-attributes' => new ItemListDefinition(__('item-lists.tables.attributes'), Configurator::findOrFail($parentId)->attributes()->getQuery()->with(['attribute', 'configurator']), $inclusionColumns, ConfiguratorResource::getUrl('edit', ['record' => $parentId, 'tab' => 'attributes::data::tab'])),
+            'configurator-rules' => new ItemListDefinition(__('item-lists.tables.rules'), Configurator::findOrFail($parentId)->rules()->getQuery()->with('configurator'), ['label' => __('configurator.rules.singular'), 'kind' => __('ui.fields.kind'), 'priority' => __('configurator.rules.fields.priority')], ConfiguratorResource::getUrl('edit', ['record' => $parentId, 'tab' => 'rules::data::tab'])),
+            'group-products' => new ItemListDefinition(__('item-lists.tables.products'), Group::findOrFail($parentId)->products()->getQuery(), ['product_code' => __('catalog.labels.product_code'), 'product_name' => __('catalog.labels.product_name')], ProductResource::getUrl('index', ['tableFilters' => ['group_id' => ['value' => $parentId]]])),
             default => abort(404, __('catalog.validation.unknown_item_list')),
         };
     }

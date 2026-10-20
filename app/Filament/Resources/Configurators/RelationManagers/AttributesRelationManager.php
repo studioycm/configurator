@@ -11,6 +11,7 @@ use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorAttributeForm;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
+use App\Filament\Resources\FormHints;
 use App\Filament\Resources\FormOrderControls;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\ItemCountColumn;
@@ -126,8 +127,10 @@ class AttributesRelationManager extends RelationManager
             return [
                 View::make('filament.forms.validation-summary'),
                 Hidden::make('option_id')->required()->rules(['integer']),
-                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255)->placeholder($option->option->value->label),
-                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255)->placeholder($option->option->value->label),
+                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255)->placeholder($option->option->value->label)
+                    ->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_ui_name'))),
+                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255)->placeholder($option->option->value->label)
+                    ->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_display_value'))),
                 TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
                 Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden')),
                 Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled')),
@@ -470,7 +473,7 @@ class AttributesRelationManager extends RelationManager
                     ->schema([
                         View::make('filament.forms.configurator-review-errors'),
                         Hidden::make('review_drafts')->default([])->dehydrated(false),
-                        TableSelect::make('selected')->label(__('configurator.labels.shared_attributes'))->multiple()->required()->minItems(1)->live()->tableConfiguration(AttributeSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])
+                        TableSelect::make('selected')->label(__('configurator.inclusions.choose_shared_attributes'))->multiple()->required()->minItems(1)->live()->tableConfiguration(AttributeSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])
                             ->afterStateUpdated(function (Set $set, Get $get, ?array $state): void {
                                 $rows = collect($get('review_drafts') ?? [])->replace(collect($get('review') ?? [])->keyBy('attribute_id'));
                                 $set('review_drafts', $rows->all());

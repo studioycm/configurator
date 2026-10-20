@@ -117,8 +117,9 @@ test('table pickers show all tags without visibility preferences and describe th
     $values = Livewire::test(WorkspaceTablePicker::class, ['tableConfiguration' => base64_encode(ValueSelectionTable::class), 'tableArguments' => ['owner_id' => 'create'], 'state' => []]);
     $options = Livewire::test(WorkspaceTablePicker::class, ['tableConfiguration' => base64_encode(OptionSelectionTable::class), 'tableArguments' => ['owner_id' => $inclusion->id], 'state' => []]);
 
-    expect($values->instance()->getTable()->getHeading())->toBe('Master Values');
-    expect($options->instance()->getTable()->getHeading())->toBe('Attribute Values — Local body');
+    expect($values->instance()->getTable()->getHeading())->toBe('');
+    expect($options->instance()->getTable()->getHeading())->toBe('')
+        ->and($options->instance()->getTable()->getPluralModelLabel())->toBe('Attribute Values');
     foreach ([$values, $options] as $page) {
         $actions = collect($page->instance()->getTable()->getHeaderActions())
             ->flatMap(fn ($action) => $action instanceof ActionGroup ? $action->getFlatActions() : [$action]);
@@ -142,7 +143,7 @@ test('included Value drawers name their effective Attribute context', function (
     $inclusion = ConfiguratorAttribute::factory()->for($attribute)->create(['label_override' => 'Local body']);
 
     Livewire::test(ItemListDrawer::class, ['listKey' => 'inclusion-options', 'parentId' => $inclusion->id])
-        ->assertSee('Included Attribute Values — Local body');
+        ->assertSee('Attribute Values');
 });
 
 test('inclusion review Option choices use the staged local names without saving shared records', function () {

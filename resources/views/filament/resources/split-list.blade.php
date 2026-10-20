@@ -9,7 +9,7 @@
             <x-catalog.workspace-splitter />
             <div class="catalog-record-editor min-w-0">
                 @if ($editor = $this->editorComponent())
-                    @livewire($editor, $isCreatingRecord ? ['embedded' => true] : ['record' => $selectedRecord], key('editor-'.$editor.'-'.($isCreatingRecord ? 'create' : $selectedRecord)))
+                    @livewire($editor, $isCreatingRecord ? ['embedded' => true, 'inWorkspace' => true] : ['record' => $selectedRecord, 'inWorkspace' => true], key('editor-'.$editor.'-'.($isCreatingRecord ? 'create' : $selectedRecord)))
                 @else
                     <div class="catalog-editor-placeholder">{{ __('admin.workspace.copy.select_a_record_to_view_or_edit_it_here') }}</div>
                 @endif

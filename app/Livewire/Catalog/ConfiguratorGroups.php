@@ -7,6 +7,7 @@ use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\GroupSelectionTable;
 use App\Models\Configurator;
 use App\Models\Group;
+use App\Services\ItemLists;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -39,7 +40,7 @@ class ConfiguratorGroups extends Component implements HasActions, HasSchemas
 
     public function membershipAction(): Action
     {
-        return Action::make('membership')->label(__('configurator.labels.manage_group_assignments'))->authorize('manage-catalog')->slideOver()
+        return Action::make('membership')->label(__('configurator.labels.manage_group_assignments'))->authorize('manage-catalog')->slideOver()->modalHeading(fn (): string => __('configurator.groups.assignment_heading', ['name' => $this->owner()->name]))->modalSubmitActionLabel(__('configurator.groups.save_assignments'))
             ->schema([TableSelect::make('selected')->label(__('configurator.labels.final_assigned_groups'))->multiple()->tableConfiguration(GroupSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->configuratorId])])
             ->fillForm(function (): array {
                 $this->expectedGroupIds = $this->owner()->groups()->orderBy('id')->pluck('id')->all();
@@ -54,7 +55,7 @@ class ConfiguratorGroups extends Component implements HasActions, HasSchemas
 
     public function productsAction(): Action
     {
-        return Action::make('products')->label(__('configurator.labels.view_products'))->authorize('manage-catalog')->slideOver()->modalSubmitAction(false)->modalContent(fn (array $arguments) => view('filament.resources.item-list-content', ['listKey' => 'group-products', 'parentId' => (int) $arguments['group']]));
+        return Action::make('products')->label(__('configurator.labels.view_products'))->authorize('manage-catalog')->slideOver()->modalHeading(fn (array $arguments): string => app(ItemLists::class)->modalHeading('group-products', Group::findOrFail((int) $arguments['group'])))->modalSubmitAction(false)->modalContent(fn (array $arguments) => view('filament.resources.item-list-content', ['listKey' => 'group-products', 'parentId' => (int) $arguments['group'], 'showTableHeading' => false]));
     }
 
     public function assignGroup(int $groupId): void

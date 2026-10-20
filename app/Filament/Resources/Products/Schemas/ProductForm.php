@@ -39,7 +39,7 @@ class ProductForm
 
     private static function jsonRepeater(string $bucket, string $label): Repeater
     {
-        return Repeater::make($bucket)->label($label)->columnSpanFull()->defaultItems(0)
+        return Repeater::make($bucket)->label($label)->hiddenLabel()->columnSpanFull()->defaultItems(0)
             ->addable(false)->deletable(false)->reorderable(false)->compact()
             ->extraAttributes(['class' => 'catalog-product-json'])
             ->hintAction(FormHints::make(__('catalog.products.hints.edit_values_of_the_fields_saved_on')))

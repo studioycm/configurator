@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Attributes\Pages;
 use App\Actions\AddAttributeValues;
 use App\Actions\DeleteCanonicalDefinition;
 use App\Filament\Resources\Attributes\AttributeResource;
+use App\Filament\Resources\Attributes\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\InteractsWithBatchEditor;
@@ -23,6 +24,18 @@ class EditAttribute extends EditRecord
     protected string $view = 'filament.resources.record-editor';
 
     protected static string $resource = AttributeResource::class;
+
+    public function getRelationManagers(): array
+    {
+        $managers = parent::getRelationManagers();
+        foreach ($managers as $key => $manager) {
+            if ($manager === OptionsRelationManager::class) {
+                $managers[$key] = OptionsRelationManager::make(['headingLevel' => $this->recordHeadingLevel() + 1]);
+            }
+        }
+
+        return $managers;
+    }
 
     protected function afterSave(): void
     {

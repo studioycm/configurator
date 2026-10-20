@@ -19,7 +19,7 @@
             </x-filament::section>
             @livewire(\App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => $this->getPageClass(), 'selectedOptionId' => $selectedOptionId], key('attribute-options-'.$attribute->id))
             @if ($option = $this->selectedOption())
-                <x-filament::section data-preview-value-editor tabindex="-1" class="scroll-mt-6" :heading="$option->option->displayName($option->label_override, $attribute->label_override ?? $attribute->attribute->label)" wire:key="option-editor-{{ $option->id }}">
+                <x-filament::section heading-tag="h3" data-preview-value-editor tabindex="-1" class="scroll-mt-6" :heading="$option->option->displayName($option->label_override, $attribute->label_override ?? $attribute->attribute->label)" wire:key="option-editor-{{ $option->id }}">
                     <button type="button" x-cloak x-show="fromPreview" class="mb-3 text-xs text-primary-600 underline dark:text-primary-400"
                         x-on:click="$dispatch('configurator-select-editor-tab', {editor: 'preview'})">{{ __('configurator.preview.back_to_preview') }}</button>
                     <p class="mb-2 text-sm text-gray-500">{{ __('configurator.inclusions.inheritance_help') }}</p>

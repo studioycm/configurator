@@ -63,8 +63,8 @@ class ContextSettings extends Page
         return $schema->statePath('data')->columns(1)->components([
             View::make('filament.forms.validation-summary')->columnSpanFull(),
             Tabs::make(__('configurator.context.headings.context_choices'))->key('context-choices')->columnSpanFull()->tabs([
-                Tab::make(__('configurator.context.headings.territories'))->key(fn (Tab $component): string => 'territories::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([ConfiguratorForm::contextChoices('territory', __('configurator.context.territory_options'))->helperText(null)->hintAction(FormHints::make(__('configurator.context.hints.stable_values_are_used_by_rules_keep')))]),
-                Tab::make(__('configurator.context.headings.applications'))->key(fn (Tab $component): string => 'applications::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([ConfiguratorForm::contextChoices('application', __('configurator.context.application_options'))->helperText(null)->hintAction(FormHints::make(__('configurator.context.hints.stable_values_are_used_by_rules_keep')))]),
+                Tab::make(__('configurator.context.headings.territories'))->key(fn (Tab $component): string => 'territories::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([ConfiguratorForm::contextChoices('territory', __('configurator.context.global_choices'))->helperText(null)]),
+                Tab::make(__('configurator.context.headings.applications'))->key(fn (Tab $component): string => 'applications::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([ConfiguratorForm::contextChoices('application', __('configurator.context.global_choices'))->helperText(null)]),
             ]),
         ]);
     }

@@ -21,10 +21,10 @@ class AttributeForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components([Section::make(__('catalog.attributes.headings.shared_attribute'))->key(fn (Section $component): string => 'shared-attribute::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->afterHeader([FormHints::make(__('catalog.attributes.hints.labels_apply_wherever_this_attribute_is_included'))])->compact()->columns(2)->schema([
+        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'shared-attribute::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(2)->schema([
             TextInput::make('key')->label(__('catalog.fields.key'))->required()->maxLength(100)->hintAction(FormHints::make(__('catalog.attributes.hints.a_stable_identity_used_keys_require_reference'))),
-            TextInput::make('label')->label(__('ui.fields.label'))->required()->maxLength(255),
-        ]), Section::make(__('attribute-options.heading'))->key('attribute-values')->compact()->description(__('attribute-options.help'))
+            TextInput::make('label')->label(__('ui.fields.label'))->hintAction(FormHints::make(__('catalog.attributes.hints.labels_apply_wherever_this_attribute_is_included')))->required()->maxLength(255),
+        ]), Section::make(__('attribute-options.heading'))->key('attribute-values')->contained(false)->compact()->description(__('attribute-options.help'))
             ->headerActions([
                 Action::make('addValues')->label(__('attribute-options.add'))->modalSubmitActionLabel(__('attribute-options.add_selected'))->authorize('manage-catalog')
                     ->schema(fn (Get $schemaGet, ?Attribute $record): array => [TableSelect::make('values')->label(__('attribute-options.selected'))->multiple()->required()->minItems(1)

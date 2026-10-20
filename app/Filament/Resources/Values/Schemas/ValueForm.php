@@ -16,8 +16,8 @@ class ValueForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components([Section::make(__('catalog.resources.master_values.singular'))->key(fn (Section $component): string => 'master-value::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->afterHeader([FormHints::make(__('catalog.master_values.hints.reuse_an_existing_meaning_where_appropriate_equal'))])->compact()->schema([
-            TextInput::make('label')->label(__('catalog.fields.ui_name'))->required()->maxLength(255)->live(onBlur: true)
+        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'master-value::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->schema([
+            TextInput::make('label')->label(__('catalog.fields.ui_name'))->hintAction(FormHints::make(__('catalog.master_values.hints.reuse_an_existing_meaning_where_appropriate_equal')))->required()->maxLength(255)->live(onBlur: true)
                 ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
                     if (blank($get('semantic_id')) && filled($state)) {
                         $set('semantic_id', Value::suggestSemanticId($state));

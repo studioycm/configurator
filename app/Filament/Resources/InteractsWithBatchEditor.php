@@ -9,6 +9,8 @@ use Livewire\Attributes\On;
 
 trait InteractsWithBatchEditor
 {
+    use InteractsWithRecordPresentation;
+
     #[Locked]
     public bool $batchEditorStale = false;
 

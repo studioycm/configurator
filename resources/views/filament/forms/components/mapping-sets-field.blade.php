@@ -105,7 +105,7 @@
                 </div>
                 <div class="catalog-mapping-lists grid gap-3">
                     <div class="min-w-0">
-                        <h4 class="sticky top-0 bg-white py-2 font-medium dark:bg-gray-900" x-text="uiInterpolate(@js(__('configurator.mapping.driver_selected')), {count: set.source_option_ids.length})"></h4>
+                        <h3 class="sticky top-0 bg-white py-2 font-medium dark:bg-gray-900" x-text="uiInterpolate(@js(__('configurator.mapping.driver_selected')), {count: set.source_option_ids.length})"></h3>
                         <input type="search" x-model="searches[set.id + ':source']" :aria-label="uiInterpolate(@js(__('configurator.mapping.search_driver')), {number: index + 1})" placeholder="{{ __('configurator.copy.search_driver_values') }}" class="mb-2 w-full rounded-lg border border-gray-300 px-2 py-1 dark:bg-gray-900" />
                         <div class="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700" tabindex="0" :aria-label="uiInterpolate(@js(__('configurator.mapping.driver_list')), {number: index + 1})">
                             <template x-for="(label, id) in sources" :key="id">
@@ -120,7 +120,7 @@
                         </div>
                     </div>
                     <div class="min-w-0">
-                        <h4 class="sticky top-0 bg-white py-2 font-medium dark:bg-gray-900" x-text="uiInterpolate(@js(__('configurator.mapping.target_selected')), {count: set.target_option_ids.length})"></h4>
+                        <h3 class="sticky top-0 bg-white py-2 font-medium dark:bg-gray-900" x-text="uiInterpolate(@js(__('configurator.mapping.target_selected')), {count: set.target_option_ids.length})"></h3>
                         <input type="search" x-model="searches[set.id + ':target']" :aria-label="uiInterpolate(@js(__('configurator.mapping.search_target')), {number: index + 1})" placeholder="{{ __('configurator.copy.search_allowed_targets') }}" class="mb-2 w-full rounded-lg border border-gray-300 px-2 py-1 dark:bg-gray-900" />
                         <div class="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700" tabindex="0" :aria-label="uiInterpolate(@js(__('configurator.mapping.target_list')), {number: index + 1})">
                             <template x-for="(label, id) in targets" :key="id">
