@@ -45,7 +45,7 @@ class AttributeForm
                         Hidden::make('value_id')->required()->rules(['integer'])->distinct(),
                         TextInput::make('name')->label(__('catalog.fields.value_ui_name'))->readOnly()->dehydrated(false),
                         TextInput::make('code')->label(__('catalog.fields.code'))->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D')->distinct()->unique('options', 'code', ignoreRecord: false)
-                            ->helperText(__('attribute-options.code_help')),
+                            ->hintAction(FormHints::make(__('attribute-options.code_help'))),
                     ]),
             ])]);
     }

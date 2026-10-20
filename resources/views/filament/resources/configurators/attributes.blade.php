@@ -1,7 +1,7 @@
 <x-catalog.related-editor data-preview-editor="attributes">
     <x-slot:list>{{ $this->table }}</x-slot:list>
     @if ($attribute = $this->selectedAttribute())
-        <div class="space-y-6" wire:key="attribute-editor-{{ $attribute->id }}">
+        <div class="space-y-6" data-current-editor data-editor-record="{{ $attribute->label_override ?? $attribute->attribute->label }}" wire:key="attribute-editor-{{ $attribute->id }}">
             <x-filament::section :heading="$attribute->label_override ?? $attribute->attribute->label">
                 <div class="space-y-5">
                     @if (isset($editorStaleRows[$attribute->id]))
@@ -11,15 +11,18 @@
                         </div>
                     @endif
                     {{ $this->editorForm }}
-                    <div class="flex flex-wrap gap-3">
-                        <x-filament::button wire:click="saveEditor" wire:loading.attr="disabled" wire:target="saveEditor">{{ __('admin.workspace.copy.save_attribute') }}</x-filament::button>
-                        <x-filament::button color="gray" wire:click="closeEditor" data-close-editor>{{ __('ui.actions.close') }}</x-filament::button>
+                    <div class="catalog-editor-footer">
+                        @include('filament.resources.editor-save-state', ['dirty' => 'hasDraft()', 'scope' => __('admin.workspace.editor.inclusion_scope')])
+                        <div class="catalog-editor-actions">
+                            <x-filament::button wire:click="saveEditor" wire:loading.attr="disabled" wire:target="saveEditor">{{ __('admin.workspace.copy.save_attribute') }}</x-filament::button>
+                            <x-filament::button color="gray" wire:click="closeEditor" data-close-editor>{{ __('ui.actions.close') }}</x-filament::button>
+                        </div>
                     </div>
                 </div>
             </x-filament::section>
             @livewire(\App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => $this->getPageClass(), 'selectedOptionId' => $selectedOptionId], key('attribute-options-'.$attribute->id))
             @if ($option = $this->selectedOption())
-                <x-filament::section heading-tag="h3" data-preview-value-editor tabindex="-1" class="scroll-mt-6" :heading="$option->option->displayName($option->label_override, $attribute->label_override ?? $attribute->attribute->label)" wire:key="option-editor-{{ $option->id }}">
+                <x-filament::section heading-tag="h3" data-preview-value-editor data-editor-record="{{ $option->option->displayName($option->label_override, $attribute->label_override ?? $attribute->attribute->label) }}" tabindex="-1" class="scroll-mt-6" :heading="$option->option->displayName($option->label_override, $attribute->label_override ?? $attribute->attribute->label)" wire:key="option-editor-{{ $option->id }}">
                     <button type="button" x-cloak x-show="fromPreview" class="mb-3 text-xs text-primary-600 underline dark:text-primary-400"
                         x-on:click="$dispatch('configurator-select-editor-tab', {editor: 'preview'})">{{ __('configurator.preview.back_to_preview') }}</button>
                     <p class="mb-2 text-sm text-gray-500">{{ __('configurator.inclusions.inheritance_help') }}</p>
@@ -30,9 +33,12 @@
                         </div>
                     @endif
                     {{ $this->optionEditorForm }}
-                    <div class="mt-3 flex flex-wrap gap-3">
-                        <x-filament::button wire:click="saveOptionEditor" wire:loading.attr="disabled" wire:target="saveOptionEditor">{{ __('admin.workspace.copy.save_value') }}</x-filament::button>
-                        <x-filament::button color="gray" wire:click="closeOptionEditor" data-close-option-editor>{{ __('admin.workspace.copy.close_value') }}</x-filament::button>
+                    <div class="catalog-editor-footer">
+                        @include('filament.resources.editor-save-state', ['dirty' => 'hasCurrentOptionDraft()', 'scope' => __('admin.workspace.editor.value_scope')])
+                        <div class="catalog-editor-actions">
+                            <x-filament::button wire:click="saveOptionEditor" wire:loading.attr="disabled" wire:target="saveOptionEditor">{{ __('admin.workspace.copy.save_value') }}</x-filament::button>
+                            <x-filament::button color="gray" wire:click="closeOptionEditor" data-close-option-editor>{{ __('admin.workspace.copy.close_value') }}</x-filament::button>
+                        </div>
                     </div>
                 </x-filament::section>
             @endif

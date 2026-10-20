@@ -1,4 +1,5 @@
 <x-filament-panels::page x-data="{ savedDraft: JSON.stringify($wire.data) }"
+    data-editor-record="{{ strip_tags((string) $this->getTitle()) }}"
     x-bind:data-draft-dirty="JSON.stringify($wire.data) !== savedDraft"
     x-on:catalog-editor-saved="savedDraft = JSON.stringify($wire.data)">
     @if (property_exists($this, 'batchEditorStale') && $this->batchEditorStale)

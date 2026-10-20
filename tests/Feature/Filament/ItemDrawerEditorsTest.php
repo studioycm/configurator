@@ -3,12 +3,14 @@
 use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Groups\Pages\EditGroup;
 use App\Filament\Resources\Options\Pages\EditOption;
+use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Livewire\Catalog\ItemListDrawer;
 use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\ConfiguratorRule;
 use App\Models\Group;
 use App\Models\Option;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\CatalogImportParser;
 use App\Services\ItemLists;
@@ -199,4 +201,41 @@ test('blocking rules cannot open a local Group or Option editor', function () {
         ->call('selectRecord', (string) $rule->id)->assertNotFound();
     Livewire::test(EditGroup::class, ['record' => Group::factory()->create()->id, 'listKey' => 'rule-effects', 'parentId' => $rule->id])
         ->assertNotFound();
+});
+
+test('Products open and save below their parent list through the existing Product editor', function () {
+    $group = Group::factory()->create();
+    $product = Product::factory()->for($group)->create(['properties' => ['pressure' => 'PN 16']]);
+    $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'group-products', 'parentId' => $group->id, 'allowLocalEditing' => true]);
+
+    $drawer->callAction(TestAction::make('select')->table($product))
+        ->assertSet('selectedRecordId', (string) $product->id)->assertNoRedirect()
+        ->assertSee('catalog-item-drawer-editor', false);
+    expect($drawer->instance()->editorComponent())->toBe(EditProduct::class);
+
+    Livewire::test(EditProduct::class, ['record' => $product->id, 'listKey' => 'group-products', 'parentId' => $group->id])
+        ->fillForm(['product_name' => 'Updated in the drawer'])->call('save')
+        ->assertHasNoFormErrors()->assertNoRedirect()
+        ->assertDispatchedTo(ItemListDrawer::class, 'item-drawer-record-saved', listKey: 'group-products', parentId: $group->id, record: (string) $product->id);
+
+    $this->assertDatabaseHas('products', ['id' => $product->id, 'product_name' => 'Updated in the drawer', 'group_id' => $group->id]);
+    expect($product->fresh()->properties)->toBe(['pressure' => 'PN 16']);
+});
+
+test('a Product drawer rejects foreign records and records that leave its Group', function () {
+    $group = Group::factory()->create();
+    $product = Product::factory()->for($group)->create();
+    $foreign = Product::factory()->create();
+
+    Livewire::test(ItemListDrawer::class, ['listKey' => 'group-products', 'parentId' => $group->id, 'allowLocalEditing' => true])
+        ->call('selectRecord', (string) $foreign->id)->assertNotFound();
+    Livewire::test(EditProduct::class, ['record' => $foreign->id, 'listKey' => 'group-products', 'parentId' => $group->id])
+        ->assertNotFound();
+
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id, 'listKey' => 'group-products', 'parentId' => $group->id])
+        ->fillForm(['product_name' => 'Must not save']);
+    $product->update(['group_id' => $foreign->group_id]);
+    $editor->call('save')->assertNotFound();
+
+    $this->assertDatabaseHas('products', ['id' => $product->id, 'product_name' => 'Test product', 'group_id' => $foreign->group_id]);
 });

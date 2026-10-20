@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\Pages;
 
 use App\Actions\SaveCatalogProduct;
 use App\Filament\Resources\InteractsWithBatchEditor;
+use App\Filament\Resources\InteractsWithItemDrawerEditor;
 use App\Filament\Resources\Products\ProductResource;
 use App\Services\ProductEditorData;
 use Filament\Actions\Action;
@@ -13,7 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class EditProduct extends EditRecord
 {
-    use InteractsWithBatchEditor;
+    use InteractsWithBatchEditor {
+        beforeSave as protected beforeSaveBatchEditor;
+    }
+    use InteractsWithItemDrawerEditor;
 
     protected static string $resource = ProductResource::class;
 
@@ -44,12 +48,19 @@ class EditProduct extends EditRecord
         }
     }
 
+    protected function beforeSave(): void
+    {
+        $this->assertItemDrawerMembership($this->getRecord()->getKey());
+        $this->beforeSaveBatchEditor();
+    }
+
     protected function afterSave(): void
     {
         $this->getRecord()->refresh();
         $this->fillForm();
         $this->dispatch('catalog-record-saved');
         $this->dispatch('catalog-editor-saved')->self();
+        $this->notifyItemDrawerSaved();
     }
 
     protected function getHeaderActions(): array

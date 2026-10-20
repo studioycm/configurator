@@ -34,7 +34,7 @@ class GroupForm
     {
 
         $details = [
-            TextInput::make('name')->label(__('ui.fields.name'))->required()->maxLength(255)->hintAction(FormHints::make(__('catalog.groups.hints.imported_names_are_replaced_by_the_source'))),
+            TextInput::make('name')->label(__('ui.fields.name'))->required()->maxLength(255)->helperText(__('catalog.groups.hints.imported_names_are_replaced_by_the_source')),
             Textarea::make('description')->label(__('catalog.fields.description'))->maxLength(5000)->columnSpanFull(),
             Select::make('parent_id')->label(__('catalog.groups.fields.parent'))->searchable()->placeholder(__('catalog.groups.help.root_group'))
                 ->options(fn (?Group $record): array => self::parentOptions($record)),
@@ -42,7 +42,7 @@ class GroupForm
                 ->getSearchResultsUsing(fn (string $search): array => Configurator::where('name', 'like', '%'.$search.'%')->orderBy('name')->limit(50)->pluck('name', 'id')->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => Configurator::find($value)?->name)
                 ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
-                ->hintAction(FormHints::make(__('catalog.groups.hints.leaf_groups_can_share_one_configurator_changes'))),
+                ->helperText(__('admin.workspace.editor.shared_configurator_help')),
             TextInput::make('sort_order')->label(__('catalog.groups.fields.sort_order'))->integer()->default(0)->required(),
         ];
         $record = $schema->getRecord();
@@ -89,11 +89,12 @@ class GroupForm
             Section::make(__('catalog.groups.headings.card_appearance'))->key(fn (Section $component): string => 'card-appearance::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 Toggle::make('catalog_settings.result_settings.card_only_differences')->label(__('catalog.groups.labels.only_differing_properties'))->default(true)
                     ->hintAction(FormHints::make(__('catalog.groups.hints.compare_the_complete_matching_set_and_hide'))),
-                Toggle::make('catalog_settings.result_settings.card_show_labels')->label(__('catalog.groups.labels.show_property_labels'))->default(false)
+                Toggle::make('catalog_settings.result_settings.card_show_labels')->label(__('catalog.groups.labels.show_property_labels'))->default(false)->live()
                     ->hintAction(FormHints::make(__('catalog.groups.hints.property_names_remain_accessible_when_their_labels'))),
                 Select::make('catalog_settings.result_settings.card_property_layout')->label(__('catalog.groups.labels.label_and_value_layout'))
                     ->options(fn (): array => array_combine(array_keys(CatalogPolicy::CARD_LAYOUTS), array_map(fn (string $key): string => __('catalog.groups.card_layouts.'.$key), array_keys(CatalogPolicy::CARD_LAYOUTS))))->default('inline_space_between')->required()->selectablePlaceholder(false)
-                    ->hintAction(FormHints::make(__('catalog.groups.hints.applies_when_labels_are_shown_your_choice'))),
+                    ->helperText(fn (Get $get): string => $get('catalog_settings.result_settings.card_show_labels') ? __('admin.workspace.editor.layout_active') : __('admin.workspace.editor.layout_inactive'))
+                    ->extraAttributes(fn (Get $get): array => ['class' => $get('catalog_settings.result_settings.card_show_labels') ? 'catalog-dependent-field' : 'catalog-dependent-field catalog-dependent-field-inactive']),
                 Select::make('catalog_settings.result_settings.card_property_columns')->label(__('catalog.groups.labels.property_columns'))
                     ->options([1 => '1', 2 => '2'])->default(2)->required()->selectablePlaceholder(false),
             ])->columns(2)->columnSpanFull(),

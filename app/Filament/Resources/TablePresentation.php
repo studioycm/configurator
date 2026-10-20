@@ -95,6 +95,9 @@ class TablePresentation
         }
         foreach ($table->getFlatRecordActions() as $action) {
             $action->iconButton();
+            if (in_array($action->getName(), ['moveUp', 'moveDown'], true)) {
+                $action->extraAttributes(['class' => 'catalog-order-action', 'data-order-direction' => $action->getName() === 'moveUp' ? 'up' : 'down'], merge: true);
+            }
             if (! $action->hasTooltip()) {
                 $action->tooltip(fn (Action $action): string => (string) $action->getLabel());
             }

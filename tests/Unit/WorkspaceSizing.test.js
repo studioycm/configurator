@@ -270,6 +270,29 @@ test('workspace split offers finer stops and persists ratios per user and tab', 
     assert.equal(otherTab.percentage, 50);
 });
 
+test('divider help closes after three seconds and immediately when dragging starts', t => {
+    environment(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const split = workspaceSplit({ user: 1, owner: 10, tab: 'list' });
+    split.resize(1600);
+    split.showSplitterHint();
+    assert.equal(split.splitterHintVisible, true);
+    t.mock.timers.tick(2999);
+    assert.equal(split.splitterHintVisible, true);
+    t.mock.timers.tick(1);
+    assert.equal(split.splitterHintVisible, false);
+
+    split.showSplitterHint();
+    let focused = false;
+    split.startDrag({ button: 0, pointerId: 1, preventDefault() {}, currentTarget: { setPointerCapture() {}, focus() { focused = true; } } });
+    assert.equal(split.splitterHintVisible, false);
+    assert.equal(focused, true);
+    split.showSplitterHint();
+    assert.equal(split.splitterHintVisible, false);
+    split.endDrag(true);
+    split.destroy();
+});
+
 test('legacy divider preferences retain their exact ratio and resizing does not overwrite them', t => {
     const { values, writes } = environment(t, { saved: [['aquestia:split:1:10:rules:v1', '2']] });
     const split = workspaceSplit({ user: 1, owner: 10, tab: 'rules' }); split.restore();

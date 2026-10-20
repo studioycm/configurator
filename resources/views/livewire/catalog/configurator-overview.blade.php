@@ -1,7 +1,10 @@
 <div data-preview-editor="overview" class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(15rem,1fr)]" x-data="{ savedDraft: JSON.stringify($wire.data) }" x-bind:data-draft-dirty="JSON.stringify($wire.data) !== savedDraft" x-on:catalog-overview-saved="savedDraft = JSON.stringify($wire.data)">
     <div class="min-w-0 space-y-3">
         {{ $this->form }}
-        <x-filament::button wire:click="saveOverview" wire:loading.attr="disabled" wire:target="saveOverview">{{ __('configurator.copy.save_overview') }}</x-filament::button>
+        <div class="catalog-editor-footer">
+            @include('filament.resources.editor-save-state', ['dirty' => 'JSON.stringify($wire.data) !== savedDraft', 'scope' => __('admin.workspace.editor.overview_scope')])
+            <x-filament::button wire:click="saveOverview" wire:loading.attr="disabled" wire:target="saveOverview">{{ __('configurator.copy.save_overview') }}</x-filament::button>
+        </div>
     </div>
     <aside class="min-w-0" aria-label="{{ __('configurator.copy.configurator_summary') }}">
         <x-filament::section heading="{{ __('configurator.copy.definition_summary') }}">

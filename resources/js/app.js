@@ -6,6 +6,7 @@ import { itemCountPreview } from './item-count-preview';
 import { workspaceDialog, workspaceColumnManager } from './workspace-dialogs';
 import { tableColumnWidths } from './table-column-widths';
 import { workspaceSplit } from './workspace-split';
+import { editorDrafts, configuratorDrafts } from './editor-drafts';
 import { tablePagination } from './table-pagination';
 import { configuratorProductSearch } from './configurator-product-search';
 import { configuratorPreviewWorkspace } from './configurator-preview-workspace';
@@ -14,6 +15,8 @@ window.uiInterpolate = interpolate;
 window.workspaceColumnManager = workspaceColumnManager;
 window.rememberSchemaState = rememberSchemaState;
 window.rememberOrderControls = rememberOrderControls;
+window.editorDrafts = editorDrafts;
+window.configuratorDrafts = configuratorDrafts;
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('configuratorProductSearch', configuratorProductSearch);

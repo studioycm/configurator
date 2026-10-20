@@ -9,9 +9,12 @@ use App\Filament\Resources\InteractsWithRowOrdering;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\Options\OptionResource;
 use App\Filament\Resources\Options\Pages\EditOption;
+use App\Filament\Resources\Products\Pages\EditProduct;
+use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\TablePresentation;
 use App\Models\Group;
 use App\Models\Option;
+use App\Models\Product;
 use App\Models\RuleEffect;
 use App\RuleEffectKind;
 use App\Services\ItemListOrdering;
@@ -21,6 +24,7 @@ use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -123,7 +127,9 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
                 return new LengthAwarePaginator($records->forPage($page, (int) $recordsPerPage), $records->count(), (int) $recordsPerPage, $page);
             });
         } else {
-            $table->query($definition->query)->defaultSort('id')->recordActions([Action::make('edit')->label($this->allowLocalEditing ? __('ui.actions.open_full_editor') : __('ui.actions.open_editor'))->icon('heroicon-o-arrow-top-right-on-square')->url(fn (Model $record): string => app(ItemLists::class)->recordUrl($record))->openUrlInNewTab()]);
+            $table->query($definition->query)->defaultSort('id')->recordActions([Action::make('edit')
+                ->label($definition->query->getModel() instanceof Product ? __('admin.workspace.editor.view_product') : ($this->allowLocalEditing ? __('ui.actions.open_full_editor') : __('ui.actions.open_editor')))
+                ->icon(Heroicon::OutlinedArrowTopRightOnSquare)->url(fn (Model $record): string => app(ItemLists::class)->recordUrl($record))->openUrlInNewTab()]);
         }
 
         if ($this->localEditorComponent($definition) !== null) {
@@ -153,7 +159,9 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
                 ]);
         }
 
-        $headerActions = $definition->fullListUrl ? [Action::make('fullList')->label(__('ui.actions.open_full_list'))->url($definition->fullListUrl)->openUrlInNewTab()] : [];
+        $headerActions = $definition->fullListUrl ? [Action::make('fullList')
+            ->label($this->listKey === 'group-card-properties' ? __('admin.workspace.editor.open_group_presentation') : __('ui.actions.open_full_list'))
+            ->icon(Heroicon::OutlinedArrowTopRightOnSquare)->url($definition->fullListUrl)->openUrlInNewTab()] : [];
         if ($this->listKey === 'group-card-properties' && $this->localEditorComponent($definition) !== null) {
             array_unshift($headerActions, Action::make('editPresentation')->label(__('catalog.labels.edit_presentation'))->icon('heroicon-o-pencil-square')->authorize('manage-catalog')
                 ->extraAttributes(['data-item-editor-transition' => true])->action(fn () => $this->editPresentation()));
@@ -179,6 +187,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         return match ($definition->query->getModel()::class) {
             Option::class => EditOption::class,
             Group::class => EditGroup::class,
+            Product::class => EditProduct::class,
             default => null,
         };
     }
@@ -201,7 +210,11 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
 
         abort_unless($definition->query instanceof Builder, 404);
         $model = (clone $definition->query)->findOrFail($record);
-        $resource = $model instanceof Option ? OptionResource::class : GroupResource::class;
+        $resource = match ($model::class) {
+            Option::class => OptionResource::class,
+            Product::class => ProductResource::class,
+            default => GroupResource::class,
+        };
         abort_unless($resource::canEdit($model), 403);
         $this->selectedRecordId = (string) $model->getKey();
         $this->dispatch('item-drawer-editor-opened')->self();

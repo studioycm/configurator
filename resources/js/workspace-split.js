@@ -10,6 +10,8 @@ export function workspaceSplit({ user, owner, tab }) {
         observer: null,
         root: null,
         dragStart: 0.5,
+        splitterHintVisible: false,
+        splitterHintTimer: null,
         get minimumRatio() { return this.stacked ? 0.3 : Math.max(0.3, 420 / (this.width - 12)); },
         get maximumRatio() { return this.stacked ? 0.7 : 1 - this.minimumRatio; },
         get availableStops() { return stops.filter(stop => stop >= this.minimumRatio && stop <= this.maximumRatio); },
@@ -43,11 +45,24 @@ export function workspaceSplit({ user, owner, tab }) {
         reset() { this.preferredRatio = 0.5; this.save(); },
         resize(width) { this.width = width; this.stacked = width < 980; },
         snap(ratio) { return this.availableStops.reduce((best, stop) => Math.abs(stop - ratio) < Math.abs(best - ratio) ? stop : best, 0.5); },
+        showSplitterHint() {
+            if (this.dragging) return;
+            this.hideSplitterHint();
+            this.splitterHintVisible = true;
+            this.splitterHintTimer = setTimeout(() => { this.splitterHintVisible = false; this.splitterHintTimer = null; }, 3000);
+        },
+        hideSplitterHint() {
+            clearTimeout(this.splitterHintTimer);
+            this.splitterHintTimer = null;
+            this.splitterHintVisible = false;
+        },
         startDrag(event) {
             if (this.stacked || event.button !== 0) return;
             event.preventDefault();
             this.dragStart = this.preferredRatio;
             this.dragging = true;
+            event.currentTarget.focus?.({ preventScroll: true });
+            this.hideSplitterHint();
             event.currentTarget.setPointerCapture(event.pointerId);
         },
         moveDrag(event) {
@@ -74,6 +89,6 @@ export function workspaceSplit({ user, owner, tab }) {
             this.preferredRatio = keys[event.key];
             this.save();
         },
-        destroy() { this.observer?.disconnect(); },
+        destroy() { this.hideSplitterHint(); this.observer?.disconnect(); },
     };
 }

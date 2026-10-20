@@ -36,7 +36,10 @@ test('workspace ordering and selection toggles preserve search and editor drafts
 
     expect($manager->instance()->getTable()->isSelectionEnabled())->toBeFalse()
         ->and(array_map(fn ($action) => $action->getName(), array_slice($manager->instance()->getTable()->getRecordActions(), 0, 3)))->toBe(['moveUp', 'moveDown', 'edit']);
-    $manager->callAction(TestAction::make('reorderRows')->table())->assertSet('showOrderControls', false)->assertSet('isTableReordering', false)
+    $manager->assertSet('showOrderControls', false)
+        ->assertActionHidden(TestAction::make('moveDown')->table($attribute))
+        ->callAction(TestAction::make('reorderRows')->table())->assertSet('showOrderControls', true)->assertSet('isTableReordering', false)
+        ->assertActionVisible(TestAction::make('moveDown')->table($attribute))
         ->assertSet('tableSearch', 'A')->assertSet('editorData.label_override', 'Keep draft')
         ->callAction(TestAction::make('toggleSelection')->table())->assertSet('showSelection', true)
         ->set('selectedTableRecords', [(string) $attribute->id])->callAction(TestAction::make('toggleSelection')->table())

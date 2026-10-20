@@ -55,7 +55,8 @@ class ConfiguratorGroups extends Component implements HasActions, HasSchemas
 
     public function productsAction(): Action
     {
-        return Action::make('products')->label(__('configurator.labels.view_products'))->authorize('manage-catalog')->slideOver()->modalHeading(fn (array $arguments): string => app(ItemLists::class)->modalHeading('group-products', Group::findOrFail((int) $arguments['group'])))->modalSubmitAction(false)->modalContent(fn (array $arguments) => view('filament.resources.item-list-content', ['listKey' => 'group-products', 'parentId' => (int) $arguments['group'], 'showTableHeading' => false]));
+        return Action::make('products')->label(__('configurator.labels.view_products'))->authorize('manage-catalog')->slideOver()->modalHeading(fn (array $arguments): string => app(ItemLists::class)->modalHeading('group-products', Group::findOrFail((int) $arguments['group'])))->modalSubmitAction(false)->modalCancelActionLabel(__('ui.actions.close'))
+            ->modalContent(fn (array $arguments) => view('filament.resources.item-list-content', ['listKey' => 'group-products', 'parentId' => (int) $arguments['group'], 'allowLocalEditing' => true, 'showTableHeading' => false]));
     }
 
     public function assignGroup(int $groupId): void

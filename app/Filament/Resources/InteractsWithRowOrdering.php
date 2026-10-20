@@ -11,7 +11,7 @@ use Livewire\Attributes\Locked;
 trait InteractsWithRowOrdering
 {
     #[Locked]
-    public bool $showOrderControls = true;
+    public bool $showOrderControls = false;
 
     public function toggleOrderControls(): void
     {

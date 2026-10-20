@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Livewire\Catalog\ItemListDrawer;
 use App\Models\Group;
 use App\Models\Option;
+use App\Models\Product;
 use App\Services\ItemLists;
 use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
@@ -55,7 +56,7 @@ trait InteractsWithItemDrawerEditor
         abort_unless($this->listKey !== null && $this->parentId !== null, 404);
         $definition = app(ItemLists::class)->definition(auth()->user(), $this->listKey, $this->parentId);
         $model = static::getResource()::getModel();
-        abort_unless(in_array($model, [Option::class, Group::class], true), 404);
+        abort_unless(in_array($model, [Option::class, Group::class, Product::class], true), 404);
 
         if ($this->listKey === 'group-card-properties') {
             abort_unless($model === Group::class && (string) $record === (string) $this->parentId, 404);

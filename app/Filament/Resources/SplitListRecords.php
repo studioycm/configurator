@@ -137,6 +137,7 @@ abstract class SplitListRecords extends ListRecords
             ->recordActions([
                 Action::make('select')->label($hasEditPage ? __('ui.actions.edit') : __('admin.workspace.labels.view'))
                     ->iconButton()->icon($hasEditPage ? Heroicon::OutlinedPencilSquare : Heroicon::OutlinedEye)->tooltip($hasEditPage ? __('ui.actions.edit') : __('admin.workspace.help.view'))
+                    ->extraAttributes(['data-editor-transition' => true])
                     ->action(fn (Model $record) => $this->selectRecord((string) $record->getKey())),
                 ...$otherActions,
             ]);

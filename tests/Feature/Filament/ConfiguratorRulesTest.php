@@ -186,8 +186,9 @@ test('a forged unknown Builder block cannot be discarded by schema dehydration i
 test('up down visibility preserves the filtered list without entering drag mode', function () {
     [$configurator, $data] = ruleEditorFixture();
     Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->assertSet('showOrderControls', false)
         ->set('tableSearch', 'not a matching rule')->call('toggleOrderControls')
-        ->assertSet('tableSearch', 'not a matching rule')->assertSet('showOrderControls', false)->assertSet('isTableReordering', false)
+        ->assertSet('tableSearch', 'not a matching rule')->assertSet('showOrderControls', true)->assertSet('isTableReordering', false)
         ->assertCanNotSeeTableRecords($configurator->rules);
 });
 

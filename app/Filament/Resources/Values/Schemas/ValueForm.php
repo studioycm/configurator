@@ -25,7 +25,7 @@ class ValueForm
                 }),
             TextInput::make('semantic_id')->label(__('catalog.fields.semantic_id'))->required()->maxLength(100)
                 ->regex('/\A[a-z0-9]+(?:_[a-z0-9]+)*\z/D')->unique()
-                ->helperText(__('catalog.master_values.help.semantic_id')),
+                ->hintAction(FormHints::make(__('catalog.master_values.help.semantic_id'))),
             TagsInput::make('tags')->label(__('catalog.fields.tags'))->default([])->trim()->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct'])->rules(['array', 'max:30'])->suggestions(fn (): array => array_values(Value::tagOptions()))->hintAction(FormHints::make(__('catalog.master_values.hints.press_enter_after_each_tag_tags_help'))),
             Textarea::make('description')->label(__('catalog.fields.specification'))->rows(3)->maxLength(5000)->columnSpanFull(),
         ])]);
