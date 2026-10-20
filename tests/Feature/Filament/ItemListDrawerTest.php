@@ -3,11 +3,16 @@
 use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
+use App\Filament\Resources\Groups\Pages\ListGroups;
+use App\Filament\Resources\Options\Pages\ListOptions;
+use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Livewire\Catalog\ItemListDrawer;
 use App\Models\Attribute;
+use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\Group;
 use App\Models\Option;
+use App\Models\Product;
 use App\Models\RuleEffect;
 use App\Models\User;
 use App\RuleEffectKind;
@@ -50,6 +55,49 @@ test('a count opens only its actual items and search stays within that set', fun
     Livewire::test(ItemListDrawer::class, ['listKey' => 'attribute-options', 'parentId' => $parent->id])
         ->assertCanSeeTableRecords([$own])->assertCanNotSeeTableRecords([$foreign])
         ->searchTable('A')->assertCanSeeTableRecords([$own])->assertCanNotSeeTableRecords([$foreign]);
+});
+
+test('the attribute full list link preserves its parent filter', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $parent = Attribute::factory()->create();
+    $own = Option::factory()->for($parent)->create();
+    $foreign = Option::factory()->create();
+    $url = app(ItemLists::class)->definition($actor, 'attribute-options', $parent->id)->fullListUrl;
+    parse_str(parse_url($url, PHP_URL_QUERY), $query);
+
+    Livewire::withQueryParams($query)->test(ListOptions::class)
+        ->assertCanSeeTableRecords([$own])->assertCanNotSeeTableRecords([$foreign])
+        ->assertCountTableRecords(1);
+});
+
+test('the configurator groups full list link preserves its parent filter', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $parent = Configurator::factory()->create();
+    $own = Group::factory()->for($parent)->create();
+    $foreign = Group::factory()->for(Configurator::factory())->create();
+    $unassigned = Group::factory()->create();
+    $url = app(ItemLists::class)->definition($actor, 'configurator-groups', $parent->id)->fullListUrl;
+    parse_str(parse_url($url, PHP_URL_QUERY), $query);
+
+    Livewire::withQueryParams($query)->test(ListGroups::class)
+        ->assertCanSeeTableRecords([$own])->assertCanNotSeeTableRecords([$foreign, $unassigned])
+        ->assertCountTableRecords(1);
+});
+
+test('the group products full list link preserves its parent filter', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $parent = Group::factory()->create();
+    $own = Product::factory()->for($parent)->create();
+    $foreign = Product::factory()->create();
+    $url = app(ItemLists::class)->definition($actor, 'group-products', $parent->id)->fullListUrl;
+    parse_str(parse_url($url, PHP_URL_QUERY), $query);
+
+    Livewire::withQueryParams($query)->test(ListProducts::class)
+        ->assertCanSeeTableRecords([$own])->assertCanNotSeeTableRecords([$foreign])
+        ->assertCountTableRecords(1);
 });
 
 test('item providers reject unrecognized keys and unauthorized callers', function () {
