@@ -35,7 +35,7 @@ class GroupForm
 
         $details = [
             TextInput::make('name')->label(__('ui.fields.name'))->required()->maxLength(255)->helperText(__('catalog.groups.hints.imported_names_are_replaced_by_the_source')),
-            Textarea::make('description')->label(__('catalog.fields.description'))->maxLength(5000)->columnSpanFull(),
+            TextInput::make('sort_order')->label(__('catalog.groups.fields.sort_order'))->integer()->default(0)->required(),
             Select::make('parent_id')->label(__('catalog.groups.fields.parent'))->searchable()->placeholder(__('catalog.groups.help.root_group'))
                 ->options(fn (?Group $record): array => self::parentOptions($record)),
             Select::make('configurator_id')->label(__('configurator.resource.singular'))->searchable()->placeholder(__('ui.choices.unassigned'))
@@ -43,11 +43,11 @@ class GroupForm
                 ->getOptionLabelUsing(fn (mixed $value): ?string => Configurator::find($value)?->name)
                 ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
                 ->helperText(__('admin.workspace.editor.shared_configurator_help')),
-            TextInput::make('sort_order')->label(__('catalog.groups.fields.sort_order'))->integer()->default(0)->required(),
+            Textarea::make('description')->label(__('catalog.fields.description'))->maxLength(5000)->columnSpanFull(),
         ];
         $record = $schema->getRecord();
         if (! $record instanceof Group || $record->children()->exists()) {
-            return $schema->columns(2)->components($details);
+            return $schema->columns(2)->extraAttributes(['class' => 'catalog-simple-form-grid'], merge: true)->components($details);
         }
         $sections = self::settingsSections();
         $leaf = fn (?Group $record): bool => $record !== null && ! $record->children()->exists();
@@ -56,7 +56,7 @@ class GroupForm
             ->activeTab(fn (Component $livewire): int => $livewire instanceof EditGroup && $livewire->initialTab === 'form.group-settings.presentation::data::tab' ? 4 : 1)
             ->persistTabInQueryString(fn (Component $livewire): ?string => $livewire instanceof EditGroup && $livewire->isItemDrawerEditor() ? null : 'group-tab')
             ->tabs([
-                Tab::make(__('ui.tabs.details'))->key(fn (Tab $component): string => 'details::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->schema($details),
+                Tab::make(__('ui.tabs.details'))->key(fn (Tab $component): string => 'details::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->extraAttributes(['class' => 'catalog-simple-form'])->schema($details),
                 Tab::make(__('ui.tables.filters'))->key(fn (Tab $component): string => 'filters::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema($sections[3]->getDefaultChildComponents())->visible($leaf),
                 Tab::make(__('catalog.groups.tabs.presets'))->key(fn (Tab $component): string => 'presets::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema($sections[4]->getDefaultChildComponents())->visible($leaf),
                 Tab::make(__('catalog.groups.tabs.presentation'))->key(fn (Tab $component): string => 'presentation::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([$sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),

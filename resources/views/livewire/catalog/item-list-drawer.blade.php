@@ -18,6 +18,12 @@
     }"
     x-on:item-drawer-editor-opened="$nextTick(() => { $el.querySelector('.catalog-item-drawer-editor')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); })">
     <div class="catalog-item-record-list">{{ $this->table }}</div>
+    @if ($isAssigning)
+        <div class="catalog-item-drawer-editor mt-4 min-w-0">
+            @include('filament.resources.editor-discard-alert')
+            @livewire(\App\Livewire\Catalog\AttributeValueAssignment::class, ['listKey' => $listKey, 'parentId' => $parentId], key('item-assignment-'.$listKey.'-'.$parentId))
+        </div>
+    @endif
     @if ($editor = $this->editorComponent())
         <div class="catalog-item-drawer-editor mt-4 min-w-0">
             @include('filament.resources.editor-discard-alert')

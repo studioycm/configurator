@@ -2,6 +2,10 @@
 
 use App\Filament\Resources\Attributes\Pages\CreateAttribute;
 use App\Filament\Resources\Attributes\Pages\ListAttributes;
+use App\Filament\Resources\Configurators\Pages\CreateConfigurator;
+use App\Filament\Resources\Configurators\Pages\ListConfigurators;
+use App\Filament\Resources\Groups\Pages\CreateGroup;
+use App\Filament\Resources\Groups\Pages\ListGroups;
 use App\Filament\Resources\Options\Pages\CreateOption;
 use App\Filament\Resources\Options\Pages\ListOptions;
 use App\Filament\Resources\Values\Pages\CreateValue;
@@ -16,6 +20,19 @@ use Livewire\Livewire;
 beforeEach(function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
 });
+
+test('an unselected list shows its authorized create form immediately', function (string $page, string $createPage) {
+    $list = Livewire::test($page)->assertSeeLivewire($createPage)->assertNoRedirect();
+    expect($list->instance()->isShowingCreateForm())->toBeTrue();
+    $list->call('cancelCreation');
+    expect($list->instance()->editorComponent())->toBe($createPage);
+})->with([
+    [ListValues::class, CreateValue::class],
+    [ListOptions::class, CreateOption::class],
+    [ListAttributes::class, CreateAttribute::class],
+    [ListGroups::class, CreateGroup::class],
+    [ListConfigurators::class, CreateConfigurator::class],
+]);
 
 test('the table plus opens creation in the right editor and cancel restores the selected record', function (string $listPage, string $createPage, string $model) {
     $record = $model::factory()->create();

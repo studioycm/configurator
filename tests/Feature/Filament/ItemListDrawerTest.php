@@ -15,6 +15,7 @@ use App\Models\Option;
 use App\Models\Product;
 use App\Models\RuleEffect;
 use App\Models\User;
+use App\Models\Value;
 use App\RuleEffectKind;
 use App\Services\CatalogImportParser;
 use App\Services\ItemLists;
@@ -136,4 +137,56 @@ test('item editor links use the native persistent workspace tab identifier', fun
     $inclusion = ConfiguratorAttribute::factory()->create();
     parse_str(parse_url(app(ItemLists::class)->recordUrl($inclusion), PHP_URL_QUERY), $query);
     expect($query['tab'])->toBe('attributes::data::tab');
+});
+
+test('opening the displayed subset retains search fields and sort without searching extra destination fields', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $parent = Group::factory()->create(['name' => 'needle']);
+    $match = Product::factory()->for($parent)->create(['product_name' => 'needle seal']);
+    $extraFieldOnly = Product::factory()->for($parent)->create(['product_name' => 'other', 'product_code' => 'other']);
+    $foreign = Product::factory()->create(['product_name' => 'needle']);
+    $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'group-products', 'parentId' => $parent->id])
+        ->searchTable('needle')->sortTable('product_name', 'desc');
+    parse_str(parse_url($drawer->instance()->fullListUrl(), PHP_URL_QUERY), $query);
+    Livewire::withQueryParams($query)->test(ListProducts::class)
+        ->assertSet('tableSearch', 'needle')->assertSet('tableSearchScope', 'subset')
+        ->assertSee(__('admin-ux.related_list_fields'))
+        ->assertSet('tableSort', 'product_name:desc')
+        ->assertCanSeeTableRecords([$match])->assertCanNotSeeTableRecords([$extraFieldOnly, $foreign]);
+});
+
+test('empty relation lists distinguish a missing relation from an empty search result', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $parent = Attribute::factory()->create();
+    $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'attribute-options', 'parentId' => $parent->id, 'allowLocalEditing' => true]);
+    $drawer->assertSee(__('admin-ux.no_related_records'));
+    $own = Option::factory()->for($parent)->create(['code' => 'A1']);
+    Option::factory()->create(['code' => 'B1']);
+    $drawer->searchTable('unmatched')->assertSee(__('admin-ux.no_matches'))
+        ->call('clearListSearch')->assertCanSeeTableRecords([$own])->assertCountTableRecords(1);
+});
+
+test('full list links preserve applied tags operators and combined constraints while retaining the parent', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $parent = Attribute::factory()->create();
+    $both = Value::factory()->create(['label' => 'Seal', 'tags' => ['metal', 'standard']]);
+    $one = Value::factory()->create(['label' => 'Seal', 'tags' => ['metal']]);
+    $match = Option::factory()->for($parent)->create(['value_id' => $both->id, 'code' => 'B1']);
+    $tagMismatch = Option::factory()->for($parent)->create(['value_id' => $one->id, 'code' => 'B2']);
+    $ruleMismatch = Option::factory()->for($parent)->create(['value_id' => Value::factory()->create(['label' => 'Seal other', 'tags' => ['metal', 'standard']])->id, 'code' => 'C1']);
+    $foreign = Option::factory()->create(['value_id' => $both->id, 'code' => 'B3']);
+    $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'attribute-options', 'parentId' => $parent->id])
+        ->set('tableSearchScope', 'value.label')->searchTable('Seal')
+        ->filterTable('tags', ['values' => ['metal', 'standard'], 'operator' => 'and'])
+        ->filterTable('constraints', ['rules' => [['type' => 'code', 'data' => ['operator' => 'startsWith', 'settings' => ['text' => 'B']]]]]);
+    parse_str(parse_url($drawer->instance()->fullListUrl(), PHP_URL_QUERY), $query);
+    Livewire::withQueryParams($query)->test(ListOptions::class)->assertCanSeeTableRecords([$match])
+        ->assertCanNotSeeTableRecords([$tagMismatch, $ruleMismatch, $foreign])->assertCountTableRecords(1);
+});
+
+test('an invalid transferred search field fails closed instead of broadening the list', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $record = Product::factory()->create(['product_name' => 'Needle']);
+    Livewire::withQueryParams(['search' => 'Needle', 'scope' => 'subset', 'searchFields' => ['all']])->test(ListProducts::class)
+        ->assertCanNotSeeTableRecords([$record]);
 });

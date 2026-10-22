@@ -8,6 +8,8 @@ use Livewire\Attributes\Computed;
 
 trait InteractsWithCompactListHeader
 {
+    use InteractsWithHeaderPresentation;
+
     public function getHeader(): ?View
     {
         return view('filament.resources.compact-list-header');

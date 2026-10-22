@@ -96,8 +96,45 @@ function dialog(user = 1, purpose = 'columns') {
     const root = new Element(); root.connected = true;
     root.append(new Element('fi-modal-header'));
     const controller = workspaceDialog({ user, purpose, width: 960, slideOver: true, labels: { width: 'Dialog width', narrower: 'Narrower', wider: 'Wider', reset: 'Reset width' } }); controller.$el = root; controller.$nextTick = callback => callback(); controller.init();
-    return { controller, root, handle: root.querySelector('.catalog-dialog-resize-handle'), button: label => root.querySelector('.catalog-dialog-width-controls').children.find(child => child.textContent === label) };
+    return { controller, root, handle: root.querySelector('.catalog-dialog-resize-handle'), button: label => root.querySelector('.catalog-dialog-width-controls').children.find(child => child.attributes['aria-label'] === label || child.textContent === label) };
 }
+
+test('slide-over dragging snaps and only persists on release, while Escape restores the previous width', t => {
+    const { writes, values } = environment(t);
+    const modal = dialog();
+    assert.ok(modal.handle, 'slide-overs expose an accessible resize handle');
+    assert.equal(modal.handle.attributes.role, 'separator');
+    modal.handle.fire('pointerdown', { clientX: 500 });
+    modal.handle.fire('pointermove', { clientX: 350 });
+    assert.equal(modal.root.style.width, '1120px');
+    assert.equal(writes.length, 0);
+    modal.handle.fire('pointerup');
+    assert.equal(values.get('aquestia:dialog:1:admin:columns:v1'), '1120');
+    modal.handle.fire('pointerdown', { clientX: 500 });
+    modal.handle.fire('pointermove', { clientX: 850 });
+    modal.handle.fire('keydown', { key: 'Escape' });
+    assert.equal(modal.root.style.width, '1120px');
+    assert.equal(writes.length, 1);
+    modal.handle.fire('keydown', { key: 'ArrowRight' });
+    assert.equal(modal.root.style.width, '960px');
+    modal.handle.fire('keydown', { key: 'Home' });
+    assert.equal(modal.root.style.width, '480px');
+});
+
+test('a viewport-clamped drawer drags from its visible edge and cancellation preserves its desktop preference', t => {
+    const { window, writes } = environment(t, { saved: [['aquestia:dialog:1:admin:columns:v1', '1440']] });
+    window.innerWidth = 700;
+    const modal = dialog();
+    assert.equal(modal.root.style.width, '668px');
+    modal.handle.fire('pointerdown', { clientX: 500 });
+    modal.handle.fire('pointermove', { clientX: 600 });
+    assert.equal(modal.root.style.width, '560px');
+    modal.handle.fire('pointercancel');
+    assert.equal(modal.root.style.width, '668px');
+    assert.equal(writes.length, 0);
+    window.innerWidth = 1600; window.fire('resize');
+    assert.equal(modal.root.style.width, '1440px');
+});
 
 test('dialog widths use bounded steps and survive a server morph without replacing the form', t => {
     const { observers } = environment(t);
@@ -297,7 +334,7 @@ test('legacy divider preferences retain their exact ratio and resizing does not 
     const { values, writes } = environment(t, { saved: [['aquestia:split:1:10:rules:v1', '2']] });
     const split = workspaceSplit({ user: 1, owner: 10, tab: 'rules' }); split.restore();
     split.resize(1600); assert.equal(split.ratio, 2 / 3);
-    split.resize(980); assert.equal(split.ratio, 548 / 968);
+    split.resize(980); assert.equal(split.ratio, 534 / 954);
     assert.deepEqual(split.availableStops, [0.45, 0.5, 0.55]);
     split.resize(390); assert.equal(split.stacked, true);
     split.resize(1600); assert.equal(split.ratio, 2 / 3);

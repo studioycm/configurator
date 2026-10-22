@@ -156,7 +156,7 @@ test('metadata failure preserves the submitted draft and rolls back details too'
 test('Group list create action opens an editor without bypassing its domain save', function () {
     $leaf = Group::factory()->create();
     Product::factory()->for($leaf)->create();
-    $list = Livewire::test(ListGroups::class);
+    $list = Livewire::test(ListGroups::class)->call('selectRecord', (string) $leaf->id);
     $list->callAction(TestAction::make('create')->table(), data: ['name' => 'Forged child', 'parent_id' => null, 'configurator_id' => null, 'description' => null, 'sort_order' => 0])
         ->assertSet('isCreatingRecord', true);
     $this->assertDatabaseMissing('groups', ['name' => 'Forged child']);

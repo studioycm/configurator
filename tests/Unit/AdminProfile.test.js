@@ -80,6 +80,19 @@ test('matching session state causes no restore request and only successful owner
     assert.equal(browserProfile(1, 'table:options', store).read().search, 'committed');
 });
 
+test('an explicit related-list search retains its field subset over saved browser preferences', async t => {
+    const { store, calls, wire } = tableEnvironment(t);
+    wire.tableSearchFields = ['product_code', 'product_name'];
+    wire.tableSearchScope = 'subset'; wire.tableSearch = 'seal';
+    browserProfile(1, 'table:products', store).save({ search: 'old', searchScope: 'all', searchFields: [], perPage: 25 });
+    window.location.search = '?search=seal&scope=subset&searchFields[0]=product_code&searchFields[1]=product_name';
+    const controller = localTableProfile({ user: 1, scope: 'products', query: { search: 'search', searchScope: 'scope', searchFields: 'searchFields' } }); controller.$wire = wire;
+    await controller.init();
+    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { perPage: 25 } }]);
+    assert.equal(wire.tableSearchScope, 'subset');
+    assert.deepEqual(wire.tableSearchFields, ['product_code', 'product_name']);
+});
+
 test('failed restoration retains the saved profile for retry', async t => {
     const { store, wire } = tableEnvironment(t);
     browserProfile(1, 'table:options', store).save({ perPage: 25 });
@@ -123,7 +136,7 @@ test('global preferences preserve personal overrides when shared defaults change
     window.addEventListener = (name, callback) => listeners.set(name, callback);
     window.removeEventListener = name => listeners.delete(name);
     window.dispatchEvent = event => listeners.get(event.type)?.(event);
-    const config = { user: 1, variables: {}, settings: { header_height: 48, logo_height: 28, page_title_size: 20, cell_padding_block: 6, modal_width: 'medium', slide_over_width: 'medium', show_configurator_loading_indicator: false }, ranges: { cell_padding_block: [4, 8] } };
+    const config = { user: 1, variables: {}, settings: { dialog_control_style: 'icons', header_height: 48, logo_height: 28, page_title_size: 20, cell_padding_block: 6, modal_width: 'medium', slide_over_width: 'medium', show_configurator_loading_indicator: false }, ranges: { cell_padding_block: [4, 8] } };
     browserProfile(1, 'global', store).save({ sidebarExpanded: false, collapsedGroups: ['Library'], theme: 'dark', appearance: { settings: { cell_padding_block: 4, show_configurator_loading_indicator: true } } });
     const controller = adminBrowserProfile(config); controller.$watch = (key, callback) => watchers.set(key, callback); controller.$nextTick = callback => callback(); controller.init();
     assert.equal(sidebar.isOpenDesktop, false); assert.deepEqual(sidebar.collapsedGroups, ['Library']); assert.equal(styles['--aquestia-cell-padding-block'], '4px');
@@ -131,6 +144,12 @@ test('global preferences preserve personal overrides when shared defaults change
     assert.equal(styles['--aquestia-cell-padding-block'], '4px'); assert.equal(styles['--aquestia-shell-header-min-height'], '60px');
     listeners.get('admin-personal-appearance-saved')({ detail: { settings: { ...config.settings, cell_padding_block: 4, show_configurator_loading_indicator: true } } });
     assert.deepEqual(browserProfile(1, 'global', store).read().appearance.settings, { cell_padding_block: 4 });
+    listeners.get('admin-personal-appearance-saved')({ detail: { settings: { ...config.settings, dialog_control_style: 'text' } } });
+    assert.equal(styles['--aquestia-dialog-label-display'], 'inline');
+    assert.equal(styles['--aquestia-dialog-icon-display'], 'none');
+    listeners.get('admin-personal-appearance-saved')({ detail: { settings: { ...config.settings, dialog_control_style: 'icons_text' } } });
+    assert.equal(styles['--aquestia-dialog-label-display'], 'inline');
+    assert.equal(styles['--aquestia-dialog-icon-display'], 'inline-flex');
     watchers.get('sidebar.isOpenDesktop')(true);
     assert.equal(browserProfile(1, 'global', store).read().sidebarExpanded, true);
     controller.destroy(); assert.equal(listeners.size, 0);

@@ -28,13 +28,15 @@ class TableBrowserProfile
         unset($state['tagFilters']);
         Validator::make(['state' => $state, 'size' => strlen(json_encode($state, JSON_THROW_ON_ERROR))], [
             'size' => ['integer', 'max:32768'],
-            'state' => ['array:columns,sort,search,searchScope,filters,perPage,showSelection,showOrderControls'],
+            'state' => ['array:columns,sort,search,searchScope,searchFields,filters,perPage,showSelection,showOrderControls'],
             'state.columns' => ['sometimes', 'array', 'max:100'],
             'state.columns.*.name' => ['required', 'string', 'max:255'],
             'state.columns.*.isToggled' => ['required', 'boolean'],
             'state.sort' => ['nullable', 'string', 'max:255'],
             'state.search' => ['sometimes', 'string', 'max:1000'],
             'state.searchScope' => ['sometimes', 'string', 'max:255'],
+            'state.searchFields' => ['sometimes', 'array', 'max:100'],
+            'state.searchFields.*' => ['string', 'max:255'],
             'state.filters' => ['sometimes', 'array'],
             'state.filters.*' => ['array'],
             'state.perPage' => ['sometimes', 'integer'],
@@ -68,6 +70,9 @@ class TableBrowserProfile
         if (isset($state['perPage']) && in_array($state['perPage'], $table->getPaginationPageOptions(), true)) {
             $component->tableRecordsPerPage = $state['perPage'];
             $component->updatedTableRecordsPerPage();
+        }
+        if (isset($state['searchFields'])) {
+            $component->tableSearchFields = array_values(array_intersect($state['searchFields'], array_diff(array_keys($component->scopedSearchColumns()), ['all', 'subset'])));
         }
         if (isset($state['searchScope']) && array_key_exists($state['searchScope'], $component->scopedSearchColumns())) {
             $component->tableSearchScope = $state['searchScope'];

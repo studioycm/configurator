@@ -30,6 +30,14 @@ abstract class SplitListRecords extends ListRecords
     #[Locked]
     public bool $isCreatingRecord = false;
 
+    #[Locked]
+    public int $creationSession = 0;
+
+    public function isShowingCreateForm(): bool
+    {
+        return $this->isCreatingRecord || ($this->selectedRecord === null && $this->inlineCreationEnabled && static::getResource()::canCreate());
+    }
+
     public function createRecord(): void
     {
         abort_unless($this->inlineCreationEnabled && static::getResource()::canCreate(), 403);
@@ -44,12 +52,13 @@ abstract class SplitListRecords extends ListRecords
             return;
         }
         $this->isCreatingRecord = false;
+        $this->creationSession++;
     }
 
     #[On('catalog-record-created')]
     public function selectCreatedRecord(string $resource, string $record): void
     {
-        if (! $this->isCreatingRecord || $resource !== static::getResource()) {
+        if (! $this->isShowingCreateForm() || $resource !== static::getResource()) {
             return;
         }
         $this->selectRecord($record);
@@ -76,7 +85,7 @@ abstract class SplitListRecords extends ListRecords
 
     public function hasEditorPane(): bool
     {
-        return $this->inlineEditingEnabled || $this->isCreatingRecord;
+        return $this->inlineEditingEnabled || $this->isShowingCreateForm();
     }
 
     /** @param list<int> $ids */
@@ -90,7 +99,7 @@ abstract class SplitListRecords extends ListRecords
 
     public function editorComponent(): ?string
     {
-        if ($this->isCreatingRecord) {
+        if ($this->isShowingCreateForm()) {
             abort_unless($this->inlineCreationEnabled && static::getResource()::canCreate(), 403);
 
             return static::getResource()::getPages()['create']->getPage();
@@ -117,7 +126,7 @@ abstract class SplitListRecords extends ListRecords
             $label = __('ui.actions.create_record', ['record' => static::getResource()::getModelLabel()]);
             $table->headerActions([
                 Action::make('create')->label($label)->iconButton()->icon(Heroicon::OutlinedPlus)->tooltip($label)
-                    ->visible(fn (): bool => static::getResource()::canCreate())->disabled(fn (): bool => $this->isCreatingRecord)
+                    ->visible(fn (): bool => static::getResource()::canCreate())->disabled(fn (): bool => $this->isShowingCreateForm())
                     ->extraAttributes(['data-editor-transition' => true])->action(fn () => $this->createRecord()),
                 ...$table->getHeaderActions(),
             ]);

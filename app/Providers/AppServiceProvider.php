@@ -79,7 +79,13 @@ class AppServiceProvider extends ServiceProvider
                     'purpose' => hash('sha256', $action->getName()),
                     'slideOver' => $action->isModalSlideOver(),
                     'allowPersonalWidth' => ! $action->isConfirmationRequired(),
+                    'icons' => [
+                        'narrower' => svg('heroicon-o-arrows-pointing-in')->toHtml(),
+                        'wider' => svg('heroicon-o-arrows-pointing-out')->toHtml(),
+                        'reset' => svg('heroicon-o-arrow-path')->toHtml(),
+                    ],
                     'labels' => [
+                        'resize' => __('admin-ux.resize_drawer'),
                         'width' => __('admin.dialogs.width'),
                         'narrower' => __('admin.dialogs.narrower'),
                         'wider' => __('admin.dialogs.wider'),

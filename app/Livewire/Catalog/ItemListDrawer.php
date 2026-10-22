@@ -3,6 +3,7 @@
 namespace App\Livewire\Catalog;
 
 use App\DTO\ItemListDefinition;
+use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Groups\Pages\EditGroup;
 use App\Filament\Resources\InteractsWithRowOrdering;
@@ -78,6 +79,11 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
     #[Locked]
     public ?string $selectedRecordId = null;
 
+    #[Locked]
+    public bool $isAssigning = false;
+
+    private ?bool $relatedRecordsExist = null;
+
     public function mount(string $listKey, int $parentId, bool $allowLocalEditing = false, bool $showTableHeading = true): void
     {
         $this->listKey = $listKey;
@@ -97,7 +103,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         $definition = $this->definition();
         $columns = [];
         foreach ($definition->columns as $field => $label) {
-            $column = TextColumn::make($field)->label($label)->wrap()->searchable()->toggleable();
+            $column = TextColumn::make($field)->label($label)->wrap()->searchable()->sortable($definition->query instanceof Builder)->toggleable();
             if ($field === 'kind' && $definition->query instanceof Builder && $definition->query->getModel() instanceof RuleEffect) {
                 $column->formatStateUsing(fn (string $state): string => RuleEffectKind::tryFrom($state)?->getLabel() ?? $state);
             }
@@ -160,16 +166,97 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         }
 
         $headerActions = $definition->fullListUrl ? [Action::make('fullList')
-            ->label($this->listKey === 'group-card-properties' ? __('admin.workspace.editor.open_group_presentation') : __('ui.actions.open_full_list'))
-            ->icon(Heroicon::OutlinedArrowTopRightOnSquare)->url($definition->fullListUrl)->openUrlInNewTab()] : [];
+            ->label(match ($this->listKey) {
+                'group-card-properties' => __('admin.workspace.editor.open_group_presentation'),
+                'configurator-attributes', 'inclusion-options' => __('admin-ux.open_attributes_workspace'),
+                'configurator-rules' => __('admin-ux.open_rules_workspace'),
+                default => __('ui.actions.open_full_list'),
+            })
+            ->icon(Heroicon::OutlinedArrowTopRightOnSquare)->url(fn (): ?string => $this->fullListUrl())->openUrlInNewTab()] : [];
+        if ($this->assignmentAction() !== null) {
+            array_unshift($headerActions, $this->assignmentAction());
+        }
+        if ($this->allowLocalEditing && $this->listKey === 'configurator-groups') {
+            array_unshift($headerActions, Action::make('assignGroups')->label(__('admin-ux.assign_groups'))->icon(Heroicon::OutlinedPlus)
+                ->url(ConfiguratorResource::getUrl('edit', ['record' => $this->parentId, 'tab' => 'groups::data::tab']))->openUrlInNewTab());
+        }
         if ($this->listKey === 'group-card-properties' && $this->localEditorComponent($definition) !== null) {
             array_unshift($headerActions, Action::make('editPresentation')->label(__('catalog.labels.edit_presentation'))->icon('heroicon-o-pencil-square')->authorize('manage-catalog')
                 ->extraAttributes(['data-item-editor-transition' => true])->action(fn () => $this->editPresentation()));
         }
 
         return TablePresentation::configure($table->heading($this->showTableHeading ? $definition->title : '')->pluralModelLabel($definition->title)->columns($columns)
+            ->emptyStateHeading(fn (): string => $this->hasRelatedRecords() ? __('admin-ux.no_matches') : __('admin-ux.no_related_records'))
+            ->emptyStateDescription(fn (): string => $this->hasRelatedRecords() ? __('admin-ux.try_clearing_search') : __('admin-ux.no_related_records_help'))
+            ->emptyStateActions(array_filter([Action::make('clearSearch')->label(__('admin-ux.clear_search'))->icon(Heroicon::OutlinedXMark)
+                ->visible(fn (): bool => filled($this->tableSearch) || $this->getTable()->isFiltered())->action(fn () => $this->clearListSearch()), $this->assignmentAction('assignEmpty')]))
             ->paginationPageOptions([10, 25, 50])
-            ->headerActions($headerActions), (is_array($definition->query) ? 'array-' : 'items-').$this->listKey, true);
+            ->headerActions($headerActions), (is_array($definition->query) ? 'array-' : 'items-').$this->listKey, true, ['assignMore', 'assignGroups', 'fullList']);
+    }
+
+    private function assignmentAction(string $name = 'assignMore'): ?Action
+    {
+        if (! $this->allowLocalEditing || ! in_array($this->listKey, ['value-options', 'attribute-options'], true)) {
+            return null;
+        }
+
+        return Action::make($name)->label(__($this->listKey === 'value-options' ? 'admin-ux.use_in_attribute' : 'attribute-options.add'))
+            ->icon(Heroicon::OutlinedPlus)->authorize('manage-catalog')->disabled(fn (): bool => $this->isAssigning)
+            ->extraAttributes(['data-item-editor-transition' => true])->action(fn () => $this->beginAssignment());
+    }
+
+    public function beginAssignment(): void
+    {
+        $this->definition();
+        abort_unless($this->assignmentAction() !== null, 403);
+        $this->selectedRecordId = null;
+        $this->isAssigning = true;
+        $this->dispatch('item-drawer-editor-opened')->self();
+    }
+
+    #[On('item-drawer-assignment-saved')]
+    public function refreshAssignment(string $listKey, int $parentId): void
+    {
+        if ($listKey !== $this->listKey || $parentId !== $this->parentId) {
+            return;
+        }
+        $this->closeEditor($listKey, $parentId);
+        $this->flushCachedTableRecords();
+    }
+
+    private function hasRelatedRecords(): bool
+    {
+        if ($this->relatedRecordsExist !== null) {
+            return $this->relatedRecordsExist;
+        }
+        $query = $this->definition()->query;
+
+        return $this->relatedRecordsExist = is_array($query) ? $query !== [] : (clone $query)->exists();
+    }
+
+    public function clearListSearch(): void
+    {
+        $this->definition();
+        $this->tableSearch = '';
+        $this->resetTableFiltersForm();
+        $this->updatedTableSearch();
+    }
+
+    public function fullListUrl(): ?string
+    {
+        $definition = $this->definition();
+        if ($definition->fullListUrl === null || ! in_array($this->listKey, ['attribute-options', 'value-options', 'configurator-groups', 'group-products'], true)) {
+            return $definition->fullListUrl;
+        }
+        parse_str(parse_url($definition->fullListUrl, PHP_URL_QUERY) ?? '', $query);
+        $query['search'] = $this->tableSearch;
+        $query['scope'] = $this->tableSearchScope === 'all' ? 'subset' : $this->tableSearchScope;
+        $query['searchFields'] = array_keys($definition->columns);
+        $query['filters'] = array_replace($this->tableFilters ?? [], $query['filters'] ?? []);
+        $sort = $this->getTable()->getDefaultSort(clone $definition->query, $this->getTable()->getDefaultSortDirection() ?? 'asc');
+        $query['sort'] = $this->tableSort ?: (is_string($sort) ? $sort.':'.($this->getTable()->getDefaultSortDirection() ?? 'asc') : null);
+
+        return strtok($definition->fullListUrl, '?').'?'.http_build_query($query);
     }
 
     private function localEditorComponent(ItemListDefinition $definition): ?string
@@ -217,6 +304,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         };
         abort_unless($resource::canEdit($model), 403);
         $this->selectedRecordId = (string) $model->getKey();
+        $this->isAssigning = false;
         $this->dispatch('item-drawer-editor-opened')->self();
     }
 
@@ -238,6 +326,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
             return;
         }
         $this->selectedRecordId = null;
+        $this->isAssigning = false;
     }
 
     #[On('item-drawer-record-saved')]

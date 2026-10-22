@@ -12,14 +12,14 @@ export function workspaceSplit({ user, owner, tab }) {
         dragStart: 0.5,
         splitterHintVisible: false,
         splitterHintTimer: null,
-        get minimumRatio() { return this.stacked ? 0.3 : Math.max(0.3, 420 / (this.width - 12)); },
+        get minimumRatio() { return this.stacked ? 0.3 : Math.max(0.3, 420 / (this.width - 26)); },
         get maximumRatio() { return this.stacked ? 0.7 : 1 - this.minimumRatio; },
         get availableStops() { return stops.filter(stop => stop >= this.minimumRatio && stop <= this.maximumRatio); },
         get ratio() { return Math.max(this.minimumRatio, Math.min(this.maximumRatio, this.preferredRatio)); },
         get percentage() { return Math.round(this.ratio * 100); },
         get minimumPercentage() { return Math.round(this.minimumRatio * 100); },
         get maximumPercentage() { return Math.round(this.maximumRatio * 100); },
-        get columns() { return `minmax(0, ${this.ratio}fr) 12px minmax(0, ${1 - this.ratio}fr)`; },
+        get columns() { return `minmax(0, ${this.ratio}fr) 26px minmax(0, ${1 - this.ratio}fr)`; },
         get storageKey() { return `aquestia:split:${user}:${owner}:${tab}:v2`; },
         init() {
             this.root = this.$el;
@@ -68,7 +68,7 @@ export function workspaceSplit({ user, owner, tab }) {
         moveDrag(event) {
             if (!this.dragging) return;
             const bounds = this.root.getBoundingClientRect();
-            let ratio = (event.clientX - bounds.left - 6) / (bounds.width - 12);
+            let ratio = (event.clientX - bounds.left - 13) / (bounds.width - 26);
             if (getComputedStyle(this.root).direction === 'rtl') ratio = 1 - ratio;
             this.preferredRatio = this.snap(ratio);
         },

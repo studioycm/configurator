@@ -37,10 +37,11 @@ export function tableProfileState(state) {
         perPage: Number(state.tableRecordsPerPage ?? 10),
     };
     for (const name of ['showSelection', 'showOrderControls']) if (typeof state[name] === 'boolean') result[name] = state[name];
+    if (Array.isArray(state.tableSearchFields)) result.searchFields = clone(state.tableSearchFields);
     return result;
 }
 
-const properties = ['tableColumns', 'tableSort', 'tableSearch', 'tableSearchScope', 'tableFilters', 'tableRecordsPerPage', 'showSelection', 'showOrderControls'];
+const properties = ['tableColumns', 'tableSort', 'tableSearch', 'tableSearchScope', 'tableSearchFields', 'tableFilters', 'tableRecordsPerPage', 'showSelection', 'showOrderControls'];
 
 export function localTableProfile(config) {
     let profile, unsubscribe, restoring = false, destroyed = false;
@@ -163,12 +164,15 @@ export function personalAppearance(settings, config) {
     if (settings.logo_height > settings.header_height - 12 || Math.ceil(settings.page_title_size * 1.2) > settings.header_height - 12) return null;
     if (typeof settings.show_configurator_loading_indicator !== 'boolean') return null;
     for (const key of ['modal_width', 'slide_over_width']) if (!['small', 'medium', 'large'].includes(settings[key])) return null;
-    const mapping = { cell_padding_block: 'cell-padding-block', cell_padding_inline: 'cell-padding-inline', workspace_gap: 'shell-gap', header_height: 'shell-header-min-height', logo_height: 'shell-logo-height', page_title_size: 'shell-heading-size', sidebar_width: 'shell-sidebar-width', collapsed_sidebar_width: 'shell-rail-width', navigation_padding_block: 'navigation-padding-block', control_height: 'shell-desktop-target' };
+    if (settings.dialog_control_style !== undefined && !['icons', 'icons_text', 'text'].includes(settings.dialog_control_style)) return null;
+    const mapping = { dialog_control_radius: 'dialog-control-radius', cell_padding_block: 'cell-padding-block', cell_padding_inline: 'cell-padding-inline', workspace_gap: 'shell-gap', header_height: 'shell-header-min-height', logo_height: 'shell-logo-height', page_title_size: 'shell-heading-size', sidebar_width: 'shell-sidebar-width', collapsed_sidebar_width: 'shell-rail-width', navigation_padding_block: 'navigation-padding-block', control_height: 'shell-desktop-target' };
     const variables = {};
     for (const [key, token] of Object.entries(mapping)) if (Number.isInteger(settings[key])) variables[`--aquestia-${token}`] = `${settings[key]}px`;
     variables['--aquestia-shell-brand-height'] = variables['--aquestia-shell-header-min-height'];
     variables['--aquestia-shell-heading-line-height'] = `${Math.ceil(settings.page_title_size * 1.2)}px`;
     for (const key of ['modal_width', 'slide_over_width']) variables[`--aquestia-${key.replaceAll('_', '-')}`] = `${{ small: 640, medium: 960, large: 1280 }[settings[key]]}px`;
+    variables['--aquestia-dialog-label-display'] = (settings.dialog_control_style ?? 'icons') === 'icons' ? 'none' : 'inline';
+    variables['--aquestia-dialog-icon-display'] = settings.dialog_control_style === 'text' ? 'none' : 'inline-flex';
     return { settings, overrides: Object.fromEntries(Object.entries(settings).filter(([key, value]) => value !== config.settings[key])), variables };
 }
 
@@ -176,7 +180,9 @@ export function adminBrowserProfile(config) {
     let profile, themeListener, appearanceListener, sharedAppearanceListener;
     const applyVariables = variables => {
         for (const [key, value] of Object.entries(variables)) {
-            if (/^--aquestia-[a-z-]+$/.test(key) && /^\d+px$/.test(value)) document.documentElement.style.setProperty(key, value);
+            const displayToken = ['--aquestia-dialog-label-display', '--aquestia-dialog-icon-display'].includes(key);
+            const valid = displayToken ? ['none', 'inline', 'inline-flex'].includes(value) : /^\d+px$/.test(value);
+            if (/^--aquestia-[a-z-]+$/.test(key) && valid) document.documentElement.style.setProperty(key, value);
         }
     };
     return {

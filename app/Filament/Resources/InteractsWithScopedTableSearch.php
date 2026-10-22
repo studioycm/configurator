@@ -16,6 +16,17 @@ trait InteractsWithScopedTableSearch
 {
     public string $tableSearchScope = 'all';
 
+    /** @var list<string> */
+    public array $tableSearchFields = [];
+
+    protected function queryStringInteractsWithScopedTableSearch(): array
+    {
+        return $this instanceof SplitListRecords ? [
+            'tableSearchScope' => ['as' => 'scope', 'except' => 'all'],
+            'tableSearchFields' => ['as' => 'searchFields', 'except' => []],
+        ] : [];
+    }
+
     /** @return array<string, string> */
     public function tagFilterOptions(): array
     {
@@ -90,7 +101,10 @@ trait InteractsWithScopedTableSearch
     public function mountInteractsWithScopedTableSearch(): void
     {
         $controls = session()->get(TableBrowserProfile::sessionKey($this, 'controls'), []);
-        foreach (['tableSearchScope', 'showSelection', 'showOrderControls'] as $property) {
+        foreach (['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'] as $property) {
+            if ($this instanceof SplitListRecords && (($property === 'tableSearchScope' && request()->has('scope')) || ($property === 'tableSearchFields' && request()->has('searchFields')))) {
+                continue;
+            }
             if (property_exists($this, $property) && isset($controls[$property]) && get_debug_type($controls[$property]) === get_debug_type($this->{$property})) {
                 $this->{$property} = $controls[$property];
             }
@@ -100,7 +114,7 @@ trait InteractsWithScopedTableSearch
     public function dehydrateInteractsWithScopedTableSearch(): void
     {
         $controls = [];
-        foreach (['tableSearchScope', 'showSelection', 'showOrderControls'] as $property) {
+        foreach (['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'] as $property) {
             if (property_exists($this, $property)) {
                 $controls[$property] = $this->{$property};
             }
@@ -157,6 +171,9 @@ trait InteractsWithScopedTableSearch
                 $fields[$column->getName()] = (string) $column->getLabel();
             }
         }
+        if ($this->tableSearchFields !== [] && count(array_filter($this->tableSearchFields, 'is_string')) === count($this->tableSearchFields) && array_diff($this->tableSearchFields, array_diff(array_keys($fields), ['all'])) === []) {
+            $fields['subset'] = __('admin-ux.related_list_fields');
+        }
 
         return $fields;
     }
@@ -199,7 +216,8 @@ trait InteractsWithScopedTableSearch
             $query->where(function (Builder $nested) use ($word): void {
                 $isFirst = true;
                 foreach ($this->getTable()->getColumns() as $column) {
-                    if (! $column->isGloballySearchable() || ($this->tableSearchScope !== 'all' && $column->getName() !== $this->tableSearchScope)) {
+                    $inScope = $this->tableSearchScope === 'all' || ($this->tableSearchScope === 'subset' ? in_array($column->getName(), $this->tableSearchFields, true) : $column->getName() === $this->tableSearchScope);
+                    if (! $column->isGloballySearchable() || ! $inScope) {
                         continue;
                     }
                     $column->applySearchConstraint($nested, $word, $isFirst);

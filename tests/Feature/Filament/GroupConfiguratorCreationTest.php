@@ -17,13 +17,11 @@ beforeEach(function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
 });
 
-test('the table plus opens an inline creation pane and cancel restores the list layout', function (string $listPage, string $createPage, bool $hasEditorPane) {
+test('an unselected group or configurator list keeps its create form available after cancelling', function (string $listPage, string $createPage) {
     $list = Livewire::test($listPage)->searchTable('retained search');
-    expect($list->instance()->hasEditorPane())->toBe($hasEditorPane);
+    expect($list->instance()->hasEditorPane())->toBeTrue();
 
-    $list->callAction(TestAction::make('create')->table())
-        ->assertHasNoFormErrors()->assertSet('isCreatingRecord', true)
-        ->assertSet('tableSearch', 'retained search')->assertNoRedirect()
+    $list->assertSet('tableSearch', 'retained search')->assertNoRedirect()
         ->assertActionDisabled(TestAction::make('create')->table());
     expect($list->instance()->editorComponent())->toBe($createPage);
     expect($list->instance()->hasEditorPane())->toBeTrue();
@@ -34,10 +32,11 @@ test('the table plus opens an inline creation pane and cancel restores the list 
     $list->dispatch('catalog-create-cancelled', resource: $listPage::getResource())
         ->assertSet('isCreatingRecord', false)->assertSet('tableSearch', 'retained search')
         ->assertNoRedirect();
-    expect($list->instance()->hasEditorPane())->toBe($hasEditorPane);
+    expect($list->instance()->hasEditorPane())->toBeTrue();
+    expect($list->instance()->editorComponent())->toBe($createPage);
 })->with([
-    'groups' => [ListGroups::class, CreateGroup::class, true],
-    'configurators' => [ListConfigurators::class, CreateConfigurator::class, false],
+    'groups' => [ListGroups::class, CreateGroup::class],
+    'configurators' => [ListConfigurators::class, CreateConfigurator::class],
 ]);
 
 test('cancelling group creation restores the previously selected inline editor', function () {
@@ -84,8 +83,8 @@ test('embedded configurator creation saves its initial settings and navigates to
     $list->dispatch('catalog-record-created', resource: ConfiguratorResource::class, record: (string) $record->id)
         ->assertSet('isCreatingRecord', false)->assertSet('selectedRecord', null)
         ->assertRedirect(ConfiguratorResource::getUrl('edit', ['record' => $record]));
-    expect($list->instance()->editorComponent())->toBeNull();
-    expect($list->instance()->hasEditorPane())->toBeFalse();
+    expect($list->instance()->editorComponent())->toBe(CreateConfigurator::class);
+    expect($list->instance()->hasEditorPane())->toBeTrue();
     $editor->call('create');
     $this->assertDatabaseCount('configurators', 1);
 });

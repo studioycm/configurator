@@ -25,7 +25,10 @@ class OptionsTable
             ItemCountColumn::make('configurator_options_count', __('catalog.usage.headings.configurator_uses'), 'option-inclusions')->sortable()->toggleable(),
             TextColumn::make('created_at')->label(__('ui.fields.created_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('updated_at')->label(__('ui.fields.updated_at'))->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-        ])->filters([SelectFilter::make('attribute_id')->label(__('catalog.resources.attributes.singular'))->relationship('attribute', 'label')->searchable()->preload()])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
+        ])->filters([
+            SelectFilter::make('attribute_id')->label(__('catalog.resources.attributes.singular'))->relationship('attribute', 'label')->searchable()->preload(),
+            SelectFilter::make('value_id')->label(__('catalog.fields.master_value'))->relationship('value', 'label')->searchable(),
+        ])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
             ->defaultSort('code')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Option $record): string => OptionResource::getUrl('edit', ['record' => $record]))]), 'options', true);
     }
 }

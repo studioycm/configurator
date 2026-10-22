@@ -20,13 +20,13 @@ class AdminAppearance
     /** @return array<string, bool|int|string> */
     public function defaults(): array
     {
-        return ['cell_padding_block' => 6, 'cell_padding_inline' => 10, 'workspace_gap' => 8, 'header_height' => 48, 'logo_height' => 28, 'sidebar_width' => 216, 'collapsed_sidebar_width' => 58, 'navigation_padding_block' => 6, 'control_height' => 32, 'modal_width' => 'medium', 'slide_over_width' => 'medium', 'show_configurator_loading_indicator' => false, 'page_title_size' => 20];
+        return ['cell_padding_block' => 6, 'cell_padding_inline' => 10, 'workspace_gap' => 8, 'header_height' => 48, 'logo_height' => 28, 'sidebar_width' => 216, 'collapsed_sidebar_width' => 58, 'navigation_padding_block' => 6, 'control_height' => 32, 'dialog_control_style' => 'icons', 'dialog_control_radius' => 7, 'modal_width' => 'medium', 'slide_over_width' => 'medium', 'show_configurator_loading_indicator' => false, 'page_title_size' => 20];
     }
 
     /** @return array<string, array{0:int, 1:int}> */
     public function ranges(): array
     {
-        return ['cell_padding_block' => [4, 8], 'cell_padding_inline' => [8, 12], 'workspace_gap' => [6, 12], 'header_height' => [40, 64], 'logo_height' => [20, 32], 'page_title_size' => [14, 32], 'sidebar_width' => [192, 320], 'collapsed_sidebar_width' => [58, 80], 'navigation_padding_block' => [4, 8], 'control_height' => [30, 36]];
+        return ['dialog_control_radius' => [4, 10], 'cell_padding_block' => [4, 8], 'cell_padding_inline' => [8, 12], 'workspace_gap' => [6, 12], 'header_height' => [40, 64], 'logo_height' => [20, 32], 'page_title_size' => [14, 32], 'sidebar_width' => [192, 320], 'collapsed_sidebar_width' => [58, 80], 'navigation_padding_block' => [4, 8], 'control_height' => [30, 36]];
     }
 
     /** @param array<string, mixed> $settings @return array<string, bool|int|string> */
@@ -39,6 +39,7 @@ class AdminAppearance
         foreach (['modal_width', 'slide_over_width'] as $key) {
             $rules['settings.'.$key] = ['required', Rule::in(['small', 'medium', 'large'])];
         }
+        $rules['settings.dialog_control_style'] = ['required', Rule::in(['icons', 'icons_text', 'text'])];
         $rules['settings.show_configurator_loading_indicator'] = ['required', 'boolean'];
         $validated = Validator::make(['settings' => $settings], $rules)->validate()['settings'];
         foreach ($this->ranges() as $key => $range) {
@@ -66,12 +67,7 @@ class AdminAppearance
         }
         $read = fn (): array => AdminAppearanceSettings::findOrFail(1)->settings;
         $settings = DB::transactionLevel() > 0 ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
-        if (! array_key_exists('show_configurator_loading_indicator', $settings)) {
-            $settings['show_configurator_loading_indicator'] = false;
-        }
-        if (! array_key_exists('page_title_size', $settings)) {
-            $settings['page_title_size'] = $this->defaults()['page_title_size'];
-        }
+        $settings = array_replace($this->defaults(), $settings);
 
         return $this->resolved = $this->validate($settings);
     }
@@ -87,7 +83,7 @@ class AdminAppearance
     {
         $settings = $draft === null ? $this->current() : array_replace($this->defaults(), array_intersect_key($draft, $this->defaults()));
         $variables = [];
-        $mapping = ['cell_padding_block' => 'cell-padding-block', 'cell_padding_inline' => 'cell-padding-inline', 'workspace_gap' => 'shell-gap', 'header_height' => 'shell-header-min-height', 'logo_height' => 'shell-logo-height', 'page_title_size' => 'shell-heading-size', 'sidebar_width' => 'shell-sidebar-width', 'collapsed_sidebar_width' => 'shell-rail-width', 'navigation_padding_block' => 'navigation-padding-block', 'control_height' => 'shell-desktop-target'];
+        $mapping = ['dialog_control_radius' => 'dialog-control-radius', 'cell_padding_block' => 'cell-padding-block', 'cell_padding_inline' => 'cell-padding-inline', 'workspace_gap' => 'shell-gap', 'header_height' => 'shell-header-min-height', 'logo_height' => 'shell-logo-height', 'page_title_size' => 'shell-heading-size', 'sidebar_width' => 'shell-sidebar-width', 'collapsed_sidebar_width' => 'shell-rail-width', 'navigation_padding_block' => 'navigation-padding-block', 'control_height' => 'shell-desktop-target'];
         foreach ($mapping as $key => $token) {
             [$min, $max] = $this->ranges()[$key];
             $variables['--aquestia-'.$token] = max($min, min($max, (int) $settings[$key])).'px';
@@ -97,6 +93,9 @@ class AdminAppearance
         foreach (['modal_width', 'slide_over_width'] as $key) {
             $variables['--aquestia-'.str_replace('_', '-', $key)] = (['small' => 640, 'medium' => 960, 'large' => 1280][$settings[$key]] ?? 960).'px';
         }
+
+        $variables['--aquestia-dialog-label-display'] = $settings['dialog_control_style'] === 'icons' ? 'none' : 'inline';
+        $variables['--aquestia-dialog-icon-display'] = $settings['dialog_control_style'] === 'text' ? 'none' : 'inline-flex';
 
         return $variables;
     }

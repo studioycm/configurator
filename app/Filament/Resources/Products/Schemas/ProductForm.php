@@ -9,11 +9,11 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class ProductForm
@@ -26,9 +26,7 @@ class ProductForm
                     TextInput::make('product_code')->label(__('catalog.products.labels.product_code_2'))->required()->maxLength(64)->trim(false),
                     TextInput::make('product_name')->label(__('catalog.products.labels.product_name_2'))->maxLength(255)->trim(false),
                     Textarea::make('description')->label(__('catalog.fields.description'))->rows(3)->autosize()->maxLength(5000)->columnSpanFull(),
-                    TextEntry::make('group.name')->label(__('catalog.resources.groups.singular')),
-                    TextEntry::make('legacy_id')->label(__('catalog.fields.legacy_id')),
-                    TextEntry::make('legacy_group_id')->label(__('catalog.products.labels.legacy_group_id')),
+                    View::make('filament.forms.product-references')->columnSpanFull(),
                 ]),
                 Tab::make(__('catalog.products.buckets.properties'))->key(fn (Tab $component): string => 'properties::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('properties', __('catalog.products.buckets.properties'))]),
                 Tab::make(__('catalog.products.buckets.parts'))->key(fn (Tab $component): string => 'parts::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('parts', __('catalog.products.buckets.parts'))]),

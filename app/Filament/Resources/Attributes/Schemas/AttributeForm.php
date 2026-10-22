@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Attributes\Schemas;
 
 use App\Filament\Forms\Components\WorkspaceTableSelect as TableSelect;
 use App\Filament\Resources\FormHints;
+use App\Filament\Resources\SuggestedIdentifier;
 use App\Filament\Resources\ValueSelectionTable;
 use App\Models\Attribute;
 use App\Models\Value;
@@ -21,10 +22,18 @@ class AttributeForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'shared-attribute::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(2)->schema([
-            TextInput::make('key')->label(__('catalog.fields.key'))->required()->maxLength(100)->hintAction(FormHints::make(__('catalog.attributes.hints.a_stable_identity_used_keys_require_reference'))),
-            TextInput::make('label')->label(__('ui.fields.label'))->hintAction(FormHints::make(__('catalog.attributes.hints.labels_apply_wherever_this_attribute_is_included')))->required()->maxLength(255),
-        ]), Section::make(__('attribute-options.heading'))->key('attribute-values')->contained(false)->compact()->description(__('attribute-options.help'))
+        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'shared-attribute::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(2)->extraAttributes(['class' => 'catalog-simple-form'])->schema([
+            ...SuggestedIdentifier::fields(
+                TextInput::make('label')->label(__('ui.fields.label'))->hintAction(FormHints::make(__('catalog.attributes.hints.labels_apply_wherever_this_attribute_is_included')))->required()->maxLength(255),
+                TextInput::make('key')->label(__('catalog.fields.key'))->required()->maxLength(100)->hintAction(FormHints::make(__('catalog.attributes.hints.a_stable_identity_used_keys_require_reference'))),
+                fn (string $label): string => SuggestedIdentifier::unique($label, Attribute::query(), 'key'),
+            ),
+        ]), self::valuesSection()]);
+    }
+
+    public static function valuesSection(bool $standalone = false): Section
+    {
+        return Section::make(__('attribute-options.heading'))->key('attribute-values')->contained(false)->compact()->description(__($standalone ? 'admin-ux.add_values_help' : 'attribute-options.help'))
             ->headerActions([
                 Action::make('addValues')->label(__('attribute-options.add'))->modalSubmitActionLabel(__('attribute-options.add_selected'))->authorize('manage-catalog')
                     ->schema(fn (Get $schemaGet, ?Attribute $record): array => [TableSelect::make('values')->label(__('attribute-options.selected'))->multiple()->required()->minItems(1)
@@ -47,6 +56,6 @@ class AttributeForm
                         TextInput::make('code')->label(__('catalog.fields.code'))->required()->length(2)->trim(false)->regex('/\A[A-Za-z0-9]{2}\z/D')->distinct()->unique('options', 'code', ignoreRecord: false)
                             ->hintAction(FormHints::make(__('attribute-options.code_help'))),
                     ]),
-            ])]);
+            ]);
     }
 }

@@ -8,6 +8,7 @@ use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\InteractsWithHeaderPresentation;
 use App\Filament\Resources\StatusActions;
 use App\Livewire\Catalog\ConfiguratorGroups;
 use App\Livewire\Catalog\ConfiguratorOverview;
@@ -28,6 +29,8 @@ use Livewire\Attributes\On;
 
 class EditConfigurator extends EditRecord
 {
+    use InteractsWithHeaderPresentation;
+
     protected static string $resource = ConfiguratorResource::class;
 
     #[Locked]

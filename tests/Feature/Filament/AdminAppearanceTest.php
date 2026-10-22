@@ -14,6 +14,23 @@ beforeEach(function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
 });
 
+test('dialog display preferences backfill old settings without rewriting them and cannot hide every control', function () {
+    $record = AdminAppearanceSettings::findOrFail(1);
+    $stored = $record->settings;
+    unset($stored['dialog_control_style'], $stored['dialog_control_radius']);
+    $record->update(['settings' => $stored]);
+    Cache::forget(AdminAppearance::CACHE_KEY);
+    $service = new AdminAppearance;
+    expect($service->current()['dialog_control_style'])->toBe('icons');
+    expect($record->fresh()->settings)->toBe($stored);
+    foreach (['icons', 'icons_text', 'text'] as $style) {
+        Livewire::test(App\Filament\Pages\AdminAppearance::class)->fillForm(['dialog_control_style' => $style, 'dialog_control_radius' => 8])
+            ->call('savePersonal')->assertHasNoFormErrors()->assertDispatched('admin-personal-appearance-saved');
+    }
+    expect($record->fresh()->settings)->toBe($stored);
+    expect(fn () => $service->validate([...$service->defaults(), 'dialog_control_style' => 'hidden']))->toThrow(ValidationException::class);
+});
+
 test('shared appearance validates fit persists defaults and refreshes cached values only on change', function () {
     $service = app(AdminAppearance::class);
     AdminAppearanceSettings::findOrFail(1)->update(['settings' => $service->defaults()]);

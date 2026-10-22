@@ -16,6 +16,8 @@ use Livewire\Attributes\Locked;
 
 trait InteractsWithRecordPresentation
 {
+    use InteractsWithHeaderPresentation;
+
     #[Locked]
     public bool $inWorkspace = false;
 
