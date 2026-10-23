@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Structure Audit"
+  short_description: "Audit Laravel boundaries, structure, and native patterns"
+  default_prompt: "Use $laraveldaily-structure-audit to review the requested Laravel responsibilities and structure, report evidence-backed recommendations, and respect the authorized review stage."

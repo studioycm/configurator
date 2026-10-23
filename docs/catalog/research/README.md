@@ -6,6 +6,10 @@ Date: 2026-09-23. Workspace: `/Users/studioycm/Herd/configurator`.
 
 Authority: [the living plan](../DECISIONS.md) records user decisions. These research notes provide evidence and technical proposals; examples do not override the requested behavior.
 
+## Laravel architecture audits and reusable skills — 2026-10-21
+
+The [architecture handoff](laravel-architecture/README.md) preserves the exact October 14 and October 20 audit answers, reconciles all recommendations, links a private archive of available raw outputs, and documents the refreshed research/development/audit skills. Its [third-scan prompt](laravel-architecture/THIRD_SCAN_KICKOFF.md) prepares the next read-only review; that scan and application refactoring have not run as part of this packaging work.
+
 ## FilamentExamples workspace follow-up — 2026-10-08
 
 The following documents cover the eight subsequently requested FilamentExamples projects and their Laravel architecture. This is a new, separately dated research snapshot; the historical observations below remain dated 2026-09-23.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Development Architecture"
+  short_description: "Laravel responsibilities, native structure, and audits"
+  default_prompt: "Use $laravel-development-architecture to choose Laravel responsibilities and native framework features for this task, then verify the smallest authorized change."

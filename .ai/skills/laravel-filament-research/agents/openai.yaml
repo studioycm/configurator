@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel & Filament Research"
+  short_description: "Evidence-led Laravel and Filament architecture research"
+  default_prompt: "Use $laravel-filament-research to research the requested Laravel or Filament architecture against this checkout and accessible sources."
