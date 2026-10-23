@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\Values\ValueResource;
 use App\Models\Value;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -47,8 +48,12 @@ class ManageTags extends Page implements HasTable
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('createTag')->label(__('tags.new_tag'))->icon(Heroicon::OutlinedPlus)
-            ->extraAttributes(['data-tag-transition' => true])->action(fn () => $this->createTag())];
+        return [
+            Action::make('backToValues')->label(__('tags.back_to_values'))->icon(Heroicon::OutlinedArrowLeft)->color('gray')->outlined()
+                ->url(ValueResource::getUrl('index'))->extraAttributes(['data-tag-transition' => true]),
+            Action::make('createTag')->label(__('tags.new_tag'))->icon(Heroicon::OutlinedPlus)
+                ->extraAttributes(['data-tag-transition' => true])->action(fn () => $this->createTag()),
+        ];
     }
 
     public function table(Table $table): Table

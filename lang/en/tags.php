@@ -2,6 +2,8 @@
 
 return [
     'title' => 'Tags',
+    'input_placeholder' => 'Type a tag, then press Enter',
+    'back_to_values' => 'Back to Master Values',
     'manage' => 'Manage shared tags',
     'description' => 'Select a tag to edit its Master Values here. Unused tags disappear automatically.',
     'tag' => 'Tag',

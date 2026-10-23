@@ -1,15 +1,16 @@
 const stops = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7];
 const legacyStops = [1 / 3, 1 / 2, 2 / 3];
+const defaultRatio = 0.65;
 
 export function workspaceSplit({ user, owner, tab }) {
     return {
-        preferredRatio: 0.5,
+        preferredRatio: defaultRatio,
         width: 0,
         stacked: true,
         dragging: false,
         observer: null,
         root: null,
-        dragStart: 0.5,
+        dragStart: defaultRatio,
         splitterHintVisible: false,
         splitterHintTimer: null,
         get minimumRatio() { return this.stacked ? 0.3 : Math.max(0.3, 420 / (this.width - 26)); },
@@ -42,7 +43,7 @@ export function workspaceSplit({ user, owner, tab }) {
         save() {
             try { localStorage.setItem(this.storageKey, JSON.stringify(this.preferredRatio)); } catch { /* Resizing also works without storage. */ }
         },
-        reset() { this.preferredRatio = 0.5; this.save(); },
+        reset() { this.preferredRatio = defaultRatio; this.save(); },
         resize(width) { this.width = width; this.stacked = width < 980; },
         snap(ratio) { return this.availableStops.reduce((best, stop) => Math.abs(stop - ratio) < Math.abs(best - ratio) ? stop : best, 0.5); },
         showSplitterHint() {
@@ -83,7 +84,7 @@ export function workspaceSplit({ user, owner, tab }) {
             const direction = rtl ? -1 : 1;
             const previous = this.availableStops.filter(stop => stop < this.ratio - 0.000001).at(-1) ?? this.preferredRatio;
             const next = this.availableStops.find(stop => stop > this.ratio + 0.000001) ?? this.preferredRatio;
-            const keys = { ArrowLeft: direction === 1 ? previous : next, ArrowRight: direction === 1 ? next : previous, Home: this.availableStops[0], End: this.availableStops.at(-1), Enter: 0.5 };
+            const keys = { ArrowLeft: direction === 1 ? previous : next, ArrowRight: direction === 1 ? next : previous, Home: this.availableStops[0], End: this.availableStops.at(-1), Enter: defaultRatio };
             if (!(event.key in keys)) return;
             event.preventDefault();
             this.preferredRatio = keys[event.key];

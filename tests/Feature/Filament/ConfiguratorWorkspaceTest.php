@@ -248,7 +248,9 @@ test('related options can be included reordered and removed while preserving the
     $canonical = Option::factory()->create(['attribute_id' => $attribute->attribute_id, 'code' => 'AX']);
     $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
 
-    $manager->callAction(TestAction::make('include')->table(), data: ['option_id' => $canonical->id])->assertHasNoFormErrors();
+    $manager->assertActionDoesNotExist(TestAction::make('include')->table())
+        ->assertActionVisible(TestAction::make('includeMany')->table())
+        ->callAction(TestAction::make('includeMany')->table(), data: ['selected' => [$canonical->id]])->assertHasNoFormErrors();
     $included = $attribute->options()->where('option_id', $canonical->id)->sole();
     $ids = $attribute->options()->orderBy('display_order')->pluck('id')->all();
     $manager->call('reorderTable', array_reverse($ids))->assertHasNoErrors();

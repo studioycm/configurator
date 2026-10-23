@@ -23,7 +23,7 @@ class ValuesTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
+            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('label')->label(__('catalog.fields.ui_name'))->sortable()->toggleable()->searchable(),
             TextColumn::make('semantic_id')->label(__('catalog.fields.semantic_id'))->sortable()->toggleable()->searchable()->copyable(),
             TextColumn::make('description')->label(__('catalog.fields.specification'))->searchable()->toggleable(isToggledHiddenByDefault: true),
@@ -46,7 +46,7 @@ class ValuesTable
                 Hidden::make('operation')->default('edit'),
                 Hidden::make('changes.0.field')->default('tags'),
                 Select::make('changes.0.mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])->default('add')->required(),
-                TagsInput::make('changes.0.value')->label(__('catalog.fields.tags'))->suggestions(fn (): array => array_keys(Value::tagOptions()))->default([]),
+                TagsInput::make('changes.0.value')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->suggestions(fn (): array => array_keys(Value::tagOptions()))->default([]),
                 View::make('filament.resources.batch-preview'),
             ]);
     }

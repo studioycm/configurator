@@ -16,7 +16,7 @@ class ConfiguratorsTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
+            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('name')->label(__('ui.fields.name'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
             TextColumn::make('description')->label(__('configurator.fields.description'))->searchable()->toggleable(isToggledHiddenByDefault: true),
             ItemCountColumn::make('groups_count', __('configurator.labels.assigned_groups'), 'configurator-groups')->sortable()->toggleable(),

@@ -19,7 +19,7 @@ class GroupsTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label(__('ui.fields.id'))->searchable(isIndividual: false, isGlobal: true)->sortable()->toggleable(),
+            TextColumn::make('id')->label(__('ui.fields.id'))->searchable(isIndividual: false, isGlobal: true)->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('name')->label(__('ui.fields.name'))->searchable(isIndividual: false, isGlobal: true)->sortable()->toggleable(),
             TextColumn::make('legacy_id')->label(__('catalog.fields.legacy_id'))->searchable(isIndividual: false, isGlobal: true)->toggleable(),
             TextColumn::make('parent.name')->label(__('catalog.groups.fields.parent'))->searchable(isIndividual: false, isGlobal: true)->toggleable(),

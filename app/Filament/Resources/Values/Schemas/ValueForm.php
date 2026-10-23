@@ -23,7 +23,7 @@ class ValueForm
                     ->hintAction(FormHints::make(__('catalog.master_values.help.semantic_id'))),
                 Value::suggestSemanticId(...),
             ),
-            TagsInput::make('tags')->columnSpanFull()->label(__('catalog.fields.tags'))->default([])->trim()->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct'])->rules(['array', 'max:30'])->suggestions(fn (): array => array_values(Value::tagOptions()))->hintAction(FormHints::make(__('catalog.master_values.hints.press_enter_after_each_tag_tags_help'))),
+            TagsInput::make('tags')->columnSpanFull()->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->default([])->trim()->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct'])->rules(['array', 'max:30'])->suggestions(fn (): array => array_values(Value::tagOptions()))->hintAction(FormHints::make(__('catalog.master_values.hints.press_enter_after_each_tag_tags_help'))),
             Textarea::make('description')->label(__('catalog.fields.specification'))->rows(3)->maxLength(5000)->columnSpanFull(),
         ])]);
     }

@@ -38,7 +38,7 @@ class BatchEditActions
                 TextInput::make('value')->label(__('admin.batch.labels.new_value'))->integer()->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'integer' && $get('mode') === 'set'),
                 Toggle::make('value')->label(__('ui.status.enabled'))->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'boolean' && $get('mode') === 'set'),
                 Select::make('value')->label(__('admin.batch.labels.new_value'))->options(fn (Get $get): array => $fields[$get('field')]['options'] ?? [])->multiple(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'multiple')->visible(fn (Get $get): bool => in_array($fields[$get('field')]['type'] ?? '', ['select', 'multiple'], true) && $get('mode') === 'set'),
-                TagsInput::make('value')->label(__('catalog.fields.tags'))->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'tags' && in_array($get('mode'), ['set', 'add', 'remove'], true)),
+                TagsInput::make('value')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->visible(fn (Get $get): bool => ($fields[$get('field')]['type'] ?? '') === 'tags' && in_array($get('mode'), ['set', 'add', 'remove'], true)),
             ])->hintAction(FormHints::make(__('admin.batch.hints.values_may_differ_across_the_selection_only'))),
             View::make('filament.resources.batch-preview'),
         ]), self::base('batchReplace', __('admin.batch.labels.find_and_replace'), $table)->schema([

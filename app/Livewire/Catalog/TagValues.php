@@ -150,7 +150,7 @@ class TagValues extends Component implements HasActions, HasSchemas, HasTable
         return $schema->statePath('assignmentData')->components([
             Select::make('mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])
                 ->required()->rules([Rule::in(['add', 'remove', 'set'])])->live()->afterStateUpdated(fn () => $this->refreshAssignmentPreview()),
-            TagsInput::make('tags')->label(__('catalog.fields.tags'))->trim()->default([])->suggestions(fn (): array => array_keys(Value::tagOptions()))
+            TagsInput::make('tags')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->trim()->default([])->suggestions(fn (): array => array_keys(Value::tagOptions()))
                 ->rules(['array', 'list', 'max:30'])->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct:strict'])
                 ->live()->afterStateUpdated(fn () => $this->refreshAssignmentPreview()),
         ]);

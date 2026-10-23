@@ -17,7 +17,13 @@ class Element {
             getPropertyValue(name) { return this[name] ?? ''; },
             removeProperty(name) { delete this[name.startsWith('--') ? name : name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())]; },
         };
-        this.classList = { toggle() {} };
+        this.classList = { toggle: (name, force) => {
+            const classes = new Set(this.className.split(' ').filter(Boolean));
+            const enabled = force ?? !classes.has(name);
+            if (enabled) classes.add(name); else classes.delete(name);
+            this.className = [...classes].join(' ');
+            return enabled;
+        } };
     }
     append(child) { child.remove(); child.parent = this; this.children.push(child); }
     remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); this.parent = null; }
@@ -87,10 +93,31 @@ function environment(t, { saved = [], denied = false } = {}) {
 
 function columns(user = 1, table = 'options') {
     const root = new Element(); root.connected = true; root.dataset.widthTable = table;
-    const header = new Element('', 'TH'); header.dataset.widthColumn = 'code'; root.append(header);
+    const nativeTable = new Element('fi-ta-table', 'TABLE'); root.append(nativeTable);
+    const header = new Element('', 'TH'); header.dataset.widthColumn = 'code'; nativeTable.append(header);
     const controller = tableColumnWidths({ user, table, labels: { resize_column: 'Width of :column. Drag or use arrow keys; double-click or Delete resets; Escape cancels.' } }); controller.$el = root; controller.$nextTick = callback => callback(); controller.init();
-    return { controller, root, header, handle: header.querySelector('.catalog-column-resize') };
+    return { controller, root, table: nativeTable, header, handle: header.querySelector('.catalog-column-resize') };
 }
+
+test('resizing a parent table cannot impose its fixed layout on a nested slide-over table', t => {
+    environment(t);
+    const parent = columns();
+    const related = columns(1, 'related-options');
+    parent.root.append(related.root);
+
+    parent.handle.fire('keydown', { key: 'End' });
+    assert.equal(parent.table.matches('.catalog-table-has-widths'), true);
+    assert.equal(parent.root.matches('.catalog-table-has-widths'), false);
+    assert.equal(related.table.matches('.catalog-table-has-widths'), false);
+    assert.equal(related.header.style.width, undefined);
+
+    related.handle.fire('keydown', { key: 'Home' });
+    assert.equal(related.table.matches('.catalog-table-has-widths'), true);
+    assert.equal(related.header.style.width, '96px');
+    parent.controller.destroy();
+    assert.equal(parent.table.matches('.catalog-table-has-widths'), false);
+    assert.equal(related.table.matches('.catalog-table-has-widths'), true);
+});
 
 function dialog(user = 1, purpose = 'columns') {
     const root = new Element(); root.connected = true;
@@ -291,7 +318,7 @@ test('workspace split offers finer stops and persists ratios per user and tab', 
     const { values } = environment(t);
     const split = workspaceSplit({ user: 1, owner: 10, tab: 'attributes' });
     split.resize(1600);
-    assert.equal(split.percentage, 50);
+    assert.equal(split.percentage, 65);
     const percentages = [];
     split.keyDown({ key: 'Home', preventDefault() {} });
     for (let i = 0; i < 9; i++) {
@@ -302,9 +329,9 @@ test('workspace split offers finer stops and persists ratios per user and tab', 
     assert.equal(values.get('aquestia:split:1:10:attributes:v2'), '0.7');
     const restored = workspaceSplit({ user: 1, owner: 10, tab: 'attributes' }); restored.restore();
     assert.equal(restored.percentage, 70);
-    assert.equal(workspaceSplit({ user: 2, owner: 10, tab: 'attributes' }).percentage, 50);
+    assert.equal(workspaceSplit({ user: 2, owner: 10, tab: 'attributes' }).percentage, 65);
     const otherTab = workspaceSplit({ user: 1, owner: 10, tab: 'rules' }); otherTab.restore();
-    assert.equal(otherTab.percentage, 50);
+    assert.equal(otherTab.percentage, 65);
 });
 
 test('divider help closes after three seconds and immediately when dragging starts', t => {
@@ -351,11 +378,12 @@ test('workspace split validates saved ratios and keeps each pane at least 420 pi
         ['aquestia:split:1:10:rules:v2', '"0.7"'],
     ] });
     const split = workspaceSplit({ user: 1, owner: 10, tab: 'rules' }); split.restore();
-    assert.equal(split.percentage, 50);
+    assert.equal(split.percentage, 65);
     split.resize(980);
     split.keyDown({ key: 'End', preventDefault() {} }); assert.equal(split.percentage, 55);
     split.keyDown({ key: 'Home', preventDefault() {} }); assert.equal(split.percentage, 45);
-    split.reset(); assert.equal(split.percentage, 50);
+    split.reset(); assert.equal(split.ratio, 534 / 954);
+    split.resize(1600); assert.equal(split.percentage, 65);
 });
 
 test('workspace pointer stops use the root width, preserve cancellation and reverse in RTL', t => {
@@ -369,14 +397,14 @@ test('workspace pointer stops use the root width, preserve cancellation and reve
     split.startDrag(event); split.moveDrag({ clientX: 1226 });
     assert.equal(split.percentage, 70);
     assert.equal(writes.length, 0);
-    split.endDrag(true); assert.equal(split.percentage, 50); assert.equal(writes.length, 0);
+    split.endDrag(true); assert.equal(split.percentage, 65); assert.equal(writes.length, 0);
     split.startDrag(event); split.moveDrag({ clientX: 586 }); split.endDrag();
     assert.equal(split.percentage, 30); assert.equal(writes.length, 1);
     direction = 'rtl';
     split.startDrag(event); split.moveDrag({ clientX: 586 }); split.endDrag();
     assert.equal(split.percentage, 70);
     split.keyDown({ key: 'ArrowRight', preventDefault() {} }); assert.equal(split.percentage, 65);
-    split.keyDown({ key: 'Enter', preventDefault() {} }); assert.equal(split.percentage, 50);
+    split.keyDown({ key: 'Enter', preventDefault() {} }); assert.equal(split.percentage, 65);
 });
 
 test('column drag follows the inline edge in RTL and Escape restores the saved width', t => {

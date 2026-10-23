@@ -17,7 +17,7 @@ class OptionsTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(),
+            TextColumn::make('id')->label(__('ui.fields.id'))->sortable()->searchable(isIndividual: false, isGlobal: true)->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('code')->label(__('catalog.fields.code'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true)->copyable(),
             TextColumn::make('attribute.label')->label(__('catalog.resources.attributes.singular'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),
             TextColumn::make('value.label')->label(__('catalog.fields.value_ui_name'))->sortable()->toggleable()->searchable(isIndividual: false, isGlobal: true),

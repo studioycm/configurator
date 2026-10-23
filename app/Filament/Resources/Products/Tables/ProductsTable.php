@@ -16,7 +16,7 @@ class ProductsTable
     public static function configure(Table $table): Table
     {
         return TablePresentation::configure($table->columns([
-            TextColumn::make('id')->label(__('ui.fields.id'))->searchable(isIndividual: false, isGlobal: true)->sortable()->toggleable(),
+            TextColumn::make('id')->label(__('ui.fields.id'))->searchable(isIndividual: false, isGlobal: true)->sortable()->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('product_code')->label(__('catalog.products.labels.product_code'))->searchable(isIndividual: false, isGlobal: true)->sortable()->toggleable(),
             TextColumn::make('product_name')->sortable()->label(__('catalog.products.labels.product_name'))->searchable(isIndividual: false, isGlobal: true)->toggleable(),
             TextColumn::make('group.name')->label(__('catalog.resources.groups.singular'))->searchable(isIndividual: false, isGlobal: true)->toggleable(),

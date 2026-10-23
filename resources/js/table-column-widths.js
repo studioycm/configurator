@@ -1,6 +1,6 @@
 import { interpolate } from './ui-wording.js';
 export function tableColumnWidths(config) {
-    let root, observer, sizeObserver, frame, activeDrag, observedWidth;
+    let root, table, observer, sizeObserver, frame, activeDrag, observedWidth;
     let widths = {};
     let columns = [];
     let paintedCells = [];
@@ -30,7 +30,7 @@ export function tableColumnWidths(config) {
             const handle = header.querySelector('.catalog-column-resize');
             if (handle) handle.setAttribute('aria-valuenow', String(Math.round(width ?? natural)));
         }
-        root.classList.toggle('catalog-table-has-widths', sized);
+        table?.classList.toggle('catalog-table-has-widths', sized);
         if (sized) root.style.setProperty('--catalog-table-width', `${total}px`);
         else root.style.removeProperty('--catalog-table-width');
     };
@@ -98,7 +98,8 @@ export function tableColumnWidths(config) {
         frame = null;
         if (destroyed || root.getBoundingClientRect().width === 0) return;
         for (const cell of paintedCells) clear(cell);
-        root.classList.toggle('catalog-table-has-widths', false);
+        table = [...root.querySelectorAll('.fi-ta-table')].find(element => element.closest('[data-width-table]') === root);
+        table?.classList.toggle('catalog-table-has-widths', false);
         root.style.removeProperty('--catalog-table-width');
         const headers = [...root.querySelectorAll('thead th')].filter(header => header.closest('[data-width-table]') === root && header.getBoundingClientRect().width > 0);
         const cells = [...root.querySelectorAll('[data-width-column]')].filter(cell => cell.closest('[data-width-table]') === root);
@@ -141,6 +142,8 @@ export function tableColumnWidths(config) {
             activeDrag = null;
             for (const cell of paintedCells) clear(cell);
             for (const { header } of columns) header.querySelector('.catalog-column-resize')?.remove();
+            table?.classList.toggle('catalog-table-has-widths', false);
+            root?.style.removeProperty('--catalog-table-width');
             root?.classList.toggle('catalog-table-is-resizing', false);
         },
     };

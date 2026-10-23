@@ -482,14 +482,14 @@
 /* Saved widths use a definite table width so the browser cannot redistribute a dragged column. */
 .catalog-workspace-table th[data-width-column] { position: relative; min-width: 72px; padding-inline-end: 12px; }
 .catalog-workspace-table th[data-width-column] .fi-ta-header-cell-sort-btn { white-space: normal; }
-.catalog-table-has-widths th[data-width-column] { overflow-wrap: anywhere; }
+.fi-ta-table.catalog-table-has-widths th[data-width-column] { overflow-wrap: anywhere; }
 .catalog-column-resize { position: absolute; inset-inline-end: 0; top: 0; bottom: 0; width: 12px; cursor: col-resize; touch-action: none; z-index: 2; }
 .catalog-column-resize::after { content: ''; position: absolute; inset-inline-end: 4px; top: 25%; bottom: 25%; width: 2px; border-radius: 2px; background: #64748b70; }
 .catalog-column-resize:hover, .catalog-column-resize:focus-visible { background: #0877e833; outline: 1px solid #0877e8; }
 .catalog-table-is-resizing { cursor: col-resize; user-select: none; }
-.catalog-table-has-widths .fi-ta-table { table-layout: fixed; width: var(--catalog-table-width); min-width: 0; }
+.fi-ta-table.catalog-table-has-widths { table-layout: fixed; width: var(--catalog-table-width); min-width: 0; }
 .catalog-workspace-table td[data-width-column] { overflow-wrap: break-word; }
-.catalog-table-has-widths td[data-width-column] { overflow-wrap: anywhere; }
+.fi-ta-table.catalog-table-has-widths td[data-width-column] { overflow-wrap: anywhere; }
 .catalog-workspace-table td[data-width-column] .fi-ta-col { min-width: 0; }
 .catalog-workspace-table td[data-width-column] .fi-ta-text-item { max-width: 100%; overflow-wrap: inherit; }
 @media (max-width: 767px) { .catalog-column-resize { display: none; } }

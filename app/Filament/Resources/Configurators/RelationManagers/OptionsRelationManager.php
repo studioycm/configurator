@@ -18,14 +18,9 @@ use App\Models\Option;
 use App\Services\ConfiguratorInclusionDrafts;
 use Closure;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\View;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -102,8 +97,6 @@ class OptionsRelationManager extends RelationManager
                     ->modalHeading(fn (): string => __('configurator.inclusions.values.include_heading', ['attribute' => $this->owner()->label_override ?? $this->owner()->attribute->label]))
                     ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->hiddenLabel()->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
                     ->action(fn (array $data) => $this->includeOptions($data['selected'])),
-                Action::make('include')->label(__('configurator.inclusions.values.actions.include'))->icon(Heroicon::OutlinedPlus)->authorize('manage-catalog')->schema(fn (): array => $this->optionFields())
-                    ->action(fn (array $data) => $this->saveOption(null, $data)),
             ])->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveOption($id, $direction)),
                 Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')->extraAttributes(['data-option-editor-switch' => true])
@@ -131,26 +124,6 @@ class OptionsRelationManager extends RelationManager
 
             return $attribute;
         });
-    }
-
-    /** @return array<Component> */
-    private function optionFields(?ConfiguratorOption $option = null): array
-    {
-        $owner = $this->owner();
-
-        return [
-            View::make('filament.forms.validation-summary'),
-            Select::make('option_id')->label(__('catalog.attribute_values.headings.shared'))->required()->rules(['integer'])->searchable()->disabled($option !== null)->dehydrated()
-                ->options(fn (): array => Option::where('attribute_id', $owner->attribute_id)
-                    ->when($option === null, fn ($query) => $query->where('is_active', true)->where('is_hidden', false))
-                    ->whereNotIn('id', $owner->options()->when($option, fn ($query) => $query->whereKeyNot($option->id))->pluck('option_id'))
-                    ->with(['value', 'attribute'])->orderBy('code')->get()->mapWithKeys(fn (Option $row): array => [$row->id => $row->displayName($option?->option_id === $row->id ? $option->label_override : null, $owner->label_override ?? $owner->attribute->label)])->all()),
-            TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255),
-            TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255),
-            TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
-            Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden'))->default(false),
-            Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled'))->default(false),
-        ];
     }
 
     /** @param array<string, mixed> $data */
