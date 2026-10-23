@@ -50,7 +50,7 @@ function tableEnvironment(t) {
     globalThis.localStorage = store;
     globalThis.window = { location: { search: '' }, Livewire: { interceptMessage(callback) { callbacks.add(callback); return () => callbacks.delete(callback); } } };
     const wire = { $id: 'one', tableColumns: [{ name: 'code', isToggled: true }], tableSort: null, tableSearch: '', tableSearchScope: 'all', tableFilters: {}, tableRecordsPerPage: 10,
-        async $call(name, changes) { calls.push({ name, changes }); const mapping = { sort: 'tableSort', search: 'tableSearch', perPage: 'tableRecordsPerPage' }; for (const [key, value] of Object.entries(changes)) this[mapping[key] ?? key] = value; },
+        async $call(name, changes) { calls.push({ name, changes }); const mapping = { columns: 'tableColumns', sort: 'tableSort', search: 'tableSearch', searchScope: 'tableSearchScope', searchFields: 'tableSearchFields', filters: 'tableFilters', perPage: 'tableRecordsPerPage' }; for (const [key, value] of Object.entries(changes)) this[mapping[key] ?? key] = value; },
     };
     t.after(() => { for (const [key, descriptor] of Object.entries(previous)) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; } });
     return { store, callbacks, calls, wire };
@@ -203,4 +203,160 @@ test('legacy tag visibility is discarded while other table preferences still res
     assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { search: 'metal' } }]);
     assert.equal(Object.hasOwn(browserProfile(1, 'table:values', store).read(), 'tagFilters'), false);
     assert.equal(browserProfile(1, 'table:values', store).read().search, 'metal');
+});
+
+
+const savedDefaultMigration = { column: 'stored_default', revision: 'saved-default-v1' };
+const columnsWithTrailingDefault = [
+    { name: 'option.code', isToggled: true },
+    { name: 'option.value.tags', isToggled: false },
+    { name: 'stored_default', isToggled: true },
+];
+const initialDefaultColumns = () => [columnsWithTrailingDefault[2], ...columnsWithTrailingDefault.slice(0, 2)];
+const settleTableMessage = callbacks => {
+    for (const callback of callbacks) callback({ message: { component: { id: 'one' } }, onSuccess(callback) { callback({ onMorphed: callback => callback() }); } });
+};
+const mountDefaultProfile = wire => {
+    const controller = localTableProfile({ user: 1, scope: 'included-values', columnMigration: savedDefaultMigration });
+    controller.$wire = wire;
+    return controller;
+};
+
+test('saved Default position migrates once through settled native restore while every other preference stays', async t => {
+    const { store, calls, wire, callbacks } = tableEnvironment(t);
+    wire.tableColumns = initialDefaultColumns();
+    wire.tableSearchFields = []; wire.showSelection = false; wire.showOrderControls = true;
+    const saved = { ...tableProfileState(wire), columns: columnsWithTrailingDefault, sort: 'option.code:desc', search: 'alloy', searchScope: 'option.code', searchFields: ['option.code'], filters: { tags: { values: ['metal'], operator: 'and' } }, perPage: 25, showSelection: true, showOrderControls: false };
+    const profile = browserProfile(1, 'table:included-values', store);
+    const widths = browserProfile(1, 'widths:included-values', store);
+    widths.save({ 'option.code': 140 });
+    profile.save(saved);
+    const restore = wire.$call;
+    wire.$call = async function (...args) {
+        await restore.apply(this, args);
+        settleTableMessage(callbacks);
+        assert.deepEqual(profile.read(), saved, 'intermediate morph must not acknowledge the migration');
+    };
+    const controller = mountDefaultProfile(wire);
+
+    await controller.init();
+
+    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { sort: saved.sort, search: saved.search, searchScope: saved.searchScope, filters: saved.filters, perPage: 25, showSelection: true, showOrderControls: false, searchFields: saved.searchFields } }]);
+    assert.deepEqual(wire.tableColumns, initialDefaultColumns());
+    assert.deepEqual(profile.read(), { ...saved, columns: initialDefaultColumns(), columnOrderRevision: 'saved-default-v1' });
+    assert.deepEqual(widths.read(), { 'option.code': 140 });
+    assert.match(profile.key, /included-values:v1$/);
+    controller.destroy();
+});
+
+test('missing Default in an older browser column list is inserted first without reordering its siblings', async t => {
+    const { store, calls, wire } = tableEnvironment(t);
+    wire.tableColumns = columnsWithTrailingDefault;
+    const columns = [columnsWithTrailingDefault[1], columnsWithTrailingDefault[0]];
+    browserProfile(1, 'table:included-values', store).save({ ...tableProfileState(wire), columns });
+    const controller = mountDefaultProfile(wire);
+
+    await controller.init();
+
+    assert.deepEqual(calls[0].changes, { columns: [columnsWithTrailingDefault[2], ...columns] });
+    assert.deepEqual(wire.tableColumns, [columnsWithTrailingDefault[2], ...columns]);
+    assert.equal(browserProfile(1, 'table:included-values', store).read().columnOrderRevision, 'saved-default-v1');
+    controller.destroy();
+});
+
+test('a missing browser profile still migrates an old native session column order', async t => {
+    const { store, calls, wire } = tableEnvironment(t);
+    wire.tableColumns = columnsWithTrailingDefault;
+    wire.tableSearch = 'session search';
+    const controller = mountDefaultProfile(wire);
+
+    await controller.init();
+
+    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { columns: initialDefaultColumns() } }]);
+    assert.deepEqual(wire.tableColumns, initialDefaultColumns());
+    assert.equal(browserProfile(1, 'table:included-values', store).read().search, 'session search');
+    assert.equal(browserProfile(1, 'table:included-values', store).read().columnOrderRevision, 'saved-default-v1');
+    controller.destroy();
+});
+
+test('failed Default migration retains the original profile without a marker and retries next visit', async t => {
+    const { store, wire, callbacks } = tableEnvironment(t);
+    wire.tableColumns = columnsWithTrailingDefault;
+    const profile = browserProfile(1, 'table:included-values', store);
+    const saved = { ...tableProfileState(wire), search: 'retry retained search' };
+    profile.save(saved);
+    const restore = wire.$call;
+    wire.$call = async () => { throw Error('offline'); };
+    const first = mountDefaultProfile(wire);
+
+    await first.init();
+    settleTableMessage(callbacks);
+
+    assert.deepEqual(profile.read(), saved);
+    first.destroy();
+    wire.$call = restore;
+    const second = mountDefaultProfile(wire);
+    await second.init();
+    assert.deepEqual(wire.tableColumns, initialDefaultColumns());
+    assert.equal(profile.read().columnOrderRevision, 'saved-default-v1');
+    assert.equal(profile.read().search, saved.search);
+    second.destroy();
+});
+
+test('successful Default migration respects a later explicit column reorder across visits and morphs', async t => {
+    const { store, wire, callbacks, calls } = tableEnvironment(t);
+    wire.tableColumns = columnsWithTrailingDefault;
+    const profile = browserProfile(1, 'table:included-values', store);
+    const first = mountDefaultProfile(wire);
+    await first.init();
+    wire.tableColumns = columnsWithTrailingDefault;
+    settleTableMessage(callbacks);
+    assert.deepEqual(profile.read().columns, columnsWithTrailingDefault);
+    assert.equal(profile.read().columnOrderRevision, 'saved-default-v1');
+    first.destroy();
+    calls.length = 0;
+    wire.tableColumns = initialDefaultColumns();
+    const second = mountDefaultProfile(wire);
+
+    await second.init();
+    settleTableMessage(callbacks);
+
+    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { columns: columnsWithTrailingDefault } }]);
+    assert.deepEqual(wire.tableColumns, columnsWithTrailingDefault);
+    assert.equal(profile.read().columnOrderRevision, 'saved-default-v1');
+    second.destroy();
+});
+
+test('tables without the Options migration keep the saved Default position without revision metadata', async t => {
+    const { store, wire, calls } = tableEnvironment(t);
+    wire.tableColumns = initialDefaultColumns();
+    const profile = browserProfile(1, 'table:other-table', store);
+    profile.save({ ...tableProfileState(wire), columns: columnsWithTrailingDefault });
+    const controller = localTableProfile({ user: 1, scope: 'other-table' });
+    controller.$wire = wire;
+
+    await controller.init();
+
+    assert.deepEqual(calls, [{ name: 'restoreTableBrowserProfile', changes: { columns: columnsWithTrailingDefault } }]);
+    assert.deepEqual(wire.tableColumns, columnsWithTrailingDefault);
+    assert.equal(Object.hasOwn(profile.read(), 'columnOrderRevision'), false);
+    controller.destroy();
+});
+
+
+test('a restore that has not settled the leading Default does not acknowledge its migration', async t => {
+    const { store, wire, callbacks } = tableEnvironment(t);
+    wire.tableColumns = columnsWithTrailingDefault;
+    const profile = browserProfile(1, 'table:included-values', store);
+    const saved = tableProfileState(wire);
+    profile.save(saved);
+    wire.$call = async () => undefined;
+    const controller = mountDefaultProfile(wire);
+
+    await controller.init();
+    settleTableMessage(callbacks);
+
+    assert.deepEqual(profile.read(), saved);
+    assert.equal(Object.hasOwn(profile.read(), 'columnOrderRevision'), false);
+    controller.destroy();
 });

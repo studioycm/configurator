@@ -96,7 +96,7 @@ test('local inclusion editors preserve shared identity and stored default throug
     }
     unset($option);
     $manager = Livewire\Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class]);
-    $manager->callAction(TestAction::make('includeMany')->table(), data: ['selected' => [$draft['attribute_id']], 'review' => [$draft]])->assertHasNoFormErrors();
+    $manager->call('includeAttributes', [$draft['attribute_id']], [$draft])->assertHasNoFormErrors();
     $inclusion = $configurator->attributes()->sole();
     $default = $inclusion->default_configurator_option_id;
     $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['attributes'][0];
@@ -156,10 +156,10 @@ test('failed inclusion validation keeps the staged draft and renders its repair 
     $draft = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['attributes'][0];
     unset($draft['display_order'], $draft['code_order']);
     unset($draft['options']);
-    $draft['default_configurator_option_id'] = '999999';
+    $draft['input_type'] = 'unsupported';
     $draft['label_override'] = 'Unsaved local draft';
     $component = Livewire\Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->callAction(TestAction::make('edit')->table($inclusion))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(['default_configurator_option_id'], 'editorForm')
+        ->callAction(TestAction::make('edit')->table($inclusion))->fillForm($draft, 'editorForm')->call('saveEditor')->assertHasFormErrors(['input_type'], 'editorForm')
         ->assertSet('editorData.label_override', 'Unsaved local draft');
     expect($component->instance()->editorForm->toHtml())->toContain(__('admin.workspace.copy.repair_these_items_before_saving'));
     expect($inclusion->fresh()->label_override)->toBeNull()->and($inclusion->options()->count())->toBe(2);

@@ -24,7 +24,7 @@ class ConfiguratorEditorChanges
 
     public const array ATTRIBUTE_FIELDS = ['label_override', 'input_type', 'help_text', 'default_configurator_option_id'];
 
-    public const array VALUE_FIELDS = ['label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
+    public const array VALUE_FIELDS = ['label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
 
     public const array RULE_FIELDS = ['label', 'is_active', 'driver_configurator_attribute_id', 'target_configurator_attribute_id', 'conditions', 'effects', 'sets'];
 
@@ -34,6 +34,16 @@ class ConfiguratorEditorChanges
     public function capture(int $configuratorId, array $rows): array
     {
         Gate::authorize('manage-catalog');
+        foreach ($rows as &$row) {
+            if (($row['type'] ?? null) === 'value') {
+                foreach (['before', 'after'] as $side) {
+                    if (is_array($row[$side] ?? null)) {
+                        $row[$side] = Arr::only($row[$side], self::VALUE_FIELDS);
+                    }
+                }
+            }
+        }
+        unset($row);
         $payload = ['configurator_id' => $configuratorId, 'rows' => $rows];
 
         return [...$payload, 'signature' => $this->signature($payload)];
@@ -234,7 +244,10 @@ class ConfiguratorEditorChanges
             return Arr::only($state, ['id', 'kind', 'priority', ...self::RULE_FIELDS]);
         }
         $state = Arr::only($state, $this->fields($type));
-        foreach (['label_override', 'display_value_override', 'help_text', 'hint', 'description'] as $field) {
+        if ($type === 'value' && (array_key_exists('subtitle_mode', $state) || array_key_exists('display_value_override', $state))) {
+            $state = [...$state, ...$this->compiler->normalizeSubtitle($state, 'value')];
+        }
+        foreach (['label_override', 'help_text', 'hint', 'description'] as $field) {
             if (array_key_exists($field, $state) && blank($state[$field])) {
                 $state[$field] = null;
             }

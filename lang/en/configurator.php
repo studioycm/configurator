@@ -1,6 +1,26 @@
 <?php
 
 return [
+    'creation' => [
+        'choose_values' => 'Choose an existing shared Value or stage a new one.',
+        'invalid_shape' => 'Submit only the fields supported by this addition.',
+        'sources' => 'Choose or create', 'existing_attributes' => 'Existing Attributes', 'create_attributes' => 'Create Attributes',
+        'existing_values' => 'Existing shared Values', 'new_values' => 'New shared Values',
+        'review' => 'Review Attributes and choose defaults', 'review_help' => 'Choose a default for every Attribute. Deselected drafts are kept for this session and are not being added.',
+        'restore_created_values' => 'Restore removed Values to review', 'excluded_value' => 'Restore this Value in the review before choosing it as default.',
+        'restore_value' => 'Add shared Value to review',
+        'refresh_review' => 'Review chosen Attributes', 'local_value' => 'Local value settings',
+        'set_default' => 'Set :value as default', 'save_and_add' => 'Save and add', 'save_and_include' => 'Save and include',
+        'shared_values_help' => 'New Values and Codes are shared with every Configurator using this Attribute. Save and include adds them here and preserves the current default.',
+    ],
+    'subtitles' => [
+        'local' => 'Local value subtitle', 'linked' => 'Linked',
+        'link' => 'Link subtitle to Master Value name', 'unlink' => 'Unlink subtitle',
+        'modes' => ['none' => 'None', 'custom' => 'Custom', 'master' => 'Master name'],
+        'invalid_mode' => 'Choose None, Custom, or Master name for the subtitle.',
+        'custom_required' => 'Enter a nonblank custom subtitle.',
+        'preview_help' => 'Rules can override this presentation. Use Preview & Test to see their result.',
+    ],
     'actions' => [
         'copy_name' => ':name copy',
     ],
@@ -153,16 +173,17 @@ return [
             'default_code' => 'Default code',
             'default_ui_name' => 'Default Value UI Name',
         ],
-        'inheritance_help' => 'Blank local fields inherit the shared Attribute Value. Save this Included Value separately from the Attribute.',
+        'inheritance_help' => 'Blank UI Name uses the Master Value UI Name. Subtitles appear only when entered, linked, or set by a Rule. Save this Included Value separately from the Attribute.',
         'summary' => '{1} :attribute · :key · :count Value · Default: :code|[0,*] :attribute · :key · :count Values · Default: :code',
         'values' => [
+            'current_default' => 'Current default: :value',
             'hints' => [
                 'local_ui_name' => 'The choice text shown in this Configurator and Preview. Leave blank to use the Master Value UI Name. Rules may override this text.',
-                'local_display_value' => 'Additional text beneath a choice, or beneath the selected dropdown value. Leave blank to use the Master Value UI Name. It is shown only when different from the choice text; rules may override it.',
+                'local_display_value' => 'Additional text beneath a Value. Leave empty for no subtitle, or link it to the current Master Value name. Rules may override it.',
             ],
             'actions' => [
                 'include' => 'Include value',
-                'include_many' => 'Include Values',
+                'include_many' => 'Add Values',
             ],
             'fields' => [
                 'local_ui_name' => 'Local Value UI Name',
@@ -214,12 +235,12 @@ return [
         'hide_global_options' => 'Hide global options',
         'hide_selection' => 'Hide selection',
         'hint' => 'Hint',
-        'include_attributes' => 'Include Attributes',
+        'include_attributes' => 'Add Attributes',
         'included_values_exact_codes' => 'Included values / exact codes',
         'initial_availability' => 'Initial availability',
         'initially_disabled' => 'Initially disabled',
         'initially_hidden' => 'Initially hidden',
-        'local_display_value' => 'Local display value',
+        'local_display_value' => 'Local value subtitle',
         'local_help' => 'Local help',
         'local_hint' => 'Local hint',
         'local_label' => 'Local label',
@@ -435,7 +456,7 @@ return [
         'fields' => [
             'name' => 'Name', 'description' => 'Description', 'context_schema' => 'Local context choices', 'hidden_context_options' => 'Hidden context choices',
             'label_override' => 'Local UI name', 'input_type' => 'Input type', 'help_text' => 'Help text', 'default_configurator_option_id' => 'Stored default',
-            'display_value_override' => 'Display value', 'hint' => 'Hint', 'hidden_by_default' => 'Initially hidden', 'disabled_by_default' => 'Initially disabled',
+            'subtitle_mode' => 'Subtitle source', 'display_value_override' => 'Subtitle', 'hint' => 'Hint', 'hidden_by_default' => 'Initially hidden', 'disabled_by_default' => 'Initially disabled',
             'label' => 'Label', 'is_active' => 'Enabled', 'kind' => 'Kind', 'driver_configurator_attribute_id' => 'Driver Attribute', 'target_configurator_attribute_id' => 'Target Attribute',
             'conditions' => 'Conditions', 'condition_blocks' => 'Conditions', 'effects' => 'Effects', 'sets' => 'Allowed-value sets', 'source_kind' => 'Source', 'source_configurator_attribute_id' => 'Attribute',
             'property_key' => 'Product field', 'context_dimension' => 'Context', 'operator' => 'Operator', 'operand' => 'Compared value', 'option_ids' => 'Values',

@@ -1,7 +1,7 @@
-<x-filament-panels::page x-data="{ savedDraft: JSON.stringify($wire.data) }"
+<x-filament-panels::page x-data="{ savedDraft: JSON.stringify({{ $this->editorDraftStateExpression() }}) }"
     data-editor-record="{{ strip_tags((string) $this->getTitle()) }}"
-    x-bind:data-draft-dirty="JSON.stringify($wire.data) !== savedDraft"
-    x-on:catalog-editor-saved="savedDraft = JSON.stringify($wire.data)">
+    x-bind:data-draft-dirty="JSON.stringify({{ $this->editorDraftStateExpression() }}) !== savedDraft"
+    x-on:catalog-editor-saved="savedDraft = JSON.stringify({{ $this->editorDraftStateExpression() }})">
     @if (property_exists($this, 'batchEditorStale') && $this->batchEditorStale)
         <div role="alert" class="text-sm text-warning-600">
             <p>{{ $errors->first('data.group_classification') ?: __('admin.workspace.drafts.record_changed') }}</p>

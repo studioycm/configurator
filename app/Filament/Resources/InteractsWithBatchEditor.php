@@ -28,8 +28,14 @@ trait InteractsWithBatchEditor
     protected function rememberBatchEditor(): void
     {
         $this->batchEditorRecordOriginal = $this->batchRecordFingerprint();
-        $this->batchEditorFormOriginal = hash('sha256', json_encode($this->data, JSON_THROW_ON_ERROR));
+        $this->batchEditorFormOriginal = hash('sha256', json_encode($this->batchEditorComparisonState(), JSON_THROW_ON_ERROR));
         $this->batchEditorStale = false;
+    }
+
+    /** @return array<string, mixed> */
+    protected function batchEditorComparisonState(): array
+    {
+        return $this->data ?? [];
     }
 
     protected function beforeSave(): void
@@ -48,7 +54,7 @@ trait InteractsWithBatchEditor
         if ($this->getRecord()::class !== $model || ! in_array((int) $this->getRecord()->getKey(), $ids, true)) {
             return;
         }
-        if (hash('sha256', json_encode($this->data, JSON_THROW_ON_ERROR)) !== $this->batchEditorFormOriginal) {
+        if (hash('sha256', json_encode($this->batchEditorComparisonState(), JSON_THROW_ON_ERROR)) !== $this->batchEditorFormOriginal) {
             $this->batchEditorStale = true;
 
             return;

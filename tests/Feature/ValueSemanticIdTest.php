@@ -90,7 +90,8 @@ test('concurrent Value semantic ID collisions produce a field error and roll bac
 test('Master Value forms suggest an ID once and preserve an author supplied ID', function () {
     Livewire::test(CreateValue::class)
         ->set('data.label', 'ASA 150')
-        ->assertSet('data.semantic_id', 'asa_150')
+        ->assertSet('data.semantic_id', null)
+        ->assertDispatched('identifier-suggested', field: 'data.semantic_id', candidate: 'asa_150', explicit: false)
         ->set('data.semantic_id', 'asa_150_eu')
         ->set('data.label', 'ASA 150 Europe')
         ->assertSet('data.semantic_id', 'asa_150_eu')

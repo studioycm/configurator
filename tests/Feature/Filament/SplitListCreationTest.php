@@ -15,6 +15,7 @@ use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -27,9 +28,7 @@ test('an unselected list shows its authorized create form immediately', function
     $list->call('cancelCreation');
     expect($list->instance()->editorComponent())->toBe($createPage);
 })->with([
-    [ListValues::class, CreateValue::class],
     [ListOptions::class, CreateOption::class],
-    [ListAttributes::class, CreateAttribute::class],
     [ListGroups::class, CreateGroup::class],
     [ListConfigurators::class, CreateConfigurator::class],
 ]);
@@ -47,21 +46,24 @@ test('the table plus opens creation in the right editor and cancel restores the 
     $list->call('cancelCreation')->assertSet('isCreatingRecord', false)
         ->assertSet('selectedRecord', (string) $record->getKey())->assertNoRedirect();
 })->with([
-    'master values' => [ListValues::class, CreateValue::class, Value::class],
     'options' => [ListOptions::class, CreateOption::class, Option::class],
-    'attributes' => [ListAttributes::class, CreateAttribute::class, Attribute::class],
 ]);
 
 test('embedded creation persists through the canonical handler and selects the new record without navigation', function (string $listPage, string $createPage, string $model, array $fields) {
-    $list = Livewire::test($listPage)->call('createRecord');
+    $list = Livewire::test($listPage);
+    if (! in_array($listPage, [ListValues::class, ListAttributes::class], true)) {
+        $list->call('createRecord');
+    }
     $editor = Livewire::test($createPage, ['embedded' => true])->fillForm($fields);
 
     $editor->call('create')->assertHasNoFormErrors()->assertNoRedirect()->assertNotified()
         ->assertDispatched('catalog-record-created')->assertDispatched('catalog-record-saved');
     $record = $model::query()->sole();
     $this->assertDatabaseHas($record->getTable(), $fields);
-    $list->dispatch('catalog-record-created', resource: $listPage::getResource(), record: (string) $record->getKey())
-        ->assertSet('isCreatingRecord', false)->assertSet('selectedRecord', (string) $record->getKey());
+    if (! in_array($listPage, [ListValues::class, ListAttributes::class], true)) {
+        $list->dispatch('catalog-record-created', resource: $listPage::getResource(), record: (string) $record->getKey())
+            ->assertSet('isCreatingRecord', false)->assertSet('selectedRecord', (string) $record->getKey());
+    }
     $editor->call('create');
     $this->assertDatabaseCount($record->getTable(), 1);
 })->with([
@@ -90,7 +92,7 @@ test('inline creation rechecks access when an admin loses permission', function 
     $editor = Livewire::test(CreateValue::class, ['embedded' => true])->fillForm(['label' => 'Forbidden value']);
     $this->actingAs(User::factory()->create(['email' => 'visitor@example.test']));
 
-    $list->call('createRecord')->assertForbidden();
+    expect(fn () => $list->mountAction(TestAction::make('createMany')->table()))->toThrow(AuthorizationException::class);
     $editor->call('create')->assertForbidden();
     $this->assertDatabaseCount('values', 0);
 });
@@ -125,3 +127,25 @@ test('inline tag changes retain unfinished constraints until the native filter d
     'whole selection' => ['tableFilters.tags.values', ['metal']],
     'bundled item replacement' => ['tableFilters.tags.values.0', 'metal'],
 ]);
+
+test('Master Values start with an unselected editor and use the native batch slide-over', function () {
+    $list = Livewire::test(ListValues::class)->assertDontSeeLivewire(CreateValue::class)
+        ->mountAction(TestAction::make('createMany')->table())->assertNoRedirect();
+    expect($list->instance()->isShowingCreateForm())->toBeFalse();
+    expect($list->get('mountedActions.0.data.master_values'))->toHaveCount(1);
+});
+
+test('Attributes use batch creation while preserving the selected adjacent editor and search', function () {
+    $attribute = Attribute::factory()->create();
+    $list = Livewire::test(ListAttributes::class)->assertDontSeeLivewire(CreateAttribute::class)
+        ->callAction(TestAction::make('select')->table($attribute))->searchTable('retained search')
+        ->mountAction(TestAction::make('createMany')->table());
+    expect($list->instance()->isShowingCreateForm())->toBeFalse();
+    $rows = $list->get('mountedActions.0.data.attributes');
+    expect($rows)->toHaveCount(1);
+    $key = array_key_first($rows);
+    $list->set("mountedActions.0.data.attributes.$key.label", 'Batch second')
+        ->set("mountedActions.0.data.attributes.$key.key", 'batch_second')
+        ->callMountedAction()->assertHasNoFormErrors()->assertSet('selectedRecord', (string) $attribute->id)->assertSet('tableSearch', 'retained search');
+    expect(Attribute::where('key', 'batch_second')->sole()->options()->count())->toBe(0);
+});

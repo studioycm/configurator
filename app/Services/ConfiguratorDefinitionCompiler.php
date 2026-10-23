@@ -6,6 +6,7 @@ use App\ConditionJunction;
 use App\ConditionOperator;
 use App\ConditionSource;
 use App\ConfigInputType;
+use App\ConfiguratorSubtitleMode;
 use App\DTO\ConfiguratorAttributeDTO;
 use App\DTO\ConfiguratorConditionDTO;
 use App\DTO\ConfiguratorConditionGroupDTO;
@@ -70,7 +71,9 @@ class ConfiguratorDefinitionCompiler
             $optionOrders = [];
             foreach ($this->rows($row['options'] ?? null, $path.'.options', 1) as $optionIndex => $option) {
                 $optionPath = $path.'.options.'.$optionIndex;
-                $this->keys($option, ['id', 'option_id', 'display_order', 'label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'], $optionPath);
+                $option = [...$option, ...$this->normalizeSubtitle($option, $optionPath)];
+                $row['options'][$optionIndex] = $option;
+                $this->keys($option, ['id', 'option_id', 'display_order', 'label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'], $optionPath);
                 $optionId = $this->claim($option, 'option', $seen, $optionPath);
                 $canonicalOptionId = $this->integer($option['option_id'] ?? null, $optionPath.'.option_id', 1);
                 $canonical = $canonicalOptions[$canonicalOptionId] ?? null;
@@ -82,7 +85,7 @@ class ConfiguratorDefinitionCompiler
                 $this->unique($order, $optionOrders, $optionPath.'.display_order', __('configurator.validation.included_value_display_order_must_be_unique'));
                 $options[$optionId] = new ConfiguratorOptionDTO($optionId, $canonicalOptionId, $canonical['code'], $order,
                     $this->text($option['label_override'] ?? null, $optionPath.'.label_override') ?? $canonical['label'],
-                    $this->text($option['display_value_override'] ?? null, $optionPath.'.display_value_override') ?? $canonical['label'],
+                    ConfiguratorSubtitleMode::from($option['subtitle_mode'])->resolve($option['display_value_override'], $canonical['label']),
                     $this->text($option['hint'] ?? null, $optionPath.'.hint', true, 5000),
                     $this->boolean($option['hidden_by_default'] ?? false, $optionPath.'.hidden_by_default'),
                     $this->boolean($option['disabled_by_default'] ?? false, $optionPath.'.disabled_by_default'),
@@ -175,6 +178,32 @@ class ConfiguratorDefinitionCompiler
         }
 
         return new ConfiguratorDefinition($attributes, $rules, $this->topologicalOrder($attributes, $edges), $context, $data, $policy);
+    }
+
+    /**
+     * Normalize a complete legacy row or the submitted subtitle portion of a PATCH, before merging saved state.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{subtitle_mode: string, display_value_override: ?string}
+     */
+    public function normalizeSubtitle(array $data, string $path): array
+    {
+        $text = $data['display_value_override'] ?? null;
+        $blank = $text === null || (is_string($text) && trim($text) === '');
+        if (array_key_exists('subtitle_mode', $data)) {
+            $mode = is_string($data['subtitle_mode']) ? ConfiguratorSubtitleMode::tryFrom($data['subtitle_mode']) : null;
+            $this->check($mode !== null, $path.'.subtitle_mode', __('configurator.subtitles.invalid_mode'));
+        } else {
+            $mode = $blank ? ConfiguratorSubtitleMode::None : ConfiguratorSubtitleMode::Custom;
+        }
+        if ($mode === ConfiguratorSubtitleMode::Custom) {
+            $this->check(array_key_exists('display_value_override', $data) && ! $blank, $path.'.display_value_override', __('configurator.subtitles.custom_required'));
+            $text = $this->text($text, $path.'.display_value_override', false);
+        } else {
+            $text = null;
+        }
+
+        return ['subtitle_mode' => $mode->value, 'display_value_override' => $text];
     }
 
     /** @param array<string, mixed> $local @param array<string, mixed> $hidden @param array<string, mixed> $global @return array<string, list<array{value: string, label: string}>> */

@@ -2,44 +2,40 @@
 
 namespace App\Filament\Resources\Configurators\RelationManagers;
 
+use App\Actions\AddConfiguratorAttributes;
 use App\Actions\SaveConfiguratorDefinition;
 use App\Actions\SaveConfiguratorOption;
 use App\ConfigInputType;
-use App\Filament\Forms\Components\WorkspaceTableSelect as TableSelect;
-use App\Filament\Resources\AttributeSelectionTable;
+use App\Filament\Resources\Configurators\Actions\AddAttributesAction;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorAttributeForm;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
+use App\Filament\Resources\Configurators\Schemas\ConfiguratorValueTextFields;
 use App\Filament\Resources\DependencyActions;
-use App\Filament\Resources\FormHints;
 use App\Filament\Resources\FormOrderControls;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\ItemCountColumn;
 use App\Filament\Resources\TablePresentation;
-use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
-use App\Models\Option;
+use App\Services\ConfiguratorDefinitionCompiler;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEditorChanges;
-use App\Services\ConfiguratorInclusionDrafts;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -53,6 +49,8 @@ class AttributesRelationManager extends RelationManager
     protected static string $relationship = 'attributes';
 
     protected static bool $isLazy = false;
+
+    public string $catalogCreationTab = 'existing';
 
     protected string $view = 'filament.resources.configurators.attributes';
 
@@ -127,10 +125,7 @@ class AttributesRelationManager extends RelationManager
             return [
                 View::make('filament.forms.validation-summary'),
                 Hidden::make('option_id')->required()->rules(['integer']),
-                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255)->placeholder($option->option->value->label)
-                    ->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_ui_name'))),
-                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255)->placeholder($option->option->value->label)
-                    ->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_display_value'))),
+                ...ConfiguratorValueTextFields::fields(fn (Get $get): string => $option->option->value->label),
                 TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
                 Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden')),
                 Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled')),
@@ -165,10 +160,35 @@ class AttributesRelationManager extends RelationManager
         $this->resetValidation();
         $this->cacheSchema('optionEditorForm')->fill($this->optionEditorDrafts[$attributeId][$optionId] ?? $option->only(SaveConfiguratorOption::FIELDS));
         if ($reload || ! isset($this->optionEditorOriginals[$attributeId][$optionId])) {
-            $this->optionEditorOriginals[$attributeId][$optionId] = hash('sha256', json_encode($this->optionEditorData, JSON_THROW_ON_ERROR));
-            $this->previewOriginals['value:'.$optionId] = $this->optionEditorData;
+            $this->optionEditorOriginals[$attributeId][$optionId] = hash('sha256', json_encode($this->optionEditorState($this->optionEditorData), JSON_THROW_ON_ERROR));
+            $this->previewOriginals['value:'.$optionId] = $this->optionEditorState($this->optionEditorData);
         }
         $this->dispatch('configurator-option-editor-filled');
+    }
+
+    /** @param array<string, mixed> $state
+     * @return array<string, mixed>
+     */
+    private function optionEditorState(array $state): array
+    {
+        $persisted = [];
+        foreach (ConfiguratorEditorChanges::VALUE_FIELDS as $field) {
+            if (array_key_exists($field, $state)) {
+                $persisted[$field] = $state[$field];
+            }
+        }
+
+        return $persisted;
+    }
+
+    /** @param array<string, mixed> $state
+     * @return array<string, mixed>
+     */
+    private function attributeEditorState(array $state): array
+    {
+        unset($state['default_configurator_option_id'], $state['options']);
+
+        return $state;
     }
 
     private function stashOptionDraft(): void
@@ -176,7 +196,7 @@ class AttributesRelationManager extends RelationManager
         if ($this->selectedAttributeId === null || $this->selectedOptionId === null) {
             return;
         }
-        if (hash('sha256', json_encode($this->optionEditorData, JSON_THROW_ON_ERROR)) !== ($this->optionEditorOriginals[$this->selectedAttributeId][$this->selectedOptionId] ?? '')) {
+        if (hash('sha256', json_encode($this->optionEditorState($this->optionEditorData), JSON_THROW_ON_ERROR)) !== ($this->optionEditorOriginals[$this->selectedAttributeId][$this->selectedOptionId] ?? '') || filled($this->optionEditorData['_subtitle_custom_draft'] ?? null)) {
             $this->optionEditorDrafts[$this->selectedAttributeId][$this->selectedOptionId] = $this->optionEditorData;
         } else {
             unset($this->optionEditorDrafts[$this->selectedAttributeId][$this->selectedOptionId]);
@@ -236,9 +256,10 @@ class AttributesRelationManager extends RelationManager
             $id = (int) $row['id'];
             if ($row['type'] === 'attribute') {
                 $current = $this->selectedAttributeId === $id ? $this->editorData : ($this->editorDrafts[$id] ?? null);
-                $this->previewOriginals['attribute:'.$id] = $row['after'];
-                $this->editorOriginals[$id] = hash('sha256', json_encode($row['after'], JSON_THROW_ON_ERROR));
-                if ($current !== null && $changes->normalize('attribute', $current) == $changes->normalize('attribute', $row['after'])) {
+                $savedState = $this->attributeEditorState([...($this->previewOriginals['attribute:'.$id] ?? []), ...$row['after']]);
+                $this->previewOriginals['attribute:'.$id] = $savedState;
+                $this->editorOriginals[$id] = hash('sha256', json_encode($savedState, JSON_THROW_ON_ERROR));
+                if ($current !== null && $changes->normalize('attribute', $this->attributeEditorState($current)) == $changes->normalize('attribute', $savedState)) {
                     unset($this->editorDrafts[$id], $this->editorStaleRows[$id]);
                     if ($this->selectedAttributeId === $id) {
                         $this->selectAttribute($id, reload: true);
@@ -248,12 +269,17 @@ class AttributesRelationManager extends RelationManager
                 $value = ConfiguratorOption::whereHas('configuratorAttribute', fn ($query) => $query->where('configurator_id', $configuratorId))->findOrFail($id);
                 $attributeId = $value->configurator_attribute_id;
                 $current = $this->selectedOptionId === $id ? $this->optionEditorData : ($this->optionEditorDrafts[$attributeId][$id] ?? null);
-                $this->previewOriginals['value:'.$id] = $row['after'];
-                $this->optionEditorOriginals[$attributeId][$id] = hash('sha256', json_encode($row['after'], JSON_THROW_ON_ERROR));
-                if ($current !== null && $changes->normalize('value', $current) == $changes->normalize('value', $row['after'])) {
+                $savedState = $this->optionEditorState($value->only(ConfiguratorEditorChanges::VALUE_FIELDS));
+                $this->previewOriginals['value:'.$id] = $savedState;
+                $this->optionEditorOriginals[$attributeId][$id] = hash('sha256', json_encode($savedState, JSON_THROW_ON_ERROR));
+                if ($current !== null && $changes->normalize('value', $current) == $changes->normalize('value', $savedState)) {
                     unset($this->optionEditorDrafts[$attributeId][$id], $this->optionEditorStaleRows[$id]);
+                    $customDraft = $current['_subtitle_custom_draft'] ?? null;
                     if ($this->selectedOptionId === $id) {
                         $this->selectOption($attributeId, $id, reload: true);
+                        $this->optionEditorData['_subtitle_custom_draft'] = $customDraft;
+                    } elseif (filled($customDraft)) {
+                        $this->optionEditorDrafts[$attributeId][$id] = [...$current, ...$savedState];
                     }
                 }
             }
@@ -281,14 +307,16 @@ class AttributesRelationManager extends RelationManager
         }
         $rows = [];
         foreach ($attributes as $id => $state) {
-            $before = $this->previewOriginals['attribute:'.$id] ?? $state;
+            $state = $this->attributeEditorState($state);
+            $before = $this->attributeEditorState($this->previewOriginals['attribute:'.$id] ?? $state);
             if ($state != $before) {
                 $rows[] = ['type' => 'attribute', 'id' => (string) $id, 'before' => $before, 'after' => $state];
             }
         }
         foreach ($values as $attributeValues) {
             foreach ($attributeValues as $id => $state) {
-                $before = $this->previewOriginals['value:'.$id] ?? $state;
+                $state = $this->optionEditorState($state);
+                $before = $this->optionEditorState($this->previewOriginals['value:'.$id] ?? $state);
                 if ($state != $before) {
                     $rows[] = ['type' => 'value', 'id' => (string) $id, 'before' => $before, 'after' => $state];
                 }
@@ -300,7 +328,7 @@ class AttributesRelationManager extends RelationManager
 
     public function editorForm(Schema $schema): Schema
     {
-        return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->selectedAttributeId === null ? [] : ConfiguratorAttributeForm::components($this->owner(), $this->selectedAttribute(), withOptions: false));
+        return $schema->statePath('editorData')->columns(1)->components(fn (): array => $this->selectedAttributeId === null ? [] : ConfiguratorAttributeForm::components($this->owner(), $this->selectedAttribute(), withOptions: false, withDefault: false));
     }
 
     public function selectedAttribute(): ?ConfiguratorAttribute
@@ -318,8 +346,8 @@ class AttributesRelationManager extends RelationManager
             $this->optionEditorData = [];
         }
         if (! $reload && $this->selectedAttributeId !== null) {
-            if (hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$this->selectedAttributeId] ?? '')) {
-                $this->editorDrafts[$this->selectedAttributeId] = $this->editorData;
+            if (hash('sha256', json_encode($this->attributeEditorState($this->editorData), JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$this->selectedAttributeId] ?? '')) {
+                $this->editorDrafts[$this->selectedAttributeId] = $this->attributeEditorState($this->editorData);
             } else {
                 unset($this->editorDrafts[$this->selectedAttributeId]);
             }
@@ -329,12 +357,11 @@ class AttributesRelationManager extends RelationManager
         }
         $this->selectedAttributeId = $attribute->id;
         $this->resetValidation();
-        $data = $this->editorDrafts[$id] ?? $this->inclusionDraft($id);
-        unset($data['options']);
+        $data = $this->attributeEditorState($this->editorDrafts[$id] ?? $this->inclusionDraft($id));
         $this->cacheSchema('editorForm')->fill($data);
         if ($reload || ! isset($this->editorOriginals[$id])) {
-            $this->editorOriginals[$id] = hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR));
-            $this->previewOriginals['attribute:'.$id] = $this->editorData;
+            $this->editorOriginals[$id] = hash('sha256', json_encode($this->attributeEditorState($this->editorData), JSON_THROW_ON_ERROR));
+            $this->previewOriginals['attribute:'.$id] = $this->attributeEditorState($this->editorData);
         }
         $this->dispatch('configurator-editor-filled');
         if ($this->selectedOptionId === null && isset($this->selectedOptions[$id])) {
@@ -375,7 +402,7 @@ class AttributesRelationManager extends RelationManager
         if (isset($this->editorStaleRows[$attribute->id])) {
             throw ValidationException::withMessages(['editorData' => __('configurator.validation.batch_changes_were_saved_for_this_record')]);
         }
-        $this->saveInclusion($attribute->id, $this->editorForm->getState());
+        $this->saveInclusion($attribute->id, $this->attributeEditorState($this->editorForm->getState()));
         $this->selectAttribute($attribute->id, reload: true);
         $this->dispatch('configurator-attribute-updated', attributeId: $attribute->id);
     }
@@ -402,7 +429,7 @@ class AttributesRelationManager extends RelationManager
                     $this->resetValidation();
                     $this->dispatch('configurator-editor-filled');
                 }
-            } elseif (isset($this->editorDrafts[$id]) || ($this->selectedAttributeId === $id && hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$id] ?? ''))) {
+            } elseif (isset($this->editorDrafts[$id]) || ($this->selectedAttributeId === $id && hash('sha256', json_encode($this->attributeEditorState($this->editorData), JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$id] ?? ''))) {
                 $this->editorStaleRows[$id] = true;
             } elseif ($this->selectedAttributeId === $id) {
                 $this->selectAttribute($id, reload: true);
@@ -450,12 +477,22 @@ class AttributesRelationManager extends RelationManager
                         $this->optionEditorData = [];
                         $this->dispatch('configurator-option-editor-filled');
                     }
-                } elseif (isset($this->optionEditorDrafts[$attributeId][$optionId])) {
+                } elseif (isset($this->optionEditorDrafts[$attributeId][$optionId]) && $this->optionEditorState($this->optionEditorDrafts[$attributeId][$optionId]) != ($this->previewOriginals['value:'.$optionId] ?? [])) {
                     $this->optionEditorStaleRows[$optionId] = true;
-                } elseif ($this->selectedOptionId === $optionId) {
-                    $this->selectOption($attributeId, $optionId, reload: true);
                 } else {
-                    unset($this->optionEditorOriginals[$attributeId][$optionId], $this->optionEditorStaleRows[$optionId]);
+                    $customDraft = $this->optionEditorDrafts[$attributeId][$optionId]['_subtitle_custom_draft'] ?? null;
+                    unset($this->optionEditorDrafts[$attributeId][$optionId], $this->optionEditorStaleRows[$optionId]);
+                    if ($this->selectedOptionId === $optionId) {
+                        $this->selectOption($attributeId, $optionId, reload: true);
+                        $this->optionEditorData['_subtitle_custom_draft'] = $customDraft;
+                    } elseif (filled($customDraft)) {
+                        $fresh = $options[$optionId]->only(SaveConfiguratorOption::FIELDS);
+                        $this->optionEditorDrafts[$attributeId][$optionId] = [...$fresh, '_subtitle_custom_draft' => $customDraft];
+                        $this->previewOriginals['value:'.$optionId] = $this->optionEditorState($fresh);
+                        $this->optionEditorOriginals[$attributeId][$optionId] = hash('sha256', json_encode($this->optionEditorState($fresh), JSON_THROW_ON_ERROR));
+                    } else {
+                        unset($this->optionEditorOriginals[$attributeId][$optionId]);
+                    }
                 }
             }
         }
@@ -481,26 +518,7 @@ class AttributesRelationManager extends RelationManager
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorAttribute $record): ?string => $record->id === $this->selectedAttributeId ? 'catalog-selected-row' : null)
             ->headerActions([
-                Action::make('includeMany')->label(__('configurator.labels.include_attributes'))->authorize('manage-catalog')->slideOver()
-                    ->schema([
-                        View::make('filament.forms.configurator-review-errors'),
-                        Hidden::make('review_drafts')->default([])->dehydrated(false),
-                        TableSelect::make('selected')->label(__('configurator.inclusions.choose_shared_attributes'))->multiple()->required()->minItems(1)->live()->tableConfiguration(AttributeSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])
-                            ->afterStateUpdated(function (Set $set, Get $get, ?array $state): void {
-                                $rows = collect($get('review_drafts') ?? [])->replace(collect($get('review') ?? [])->keyBy('attribute_id'));
-                                $set('review_drafts', $rows->all());
-                                $set('review', array_map(fn ($id): array => $rows->get((int) $id) ?? app(ConfiguratorInclusionDrafts::class)->attribute((int) $id), $state ?? []));
-                            }),
-                        Repeater::make('review')->label(__('configurator.labels.review_attributes_and_choose_each_stored_default'))->defaultItems(0)->addable(false)->deletable(false)->reorderable(false)
-                            ->collapsible()->itemLabel(function (array $state): string {
-                                $attribute = Attribute::find($state['attribute_id'] ?? null);
-                                $default = collect($state['options'] ?? [])->firstWhere('id', $state['default_configurator_option_id'] ?? null);
-                                $option = $default ? Option::find($default['option_id']) : null;
-
-                                return trans_choice('configurator.inclusions.summary', count($state['options'] ?? []), ['attribute' => $attribute?->label ?? __('catalog.resources.attributes.singular'), 'key' => $attribute?->key ?? '', 'count' => count($state['options'] ?? []), 'code' => $option?->code ?? __('configurator.inclusions.choose_required')]);
-                            })
-                            ->schema(fn (): array => ConfiguratorAttributeForm::reviewComponents($this->owner()))->columnSpanFull(),
-                    ])->action(fn (array $data) => $this->includeAttributes($data['selected'], $data['review'])),
+                AddAttributesAction::make($this->owner()),
                 Action::make('codeOrder')->label(__('configurator.labels.code_order'))->authorize('manage-catalog')
                     ->schema([FormOrderControls::make('order')->label(__('configurator.labels.configuration_code_order'))->schema([Hidden::make('id'), TextInput::make('label')->label(__('ui.fields.label'))->readOnly()->dehydrated(false)])->addable(false)->deletable(false)->reorderableWithButtons()])
                     ->fillForm(fn (): array => ['order' => $this->owner()->attributes()->with('attribute')->orderBy('code_order')->get()->map(fn (ConfiguratorAttribute $attribute): array => ['id' => $attribute->id, 'label' => $attribute->label_override ?? $attribute->attribute->label])->all()])
@@ -520,46 +538,39 @@ class AttributesRelationManager extends RelationManager
     /** @param list<int|string> $ids @param list<array<string, mixed>> $rows */
     public function includeAttributes(array $ids, array $rows): void
     {
-        $ids = Validator::make(['selected' => $ids], ['selected' => ['required', 'array', 'list', 'min:1'], 'selected.*' => ['required', 'integer', 'distinct', 'min:1']])->validate()['selected'];
-        if (array_map('intval', $ids) !== array_map('intval', array_column($rows, 'attribute_id'))) {
-            throw ValidationException::withMessages(['review' => __('configurator.validation.review_every_selected_attribute_before_including_it')]);
-        }
-        $firstReviewIndex = null;
-        try {
-            app(SaveConfiguratorDefinition::class)->change(auth()->user(), $this->owner(), function (array $draft) use ($rows, &$firstReviewIndex): array {
-                $firstReviewIndex = count($draft['attributes']);
-                $displayOrder = ($draft['attributes'] === [] ? -1 : max(array_column($draft['attributes'], 'display_order'))) + 1;
-                $codeOrder = ($draft['attributes'] === [] ? -1 : max(array_column($draft['attributes'], 'code_order'))) + 1;
-                foreach ($rows as $reviewIndex => $row) {
-                    if (empty($row['default_configurator_option_id'])) {
-                        throw ValidationException::withMessages(['review.'.$reviewIndex.'.default_configurator_option_id' => __('configurator.validation.choose_a_stored_default_for_every_new')]);
+        Gate::authorize('manage-catalog');
+        ConfiguratorFormErrors::run(function () use ($ids, $rows): Configurator {
+            $reviews = [];
+            foreach (array_values($rows) as $reviewIndex => $row) {
+                $refs = [];
+                foreach ([$row, ...($row['options'] ?? [])] as $entry) {
+                    $ref = $entry['id'] ?? null;
+                    if (is_string($ref) && str_starts_with($ref, 'new:')) {
+                        $refs[$ref] = Str::isUuid(substr($ref, 4)) ? $ref : 'new:'.Str::uuid();
                     }
-                    if (($row['input_type'] ?? null) instanceof ConfigInputType) {
-                        $row['input_type'] = $row['input_type']->value;
-                    }
-                    $row['options'] = array_values($row['options'] ?? []);
-                    foreach ($row['options'] as $order => &$option) {
-                        $option['display_order'] = $order;
-                    }
-                    unset($option);
-                    $draft['attributes'][] = [...$row, 'display_order' => $displayOrder++, 'code_order' => $codeOrder++];
                 }
-
-                return $draft;
-            });
-        } catch (\Throwable $exception) {
-            if ($exception instanceof ValidationException && $firstReviewIndex !== null) {
-                $errors = [];
-                foreach ($exception->errors() as $path => $messages) {
-                    if (preg_match('/^attributes\.(\d+)(.*)$/', $path, $matches) && (int) $matches[1] >= $firstReviewIndex) {
-                        $path = 'review.'.((int) $matches[1] - $firstReviewIndex).$matches[2];
-                    }
-                    $errors[$path] = $messages;
+                $settings = array_intersect_key($row, array_flip(['input_type', 'label_override', 'help_text']));
+                $settings += ['input_type' => 'toggle', 'label_override' => null, 'help_text' => null];
+                if ($settings['input_type'] instanceof ConfigInputType) {
+                    $settings['input_type'] = $settings['input_type']->value;
                 }
-                $exception = ValidationException::withMessages($errors);
+                $values = [];
+                foreach (array_values($row['options'] ?? []) as $valueIndex => $value) {
+                    $subtitle = app(ConfiguratorDefinitionCompiler::class)->normalizeSubtitle(array_intersect_key($value, array_flip(['subtitle_mode', 'display_value_override'])), 'reviews.'.$reviewIndex.'.values.'.$valueIndex.'.local_fields');
+                    $values[] = ['ref' => $refs[$value['id'] ?? ''] ?? ($value['id'] ?? null), 'option_id' => $value['option_id'] ?? null,
+                        'local_fields' => ['label_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false, ...array_intersect_key($value, array_flip(['label_override', 'hint', 'hidden_by_default', 'disabled_by_default'])), ...$subtitle]];
+                }
+                $reviews[] = ['ref' => $refs[$row['id'] ?? ''] ?? ($row['id'] ?? null), 'attribute_id' => $row['attribute_id'] ?? null, 'settings' => $settings, 'default_ref' => $refs[$row['default_configurator_option_id'] ?? ''] ?? ($row['default_configurator_option_id'] ?? null), 'values' => $values];
             }
-            ConfiguratorFormErrors::rethrow($exception, $this->getMountedActionSchema());
-        }
+
+            return app(AddConfiguratorAttributes::class)->handle(auth()->user(), $this->owner(), ['existing_attribute_ids' => $ids, 'reviews' => $reviews]);
+        }, $this->getMountedActionSchema());
+        $this->saved();
+    }
+
+    public function creationSaved(): void
+    {
+        Gate::authorize('manage-catalog');
         $this->saved();
     }
 

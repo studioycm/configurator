@@ -556,3 +556,35 @@
 @media (max-width: 767px) { .catalog-column-resize { display: none; } }
 
 .catalog-table-search .catalog-table-scope[data-search-scope="subset"] { width: 148px; max-width: 148px; }
+
+/* Master creation columns stay mounted; visibility affects presentation only. */
+[data-master-value-batch] { container: master-batch / inline-size; min-width: 0; }
+[data-master-value-batch] .fi-fo-table-repeater { grid-template-columns: minmax(0, 1fr); min-width: 0; width: 100%; max-width: 100%; overflow-x: auto; contain: paint; }
+[data-master-value-batch] .fi-fo-table-repeater > table { width: 100%; min-width: calc((2 + var(--master-batch-extra-columns, 0)) * 12rem + 3rem); table-layout: fixed; }
+[data-master-value-batch][data-show-tags="true"], [data-master-value-batch][data-show-specification="true"] { --master-batch-extra-columns: 1; }
+[data-master-value-batch][data-show-tags="true"][data-show-specification="true"] { --master-batch-extra-columns: 2; }
+[data-master-value-batch] .fi-fo-table-repeater th { white-space: normal; overflow-wrap: anywhere; }
+[data-master-value-batch] .fi-fo-table-repeater td { min-width: 0; vertical-align: top; }
+[data-master-value-batch] .fi-fo-table-repeater :is(th,td):last-child { width: 3rem; }
+[data-master-value-batch][data-show-tags="false"] .fi-fo-table-repeater > table > :is(thead,tbody) > tr > :nth-of-type(3),
+[data-master-value-batch][data-show-specification="false"] .fi-fo-table-repeater > table > :is(thead,tbody) > tr > :nth-of-type(4) { display: none; }
+.catalog-master-batch-column-options { display: grid; gap: .75rem; padding: .75rem; }
+.catalog-master-batch-column-options label { display: flex; align-items: center; gap: .5rem; }
+@container master-batch (width >= 420px) {
+    [data-master-value-batch] .fi-fo-table-repeater > table { display: table; }
+    [data-master-value-batch] .fi-fo-table-repeater > table > thead { display: table-header-group; }
+    [data-master-value-batch] .fi-fo-table-repeater > table > tbody { display: table-row-group; }
+    [data-master-value-batch] .fi-fo-table-repeater > table > tbody > tr { display: table-row; padding: 0; }
+    [data-master-value-batch] .fi-fo-table-repeater > table > tbody > tr > td { display: table-cell; padding: .5rem .75rem; }
+    [data-master-value-batch] .fi-fo-table-repeater .fi-fo-field { row-gap: 0; }
+    [data-master-value-batch] .fi-fo-table-repeater .fi-fo-field-label-content { display: none; }
+}
+@container master-batch (width < 420px) {
+    [data-master-value-batch] .fi-fo-table-repeater > table { display: block; min-width: 0; }
+    [data-master-value-batch] .fi-fo-table-repeater > table > thead { display: table-header-group; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    [data-master-value-batch] .fi-fo-table-repeater > table > tbody { display: grid; gap: .75rem; }
+    [data-master-value-batch] .fi-fo-table-repeater > table > tbody > tr { display: grid; grid-template-columns: minmax(0,1fr); border-bottom: 1px solid var(--color-gray-200); }
+    [data-master-value-batch] .fi-fo-table-repeater > table > tbody > tr > td { display: block; width: auto; }
+    [data-master-value-batch] [data-batch-field] .fi-fo-field-label { position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: visible; white-space: normal; }
+    [data-master-value-batch] [data-batch-field] .fi-fo-field-label-content { display: inline; }
+}

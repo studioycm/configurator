@@ -1,6 +1,13 @@
 <?php
 
 return [
+    'creation' => [
+        'create' => 'Create', 'create_values' => 'Create Master Values', 'add_row' => 'Add row', 'add_rows' => 'Add :count rows',
+        'invalid_ref' => 'The draft reference is invalid.', 'missing_ref' => 'A referenced Master Value is missing or empty.',
+        'required' => 'Enter at least one Master Value.', 'limit' => 'A batch can contain at most 500 rows.',
+        'created' => ':count Master Values created', 'cancel' => 'Cancel', 'discard_heading' => 'Discard this batch?',
+        'discard' => 'Discard', 'keep_editing' => 'Keep editing',
+    ],
     'attribute_values' => [
         'headings' => [
             'shared' => 'Attribute Value',

@@ -1,6 +1,23 @@
 <?php
 
 return [
+    'open_workspace' => 'Add Values',
+    'use_selected' => 'Add selected Values',
+    'add_new' => 'Add new Values',
+    'clear_entries' => 'Clear entries',
+    'value_sources' => 'Master Value sources',
+    'existing_masters' => 'Existing Master Values',
+    'new_masters' => 'New Master Values',
+    'created' => '{1} :count Attribute created|[2,*] :count Attributes created',
+    'create_attributes' => 'Create Attributes',
+    'add_attribute' => 'Add Attribute',
+    'choose_one_source' => 'Choose exactly one saved or pending Master Value.',
+    'create_and_use' => 'Create and use',
+    'discard_composer' => 'Discard new Master entries',
+    'new_in_batch' => 'New in this batch',
+    'used_by' => 'Remove the associations in :names before removing this Master Value.',
+    'unreferenced' => 'Pending Master Values are created only when used by an Attribute in this batch.',
+    'unstaged' => 'Use or discard the unfinished Master entries and selections before saving.',
     'heading' => 'Add Master Values',
     'save_immediately' => 'Save applies this Attribute Value immediately. It does not wait for Save changes on the Attribute.',
     'save_value' => 'Save Attribute Value',

@@ -7,15 +7,24 @@ use App\Filament\Exports\ValueExporter;
 use App\Filament\Imports\ValueImporter;
 use App\Filament\Pages\ManageTags;
 use App\Filament\Resources\SplitListRecords;
+use App\Filament\Resources\Values\Actions\CreateValuesAction;
 use App\Filament\Resources\Values\ValueResource;
 use Filament\Actions\Action;
+use Filament\Tables\Table;
 use Livewire\Attributes\On;
 
 class ListValues extends SplitListRecords
 {
     protected static string $resource = ValueResource::class;
 
-    protected bool $inlineCreationEnabled = true;
+    protected bool $inlineCreationEnabled = false;
+
+    protected function makeTable(): Table
+    {
+        $table = parent::makeTable();
+
+        return $table->headerActions([CreateValuesAction::make(), ...$table->getHeaderActions()]);
+    }
 
     protected function getHeaderActions(): array
     {

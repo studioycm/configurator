@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SaveAdminAppearanceSettings;
+use App\Actions\SaveCanonicalDefinition;
 use App\Actions\SaveConfiguratorDefinition;
 use App\Livewire\Catalog\ConfiguratorPreview;
 use App\Livewire\Catalog\ContextSelector;
@@ -339,4 +340,18 @@ test('Preview escapes selection driven explanatory text', function () {
 
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->assertSee('Selection note')->assertSee('<b>Selection explanation</b>')->assertDontSee('<b>Selection explanation</b>', false);
+});
+
+test('V23 mounted public runtime refresh resolves a canonical Master rename without copying the local subtitle', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $data['attributes'][0]['options'][0] = [...$data['attributes'][0]['options'][0], 'label_override' => 'Local product choice', 'subtitle_mode' => 'master'];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $data);
+    $product = Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
+    $master = Option::with('value')->findOrFail($data['attributes'][0]['options'][0]['option_id'])->value;
+    $component = Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertSee('Local product choice');
+    $before = $configurator->attributes()->firstOrFail()->options()->orderBy('display_order')->firstOrFail()->getAttributes();
+    app(SaveCanonicalDefinition::class)->handle(auth()->user(), $master, ['label' => 'Fresh canonical subtitle', 'semantic_id' => $master->semantic_id, 'description' => $master->description, 'tags' => $master->tags ?? []]);
+
+    $component->call('refreshDefinition')->assertSee('Local product choice')->assertSee('Fresh canonical subtitle');
+    expect($configurator->attributes()->firstOrFail()->options()->orderBy('display_order')->firstOrFail()->getAttributes())->toBe($before);
 });

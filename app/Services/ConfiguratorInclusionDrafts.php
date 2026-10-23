@@ -11,7 +11,7 @@ class ConfiguratorInclusionDrafts
     /** @return array<string, mixed> */
     public function option(Option $option): array
     {
-        return ['id' => 'new:'.Str::uuid(), 'option_id' => $option->id, 'label_override' => null, 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
+        return ['id' => 'new:'.Str::uuid(), 'option_id' => $option->id, 'label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
     }
 
     /** @return array<string, mixed> */

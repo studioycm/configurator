@@ -43,7 +43,7 @@ trait InteractsWithRecordPresentation
     public function getFormActionsContentComponent(): Component
     {
         return Flex::make([
-            SchemaView::make('filament.resources.editor-save-state')->viewData(['dirty' => 'JSON.stringify($wire.data) !== savedDraft', 'scope' => $this->editorSaveScope()]),
+            SchemaView::make('filament.resources.editor-save-state')->viewData(['dirty' => 'JSON.stringify('.$this->editorDraftStateExpression().') !== savedDraft', 'scope' => $this->editorSaveScope()]),
             parent::getFormActionsContentComponent()->grow(false),
         ])->from('sm')->extraAttributes(['class' => 'catalog-editor-footer']);
     }
@@ -51,6 +51,11 @@ trait InteractsWithRecordPresentation
     protected function getSaveFormAction(): Action
     {
         return parent::getSaveFormAction()->label(__('admin.workspace.editor.save_record', ['record' => static::getResource()::getModelLabel()]));
+    }
+
+    public function editorDraftStateExpression(): string
+    {
+        return '$wire.data';
     }
 
     public function editorSaveScope(): string

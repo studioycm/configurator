@@ -184,3 +184,43 @@ test('selected Value outgoing effects follow the source Attribute for negative p
     expect($thirdSection->textContent)->toContain('Negative predicate outgoing effect', __('configurator.preview.related_unevaluated'));
     expect($thirdSection->textContent)->not->toContain(__('configurator.preview.rule_outcomes.recorded_applied'));
 })->with(['not equal' => 'NotEquals', 'not in' => 'NotIn']);
+
+test('V26 Value subtitles render only nonblank text distinct from the final Rule label in both presentations', function (string $input, string $mode, ?string $custom, ?string $labelRule, ?string $subtitleRule, bool $matched, ?string $expected) {
+    [$configurator, $product, $saved] = previewPresentationFixture(function (array &$data) use ($input, $mode, $custom, $labelRule, $subtitleRule, $matched): void {
+        $data['attributes'] = array_slice($data['attributes'], 0, 1);
+        $data['attributes'][0]['input_type'] = $input;
+        $data['attributes'][0]['options'][0] = [...$data['attributes'][0]['options'][0], 'label_override' => 'Local main', 'subtitle_mode' => $mode, 'display_value_override' => $custom];
+        $data['attributes'][0]['options'] = array_slice($data['attributes'][0]['options'], 0, 1);
+        foreach (['SetLabel' => $labelRule, 'SetDisplayValue' => $subtitleRule] as $kind => $text) {
+            if ($text !== null) {
+                $conditions = $matched ? [] : [['id' => 'new:never-'.$kind, 'source_kind' => 'ProductProperty', 'source_configurator_attribute_id' => null, 'property_key' => 'name', 'context_dimension' => null, 'operator' => 'Equals', 'operand' => 'Unmatched property', 'option_ids' => []]];
+                $data['rules'][] = fixtureAdvanced('subtitle-'.$kind, $conditions, 'A', $kind, ['new:A0'], $text);
+                $data['rules'][array_key_last($data['rules'])]['priority'] = count($data['rules']);
+            }
+        }
+    });
+    $public = Livewire::test(ProductConfigurator::class, ['productId' => $product->id]);
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    foreach ([$public->html(), $preview->html()] as $html) {
+        $document = previewPresentationDocument($html);
+        $query = new DOMXPath($document);
+        $surfaces = $query->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' catalog-configuration-attribute ') or contains(concat(' ', normalize-space(@class), ' '), ' catalog-preview-attribute ')]");
+        expect($surfaces->length)->toBeGreaterThan(0);
+        foreach ($surfaces as $surface) {
+            $nodes = $query->query(".//fieldset//p[@class='text-sm'] | .//label//span[@class='block text-sm'] | .//label//span[@class='block text-xs' and not(@x-cloak)]", $surface);
+            expect($nodes->length)->toBe($expected === null ? 0 : 1);
+            if ($expected !== null) {
+                expect($nodes->item(0)->textContent)->toBe($expected);
+            }
+        }
+        expect($html)->not->toContain('<script>subtitle</script>');
+    }
+})->with(['toggle' => 'toggle', 'select' => 'select'])->with([
+    'none' => ['none', null, null, null, true, null],
+    'equal after label rule' => ['custom', 'Same text', 'Same text', null, true, null],
+    'zero' => ['custom', '0', null, null, true, '0'],
+    'matching subtitle rule' => ['none', null, null, 'Rule subtitle', true, 'Rule subtitle'],
+    'unmatched subtitle rule' => ['none', null, null, 'Unmatched', false, null],
+    'blank rule' => ['none', null, null, '   ', true, null],
+    'escaped' => ['custom', '<script>subtitle</script>', null, null, true, '<script>subtitle</script>'],
+]);

@@ -8,7 +8,10 @@ use App\Filament\Resources\Configurators\Pages\ListConfigurators;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
+use App\Filament\Resources\Configurators\Schemas\ConfiguratorAttributeForm;
+use App\Models\Attribute;
 use App\Models\Configurator;
+use App\Models\Group;
 use App\Models\Option;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
@@ -17,6 +20,9 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Schema;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 require_once dirname(__DIR__, 2).'/ConfiguratorFixtures.php';
@@ -125,15 +131,15 @@ test('late batch inclusion errors point at the reviewed Option and preserve all 
     [$configurator, $draft] = canonicalDefinitionFixture();
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
     $option = Option::factory()->create();
-    $row = app(ConfiguratorInclusionDrafts::class)->attribute($option->attribute_id);
-    $row['default_configurator_option_id'] = $row['options'][0]['id'];
     $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
-        ->mountAction(TestAction::make('includeMany')->table())
-        ->fillForm(['selected' => [$option->attribute_id], 'review' => [$row]]);
-    $key = array_key_first($manager->get('mountedActions.0.data.review'));
+        ->mountAction(TestAction::make('includeMany')->table())->set('mountedActions.0.data.existing_attribute_ids', [$option->attribute_id]);
+    $reviews = $manager->get('mountedActions.0.data.reviews');
+    $key = array_key_first($reviews);
+    $valueKey = array_key_first($reviews[$key]['values']);
+    $manager->set("mountedActions.0.data.reviews.$key.default_ref", $reviews[$key]['values'][$valueKey]['ref']);
     $option->update(['is_active' => false]);
-    $manager->callMountedAction()->assertHasErrors(['mountedActions.0.data.review.'.$key.'.options.0.option_id'])
-        ->assertSet('mountedActions.0.data.selected', [$option->attribute_id]);
+    $manager->callMountedAction()->assertHasErrors(["mountedActions.0.data.reviews.$key.values.$valueKey.option_id"])
+        ->assertSet('mountedActions.0.data.existing_attribute_ids', [$option->attribute_id]);
     expect($configurator->attributes()->where('attribute_id', $option->attribute_id)->exists())->toBeFalse();
     $manager->call('unmountAction')->assertHasNoErrors();
 });
@@ -161,19 +167,19 @@ test('batch Attribute review restores staged Option identity and explicit defaul
     $second = Option::factory()->create();
     $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->mountAction(TestAction::make('includeMany')->table())
-        ->set('mountedActions.0.data.selected', [$first->attribute_id, $second->attribute_id]);
-    $review = $manager->get('mountedActions.0.data.review');
+        ->set('mountedActions.0.data.existing_attribute_ids', [$first->attribute_id, $second->attribute_id]);
+    $review = $manager->get('mountedActions.0.data.reviews');
     $key = array_key_first($review);
-    $optionKey = array_key_first($review[$key]['options']);
-    $optionId = $review[$key]['options'][$optionKey]['id'];
-    $manager->set('mountedActions.0.data.review.'.$key.'.options.'.$optionKey.'.hint', 'Keep this review hint')
-        ->set('mountedActions.0.data.review.'.$key.'.default_configurator_option_id', $optionId)
-        ->set('mountedActions.0.data.selected', [$second->attribute_id])
-        ->set('mountedActions.0.data.selected', [$second->attribute_id, $first->attribute_id]);
-    $restored = collect($manager->get('mountedActions.0.data.review'))->firstWhere('attribute_id', $first->attribute_id);
-    expect($restored['default_configurator_option_id'])->toBe($optionId)
-        ->and(array_values($restored['options'])[0]['id'])->toBe($optionId)
-        ->and(array_values($restored['options'])[0]['hint'])->toBe('Keep this review hint')
+    $optionKey = array_key_first($review[$key]['values']);
+    $optionId = $review[$key]['values'][$optionKey]['ref'];
+    $manager->set('mountedActions.0.data.reviews.'.$key.'.values.'.$optionKey.'.local_fields.hint', 'Keep this review hint')
+        ->set('mountedActions.0.data.reviews.'.$key.'.default_ref', $optionId)
+        ->set('mountedActions.0.data.existing_attribute_ids', [$second->attribute_id])
+        ->set('mountedActions.0.data.existing_attribute_ids', [$second->attribute_id, $first->attribute_id]);
+    $restored = collect($manager->get('mountedActions.0.data.reviews'))->firstWhere('attribute_id', $first->attribute_id);
+    expect($restored['default_ref'])->toBe($optionId)
+        ->and(array_values($restored['values'])[0]['ref'])->toBe($optionId)
+        ->and(array_values($restored['values'])[0]['local_fields']['hint'])->toBe('Keep this review hint')
         ->and($configurator->attributes()->count())->toBe(0);
 });
 
@@ -250,7 +256,7 @@ test('related options can be included reordered and removed while preserving the
 
     $manager->assertActionDoesNotExist(TestAction::make('include')->table())
         ->assertActionVisible(TestAction::make('includeMany')->table())
-        ->callAction(TestAction::make('includeMany')->table(), data: ['selected' => [$canonical->id]])->assertHasNoFormErrors();
+        ->callAction(TestAction::make('includeMany')->table(), data: ['existing_option_ids' => [$canonical->id]])->assertHasNoFormErrors();
     $included = $attribute->options()->where('option_id', $canonical->id)->sole();
     $ids = $attribute->options()->orderBy('display_order')->pluck('id')->all();
     $manager->call('reorderTable', array_reverse($ids))->assertHasNoErrors();
@@ -324,7 +330,7 @@ test('rule side editor does not drop invalid hidden builder blocks before saving
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
 });
 
-test('switching attributes replaces the canonical attribute and stored default choices', function () {
+test('switching attributes replaces the canonical attribute and table default markers', function () {
     [$configurator, $draft] = canonicalDefinitionFixture();
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
     $attributes = $configurator->attributes()->orderBy('display_order')->get();
@@ -337,7 +343,11 @@ test('switching attributes replaces the canonical attribute and stored default c
     $manager->instance()->selectAttribute($second->id);
     $manager
         ->assertFormFieldExists('attribute_id', 'editorForm', fn (Select $field): bool => array_key_exists($second->attribute_id, $field->getOptions()))
-        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => array_keys($field->getOptions()) === $choices);
+        ->assertFormFieldDoesNotExist('default_configurator_option_id', 'editorForm');
+    $table = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $second, 'pageClass' => EditConfigurator::class]);
+    foreach ($choices as $id) {
+        $table->assertTableColumnStateSet('stored_default', $id === $second->default_configurator_option_id, $second->options()->findOrFail($id));
+    }
 });
 
 test('Attribute A to B to A retains the unsaved local editor draft', function () {
@@ -411,19 +421,19 @@ test('Attribute inclusion uses the batch workspace and keeps staged Options when
     $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])
         ->assertActionDoesNotExist(TestAction::make('include')->table())
         ->mountAction(TestAction::make('includeMany')->table())
-        ->set('mountedActions.0.data.selected', [$a->attribute_id]);
-    $review = $manager->get('mountedActions.0.data.review');
+        ->set('mountedActions.0.data.existing_attribute_ids', [$a->attribute_id]);
+    $review = $manager->get('mountedActions.0.data.reviews');
     $key = array_key_first($review);
-    $optionKey = array_key_first($review[$key]['options']);
-    $optionId = $review[$key]['options'][$optionKey]['id'];
-    $manager->set('mountedActions.0.data.review.'.$key.'.options.'.$optionKey.'.hint', 'Keep staged hint')
-        ->set('mountedActions.0.data.review.'.$key.'.default_configurator_option_id', $optionId)
-        ->set('mountedActions.0.data.selected', [$b->attribute_id])
-        ->set('mountedActions.0.data.selected', [$a->attribute_id]);
-    $returned = collect($manager->get('mountedActions.0.data.review'))->firstWhere('attribute_id', $a->attribute_id);
-    expect(array_values($returned['options'])[0]['hint'])->toBe('Keep staged hint')
-        ->and(array_values($returned['options'])[0]['id'])->toBe($optionId)
-        ->and($returned['default_configurator_option_id'])->toBe($optionId);
+    $optionKey = array_key_first($review[$key]['values']);
+    $optionId = $review[$key]['values'][$optionKey]['ref'];
+    $manager->set('mountedActions.0.data.reviews.'.$key.'.values.'.$optionKey.'.local_fields.hint', 'Keep staged hint')
+        ->set('mountedActions.0.data.reviews.'.$key.'.default_ref', $optionId)
+        ->set('mountedActions.0.data.existing_attribute_ids', [$b->attribute_id])
+        ->set('mountedActions.0.data.existing_attribute_ids', [$a->attribute_id]);
+    $returned = collect($manager->get('mountedActions.0.data.reviews'))->firstWhere('attribute_id', $a->attribute_id);
+    expect(array_values($returned['values'])[0]['local_fields']['hint'])->toBe('Keep staged hint')
+        ->and(array_values($returned['values'])[0]['ref'])->toBe($optionId)
+        ->and($returned['default_ref'])->toBe($optionId);
     expect($owner->attributes()->count())->toBe(0);
 });
 
@@ -461,25 +471,22 @@ test('viewing different unchanged Attributes does not create unsaved drafts', fu
         ->call('selectAttribute', $attributes[0]->id)->assertSet('editorDrafts', []);
 });
 
-test('saving an attribute refreshes the related default marker without discarding an option draft', function () {
+test('saving a table default refreshes its marker without discarding an option draft', function () {
     [$configurator, $draft] = canonicalDefinitionFixture();
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
     $attribute = $configurator->attributes()->orderBy('display_order')->first();
     $options = $attribute->options()->orderBy('display_order')->get();
     $editor = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->call('selectAttribute', $attribute->id)->call('selectOption', $attribute->id, $options[0]->id)
-        ->fillForm(['label_override' => 'Unsaved option'], 'optionEditorForm')
-        ->fillForm(['default_configurator_option_id' => $options[1]->id], 'editorForm')
-        ->call('saveEditor')->assertHasNoFormErrors(form: 'editorForm')
-        ->assertDispatched('configurator-attribute-updated', attributeId: $attribute->id)
-        ->assertSet('optionEditorData.label_override', 'Unsaved option');
+        ->fillForm(['label_override' => 'Unsaved option'], 'optionEditorForm');
     $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
     $pending = ['rules' => [['type' => 'hint', 'data' => ['operator' => 'contains', 'settings' => ['text' => 'pending']]]]];
     $manager->set('tableFilters.availability.value', 'visible')->set('tableDeferredFilters.constraints', $pending)
-        ->dispatch('configurator-attribute-updated', attributeId: $attribute->id)
+        ->callAction(TestAction::make('setDefault')->table($options[1]))->assertHasNoErrors()
         ->assertSet('tableFilters.availability.value', 'visible')->assertSet('tableDeferredFilters.constraints', $pending)
         ->assertTableColumnStateSet('stored_default', false, $options[0])
         ->assertTableColumnStateSet('stored_default', true, $options[1]);
+    $editor->dispatch('configurator-options-updated')->assertSet('optionEditorData.label_override', 'Unsaved option');
 });
 
 test('related option updates refresh the rule choices while preserving its draft', function () {
@@ -498,4 +505,264 @@ test('related option updates refresh the rule choices while preserving its draft
     $manager->dispatch('configurator-updated')->assertSchemaStateSet(['label' => 'Unsaved rule'], 'editorForm')
         ->assertFormFieldExists('sets', 'editorForm', fn (MappingSetsField $field): bool => $field->getSourceChoices()[$option->id] === 'A0 - Updated option | A');
     expect($rule->fresh()->label)->toBe('map');
+});
+
+test('V23 local subtitle link actions retain a custom draft through switches without signing UI helpers', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->firstOrFail();
+    $options = $attribute->options()->orderBy('display_order')->get();
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->call('selectOption', $attribute->id, $options[0]->id)
+        ->fillForm(['_subtitle_text' => '  Pending subtitle  '], 'optionEditorForm')
+        ->assertSet('optionEditorData.subtitle_mode', 'custom')
+        ->assertSet('optionEditorData.display_value_override', '  Pending subtitle  ')
+        ->callAction(TestAction::make('linkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->assertSet('optionEditorData.subtitle_mode', 'master')->assertSet('optionEditorData.display_value_override', null)
+        ->call('selectOption', $attribute->id, $options[1]->id)->call('selectOption', $attribute->id, $options[0]->id)
+        ->callAction(TestAction::make('unlinkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->assertSet('optionEditorData.subtitle_mode', 'custom')->assertSet('optionEditorData._subtitle_text', '  Pending subtitle  ');
+    $manager->call('exportPreviewChanges')->assertReturned(function (array $capture): bool {
+        $after = $capture['rows'][0]['after'];
+        expect($after)->toHaveKey('subtitle_mode', 'custom')->not->toHaveKeys(['_subtitle_text', '_subtitle_custom_draft']);
+
+        return true;
+    })->call('saveOptionEditor')->assertHasNoErrors();
+    expect($options[0]->fresh())->subtitle_mode->toBe('custom')->display_value_override->toBe('  Pending subtitle  ');
+});
+
+test('V23 linking back to a saved Master keeps only transient custom cache across switches', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $draft['attributes'][0]['options'][0]['subtitle_mode'] = 'master';
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->firstOrFail();
+    $options = $attribute->options()->orderBy('display_order')->get();
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->call('selectOption', $attribute->id, $options[0]->id)
+        ->callAction(TestAction::make('unlinkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->fillForm(['_subtitle_text' => 'Remember just in this session'], 'optionEditorForm')
+        ->callAction(TestAction::make('linkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->call('selectOption', $attribute->id, $options[1]->id)->call('selectOption', $attribute->id, $options[0]->id)
+        ->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture['rows'] === [])
+        ->callAction(TestAction::make('unlinkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->assertSet('optionEditorData._subtitle_text', 'Remember just in this session');
+});
+
+test('V23 nested local Value editor uses authoritative Master names and retains subtitle intent on save', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $sharedAttribute = Attribute::findOrFail($draft['attributes'][0]['attribute_id']);
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->mountAction(TestAction::make('includeMany')->table())->set('mountedActions.0.data.existing_attribute_ids', [$sharedAttribute->id]);
+    $components = $manager->instance()->getSchema('mountedActionSchema0')->getFlatComponents(withHidden: true);
+    $subtitle = collect($components)->first(fn ($component): bool => $component instanceof Field && $component->getName() === '_subtitle_text');
+    expect($subtitle)->not->toBeNull();
+    $manager->callAction(TestAction::make('linkSubtitle')->schemaComponent((string) str($subtitle->getKey())->after('mountedActionSchema0.'), 'mountedActionSchema0'));
+    $review = $manager->get('mountedActions.0.data.reviews');
+    $row = array_values($review)[0];
+    $local = array_values($row['values'])[0];
+    expect($local['local_fields']['subtitle_mode'])->toBe('master');
+    expect($local['local_fields']['_subtitle_text'])->toBe(Option::with('value')->findOrFail($local['option_id'])->value->label);
+    $reviewKey = array_key_first($review);
+    $optionKey = array_key_first($row['values']);
+    $other = array_values($row['values'])[1];
+    $manager->set("mountedActions.0.data.reviews.$reviewKey.values.$optionKey.option_id", $other['option_id'])
+        ->assertSet("mountedActions.0.data.reviews.$reviewKey.values.$optionKey.local_fields._subtitle_text", Option::with('value')->findOrFail($other['option_id'])->value->label)
+        ->set("mountedActions.0.data.reviews.$reviewKey.values.$optionKey.option_id", $local['option_id']);
+    $manager->set("mountedActions.0.data.reviews.$reviewKey.default_ref", $local['ref'])->callMountedAction()->assertHasNoFormErrors();
+    expect($configurator->attributes()->firstOrFail()->options()->where('option_id', $local['option_id'])->firstOrFail())->subtitle_mode->toBe('master')->display_value_override->toBeNull();
+});
+
+test('V25 clean helper-only Value stashes refresh saved batch fields while retaining the unlink cache', function (bool $switchAway) {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $draft['attributes'][0]['options'][0]['subtitle_mode'] = 'master';
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->firstOrFail();
+    $options = $attribute->options()->orderBy('display_order')->get();
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->call('selectOption', $attribute->id, $options[0]->id)
+        ->callAction(TestAction::make('unlinkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->fillForm(['_subtitle_text' => 'Transient custom'], 'optionEditorForm')
+        ->callAction(TestAction::make('linkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'));
+    if ($switchAway) {
+        $manager->call('selectOption', $attribute->id, $options[1]->id);
+    }
+    $options[0]->update(['hint' => 'Fresh batch hint']);
+    $manager->dispatch('catalog-batch-applied', model: $options[0]::class, ids: [$options[0]->id]);
+    if ($switchAway) {
+        $manager->call('selectOption', $attribute->id, $options[0]->id);
+    }
+    $manager->assertSet('optionEditorData.hint', 'Fresh batch hint')
+        ->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture['rows'] === [])
+        ->callAction(TestAction::make('unlinkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
+        ->assertSet('optionEditorData._subtitle_text', 'Transient custom');
+})->with(['active' => false, 'stashed' => true]);
+
+test('V20 saved table defaults preserve active and stashed Attribute and Value edits through separate saves', function (bool $stash) {
+    Option::factory()->count(3)->create();
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attributes = $configurator->attributes()->orderBy('display_order')->get();
+    $attribute = $attributes[0];
+    $options = $attribute->options()->orderBy('display_order')->get();
+    expect($options[1]->id)->not->toBe($options[1]->option_id);
+    $editor = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->fillForm(['help_text' => 'Pending Attribute help'], 'editorForm')
+        ->call('selectOption', $attribute->id, $options[1]->id)->fillForm(['hint' => 'Other Value draft'], 'optionEditorForm')
+        ->call('selectOption', $attribute->id, $options[0]->id)
+        ->fillForm(['label_override' => 'Pending local name', '_subtitle_text' => 'Pending subtitle', 'hint' => 'Pending hint', 'hidden_by_default' => true, 'disabled_by_default' => true], 'optionEditorForm');
+    if ($stash) {
+        $editor->call('selectAttribute', $attributes[1]->id)->fillForm(['label_override' => 'Other Attribute draft'], 'editorForm');
+    }
+    $beforeState = array_intersect_key($editor->instance()->all(), array_flip(['editorData', 'editorDrafts', 'editorOriginals', 'previewOriginals', 'optionEditorData', 'optionEditorDrafts', 'optionEditorOriginals', 'selectedOptions', 'selectedOptionId']));
+    $table = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
+
+    $table->callAction(TestAction::make('setDefault')->table($options[1]))->assertHasNoErrors()->assertNotDispatched('configurator-option-selected');
+    $editor->dispatch('configurator-options-updated')->assertHasNoErrors();
+
+    expect(array_intersect_key($editor->instance()->all(), $beforeState))->toBe($beforeState);
+    expect($attribute->fresh()->default_configurator_option_id)->toBe($options[1]->id);
+    $editor->call('selectAttribute', $attributes[1]->id)->call('selectAttribute', $attribute->id)
+        ->assertSet('selectedOptionId', $options[0]->id)->assertSet('optionEditorData.label_override', 'Pending local name')
+        ->assertSet('editorData.help_text', 'Pending Attribute help')
+        ->call('saveOptionEditor')->assertHasNoErrors()->call('saveEditor')->assertHasNoErrors()
+        ->call('selectOption', $attribute->id, $options[1]->id)->assertSet('optionEditorData.hint', 'Other Value draft');
+    expect($options[0]->fresh())->label_override->toBe('Pending local name')->subtitle_mode->toBe('custom')->display_value_override->toBe('Pending subtitle')->hint->toBe('Pending hint')->hidden_by_default->toBeTrue()->disabled_by_default->toBeTrue();
+    expect($attribute->fresh())->help_text->toBe('Pending Attribute help')->default_configurator_option_id->toBe($options[1]->id);
+    expect($options[1]->fresh()->hint)->toBeNull();
+})->with(['active' => false, 'stashed' => true]);
+
+test('V20 workspace Attribute captures omit defaults symmetrically without losing active or stashed changes', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attributes = $configurator->attributes()->orderBy('display_order')->get();
+    $attribute = $attributes[0];
+    $options = $attribute->options()->orderBy('display_order')->get();
+    $editor = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->assertFormFieldDoesNotExist('default_configurator_option_id', 'editorForm')
+        ->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture['rows'] === []);
+    Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class])
+        ->callAction(TestAction::make('setDefault')->table($options[1]))->assertHasNoErrors();
+    $editor->dispatch('configurator-options-updated')->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture['rows'] === [])
+        ->fillForm(['label_override' => 'Pending A'], 'editorForm')->call('selectAttribute', $attributes[1]->id)
+        ->fillForm(['help_text' => 'Pending B'], 'editorForm');
+    $captures = [];
+    $editor->call('exportPreviewChanges')->assertReturned(function (array $capture) use (&$captures): bool {
+        $captures[] = $capture;
+        expect($capture['rows'])->toHaveCount(2);
+        foreach ($capture['rows'] as $row) {
+            expect($row['before'])->not->toHaveKey('default_configurator_option_id');
+            expect($row['after'])->not->toHaveKey('default_configurator_option_id');
+        }
+
+        return true;
+    });
+    Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class])
+        ->callAction(TestAction::make('setDefault')->table($options[0]))->assertHasNoErrors();
+    $editor->dispatch('configurator-options-updated')->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture === $captures[0]);
+    expect($editor->get('editorData'))->not->toHaveKey('default_configurator_option_id');
+    expect($editor->get('editorDrafts')[$attribute->id])->not->toHaveKey('default_configurator_option_id');
+    foreach ($editor->get('previewOriginals') as $state) {
+        expect($state)->not->toHaveKey('default_configurator_option_id');
+    }
+    $editor->call('selectAttribute', $attribute->id)->set('editorData.default_configurator_option_id', $options[1]->id)->call('saveEditor')->assertHasNoErrors();
+    expect($attribute->fresh())->label_override->toBe('Pending A')->default_configurator_option_id->toBe($options[0]->id);
+});
+
+test('V21 current saved default is a true no-op including revisions notifications and definition events', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->first();
+    $group = Group::factory()->create(['configurator_id' => $configurator->id]);
+    $default = $attribute->options()->findOrFail($attribute->default_configurator_option_id);
+    $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
+    $before = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    $revision = $group->fresh()->catalog_revision;
+    $updatedAt = $configurator->fresh()->updated_at;
+    $this->travel(1)->minute();
+
+    $manager->callAction(TestAction::make('setDefault')->table($default))->assertHasNoErrors()->assertNotNotified()
+        ->assertNotDispatched('configurator-options-updated')->assertNotDispatched('configurator-updated');
+
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
+    expect($configurator->fresh()->updated_at->eq($updatedAt))->toBeTrue();
+    expect($group->fresh()->catalog_revision)->toBe($revision);
+});
+
+test('V21 saved defaults reject other inclusions missing rows and foreign Configurators atomically', function (string $scope) {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attributes = $configurator->attributes()->orderBy('display_order')->get();
+    $id = $attributes[1]->options()->first()->id;
+    if ($scope === 'other Configurator') {
+        $other = Configurator::factory()->create();
+        app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $other, $draft);
+        $id = $other->attributes()->first()->options()->first()->id;
+    } elseif ($scope === 'missing') {
+        $id = 999999;
+    }
+    $before = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+
+    Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attributes[0], 'pageClass' => EditConfigurator::class])
+        ->call('setDefault', $id)->assertHasErrors()->assertNotNotified()->assertNotDispatched('configurator-updated');
+
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($before);
+})->with(['same Configurator', 'other Configurator', 'missing']);
+
+test('V21 direct default selection authorizes before querying membership', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->first();
+    $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
+    $this->actingAs(User::factory()->create());
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    expect(fn () => $manager->instance()->setDefault($attribute->default_configurator_option_id))->toThrow(AuthorizationException::class);
+
+    expect(DB::getQueryLog())->toBe([]);
+    DB::disableQueryLog();
+});
+
+test('V21 saved Default cell names both states and retains runtime unavailable-default policy', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $draft['rules'] = [fixtureMapping()];
+    $draft['attributes'][0]['options'][0]['display_order'] = 3;
+    $draft['attributes'][0]['options'][1]['display_order'] = 8;
+    $draft['attributes'][0]['options'][1]['hidden_by_default'] = true;
+    $draft['attributes'][0]['options'][1]['disabled_by_default'] = true;
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->first();
+    $options = $attribute->options()->with('option.value')->orderBy('display_order')->get();
+    $manager = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
+    $manager->assertSee('saved-default-v1');
+    Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->assertDontSee('saved-default-v1');
+    expect(array_slice(array_keys($manager->instance()->getTable()->getVisibleColumns()), 0, 2))->toBe(['stored_default', 'option.code']);
+    $column = $manager->instance()->getTable()->getColumn('stored_default');
+    $html = (string) $column->record($options[1])->renderInLayout();
+    expect($html)->toContain('button', 'wire:click.prevent.stop', 'Set '.$options[1]->option->value->label.' as default');
+
+    $expected = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    $expected['attributes'][0]['default_configurator_option_id'] = (string) $options[1]->id;
+    $manager->callAction(TestAction::make('setDefault')->table($options[1]))->assertHasNoErrors();
+
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($expected);
+    expect($attribute->fresh()->default_configurator_option_id)->toBe($options[1]->id);
+    $html = (string) $manager->instance()->getTable()->getColumn('stored_default')->record($options[1])->renderInLayout();
+    expect($html)->toContain('Current default: '.$options[1]->option->value->label);
+});
+
+test('V21 standalone full Attribute forms retain an explicit default input while reviews use composed settings', function () {
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attribute = $configurator->attributes()->orderBy('display_order')->first();
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectAttribute', $attribute->id);
+    $schema = Schema::make($manager->instance())->statePath('editorData')
+        ->components(ConfiguratorAttributeForm::components($configurator, $attribute, withOptions: false));
+    $fields = $schema->getFlatFields(withHidden: true);
+
+    expect($fields['default_configurator_option_id'])->toBeInstanceOf(Select::class);
+    expect(array_keys($fields['default_configurator_option_id']->getOptions()))->toBe($attribute->options()->orderBy('display_order')->pluck('id')->all());
+    $review = Schema::make($manager->instance())->statePath('editorData')
+        ->components(ConfiguratorAttributeForm::reviewComponents($configurator));
+    expect($review->getFlatFields(withHidden: true))->toHaveKeys(['input_type', 'label_override', 'help_text', 'options'])->not->toHaveKey('default_configurator_option_id');
 });

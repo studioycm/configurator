@@ -23,7 +23,7 @@
                         @if ($option['state'] === 'available')<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.25" /></svg>@else<x-filament::icon :icon="$icon" />@endif
                         <span class="catalog-preview-value-content"><span class="catalog-preview-value-label">{{ $option['label'] }}<span x-show="showCodes && settings.presentation === 'all'" class="catalog-preview-value-code"> · {{ $option['code'] }}</span></span>
                             @if ($option['semantic_id'] !== null)<span x-cloak x-show="showIds && settings.presentation === 'all'" class="catalog-preview-value-id">{{ $option['semantic_id'] }}</span>@endif
-                            @if ($option['display_value'] !== null && $option['display_value'] !== $option['label'])<span class="block text-xs">{{ $option['display_value'] }}</span>@endif
+                            @if (trim($option['display_value']) !== '' && $option['display_value'] !== $option['label'])<span class="block text-xs">{{ $option['display_value'] }}</span>@endif
                             <span class="sr-only">{{ __('configurator.preview.states.'.$option['state']) }}</span>
                         </span>
                     </label>

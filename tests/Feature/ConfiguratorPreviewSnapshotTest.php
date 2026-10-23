@@ -1,8 +1,14 @@
 <?php
 
+use App\Actions\SaveCanonicalDefinition;
 use App\Actions\SaveConfiguratorDefinition;
+use App\Actions\SaveConfiguratorOption;
+use App\Filament\Resources\Configurators\Pages\EditConfigurator;
+use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Livewire\Catalog\ConfiguratorPreview;
+use App\Models\ConfiguratorOption;
 use App\Models\Group;
+use App\Models\Option;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
@@ -211,3 +217,40 @@ test('Save rejects absent Product or absent pending changes without writing', fu
     expect($preview->get('saveReceipt'))->toBeNull();
     expect($configurator->fresh()->description)->toBeNull();
 })->with(['no Product' => true, 'no pending changes' => false]);
+
+test('V25 linked Master rename stays outside local dirty state and the immutable Preview until rebuild', function () {
+    [$configurator, $product, $saved] = previewSnapshotFixture();
+    $attribute = $saved['attributes'][0];
+    $option = $attribute['options'][0];
+    $owner = $configurator->attributes()->findOrFail($attribute['id']);
+    app(SaveConfiguratorOption::class)->handle(auth()->user(), $owner, (int) $option['id'], ['label_override' => 'Local main', 'subtitle_mode' => 'master']);
+    $master = Option::with('value')->findOrFail($option['option_id'])->value;
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $owner->id)->call('selectOption', $owner->id, (int) $option['id']);
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    $snapshot = $preview->get('previewView');
+
+    app(SaveCanonicalDefinition::class)->handle(auth()->user(), $master, ['label' => 'Future Master name', 'semantic_id' => $master->semantic_id, 'description' => $master->description, 'tags' => $master->tags ?? []]);
+
+    $manager->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture['rows'] === []);
+    $preview->call('inspectState', $attribute['id'], $option['id'])->assertSet('previewView', $snapshot)
+        ->call('rebuildPreview');
+    expect($snapshot['inspection']['attributes'][$attribute['id']]['options'][$option['id']]['display_value'])->not->toBe('Future Master name');
+    expect($preview->get('previewView')['inspection']['attributes'][$attribute['id']]['options'][$option['id']])->toMatchArray(['label' => 'Local main', 'display_value' => 'Future Master name']);
+});
+
+test('V25 Preview tested changes persist subtitle intent once with immutable signed captures', function () {
+    [$configurator, $product, $saved] = previewSnapshotFixture();
+    $option = $saved['attributes'][0]['options'][0];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [['type' => 'value', 'id' => $option['id'], 'before' => $option, 'after' => [...$option, 'label_override' => 'Local main', 'subtitle_mode' => 'master', 'display_value_override' => null]]]);
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('rebuildPreview', [$capture], 'unsaved');
+    $tested = $preview->get('previewCaptures');
+    $preview->call('saveChanges', [$capture])->assertHasNoErrors();
+    $receipt = $preview->get('saveReceipt');
+
+    expect(ConfiguratorOption::findOrFail($option['id']))->subtitle_mode->toBe('master')->display_value_override->toBeNull();
+    expect($tested)->toBe([$capture]);
+    $preview->call('saveChanges', [$capture]);
+    expect($preview->get('saveReceipt')['operation_id'])->toBe($receipt['operation_id']);
+});

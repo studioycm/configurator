@@ -22,13 +22,14 @@ class Value extends Model
         return ['tags' => 'array'];
     }
 
-    public static function suggestSemanticId(string $label): string
+    /** @param list<string> $reserved */
+    public static function suggestSemanticId(string $label, array $reserved = []): string
     {
         $base = rtrim(substr(Str::slug($label, '_'), 0, 100), '_') ?: 'value';
         $semanticId = $base;
         $suffix = 2;
 
-        while (static::query()->where('semantic_id', $semanticId)->exists()) {
+        while (in_array($semanticId, $reserved, true) || static::query()->where('semantic_id', $semanticId)->exists()) {
             $ending = '_'.$suffix++;
             $semanticId = rtrim(substr($base, 0, 100 - strlen($ending)), '_').$ending;
         }

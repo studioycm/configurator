@@ -67,14 +67,14 @@ test('the native bulk dialog previews without saving then applies the reviewed f
     $value = Value::factory()->create(['label' => 'Original', 'description' => 'Untouched']);
     $component = Livewire::test(ListValues::class)->selectTableRecords([$value]);
     $data = ['operation' => 'edit', 'changes' => [['field' => 'label', 'mode' => 'set', 'value' => 'Reviewed']]];
-    $component->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm($data)->callMountedAction(['preview' => true])->assertHasNoActionErrors()->assertNotDispatched('deselectAllTableRecords');
+    $component->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm($data)->callMountedAction(['preview' => true])->assertHasNoFormErrors()->assertNotDispatched('deselectAllTableRecords');
     $bulk = $component->instance()->getTable()->getBulkAction('batchEdit');
     expect($bulk->getLabel())->toBe('Edit selected');
     expect($bulk->getModalSubmitAction())->not->toBe($bulk);
     expect($bulk->getModalSubmitAction()->getLabel())->toBe('Apply previewed changes');
     expect($value->fresh()->label)->toBe('Original');
     expect($component->get('batchPreview.token'))->not->toBeEmpty();
-    $component->callMountedAction()->assertHasNoActionErrors()->assertDispatched('deselectAllTableRecords');
+    $component->callMountedAction()->assertHasNoFormErrors()->assertDispatched('deselectAllTableRecords');
     expect($value->fresh()->label)->toBe('Reviewed')->and($value->fresh()->description)->toBe('Untouched');
 });
 
@@ -102,10 +102,10 @@ test('a dependency added after bulk preview refreshes blockers and keeps the rev
     $attribute = Attribute::factory()->create();
     $component = Livewire::test(ListAttributes::class)->selectTableRecords([$attribute])
         ->mountAction(TestAction::make('batchRemove')->table()->bulk())
-        ->callMountedAction(['preview' => true])->assertHasNoActionErrors();
+        ->callMountedAction(['preview' => true])->assertHasNoFormErrors();
     expect($component->get('batchPreview.blockers'))->toBe([]);
     Option::factory()->for($attribute)->create();
-    $component->callMountedAction()->assertHasActionErrors()->assertNotDispatched('deselectAllTableRecords');
+    $component->callMountedAction()->assertHasFormErrors()->assertNotDispatched('deselectAllTableRecords');
     expect($component->get('batchPreview.blockers')[0])->toMatchArray(['category' => 'options', 'count' => 1]);
     expect($component->get('selectedTableRecords'))->toContain((string) $attribute->id);
     expect($attribute->fresh())->not->toBeNull();
@@ -217,4 +217,87 @@ test('clean shared editors reload batch values and subsequent ordinary saves ret
     expect($value->fresh()->label)->toBe('Batch label')->and($value->fresh()->description)->toBe('After batch');
     $editor->fillForm(['description' => 'Second ordinary save'])->call('save')->assertHasNoFormErrors();
     expect($value->fresh()->description)->toBe('Second ordinary save');
+});
+
+test('V25 local subtitle batch edits preserve links unless text is explicitly entered or cleared', function (array $change, string $mode, ?string $text) {
+    $option = ConfiguratorOption::factory()->create(['subtitle_mode' => 'master', 'display_value_override' => null]);
+    $owner = $option->configuratorAttribute;
+    $owner->update(['default_configurator_option_id' => $option->id]);
+    $action = app(BatchCatalogChanges::class);
+    $intent = ['operation' => 'edit', 'changes' => [$change]];
+    $preview = $action->preview(auth()->user(), 'configurator-options', [$option->id], $intent, $owner->id);
+    $action->apply(auth()->user(), 'configurator-options', [$option->id], $intent, $preview['token'], $owner->id);
+
+    expect($option->fresh())->subtitle_mode->toBe($mode)->display_value_override->toBe($text);
+})->with(['unchanged' => [['field' => 'display_value_override', 'mode' => 'unchanged'], 'master', null], 'hint' => [['field' => 'hint', 'mode' => 'set', 'value' => 'Hint'], 'master', null], 'set' => [['field' => 'display_value_override', 'mode' => 'set', 'value' => '0'], 'custom', '0'], 'clear' => [['field' => 'display_value_override', 'mode' => 'clear'], 'none', null]]);
+
+test('V25 a subtitle intent change invalidates a local batch preview token', function () {
+    $option = ConfiguratorOption::factory()->create(['subtitle_mode' => 'master']);
+    $owner = $option->configuratorAttribute;
+    $owner->update(['default_configurator_option_id' => $option->id]);
+    $action = app(BatchCatalogChanges::class);
+    $intent = ['operation' => 'edit', 'changes' => [['field' => 'hint', 'mode' => 'set', 'value' => 'Uncommitted hint']]];
+    $preview = $action->preview(auth()->user(), 'configurator-options', [$option->id], $intent, $owner->id);
+    $option->update(['subtitle_mode' => 'none']);
+
+    expect(fn () => $action->apply(auth()->user(), 'configurator-options', [$option->id], $intent, $preview['token'], $owner->id))->toThrow(ValidationException::class);
+    expect($option->fresh())->subtitle_mode->toBe('none')->hint->toBeNull();
+});
+
+test('opening an empty Attribute workspace stays clean for batch reconciliation', function () {
+    $attribute = Attribute::factory()->create(['label' => 'Before']);
+    $editor = Livewire::test(EditAttribute::class, ['record' => $attribute->id]);
+    $editor->callAction(TestAction::make('openValues')->schemaComponent('attribute-values', 'form'));
+    $composer = $editor->get('data._master_composer');
+    expect($composer)->toHaveCount(1);
+    expect(reset($composer)['ref'])->toStartWith('new:');
+    $attribute->update(['label' => 'Batch label']);
+
+    $editor->dispatch('catalog-batch-applied', model: Attribute::class, ids: [$attribute->id])
+        ->assertSet('batchEditorStale', false)->assertSet('data.label', 'Batch label');
+
+    $editor->set('data.key', 'ordinary_key')->call('save')->assertHasNoFormErrors();
+    expect($attribute->fresh()->label)->toBe('Batch label');
+    expect($attribute->fresh()->key)->toBe('ordinary_key');
+});
+
+test('Attribute meaningful unfinished work remains stale and intact after a batch change', function (string $kind) {
+    $attribute = Attribute::factory()->create(['label' => 'Before']);
+    $value = Value::factory()->create();
+    $editor = Livewire::test(EditAttribute::class, ['record' => $attribute->id])
+        ->callAction(TestAction::make('openValues')->schemaComponent('attribute-values', 'form'));
+    $key = array_key_first($editor->get('data._master_composer'));
+    $draft = match ($kind) {
+        'label' => ['data.label' => 'Unfinished'],
+        'key-clear' => ['data.key' => ''],
+        'selection' => ['data._selected_value_ids' => [$value->id]],
+        'pending-selection' => ['data._selected_pending' => ['new:pending']],
+        'composer-clear' => ["data._master_composer.$key.label" => 'New master', "data._master_composer.$key.semantic_id" => ''],
+        'composer-tags' => ["data._master_composer.$key.tags" => ['0']],
+        'pool' => ['data.master_values' => ['pool-key' => ['ref' => 'new:pending', 'label' => 'Retained', 'semantic_id' => 'retained', 'tags' => [], 'description' => null]]],
+        'code' => ['data.pending_options' => ['association-key' => ['ref' => 'new:association', 'value_id' => $value->id, 'name' => 'Derived name', 'code' => '']]],
+    };
+    $editor->update(updates: $draft);
+    $before = $editor->get('data');
+    $attribute->update(['label' => 'Batch label']);
+
+    $editor->dispatch('catalog-batch-applied', model: Attribute::class, ids: [$attribute->id])
+        ->assertSet('batchEditorStale', true);
+
+    expect($editor->get('data'))->toBe($before);
+    $editor->call('save')->assertHasFormErrors();
+    expect($editor->get('data'))->toBe($before);
+    expect($attribute->fresh()->label)->toBe('Batch label');
+})->with(['label', 'key-clear', 'selection', 'pending-selection', 'composer-clear', 'composer-tags', 'pool', 'code']);
+
+test('opening an Attribute workspace cannot bypass the persisted fingerprint without a batch event', function () {
+    $attribute = Attribute::factory()->create(['label' => 'Before']);
+    $editor = Livewire::test(EditAttribute::class, ['record' => $attribute->id])
+        ->callAction(TestAction::make('openValues')->schemaComponent('attribute-values', 'form'));
+    $attribute->update(['label' => 'Elsewhere']);
+
+    $editor->set('data.key', 'ordinary_key')->call('save')->assertHasFormErrors(['record'])
+        ->assertSet('batchEditorStale', true)->assertSet('data.label', 'Before');
+
+    expect($attribute->fresh()->label)->toBe('Elsewhere');
 });

@@ -56,7 +56,11 @@ test('matched counts include every page and update only when pending filters are
 });
 
 test('empty resource lists keep a visible zero count and their creation action', function () {
-    Livewire::test(ListValues::class)->assertSee(__('admin.tables.counts.total', ['total' => 0]))->assertActionExists(TestAction::make('create')->table());
+    $values = Livewire::test(ListValues::class)->assertSee(__('admin.tables.counts.total', ['total' => 0]))
+        ->assertActionExists(TestAction::make('createMany')->table())
+        ->mountAction(TestAction::make('createMany')->table())
+        ->assertActionMounted(TestAction::make('createMany')->table());
+    expect($values->instance()->getMountedAction()->isModalSlideOver())->toBeTrue();
     Livewire::test(ListGroups::class)->assertSee(__('admin.tables.counts.total', ['total' => 0]))->assertActionExists(TestAction::make('create')->table());
     Livewire::test(ListConfigurators::class)->assertSee(__('admin.tables.counts.total', ['total' => 0]))->assertActionExists(TestAction::make('create')->table());
 });

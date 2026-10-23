@@ -240,3 +240,16 @@ test('inspection preserves distinct literal ProductProperty keys in compiled and
     expect($conditions['new:literal-space'])->toContain('Body Material');
     expect($conditions['new:literal-under'])->not->toBe($conditions['new:literal-space']);
 })->with(['compiled conditions' => false, 'excluded raw conditions' => true]);
+
+test('V26 inspection retains independent base and effective subtitle text for matching presentation Rules', function () {
+    [$result] = inspectionFixture(function (array &$data): void {
+        $data['attributes'][1]['options'][1] = [...$data['attributes'][1]['options'][1], 'label_override' => 'Local main', 'subtitle_mode' => 'none'];
+        $data['rules'] = [fixtureAdvanced('subtitle', [], 'B', 'SetDisplayValue', ['new:B1'], 'Rule subtitle')];
+    }, selections: ['new:B' => 'new:B1']);
+    $report = app(ConfiguratorPreviewInspection::class)->build($result);
+    $value = $report['attributes']['new:B']['options']['new:B1'];
+
+    expect($value)->toMatchArray(['label' => 'Local main', 'display_value' => 'Rule subtitle']);
+    expect($result->definition->attributes['new:B']->options['new:B1']->displayValue)->toBe('');
+    expect($value['presentation'][0])->toMatchArray(['field' => 'display_value', 'effective_value' => 'Rule subtitle', 'winner_rule_ids' => ['new:subtitle']]);
+});

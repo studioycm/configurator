@@ -2,20 +2,18 @@
 
 namespace App\Filament\Resources\Configurators\RelationManagers;
 
+use App\Actions\AddConfiguratorValues;
 use App\Actions\SaveConfiguratorDefinition;
 use App\Actions\SaveConfiguratorOption;
-use App\Filament\Forms\Components\WorkspaceTableSelect as TableSelect;
+use App\Filament\Resources\Configurators\Actions\AddValuesAction;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
-use App\Filament\Resources\OptionSelectionTable;
 use App\Filament\Resources\TablePresentation;
 use App\Filament\Resources\ValueTagFilter;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
-use App\Models\Option;
-use App\Services\ConfiguratorInclusionDrafts;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -28,7 +26,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
@@ -41,6 +38,8 @@ class OptionsRelationManager extends RelationManager
     protected static string $relationship = 'options';
 
     protected static bool $isLazy = false;
+
+    public string $catalogCreationTab = 'existing';
 
     #[Reactive]
     public ?int $selectedOptionId = null;
@@ -67,18 +66,31 @@ class OptionsRelationManager extends RelationManager
         return $ownerRecord instanceof ConfiguratorAttribute && Gate::allows('manage-catalog');
     }
 
+    /** @return array{column: string, revision: string} */
+    public function tableBrowserProfileColumnMigration(): array
+    {
+        return ['column' => 'stored_default', 'revision' => 'saved-default-v1'];
+    }
+
     public function table(Table $table): Table
     {
         return TablePresentation::configure($table->modifyQueryUsing(fn ($query) => $query->with('option.value'))
             ->columns([
+                IconColumn::make('stored_default')->label(__('ui.fields.default'))->boolean()
+                    ->state(fn (ConfiguratorOption $record): bool => $record->id === $this->owner()->default_configurator_option_id)
+                    ->tooltip(fn (ConfiguratorOption $record): string => $this->defaultLabel($record))
+                    ->action(Action::make('setDefault')->authorize('manage-catalog')
+                        ->label(fn (ConfiguratorOption $record): string => $this->defaultLabel($record))
+                        ->action(function (ConfiguratorOption $record): void {
+                            $this->setDefault($record->id);
+                        })),
                 TextColumn::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->searchable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('display_value_override')->label(__('configurator.labels.display_value'))->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('display_value_override')->label(__('configurator.subtitles.local'))->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('hint')->label(__('configurator.labels.hint'))->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('option.code')->label(__('catalog.fields.code'))->searchable(),
                 TextColumn::make('option.value.label')->label(__('catalog.fields.value_ui_name'))->tooltip(__('configurator.inclusions.values.fields.name_source'))->searchable()->wrap()->formatStateUsing(fn (ConfiguratorOption $record): string => $record->label_override ?? $record->option->value->label),
                 TextColumn::make('option.value.semantic_id')->label(__('catalog.fields.semantic_id'))->searchable()->toggleable()->copyable(),
                 TextColumn::make('option.value.tags')->label(__('catalog.fields.tags'))->badge(),
-                IconColumn::make('stored_default')->label(__('ui.fields.default'))->boolean()->state(fn (ConfiguratorOption $record): bool => $record->id === $this->owner()->default_configurator_option_id),
                 IconColumn::make('hidden_by_default')->label(__('ui.status.hidden'))->boolean()->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('disabled_by_default')->label(__('ui.status.disabled'))->boolean()->toggleable(isToggledHiddenByDefault: true),
             ])->filters([
@@ -93,10 +105,7 @@ class OptionsRelationManager extends RelationManager
             ])->defaultSort('display_order')->reorderable('display_order')->paginated(false)->recordAction('edit')
             ->recordClasses(fn (ConfiguratorOption $record): ?string => $record->id === $this->selectedOptionId ? 'catalog-selected-row' : null)
             ->headerActions([
-                Action::make('includeMany')->label(__('configurator.inclusions.values.actions.include_many'))->authorize('manage-catalog')->slideOver()
-                    ->modalHeading(fn (): string => __('configurator.inclusions.values.include_heading', ['attribute' => $this->owner()->label_override ?? $this->owner()->attribute->label]))
-                    ->schema([TableSelect::make('selected')->label(__('catalog.attribute_values.headings.shared_plural'))->hiddenLabel()->multiple()->required()->minItems(1)->tableConfiguration(OptionSelectionTable::class)->tableArguments(fn (): array => ['owner_id' => $this->owner()->id])])
-                    ->action(fn (array $data) => $this->includeOptions($data['selected'])),
+                AddValuesAction::make($this->owner()),
             ])->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveOption($id, $direction)),
                 Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')->extraAttributes(['data-option-editor-switch' => true])
@@ -108,22 +117,50 @@ class OptionsRelationManager extends RelationManager
             ]), 'configurator-options', true, ['includeMany']);
     }
 
+    public function setDefault(int $id): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->workspaceOwner = null;
+        $owner = $this->owner();
+        ConfiguratorFormErrors::run(function () use ($owner, $id): void {
+            if (! $owner->options()->whereKey($id)->exists()) {
+                throw ValidationException::withMessages(['option' => __('configurator.validation.this_included_value_does_not_belong_to')]);
+            }
+            if ($owner->default_configurator_option_id === $id) {
+                return;
+            }
+            app(SaveConfiguratorDefinition::class)->change(auth()->user(), $owner->configurator, function (array $draft) use ($owner, $id): array {
+                $index = array_search((string) $owner->id, array_column($draft['attributes'], 'id'), true);
+                abort_if($index === false, 404);
+                if (! in_array((string) $id, array_column($draft['attributes'][$index]['options'], 'id'), true)) {
+                    throw ValidationException::withMessages(['option' => __('configurator.validation.this_included_value_does_not_belong_to')]);
+                }
+                $draft['attributes'][$index]['default_configurator_option_id'] = (string) $id;
+
+                return $draft;
+            });
+            $this->saved();
+        }, $this->getMountedActionSchema());
+    }
+
+    private function defaultLabel(ConfiguratorOption $record): string
+    {
+        return __($record->id === $this->owner()->default_configurator_option_id ? 'configurator.inclusions.values.current_default' : 'configurator.creation.set_default', ['value' => $record->label_override ?? $record->option->value->label]);
+    }
+
     /** @param list<int|string> $ids */
     public function includeOptions(array $ids): void
     {
-        $ids = Validator::make(['selected' => $ids], ['selected' => ['required', 'array', 'list', 'min:1'], 'selected.*' => ['required', 'integer', 'distinct', 'min:1']])->validate()['selected'];
-        $this->changeOptions(function (array $attribute) use ($ids): array {
-            $existing = array_column($attribute['options'], 'option_id');
-            foreach ($ids as $id) {
-                $option = Option::where('attribute_id', $attribute['attribute_id'])->find($id);
-                if (! $option || in_array((int) $id, $existing, true)) {
-                    throw ValidationException::withMessages(['selected' => __('configurator.validation.choose_current_not_already_included_attribute_values')]);
-                }
-                $attribute['options'][] = app(ConfiguratorInclusionDrafts::class)->option($option);
-            }
+        Gate::authorize('manage-catalog');
+        $owner = $this->owner();
+        ConfiguratorFormErrors::run(fn () => app(AddConfiguratorValues::class)->handle(auth()->user(), $owner->configurator, $owner->id, ['existing_option_ids' => $ids]), $this->getMountedActionSchema());
+        $this->saved();
+    }
 
-            return $attribute;
-        });
+    public function creationSaved(): void
+    {
+        Gate::authorize('manage-catalog');
+        $this->saved();
     }
 
     /** @param array<string, mixed> $data */

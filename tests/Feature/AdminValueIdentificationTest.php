@@ -60,12 +60,14 @@ test('Admin Configurator Values keep local names and add their Master Value iden
 
     Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class])
         ->assertTableColumnExists('option.value.semantic_id')
+        ->assertTableColumnStateSet('stored_default', true, $option)
+        ->assertTableColumnFormattedStateSet('option.code', 'A0', $option)
         ->assertTableColumnFormattedStateSet('option.value.label', 'Local Viton', $option)
         ->searchTable('viton_body')->assertCanSeeTableRecords([$option]);
 
     Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->call('selectAttribute', $attribute->id)
-        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 - Local Viton | A')
+        ->assertFormFieldDoesNotExist('default_configurator_option_id', 'editorForm')
         ->call('selectOption', $attribute->id, $option->id)
         ->assertSee('A0 - Local Viton | A')
         ->assertSchemaStateSet(['label_override' => 'Local Viton'], 'optionEditorForm');
@@ -114,14 +116,19 @@ test('dashboard Product configurator keeps semantic IDs private while Admin Prev
     expect(implode(' ', array_column($preview->get('previewView')['notes']['selected_values'], 'value')))->not->toContain('viton_seal');
 });
 
-test('Configurator Option labels follow local Attribute names and unsaved Value name overrides', function () {
+test('Configurator Value editor retains local Attribute drafts and previews unsaved Value names', function () {
     [$configurator, $attribute] = adminValueIdentificationFixture();
     $attribute->update(['label_override' => 'Local body']);
     $option = $attribute->options()->orderBy('display_order')->first();
     $page = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->call('selectAttribute', $attribute->id)
-        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 - Local Viton | Local body')
+        ->call('selectOption', $attribute->id, $option->id)
+        ->assertSee('A0 - Local Viton | Local body')
         ->set('editorData.label_override', 'Draft body')
-        ->assertFormFieldExists('default_configurator_option_id', 'editorForm', fn (Select $field): bool => $field->getOptions()[$option->id] === 'A0 - Local Viton | Draft body');
+        ->fillForm(['label_override' => 'Draft Viton'], 'optionEditorForm')
+        ->assertSet('editorData.label_override', 'Draft body')
+        ->assertSchemaStateSet(['label_override' => 'Draft Viton'], 'optionEditorForm')
+        ->assertSeeHtml('<p class="text-sm font-medium">Draft Viton</p>');
     expect($attribute->fresh()->label_override)->toBe('Local body');
+    expect($option->fresh()->label_override)->toBe('Local Viton');
 });

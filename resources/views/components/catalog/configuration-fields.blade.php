@@ -40,7 +40,7 @@
                     </select>
                     @if ($attribute['selected_id'] !== null && isset($attribute['options'][$attribute['selected_id']]))
                         @php($selected = $attribute['options'][$attribute['selected_id']])
-                        @if ($selected['display_value'] !== $selected['label'])<p class="text-sm">{{ $selected['display_value'] }}</p>@endif
+                        @if (trim($selected['display_value']) !== '' && $selected['display_value'] !== $selected['label'])<p class="text-sm">{{ $selected['display_value'] }}</p>@endif
                         @if ($selected['hint'])<p class="text-sm text-zinc-600 dark:text-zinc-300">{{ $selected['hint'] }}</p>@endif
                     @endif
                 @else
@@ -50,7 +50,7 @@
                                 <label @class(['relative flex min-h-6 max-w-full cursor-pointer items-start border-b-2 px-1.5 py-0.5 after:absolute after:inset-y-1 after:end-0 after:border-e after:border-zinc-400 last:after:hidden has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-blue-600 dark:has-focus-visible:outline-blue-400 dark:after:border-zinc-500', 'border-blue-600 text-blue-900 dark:border-blue-400 dark:text-blue-100' => $option['selected'], 'border-transparent hover:border-zinc-300 dark:hover:border-zinc-600' => ! $option['selected'] && $option['legal'] === true, 'cursor-not-allowed border-transparent opacity-50' => $option['legal'] !== true]) wire:key="{{ $previewWorkspace ? 'preview-catalog-' : '' }}option-{{ $option['id'] }}">
                                     <input class="sr-only" type="radio" name="{{ $inputNamespace }}-{{ $this->getId() }}-{{ $attribute['id'] }}" value="{{ $option['id'] }}" @if ($previewWorkspace) x-bind:checked="$wire.previewView?.inspection?.attributes?.[{{ \Illuminate\Support\Js::from($attribute['id']) }}]?.options?.[{{ \Illuminate\Support\Js::from($option['id']) }}]?.selected ?? false" x-on:change="selectOption({{ \Illuminate\Support\Js::from($attribute['id']) }}, {{ \Illuminate\Support\Js::from($option['id']) }})" x-bind:disabled="busy || {{ $option['legal'] !== true ? 'true' : 'false' }}" @else wire:click="selectOption('{{ $attribute['id'] }}', '{{ $option['id'] }}')" @endif @checked($option['selected']) @disabled($option['legal'] !== true) />
                                     <span class="min-w-0 break-words"><span class="catalog-configuration-value-label block text-sm font-medium">{{ $option['label'] }}@if ($previewWorkspace)<span x-show="showCodes"> · {{ $option['code'] }}</span>@if ($option['semantic_id'] !== null)<span x-cloak x-show="showIds" class="block text-xs">{{ $option['semantic_id'] }}</span>@endif @else @if ($showValueCodes) · {{ $option['code'] }}@endif @if ($showValueIds && $option['semantic_id'] !== null)<span class="block text-xs">{{ $option['semantic_id'] }}</span>@endif @endif</span>
-                                        @if ($option['display_value'] !== $option['label'])<span class="block text-sm">{{ $option['display_value'] }}</span>@endif
+                                        @if (trim($option['display_value']) !== '' && $option['display_value'] !== $option['label'])<span class="block text-sm">{{ $option['display_value'] }}</span>@endif
                                         @if ($option['hint'])<span class="block text-sm text-zinc-600 dark:text-zinc-300">{{ $option['hint'] }}</span>@endif
                                     </span>
                                 </label>

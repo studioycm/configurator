@@ -56,30 +56,59 @@ export function localTableProfile(config) {
     return {
         async init() {
             profile = browserProfile(config.user, `table:${config.scope}`);
-            const capture = () => { if (!destroyed && !restoring) profile.save(read(this.$wire)); };
+            const migration = config.columnMigration;
+            let revision = null, migrationFailed = false;
+            const capture = () => {
+                if (destroyed || restoring || migrationFailed) return;
+                const state = read(this.$wire);
+                if (revision !== null) state.columnOrderRevision = revision;
+                profile.save(state);
+            };
             unsubscribe = window.Livewire.interceptMessage(({ message, onSuccess }) => {
                 if (message.component.id !== this.$wire.$id) return;
                 onSuccess(({ onMorphed }) => onMorphed(capture));
             });
             const saved = profile.read();
-            if (!saved) { capture(); return; }
             const current = read(this.$wire);
+            let target = saved, migrating = false;
+            if (migration && saved?.columnOrderRevision !== migration.revision) {
+                const columns = Array.isArray(saved?.columns) ? saved.columns : current.columns;
+                const leading = columns.find(column => column?.name === migration.column) ?? current.columns.find(column => column.name === migration.column);
+                if (leading) {
+                    target = { ...(saved ?? {}), columns: [leading, ...columns.filter(column => column?.name !== migration.column)] };
+                    migrating = true;
+                }
+            } else if (migration) {
+                revision = migration.revision;
+            }
+            if (!target) { capture(); return; }
             const changes = {};
             const query = new URLSearchParams(window.location.search);
-            for (const [name, value] of Object.entries(saved)) {
+            for (const [name, value] of Object.entries(target)) {
                 if (!Object.hasOwn(current, name)) continue;
                 const queryKey = config.query?.[name];
                 if (queryKey && [...query.keys()].some(key => key === queryKey || key.startsWith(`${queryKey}[`))) continue;
                 if (JSON.stringify(value) !== JSON.stringify(current[name])) changes[name] = value;
             }
-            if (!Object.keys(changes).length) { capture(); return; }
+            if (!Object.keys(changes).length) {
+                if (migrating) revision = migration.revision;
+                capture();
+                return;
+            }
             restoring = true;
             try {
                 await this.$wire.$call('restoreTableBrowserProfile', changes);
+                if (migrating && read(this.$wire).columns[0]?.name !== migration.column) {
+                    migrationFailed = true;
+                    restoring = false;
+                    return;
+                }
+                if (migrating) revision = migration.revision;
                 restoring = false;
                 capture();
             } catch {
                 // Keep the saved profile after a failed request; a later visit can restore it.
+                migrationFailed = migrating;
                 restoring = false;
             }
         },

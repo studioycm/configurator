@@ -28,14 +28,23 @@ class ConfiguratorAttributeForm
     /** @return array<Component> */
     public static function reviewComponents(Configurator $owner): array
     {
-        $fields = self::components($owner, chooseCanonical: false);
-        $default = array_pop($fields);
+        $fields = self::components($owner, chooseCanonical: false, withDefault: false);
 
-        return [$default, Section::make(__('configurator.headings.local_settings_and_values'))->key(fn (Section $component): string => 'local-settings-and-values::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->compact()->collapsible()->collapsed()->schema($fields)];
+        return [Section::make(__('configurator.headings.local_settings_and_values'))->key(fn (Section $component): string => 'local-settings-and-values::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->compact()->collapsible()->collapsed()->schema($fields)];
     }
 
     /** @return array<Component> */
-    public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true, bool $chooseCanonical = true): array
+    public static function settingsFields(int $helpTextLimit = 1000): array
+    {
+        return [
+            Select::make('input_type')->label(__('configurator.fields.input_type'))->required()->options(ConfigInputType::class)->default('toggle'),
+            TextInput::make('label_override')->label(__('configurator.labels.local_label'))->maxLength(255)->hintAction(FormHints::make(__('configurator.hints.leave_empty_to_use_the_shared_attribute'))),
+            Textarea::make('help_text')->label(__('configurator.labels.local_help'))->maxLength($helpTextLimit)->rows(3)->columnSpanFull(),
+        ];
+    }
+
+    /** @return array<Component> */
+    public static function components(Configurator $owner, ?ConfiguratorAttribute $inclusion = null, bool $withOptions = true, bool $chooseCanonical = true, bool $withDefault = true): array
     {
         $optionsByAttribute = [];
         $optionLabels = function (mixed $attributeId, ?string $attributeLabel = null, array $overrides = []) use (&$optionsByAttribute): array {
@@ -46,6 +55,13 @@ class ConfiguratorAttributeForm
             $optionsByAttribute[(int) $attributeId] ??= Option::with(['value', 'attribute'])->where('attribute_id', $attributeId)->orderBy('code')->get();
 
             return $optionsByAttribute[(int) $attributeId]->mapWithKeys(fn (Option $option): array => [$option->id => $option->displayName($overrides[$option->id] ?? null, $attributeLabel)])->all();
+        };
+
+        $masterName = function (Get $get) use (&$optionsByAttribute, $optionLabels): string {
+            $attributeId = $get('../../attribute_id');
+            $optionLabels($attributeId);
+
+            return ($optionsByAttribute[(int) $attributeId] ?? null)?->firstWhere('id', (int) $get('option_id'))?->value->label ?? '';
         };
 
         return [
@@ -70,22 +86,22 @@ class ConfiguratorAttributeForm
                         }
                     })
                     ->options(fn (): array => Attribute::where(fn ($query) => $query->where('is_active', true)->when($inclusion, fn ($query) => $query->orWhereKey($inclusion->attribute_id)))->whereNotIn('id', $owner->attributes()->when($inclusion, fn ($query) => $query->whereKeyNot($inclusion->id))->pluck('attribute_id'))->orderBy('label')->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->label.' · '.$attribute->key])->all()),
-                Select::make('input_type')->label(__('configurator.fields.input_type'))->required()->options(ConfigInputType::class)->default('toggle'),
-                TextInput::make('label_override')->label(__('configurator.labels.local_label'))->maxLength(255)->hintAction(FormHints::make(__('configurator.hints.leave_empty_to_use_the_shared_attribute'))),
-                Textarea::make('help_text')->label(__('configurator.labels.local_help'))->maxLength(1000)->rows(3),
+                ...self::settingsFields(),
             ]),
             ...($withOptions ? [FormOrderControls::make('options')->label(__('configurator.inclusions.values.heading'))->minItems(1)->defaultItems(0)->reorderableWithButtons()->live()->columnSpanFull()->columns(2)->schema([
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                 Select::make('option_id')->label(__('catalog.attribute_values.headings.shared'))->required()->rules(['integer'])->searchable()->live()
                     ->disabled(fn (Get $get): bool => filled($get('id')) && ! str_starts_with((string) $get('id'), 'new:'))->dehydrated()
+                    ->afterStateUpdated(function (Get $get, Set $set) use ($masterName): void {
+                        $set('_subtitle_text', $get('subtitle_mode') === 'master' ? $masterName($get) : ($get('display_value_override') ?? ''));
+                    })
                     ->options(fn (Get $get): array => $optionLabels($get('../../attribute_id'), $get('../../label_override'), [$get('option_id') => $get('label_override')])),
-                TextInput::make('label_override')->label(__('configurator.inclusions.values.fields.local_ui_name'))->maxLength(255)->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_ui_name'))),
-                TextInput::make('display_value_override')->label(__('configurator.labels.local_display_value'))->maxLength(255)->hintAction(FormHints::make(__('configurator.inclusions.values.hints.local_display_value'))),
+                ...ConfiguratorValueTextFields::fields($masterName),
                 TextInput::make('hint')->label(__('configurator.labels.local_hint'))->maxLength(1000),
                 Toggle::make('hidden_by_default')->label(__('configurator.labels.initially_hidden'))->default(false),
                 Toggle::make('disabled_by_default')->label(__('configurator.labels.initially_disabled'))->default(false),
             ])->hintAction(FormHints::make(__('configurator.hints.reordering_does_not_change_the_stored_default')))] : []),
-            Select::make('default_configurator_option_id')->label(__('configurator.labels.stored_default'))->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
+            ...($withDefault ? [Select::make('default_configurator_option_id')->label(__('configurator.labels.stored_default'))->required()->live()->options(function (Get $get) use ($optionLabels, $withOptions, $inclusion): array {
                 if (! $withOptions) {
                     return $inclusion->options()->with(['option.value', 'option.attribute'])->orderBy('display_order')->get()
                         ->mapWithKeys(fn ($option): array => [$option->id => $option->option->displayName($option->label_override, $get('label_override') ?? $inclusion->attribute->label)])->all();
@@ -103,7 +119,7 @@ class ConfiguratorAttributeForm
                 }
 
                 return $options;
-            })->hintAction(FormHints::make(__('configurator.hints.local_initial_or_rule_driven_unavailability_may_fall'))),
+            })->hintAction(FormHints::make(__('configurator.hints.local_initial_or_rule_driven_unavailability_may_fall')))] : []),
         ];
     }
 }

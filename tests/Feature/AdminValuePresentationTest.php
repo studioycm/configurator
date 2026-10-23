@@ -23,6 +23,7 @@ use App\Models\Value;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\View;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -146,22 +147,27 @@ test('included Value drawers name their effective Attribute context', function (
         ->assertSee('Attribute Values');
 });
 
-test('inclusion review Option choices use the staged local names without saving shared records', function () {
+test('inclusion review keeps staged local names separate from shared Value identities', function () {
     $configurator = Configurator::factory()->create();
     $attribute = Attribute::factory()->create(['label' => 'Body material']);
-    $value = Value::factory()->create(['label' => 'Viton']);
+    $value = Value::factory()->create(['label' => 'Viton', 'semantic_id' => 'viton_master']);
     $option = Option::factory()->for($attribute)->for($value)->create(['code' => 'A0']);
     $page = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
         ->mountAction(TestAction::make('includeMany')->table())
-        ->set('mountedActions.0.data.selected', [$attribute->id]);
-    $review = $page->get('mountedActions.0.data.review');
+        ->set('mountedActions.0.data.existing_attribute_ids', [$attribute->id]);
+    $review = $page->get('mountedActions.0.data.reviews');
     $key = array_key_first($review);
-    $optionKey = array_key_first($review[$key]['options']);
-    $page->set('mountedActions.0.data.review.'.$key.'.label_override', 'Local body')
-        ->set('mountedActions.0.data.review.'.$key.'.options.'.$optionKey.'.label_override', 'Local Viton');
+    $optionKey = array_key_first($review[$key]['values']);
+    $page->set('mountedActions.0.data.reviews.'.$key.'.settings.label_override', 'Local body')
+        ->set('mountedActions.0.data.reviews.'.$key.'.values.'.$optionKey.'.local_fields.label_override', 'Local Viton')
+        ->assertSet('mountedActions.0.data.reviews.'.$key.'.settings.label_override', 'Local body')
+        ->assertSet('mountedActions.0.data.reviews.'.$key.'.values.'.$optionKey.'.local_fields.label_override', 'Local Viton');
     $schema = $page->instance()->getSchema($page->instance()->getMountedActionSchemaName());
-    $choice = collect($schema->getFlatFields(withHidden: true))->first(fn ($field): bool => $field->getStatePath() === 'mountedActions.0.data.review.'.$key.'.options.'.$optionKey.'.option_id');
+    $choice = collect($schema->getFlatFields(withHidden: true))->first(fn ($field): bool => $field->getStatePath() === 'mountedActions.0.data.reviews.'.$key.'.values.'.$optionKey.'.option_id');
 
-    expect($choice->getOptions()[$option->id])->toBe('A0 - Local Viton | Local body');
+    $preview = collect($schema->getFlatComponents(withHidden: true))->first(fn ($component): bool => $component instanceof View && $component->getView() === 'filament.resources.configurator-value-preview');
+
+    expect($choice->getOptions()[$option->id])->toBe('A0 · Viton - viton_master');
+    expect($preview->getViewData()['name'])->toBe('Local Viton');
     expect($value->fresh()->label)->toBe('Viton')->and($attribute->fresh()->label)->toBe('Body material');
 });

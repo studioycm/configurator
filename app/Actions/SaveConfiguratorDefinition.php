@@ -61,7 +61,7 @@ class SaveConfiguratorDefinition
                 $attribute = $this->persist(ConfiguratorAttribute::class, $row['id'], ['configurator_id' => $record->id, ...$this->only($row, ['attribute_id', 'display_order', 'code_order', 'label_override', 'input_type', 'help_text', 'is_active'])]);
                 $attributeMap[(string) $row['id']] = $attribute->id;
                 foreach ($row['options'] as $optionRow) {
-                    $option = $this->persist(ConfiguratorOption::class, $optionRow['id'], ['configurator_attribute_id' => $attribute->id, ...$this->only($optionRow, ['option_id', 'display_order', 'label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'])]);
+                    $option = $this->persist(ConfiguratorOption::class, $optionRow['id'], ['configurator_attribute_id' => $attribute->id, ...$this->only($optionRow, ['option_id', 'display_order', 'label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'])]);
                     $optionMap[(string) $optionRow['id']] = $option->id;
                 }
             }
@@ -156,6 +156,7 @@ class SaveConfiguratorDefinition
 
         return DB::transaction(function () use ($actor, $configurator, $change): Configurator {
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            CatalogContextSettings::current(lock: true);
 
             return $this->handle($actor, $record, $change($this->loader->draft($record)));
         });

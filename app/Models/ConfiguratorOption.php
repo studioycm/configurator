@@ -13,7 +13,10 @@ class ConfiguratorOption extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['configurator_attribute_id', 'option_id', 'display_order', 'label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
+    protected $fillable = ['configurator_attribute_id', 'option_id', 'display_order', 'label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
+
+    /** @var array<string, mixed> */
+    protected $attributes = ['subtitle_mode' => 'none'];
 
     /** @return array<string, string> */
     protected function casts(): array

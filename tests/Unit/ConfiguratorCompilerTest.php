@@ -90,3 +90,22 @@ test('compiler rejects malformed references typed operands orders defaults and p
         $d['rules'] = [$r];
     },
 ]);
+
+test('V25 compiler returns normalized intent while keeping runtime displayValue a string', function (array $subtitle, string $mode, ?string $stored, string $resolved) {
+    [$data, $attributes, $options] = compiledDefinitionFixture();
+    $data['attributes'][0]['options'][0] = [...$data['attributes'][0]['options'][0], ...$subtitle];
+    $definition = app(ConfiguratorDefinitionCompiler::class)->compile($data, $attributes, $options);
+    expect($definition->data['attributes'][0]['options'][0])->toMatchArray(['subtitle_mode' => $mode, 'display_value_override' => $stored]);
+    expect($definition->attributes['new:A']->options['new:A0']->displayValue)->toBe($resolved);
+})->with(['None' => [['subtitle_mode' => 'none', 'display_value_override' => 'Ignored'], 'none', null, ''], 'Master' => [['subtitle_mode' => 'master'], 'master', null, 'Value A0'], 'Custom maximum' => [['subtitle_mode' => 'custom', 'display_value_override' => str_repeat('s', 255)], 'custom', str_repeat('s', 255), str_repeat('s', 255)], 'Legacy blank' => [['display_value_override' => " \t "], 'none', null, '']]);
+
+test('V25 full definitions reject invalid explicit mode or UI transport keys', function (array $subtitle, string $field) {
+    [$data, $attributes, $options] = compiledDefinitionFixture();
+    $data['attributes'][0]['options'][0] = [...$data['attributes'][0]['options'][0], ...$subtitle];
+    try {
+        app(ConfiguratorDefinitionCompiler::class)->compile($data, $attributes, $options);
+        test()->fail('Expected invalid subtitle definition to be rejected.');
+    } catch (ValidationException $exception) {
+        expect($exception->errors())->toHaveKey('attributes.0.options.0'.$field);
+    }
+})->with(['explicit null' => [['subtitle_mode' => null], '.subtitle_mode'], 'explicit empty' => [['subtitle_mode' => ''], '.subtitle_mode'], 'explicit invalid' => [['subtitle_mode' => 'forged'], '.subtitle_mode'], 'Custom without text' => [['subtitle_mode' => 'custom'], '.display_value_override'], 'helper' => [['_subtitle_text' => 'forged'], '']]);

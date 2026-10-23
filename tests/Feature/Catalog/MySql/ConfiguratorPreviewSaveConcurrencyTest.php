@@ -3,6 +3,7 @@
 require_once dirname(__DIR__, 3).'/bootstrap-mysql.php';
 assertCatalogMySqlSafety();
 require_once dirname(__DIR__, 3).'/ConfiguratorFixtures.php';
+require_once dirname(__DIR__, 3).'/CatalogMySqlContention.php';
 
 use App\Actions\AssignConfiguratorGroups;
 use App\Actions\SaveCatalogProduct;
@@ -17,10 +18,8 @@ use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorRuleDraft;
 use App\Services\ProductEditorData;
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Validation\ValidationException;
 
 /** @return array<string, mixed> */
 function previewContentionFixture(): array
@@ -77,42 +76,10 @@ function removePreviewContentionFixture(array $fixture): void
     DB::table('users')->where('id', $fixture['actor']->id)->delete();
 }
 
-/** @return array<string, mixed> */
-function readPreviewContentionMessage(mixed $channel): array
-{
-    $line = fgets($channel);
-    if ($line === false) {
-        throw new RuntimeException('Contention worker did not reach its deterministic barrier before the timeout.');
-    }
-
-    return json_decode($line, true, flags: JSON_THROW_ON_ERROR);
-}
-
-function writePreviewContentionMessage(mixed $channel, array $message): void
-{
-    fwrite($channel, json_encode($message, JSON_THROW_ON_ERROR)."\n");
-}
-
 /** @return array{pid: int, channel: mixed, connection_id: int} */
 function startPreviewContentionWorker(Closure $operation, string $attemptTable, ?string $pauseTable, bool $announceAttempt = false): array
 {
-    $channels = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
-    if ($channels === false) {
-        throw new RuntimeException('Local process channels are required for contention tests.');
-    }
-    $pid = pcntl_fork();
-    if ($pid === -1) {
-        throw new RuntimeException('Could not fork a contention worker.');
-    }
-    if ($pid === 0) {
-        fclose($channels[0]);
-        stream_set_timeout($channels[1], 12);
-        DB::purge('mysql');
-        assertCatalogMySqlSafety(app());
-        DB::statement('SET SESSION innodb_lock_wait_timeout = 5');
-        $connectionId = (int) DB::selectOne('SELECT CONNECTION_ID() AS id')->id;
-        writePreviewContentionMessage($channels[1], ['phase' => 'connected', 'connection_id' => $connectionId]);
-        readPreviewContentionMessage($channels[1]);
+    return startCatalogContentionWorker(function (mixed $channel) use ($operation, $attemptTable, $pauseTable, $announceAttempt): array {
         $attempts = 0;
         $paused = false;
         $announced = false;
@@ -121,44 +88,29 @@ function startPreviewContentionWorker(Closure $operation, string $attemptTable, 
         Event::listen('eloquent.created: '.ConfiguratorRule::class, function () use (&$ruleCreations): void {
             $ruleCreations++;
         });
-        DB::connection()->beforeExecuting(function (string $sql) use (&$attempts, &$announced, $attemptTable, $announceAttempt, $channels): void {
+        DB::connection()->beforeExecuting(function (string $sql) use (&$attempts, &$announced, $attemptTable, $announceAttempt, $channel): void {
             if (str_contains($sql, 'from `'.$attemptTable.'`') && str_contains($sql, 'for update') && DB::transactionLevel() === 1) {
                 $attempts++;
                 if ($announceAttempt && ! $announced) {
                     $announced = true;
-                    writePreviewContentionMessage($channels[1], ['phase' => 'attempting']);
+                    writeCatalogContentionMessage($channel, ['phase' => 'attempting']);
                 }
             }
         });
-        DB::listen(function (QueryExecuted $query) use (&$paused, &$locks, $pauseTable, $channels): void {
+        DB::listen(function (QueryExecuted $query) use (&$paused, &$locks, $pauseTable, $channel): void {
             if (! str_contains($query->sql, 'for update') || preg_match('/from `([^`]+)`/', $query->sql, $table) !== 1) {
                 return;
             }
             $locks[] = $table[1];
             if (! $paused && $pauseTable !== null && $table[1] === $pauseTable) {
                 $paused = true;
-                writePreviewContentionMessage($channels[1], ['phase' => 'locked', 'table' => $pauseTable]);
-                readPreviewContentionMessage($channels[1]);
+                writeCatalogContentionMessage($channel, ['phase' => 'locked', 'table' => $pauseTable]);
+                readCatalogContentionMessage($channel);
             }
         });
-        try {
-            $value = $operation();
-            $result = ['status' => 'committed', 'value' => $value];
-        } catch (ValidationException $exception) {
-            $result = ['status' => 'rejected', 'errors' => $exception->errors()];
-        } catch (Throwable $exception) {
-            $result = ['status' => 'exception', 'class' => $exception::class, 'sqlstate' => $exception instanceof QueryException ? $exception->errorInfo[0] : null, 'driver_code' => $exception instanceof QueryException ? $exception->errorInfo[1] : null];
-        }
-        writePreviewContentionMessage($channels[1], ['phase' => 'result', ...$result, 'attempts' => $attempts, 'rule_creations' => $ruleCreations, 'locks' => $locks]);
-        DB::disconnect('mysql');
-        fclose($channels[1]);
-        exit(0);
-    }
-    fclose($channels[1]);
-    stream_set_timeout($channels[0], 12);
-    $connected = readPreviewContentionMessage($channels[0]);
 
-    return ['pid' => $pid, 'channel' => $channels[0], 'connection_id' => $connected['connection_id']];
+        return [...catalogContentionResult($operation), 'attempts' => $attempts, 'rule_creations' => $ruleCreations, 'locks' => $locks];
+    });
 }
 
 /** @return array{preview: array<string, mixed>, other: array<string, mixed>, blocked: bool} */
@@ -173,12 +125,12 @@ function overlapPreviewWriters(Closure $preview, Closure $other, string $preview
         $workers['preview'] = startPreviewContentionWorker($preview, 'configurators', $serializeDefinition ? null : $previewPause, $serializeDefinition);
         $workers['other'] = startPreviewContentionWorker($other, $otherAttempt, $otherPause);
         expect($workers['preview']['connection_id'])->not->toBe($workers['other']['connection_id']);
-        writePreviewContentionMessage($workers['other']['channel'], ['phase' => 'start']);
-        expect(readPreviewContentionMessage($workers['other']['channel']))->toMatchArray(['phase' => 'locked', 'table' => $otherPause]);
-        writePreviewContentionMessage($workers['preview']['channel'], ['phase' => 'start']);
+        writeCatalogContentionMessage($workers['other']['channel'], ['phase' => 'start']);
+        expect(readCatalogContentionMessage($workers['other']['channel']))->toMatchArray(['phase' => 'locked', 'table' => $otherPause]);
+        writeCatalogContentionMessage($workers['preview']['channel'], ['phase' => 'start']);
         $blocked = false;
         if ($serializeDefinition) {
-            expect(readPreviewContentionMessage($workers['preview']['channel']))->toMatchArray(['phase' => 'attempting']);
+            expect(readCatalogContentionMessage($workers['preview']['channel']))->toMatchArray(['phase' => 'attempting']);
             $deadline = microtime(true) + 5;
             do {
                 foreach (DB::select('SHOW FULL PROCESSLIST') as $process) {
@@ -191,26 +143,18 @@ function overlapPreviewWriters(Closure $preview, Closure $other, string $preview
             } while (microtime(true) < $deadline);
             expect($blocked)->toBeTrue();
         } else {
-            expect(readPreviewContentionMessage($workers['preview']['channel']))->toMatchArray(['phase' => 'locked', 'table' => $previewPause]);
-            writePreviewContentionMessage($workers['preview']['channel'], ['phase' => 'release']);
+            expect(readCatalogContentionMessage($workers['preview']['channel']))->toMatchArray(['phase' => 'locked', 'table' => $previewPause]);
+            writeCatalogContentionMessage($workers['preview']['channel'], ['phase' => 'release']);
         }
-        writePreviewContentionMessage($workers['other']['channel'], ['phase' => 'release']);
-        $results = ['preview' => readPreviewContentionMessage($workers['preview']['channel']), 'other' => readPreviewContentionMessage($workers['other']['channel']), 'blocked' => $blocked];
+        writeCatalogContentionMessage($workers['other']['channel'], ['phase' => 'release']);
+        $results = ['preview' => readCatalogContentionMessage($workers['preview']['channel']), 'other' => readCatalogContentionMessage($workers['other']['channel']), 'blocked' => $blocked];
         if (getenv('CATALOG_CONCURRENCY_TRACE')) {
             fwrite(STDERR, 'CONTENTION '.json_encode($results, JSON_THROW_ON_ERROR)."\n");
         }
 
         return $results;
     } finally {
-        foreach ($workers as $worker) {
-            $finished = pcntl_waitpid($worker['pid'], $status, WNOHANG);
-            if ($finished === 0) {
-                posix_kill($worker['pid'], SIGTERM);
-                pcntl_waitpid($worker['pid'], $status);
-            }
-            fclose($worker['channel']);
-        }
-        DB::purge('mysql');
+        stopCatalogContentionWorkers($workers);
     }
 }
 

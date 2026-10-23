@@ -112,3 +112,11 @@ test('a local Value footer distinguishes its own draft from other retained Value
     state.$wire.optionEditorData = state.$wire.optionEditorDrafts[1][11];
     assert.equal(state.hasCurrentOptionDraft(), true);
 });
+
+test('Value dirtiness compares persisted intent while ignoring resolved subtitle and unlink cache', () => {
+    const state = configuratorDrafts('attributes');
+    state.$wire = {selectedOptionId: 11, optionEditorData: {subtitle_mode: 'master', display_value_override: null, _subtitle_text: 'Renamed Master', _subtitle_custom_draft: 'Unfinished'}, previewOriginals: {'value:11': {subtitle_mode: 'master', display_value_override: null}}, optionEditorDrafts: {}};
+    assert.equal(state.hasCurrentOptionDraft(), false);
+    state.$wire.optionEditorData.subtitle_mode = 'none';
+    assert.equal(state.hasCurrentOptionDraft(), true);
+});

@@ -147,7 +147,7 @@ class ConfiguratorDefinitionLoader
             $row['default_configurator_option_id'] = $attribute->default_configurator_option_id === null ? null : (string) $attribute->default_configurator_option_id;
             $row['options'] = [];
             foreach ($attribute->options->sortBy(['display_order', 'id']) as $option) {
-                $row['options'][] = ['id' => (string) $option->id, ...$option->only(['option_id', 'display_order', 'label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'])];
+                $row['options'][] = ['id' => (string) $option->id, ...$option->only(['option_id', 'display_order', 'label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'])];
             }
             $attributes[] = $row;
         }

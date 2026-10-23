@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SaveConfiguratorDefinition;
+use App\Actions\SaveConfiguratorOption;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
@@ -549,4 +550,35 @@ test('capture hash ignores envelope grouping and row ordering while preserving n
     $row['id'] = $row['after']['id'] = 'new:another-hash-rule';
     expect($changes->captureHash($configurator->id, [$changes->capture($configurator->id, [$overview, $row])]))->not->toBe($hash);
     expect($changes->captureHash($configurator->id, [$changes->capture($configurator->id, [])]))->toBe($changes->captureHash($configurator->id, []));
+});
+
+test('V25 signed subtitle intent rejects invalid modes and normalizes legacy text without including helpers', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $row = $saved['attributes'][0]['options'][0];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $after = [...$row, 'subtitle_mode' => 'master', 'display_value_override' => null, '_subtitle_text' => 'Resolved only', '_subtitle_custom_draft' => 'Transient'];
+    $normalized = $changes->normalize('value', $after);
+    expect($normalized)->toHaveKey('subtitle_mode', 'master')->not->toHaveKeys(['_subtitle_text', '_subtitle_custom_draft']);
+    $capture = $changes->capture($configurator->id, [['type' => 'value', 'id' => $row['id'], 'before' => $row, 'after' => $after]]);
+    expect($changes->verifiedRows($configurator->id, $capture)[0]['after'])->not->toHaveKeys(['_subtitle_text', '_subtitle_custom_draft']);
+    expect($changes->prepare($configurator, [$capture])['data']['attributes'][0]['options'][0])->toMatchArray(['subtitle_mode' => 'master', 'display_value_override' => null]);
+    $forged = $changes->capture($configurator->id, [['type' => 'value', 'id' => $row['id'], 'before' => $row, 'after' => [...$row, 'subtitle_mode' => 'forged']]]);
+    expect(fn () => $changes->inspect($configurator, [$forged]))->toThrow(ValidationException::class);
+    expect(fn () => $changes->prepare($configurator, [$forged]))->toThrow(ValidationException::class);
+});
+
+test('V25 partial tested Value capture preserves a linked subtitle in the clean editor baseline', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $attribute = $saved['attributes'][0];
+    $value = $attribute['options'][0];
+    $owner = $configurator->attributes()->findOrFail($attribute['id']);
+    app(SaveConfiguratorOption::class)->handle(auth()->user(), $owner, (int) $value['id'], ['subtitle_mode' => 'master']);
+    $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $owner->id)->call('selectOption', $owner->id, (int) $value['id'])->fillForm(['hint' => 'Tested hint'], 'optionEditorForm');
+    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'value', 'id' => $value['id'], 'before' => ['hint' => null], 'after' => ['hint' => 'Tested hint']]]);
+    $prepared = app(ConfiguratorEditorChanges::class)->prepare($configurator, [$capture]);
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
+    $manager->call('acceptPreviewSave', $configurator->id, [$capture], [], 'partial-subtitle-operation')
+        ->call('exportPreviewChanges')->assertReturned(fn (array $result): bool => $result['rows'] === []);
+    expect($manager->get('previewOriginals')['value:'.$value['id']])->toHaveKey('subtitle_mode', 'master');
 });

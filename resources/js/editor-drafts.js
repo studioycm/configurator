@@ -39,6 +39,10 @@ export function editorDrafts({ draftSelector = '[data-draft-dirty=true]' } = {})
     };
 }
 
+const valueFields = ['label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
+const valueState = state => Object.fromEntries(valueFields.filter(field => Object.hasOwn(state ?? {}, field)).map(field => [field, state[field]]));
+const valueChanged = (state, original) => JSON.stringify(valueState(state)) !== JSON.stringify(valueState(original));
+
 export function configuratorDrafts(workspace) {
     return {
         hasDraft() {
@@ -52,10 +56,10 @@ export function configuratorDrafts(workspace) {
         hasCurrentOptionDraft() {
             if (this.$wire.selectedOptionId == null) return false;
             const original = this.$wire.previewOriginals?.[`value:${this.$wire.selectedOptionId}`] ?? this.$wire.optionEditorData;
-            return JSON.stringify(this.$wire.optionEditorData) !== JSON.stringify(original);
+            return valueChanged(this.$wire.optionEditorData, original);
         },
         hasOptionDraft() {
-            return this.hasCurrentOptionDraft() || Object.values(this.$wire.optionEditorDrafts || {}).some(rows => Object.keys(rows).length > 0);
+            return this.hasCurrentOptionDraft() || Object.values(this.$wire.optionEditorDrafts || {}).some(rows => Object.entries(rows).some(([id, state]) => valueChanged(state, this.$wire.previewOriginals?.[`value:${id}`] ?? state)));
         },
         hasPendingDrafts() {
             return this.hasDraft() || Object.keys(this.$wire.editorDrafts || {}).length > 0 || this.hasOptionDraft();

@@ -7,11 +7,14 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AddAttributeValues
 {
+    public function __construct(private CreateMasterValues $createMasterValues) {}
+
     /** @param list<array{value_id: int, code: string}> $options */
     public function handle(User $actor, Attribute $attribute, array $options): void
     {
@@ -38,16 +41,55 @@ class AddAttributeValues
         });
     }
 
-    /** @param array<string, mixed> $data */
-    public function saveDefinition(User $actor, Attribute $attribute, array $data): Attribute
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array{ref:string,label?:?string,semantic_id?:?string,tags?:list<string>,description?:?string}>  $masterValues
+     */
+    public function saveDefinition(User $actor, Attribute $attribute, array $data, array $masterValues = []): Attribute
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($actor, $attribute, $data): Attribute {
+        return DB::transaction(function () use ($actor, $attribute, $data, $masterValues): Attribute {
             $options = $data['pending_options'] ?? [];
             unset($data['pending_options']);
+            Validator::make(['pending_options' => $options], [
+                'pending_options' => ['array', 'list', 'max:500'],
+                'pending_options.*' => ['required', 'array:ref,value_id,value_ref,code'],
+                'pending_options.*.ref' => ['sometimes', 'required', 'string', 'distinct:strict', function (string $field, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! str_starts_with($value, 'new:') || ! Str::isUuid(substr($value, 4))) {
+                        $fail(__('catalog.creation.invalid_ref'));
+                    }
+                }],
+                'pending_options.*.value_ref' => ['sometimes', 'required', 'string'],
+                'pending_options.*.value_id' => ['sometimes', 'required', 'integer', 'min:1', function (string $field, mixed $value, \Closure $fail): void {
+                    if (! is_int($value) && ! is_string($value)) {
+                        $fail(__('validation.integer', ['attribute' => $field]));
+                    }
+                }],
+                'pending_options.*.code' => ['required', 'string'],
+            ])->validate();
+            foreach ($options as $index => $option) {
+                if (array_key_exists('value_id', $option) === array_key_exists('value_ref', $option) || (isset($option['value_ref']) && ! isset($option['ref']))) {
+                    throw ValidationException::withMessages(['pending_options.'.$index => __('attribute-options.choose_one_source')]);
+                }
+            }
+            $refs = array_values(array_unique(array_column($options, 'value_ref')));
+            $masters = $this->createMasterValues->handle($actor, $masterValues, $refs);
+            $resolved = array_map(fn (array $option): array => ['value_id' => isset($option['value_ref']) ? $masters[$option['value_ref']]->id : (int) $option['value_id'], 'code' => $option['code']], $options);
             $saved = app(SaveCanonicalDefinition::class)->handle($actor, $attribute, $data);
-            $this->handle($actor, $saved, $options);
+            try {
+                $this->handle($actor, $saved, $resolved);
+            } catch (ValidationException $exception) {
+                $errors = [];
+                foreach ($exception->errors() as $field => $messages) {
+                    $parts = explode('.', $field);
+                    if (($parts[0] ?? '') === 'pending_options' && ($parts[2] ?? '') === 'value_id' && isset($options[(int) $parts[1]]['value_ref'])) {
+                        $parts[2] = 'value_ref';
+                    }
+                    $errors[implode('.', $parts)] = $messages;
+                }
+                throw ValidationException::withMessages($errors);
+            }
 
             return $saved;
         });

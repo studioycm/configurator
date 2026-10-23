@@ -17,6 +17,7 @@ use App\Services\CanonicalUsage;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogPolicy;
 use App\Services\CatalogRevisions;
+use App\Services\ConfiguratorDefinitionCompiler;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\InclusionUsage;
 use App\Services\ProductFields;
@@ -244,7 +245,7 @@ class BatchCatalogChanges
             $record instanceof Configurator => $record->only(['name', 'description']),
             $record instanceof Group => ['description' => $record->description, ...array_intersect_key(CatalogPolicy::resultSettings($record->result_settings), $this->fields('groups', withSuggestions: false))],
             $record instanceof ConfiguratorAttribute => $record->only(['label_override', 'help_text', 'input_type']),
-            $record instanceof ConfiguratorOption => $record->only(['label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default']),
+            $record instanceof ConfiguratorOption => $record->only(['label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default']),
             $record instanceof ConfiguratorRule => $record->only(['label', 'is_active']),
         };
     }
@@ -254,6 +255,7 @@ class BatchCatalogChanges
     {
         $state = $this->state($record);
         $fields = $this->fields($table, withSuggestions: false);
+        $subtitleChanged = false;
         $operation = $intent['operation'] ?? null;
         if ($operation === 'remove') {
             if (! $this->canRemove($table)) {
@@ -268,7 +270,9 @@ class BatchCatalogChanges
                 throw ValidationException::withMessages(['field' => __('admin.batch.validation.choose_a_permitted_string_field')]);
             }
             try {
+                $originalText = $state[$field];
                 $state[$field] = app(StringFieldTransformer::class)->replace($state[$field], $intent);
+                $subtitleChanged = $record instanceof ConfiguratorOption && $field === 'display_value_override' && $state[$field] !== $originalText;
             } catch (InvalidArgumentException $exception) {
                 throw ValidationException::withMessages(['search' => __($exception->getCode() === StringFieldTransformer::INVALID_PATTERN
                     ? 'admin.batch.validation.pattern_could_not_run'
@@ -283,6 +287,7 @@ class BatchCatalogChanges
                 if ($mode === 'unchanged') {
                     continue;
                 }
+                $subtitleChanged = $subtitleChanged || ($record instanceof ConfiguratorOption && $field === 'display_value_override');
                 if ($mode === 'clear') {
                     if (! $fields[$field]['nullable']) {
                         throw ValidationException::withMessages(['changes' => __('admin.batch.validation.this_field_cannot_be_cleared')]);
@@ -300,6 +305,9 @@ class BatchCatalogChanges
             }
         } else {
             throw ValidationException::withMessages(['batch' => __('admin.batch.validation.choose_a_supported_operation')]);
+        }
+        if ($subtitleChanged) {
+            $state = [...$state, ...app(ConfiguratorDefinitionCompiler::class)->normalizeSubtitle(['display_value_override' => $state['display_value_override']], 'value')];
         }
         $rules = [];
         foreach ($fields as $key => $field) {
