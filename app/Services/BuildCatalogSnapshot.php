@@ -15,14 +15,13 @@ class BuildCatalogSnapshot
             app(CatalogAvailability::class)->assertGroup($groupId);
             $group = Group::query()->withExists('children')->findOrFail($groupId);
             abort_if($group->children_exists, 409, __('catalog.messages.this_group_is_now_a_branch'));
-            $registered = CatalogImportParser::propertyKeys();
-            $filters = $group->filters()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($filter) => in_array($filter->property_key, $registered, true));
-            $presets = $group->subGroups()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($preset) => in_array($preset->property_key, $registered, true));
+            $filters = $group->filters()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($filter) => ProductFields::validKey($filter->property_key));
+            $presets = $group->subGroups()->orderBy('sort_order')->orderBy('id')->get()->filter(fn ($preset) => ProductFields::validKey($preset->property_key));
             $keys = array_values(array_unique([...$filters->pluck('property_key')->all(), ...$presets->pluck('property_key')->all()]));
             $query = DB::table('products')->where('group_id', $groupId)->where('is_active', true)->orderBy('id')->select('id');
             foreach ($keys as $column => $key) {
-                $expression = DB::getDriverName() === 'sqlite' ? 'json_quote(json_extract(properties, ?))' : 'json_extract(properties, ?)';
-                $query->selectRaw($expression.' as cell_'.$column, ['$."'.$key.'"']);
+                ['value' => $value, 'type' => $type, 'binding' => $binding] = ProductFieldQuery::expressions($key);
+                $query->selectRaw($value.' as cell_'.$column.', '.$type.' as type_'.$column, [$binding, $binding]);
             }
             $dictionaries = array_fill(0, count($keys), []);
             $indexes = array_fill(0, count($keys), []);
@@ -31,11 +30,11 @@ class BuildCatalogSnapshot
             foreach ($query->get() as $product) {
                 $row = [(string) $product->id];
                 foreach ($keys as $column => $key) {
-                    $raw = $product->{'cell_'.$column};
-                    $value = $raw === null ? null : json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
-                    if ($value === null || $value === '') {
+                    $value = $product->{'cell_'.$column};
+                    $type = $product->{'type_'.$column};
+                    if ($type === null || in_array($type, ['NULL', 'null'], true) || $value === '') {
                         $row[] = -1;
-                    } elseif (! is_string($value)) {
+                    } elseif (! in_array($type, ['STRING', 'text'], true)) {
                         $invalid[$key] = ($invalid[$key] ?? 0) + 1;
                         $row[] = -1;
                     } else {
@@ -80,7 +79,7 @@ class BuildCatalogSnapshot
                 'fields' => $fields, 'presets' => $encodedPresets, 'settings' => $settings,
                 'columns' => array_map(fn ($key, $values) => ['key' => $key, 'values' => $values], $keys, $dictionaries), 'rows' => $rows,
                 'cardGroup' => ['name' => $group->name, 'mainName' => $ancestors->first()?->name],
-                'diagnostics' => array_map(fn ($key, $count) => ['key' => $key, 'count' => $count], array_keys($invalid), array_values($invalid)),
+                'diagnostics' => array_map(fn ($key, $count) => ['key' => (string) $key, 'count' => $count], array_keys($invalid), array_values($invalid)),
             ]);
         });
         if ($snapshot->data['diagnostics'] !== []) {

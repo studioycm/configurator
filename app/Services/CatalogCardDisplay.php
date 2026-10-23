@@ -20,7 +20,7 @@ class CatalogCardDisplay
         $rows = 0;
         foreach ($products as $product) {
             $rows++;
-            $properties = $product->properties ?? [];
+            $properties = $product->profile_fields ?? [];
             foreach ($propertyKeys as $key) {
                 $raw = $properties[$key] ?? null;
                 $cell = is_string($raw) && $raw !== '' ? $raw : null;

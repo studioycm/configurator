@@ -48,7 +48,7 @@ class ConfiguratorDefinitionLoader
                 $interaction = new ConfiguratorInteraction(ConfiguratorIntentType::Reevaluate);
             }
             if ($configuratorId === null) {
-                return new ConfiguratorEvaluationInput(null, properties: $product->properties, intent: $interaction);
+                return new ConfiguratorEvaluationInput(null, properties: $product->profile_fields, intent: $interaction);
             }
             $diagnostics = [];
             $sameDefinition = ($state['version'] ?? null) === 1 && ($state['configurator_id'] ?? null) === $configuratorId;
@@ -65,7 +65,7 @@ class ConfiguratorDefinitionLoader
             try {
                 $configurator = Configurator::findOrFail($configuratorId);
                 if (! $configurator->is_active) {
-                    return new ConfiguratorEvaluationInput(null, properties: $product->properties, configuratorId: $configuratorId, diagnostics: [['code' => 'inactive_configurator', 'message' => __('configurator.messages.the_assigned_configurator_is_disabled')]]);
+                    return new ConfiguratorEvaluationInput(null, properties: $product->profile_fields, configuratorId: $configuratorId, diagnostics: [['code' => 'inactive_configurator', 'message' => __('configurator.messages.the_assigned_configurator_is_disabled')]]);
                 }
                 $data = $definitionData ?? $this->draft($configurator);
                 if (! $withPublicContext) {
@@ -80,7 +80,7 @@ class ConfiguratorDefinitionLoader
                 $diagnostics[] = ['code' => 'invalid_definition', 'message' => __('configurator.messages.the_assigned_configurator_needs_repair_before_it')];
             }
 
-            return new ConfiguratorEvaluationInput($definition, $product->properties, $safeState['context'], $safeState['selections'], $safeState['remembered'], $interaction, $configuratorId, $diagnostics);
+            return new ConfiguratorEvaluationInput($definition, $product->profile_fields, $safeState['context'], $safeState['selections'], $safeState['remembered'], $interaction, $configuratorId, $diagnostics);
         });
     }
 

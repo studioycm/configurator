@@ -36,18 +36,15 @@
             </div>
         </div>
         <div id="panel-details-{{ $this->getId() }}" role="tabpanel" aria-labelledby="tab-details-{{ $this->getId() }}" x-cloak x-show="tab === 'details'" class="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
-            @php($factPropertyKeys = $product->group->filters->isNotEmpty() ? $product->group->filters->pluck('property_key')->all() : array_slice(array_keys($product->properties ?? []), 0, 7))
             <div class="grid items-start gap-y-0 md:grid-cols-2 md:gap-x-10 xl:gap-x-[60px]">
                 <div class="space-y-4">
-                    <x-catalog.product-facts :product="$product" :buckets="['properties' => __('configurator.copy.product_facts')]" :property-keys="$factPropertyKeys" />
-                    <x-catalog.product-facts :product="$product" :buckets="['properties' => __('configurator.copy.specifications_and_dimensions')]" :property-keys="array_diff(array_keys($product->properties ?? []), $factPropertyKeys)" />
+                    <x-catalog.product-facts :product="$product" :buckets="['properties' => __('catalog.products.buckets.properties'), 'others' => __('catalog.products.buckets.others')]" :property-fields="$propertyFields" />
                 </div>
                 <x-catalog.product-facts :product="$product" :buckets="['parts' => __('catalog.products.buckets.parts')]" />
             </div>
         </div>
         <div id="panel-information-{{ $this->getId() }}" role="tabpanel" aria-labelledby="tab-information-{{ $this->getId() }}" x-cloak x-show="tab === 'information'" class="space-y-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
             @if ($product->description)<p class="whitespace-pre-line text-sm leading-6">{{ $product->description }}</p>@endif
-            <x-catalog.product-facts :product="$product" :buckets="['extra_data' => __('configurator.copy.preserved_source_data')]" />
         </div>
     </div>
 </section>

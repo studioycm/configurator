@@ -11,6 +11,7 @@ use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 
 class EditProduct extends EditRecord
 {
@@ -23,11 +24,15 @@ class EditProduct extends EditRecord
 
     protected string $view = 'filament.resources.record-editor';
 
+    #[Locked]
+    public string $productGroupOriginal = '';
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        foreach (['properties', 'parts', 'extra_data'] as $bucket) {
-            $data[$bucket] = ProductEditorData::rows($data[$bucket] ?? []);
-        }
+        $this->getRecord()->unsetRelation('group');
+        $data = array_replace($data, ProductEditorData::formData($this->getRecord()));
+        $this->productGroupOriginal = ProductEditorData::groupFingerprint($this->getRecord());
+        unset($data['profile_fields']);
 
         return $data;
     }
@@ -35,13 +40,13 @@ class EditProduct extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         try {
-            return app(SaveCatalogProduct::class)->handle(auth()->user(), $record, $data, $this->batchEditorRecordOriginal);
+            return app(SaveCatalogProduct::class)->handle(auth()->user(), $record, $data, $this->batchEditorRecordOriginal, $this->productGroupOriginal);
         } catch (ValidationException $exception) {
             $errors = [];
             foreach ($exception->errors() as $key => $messages) {
                 $errors['data.'.preg_replace('/^product\./', '', $key)] = $messages;
             }
-            if (isset($errors['data.record'])) {
+            if (isset($errors['data.record']) || isset($errors['data.group_classification'])) {
                 $this->batchEditorStale = true;
             }
             throw ValidationException::withMessages($errors);

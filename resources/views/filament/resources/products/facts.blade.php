@@ -1,1 +1,1 @@
-<x-catalog.product-facts :product="$product" :buckets="['properties' => __('catalog.products.buckets.properties'), 'parts' => __('catalog.products.buckets.parts'), 'extra_data' => __('catalog.products.buckets.extra_data')]" />
+<x-catalog.product-facts :product="$product" :property-fields="$propertyFields" />

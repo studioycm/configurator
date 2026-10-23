@@ -21,7 +21,7 @@ test('runtime loads trusted Product facts and current assignment and discards fo
     $data['rules'] = [fixtureAdvanced('pressure', [$condition], 'B', 'AllowOptions', ['new:B1'])];
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
     $group = Group::factory()->create(['configurator_id' => $configurator->id]);
-    $product = Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $loader = app(ConfiguratorDefinitionLoader::class);
     $engine = app(ConfiguratorEngine::class);
     $result = $engine->evaluate($loader->forProduct($product->id, ['properties' => ['Working_Pressure' => 'forged'], 'configuration_code' => 'forged']));
@@ -61,4 +61,20 @@ test('an invalid current definition withholds code without breaking the Product 
     DB::table('configurator_attributes')->where('configurator_id', $configurator->id)->update(['code_order' => 0]);
     $result = app(ConfiguratorEngine::class)->evaluate(app(ConfiguratorDefinitionLoader::class)->forProduct($product->id));
     expect($result->isComplete)->toBeFalse()->and($result->configurationCode)->toBeNull()->and(array_column($result->diagnostics, 'code'))->toContain('invalid_definition');
+});
+
+test('rules read all profile fields independently of the groups discovery filters', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $key = 'custom.other"field';
+    $condition = ['id' => 'new:custom', 'source_kind' => 'ProductProperty', 'source_configurator_attribute_id' => null, 'property_key' => $key, 'context_dimension' => null, 'operator' => 'Equals', 'operand' => '0', 'option_ids' => []];
+    $data['rules'] = [fixtureAdvanced('custom', [$condition], 'B', 'AllowOptions', ['new:B1'])];
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
+    $group = Group::factory()->create(['configurator_id' => $configurator->id]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => [$key => '0']]);
+
+    $input = app(ConfiguratorDefinitionLoader::class)->forProduct($product->id, ['profile_fields' => [$key => 'forged']]);
+    $result = app(ConfiguratorEngine::class)->evaluate($input);
+
+    expect($group->filters()->count())->toBe(0)->and($input->properties)->toBe([$key => '0'])
+        ->and($result->configurationCode)->toBe('A0-B1-C0')->and($result->state())->not->toHaveKeys(['profile_fields', 'properties']);
 });

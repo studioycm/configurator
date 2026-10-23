@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Schemas;
 
 use App\Models\Product;
+use App\Services\ProductEditorData;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
@@ -21,7 +22,7 @@ class ProductInfolist
                 TextEntry::make('legacy_id')->label(__('catalog.fields.legacy_id')),
                 TextEntry::make('legacy_group_id')->label(__('catalog.products.labels.legacy_group_id')),
             ])->columns(2)->columnSpanFull(),
-            View::make('filament.resources.products.facts')->viewData(fn (Product $record): array => ['product' => $record])->columnSpanFull(),
+            View::make('filament.resources.products.facts')->viewData(fn (Product $record): array => ['product' => $record, 'propertyFields' => ProductEditorData::groupFields($record)])->columnSpanFull(),
         ]);
     }
 }

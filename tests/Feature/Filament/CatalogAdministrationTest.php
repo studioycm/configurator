@@ -25,7 +25,7 @@ beforeEach(function () {
 test('product lookup searches the physical product code and shows read only escaped facts', function () {
     $product = Product::factory()->create(['product_code' => '000ABC', 'product_name' => 'Public caption',
         'parts' => ['Part10' => 'ten', 'Part2' => '<unsafe>', 'Part1' => 'one'],
-        'extra_data' => ['opaque' => 'a:1:{serialized}']]);
+        'profile_fields' => ['opaque' => 'a:1:{serialized}']]);
     $other = Product::factory()->create(['product_code' => '999OTHER', 'product_name' => '000ABC']);
     Livewire::test(ListProducts::class)->set('tableSearchScope', 'product_code')->searchTable('000ABC')
         ->assertCanSeeTableRecords([$product])->assertCanNotSeeTableRecords([$other]);
@@ -80,7 +80,7 @@ test('catalog resource access follows the existing admin admission gate', functi
 
 test('the group editor saves staged metadata and preserves existing filter ids', function () {
     $group = Group::factory()->create(['result_settings' => ['default_page_size' => 2, 'allow_page_size_change' => true, 'page_size_options' => [1, 2, 10]]]);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Before', 'value_order' => ['10'], 'value_labels' => []]);
     Livewire::test(EditGroup::class, ['record' => $group->id])
         ->fillForm(['catalog_settings' => ['filters' => [['id' => $filter->id, 'property_key' => 'Working_Pressure', 'label' => 'After', 'values' => [['value' => '10', 'label' => 'Ten']]]], 'sub_groups' => [], 'result_settings' => ['default_page_size' => 2, 'allow_page_size_change' => true, 'page_size_options' => [['size' => 1], ['size' => 2], ['size' => 10]]]]])
@@ -90,7 +90,7 @@ test('the group editor saves staged metadata and preserves existing filter ids',
 
 test('new metadata rows keep their saved identities on a second editor save', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $editor = Livewire::test(EditGroup::class, ['record' => $group->id])->fillForm(['catalog_settings.filters' => [
         ['id' => null, 'property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => []],
     ]])->call('save')->assertHasNoFormErrors();
@@ -102,7 +102,7 @@ test('new metadata rows keep their saved identities on a second editor save', fu
 
 test('the group editor saves card settings and automatically controls subgroup filter visibility', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['10'], 'force_hide' => true]);
 
     $editor = Livewire::test(EditGroup::class, ['record' => $group->id])
@@ -127,7 +127,7 @@ test('the group editor saves card settings and automatically controls subgroup f
 
 test('saving default card settings keeps them linked to the group filters', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10', 'Model' => 'D060']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10', 'Model' => 'D060']]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure']);
 
     $editor = Livewire::test(EditGroup::class, ['record' => $group->id])
@@ -146,7 +146,7 @@ test('saving default card settings keeps them linked to the group filters', func
 
 test('metadata failure preserves the submitted draft and rolls back details too', function () {
     $group = Group::factory()->create(['name' => 'Original']);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     Livewire::test(EditGroup::class, ['record' => $group->id])->fillForm(['name' => 'Draft name', 'catalog_settings.filters' => [
         ['id' => null, 'property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => [['value' => 'stale', 'label' => 'Draft label']]],
     ]])->call('save')->assertHasErrors()->assertSet('data.name', 'Draft name');

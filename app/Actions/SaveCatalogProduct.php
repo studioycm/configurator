@@ -23,35 +23,43 @@ class SaveCatalogProduct
     }
 
     /** @param array<string, mixed> $data */
-    public function handle(User $actor, Product $product, array $data, string $expectedFingerprint): Product
+    public function handle(User $actor, Product $product, array $data, string $expectedFingerprint, string $expectedGroupFingerprint): Product
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($product, $data, $expectedFingerprint): Product {
+        return DB::transaction(function () use ($product, $data, $expectedFingerprint, $expectedGroupFingerprint): Product {
             $groups = $this->integrity->lockGroups();
             $record = Product::query()->whereKey($product->id)->lockForUpdate()->firstOrFail();
             abort_unless($groups->has($record->group_id), 404);
             if (! hash_equals(self::fingerprint($record), $expectedFingerprint)) {
                 throw ValidationException::withMessages(['record' => __('catalog.products.validation.this_product_changed_after_your_editor_was')]);
             }
+            $record->setRelation('group', $groups->get($record->group_id));
+            if (! hash_equals(ProductEditorData::groupFingerprint($record), $expectedGroupFingerprint)) {
+                throw ValidationException::withMessages(['product.group_classification' => __('catalog.products.validation.group_filters_changed_after_your_editor_was')]);
+            }
             $rules = [
-                'product' => ['required', 'array:product_code,product_name,description,properties,parts,extra_data'],
+                'product' => ['required', 'array:product_code,product_name,description,properties,parts,others'],
                 'product.product_code' => ['required', 'string', 'max:64', Rule::unique('products', 'product_code')->ignore($record->id)],
                 'product.product_name' => ['present', 'nullable', 'string', 'max:255'],
                 'product.description' => ['present', 'nullable', 'string', 'max:5000'],
             ];
-            foreach (['properties', 'parts', 'extra_data'] as $bucket) {
+            foreach (['properties', 'parts', 'others'] as $bucket) {
                 $rules['product.'.$bucket] = ['present', 'array', 'list'];
-                $rules['product.'.$bucket.'.*'] = ['required', 'array:key,value'];
+                $rules['product.'.$bucket.'.*'] = ['required', $bucket === 'others' ? 'array:key,value,original_key' : 'array:key,value'];
                 $rules['product.'.$bucket.'.*.key'] = ['present', 'string'];
                 $rules['product.'.$bucket.'.*.value'] = ['present', 'nullable', 'string'];
             }
+            $rules['product.others.*.original_key'] = ['sometimes', 'nullable', 'string'];
             $validated = Validator::make(['product' => $data], $rules)->validate()['product'];
-            foreach (['properties', 'parts', 'extra_data'] as $bucket) {
-                $updated = ProductEditorData::applyRows($record->{$bucket}, $validated[$bucket], 'product.'.$bucket);
-                if ($updated !== $record->{$bucket}) {
-                    $record->{$bucket} = str_starts_with(ltrim((string) $record->getRawOriginal($bucket)), '{') ? (object) $updated : $updated;
-                }
+            $profile = ProductEditorData::applyProfile($record, $validated['properties'], $validated['others']);
+            if ($profile !== ProductEditorData::rawMap($record, 'profile_fields')) {
+                $record->profile_fields = (object) $profile;
+            }
+            $originalParts = ProductEditorData::rawMap($record, 'parts');
+            $parts = ProductEditorData::applyRows($originalParts, $validated['parts'], 'product.parts');
+            if ($parts !== $originalParts) {
+                $record->parts = str_starts_with(ltrim((string) $record->getRawOriginal('parts')), '{') ? (object) $parts : $parts;
             }
             $record->product_code = $validated['product_code'];
             $record->product_name = $validated['product_name'] ?? '';

@@ -14,12 +14,12 @@ use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
 use App\Services\CanonicalUsage;
-use App\Services\CatalogImportParser;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogPolicy;
 use App\Services\CatalogRevisions;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\InclusionUsage;
+use App\Services\ProductFields;
 use App\Services\StringFieldTransformer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -34,7 +34,7 @@ use InvalidArgumentException;
 class BatchCatalogChanges
 {
     /** @return array<string, array{type: string, nullable: bool, rules: array, options?: array}> */
-    public function fields(string $table): array
+    public function fields(string $table, bool $withSuggestions = true): array
     {
         $text = fn (bool $nullable = false, int $max = 255): array => ['type' => 'text', 'nullable' => $nullable, 'rules' => [$nullable ? 'nullable' : 'required', 'string', 'max:'.$max]];
         $boolean = ['type' => 'boolean', 'nullable' => false, 'rules' => ['required', 'boolean']];
@@ -45,7 +45,7 @@ class BatchCatalogChanges
             'options', 'attribute-options' => ['code' => ['type' => 'text', 'nullable' => false, 'rules' => ['required', 'string', 'regex:/\A[A-Za-z0-9]{2}\z/D']]],
             'configurators' => ['name' => $text(), 'description' => $text(true, 5000)],
             'groups' => ['description' => $text(true, 5000),
-                'card_properties' => ['type' => 'multiple', 'nullable' => true, 'rules' => ['array', 'list'], 'options' => array_combine(CatalogImportParser::propertyKeys(), CatalogImportParser::propertyKeys())],
+                'card_properties' => ['type' => 'multiple', 'nullable' => true, 'rules' => ['array', 'list'], 'options' => $withSuggestions ? ProductFields::options() : []],
                 'cards_per_row' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'between:1,6']],
                 'max_results' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in(['all', ...range(1, 24)])], 'options' => ['all' => __('ui.choices.all')] + array_combine(range(1, 24), range(1, 24))],
                 'products_debounce_ms' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'min:0', 'max:2147483600', 'multiple_of:100']],
@@ -242,7 +242,7 @@ class BatchCatalogChanges
             $record instanceof Value => $record->only(['label', 'description', 'tags']),
             $record instanceof Option => $record->only(['code']),
             $record instanceof Configurator => $record->only(['name', 'description']),
-            $record instanceof Group => ['description' => $record->description, ...array_intersect_key(CatalogPolicy::resultSettings($record->result_settings), $this->fields('groups'))],
+            $record instanceof Group => ['description' => $record->description, ...array_intersect_key(CatalogPolicy::resultSettings($record->result_settings), $this->fields('groups', withSuggestions: false))],
             $record instanceof ConfiguratorAttribute => $record->only(['label_override', 'help_text', 'input_type']),
             $record instanceof ConfiguratorOption => $record->only(['label_override', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default']),
             $record instanceof ConfiguratorRule => $record->only(['label', 'is_active']),
@@ -253,7 +253,7 @@ class BatchCatalogChanges
     private function transform(string $table, Model $record, array $intent): array
     {
         $state = $this->state($record);
-        $fields = $this->fields($table);
+        $fields = $this->fields($table, withSuggestions: false);
         $operation = $intent['operation'] ?? null;
         if ($operation === 'remove') {
             if (! $this->canRemove($table)) {
@@ -309,7 +309,9 @@ class BatchCatalogChanges
                 $rules[$key.'.*'] = ['required', 'string', 'max:80', 'distinct'];
             }
             if ($field['type'] === 'multiple') {
-                $rules[$key.'.*'] = ['required', 'distinct', Rule::in(array_keys($field['options']))];
+                $rules[$key.'.*'] = $table === 'groups' && $key === 'card_properties'
+                    ? ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()]
+                    : ['required', 'distinct', Rule::in(array_keys($field['options']))];
             }
         }
         if ($record instanceof Option) {

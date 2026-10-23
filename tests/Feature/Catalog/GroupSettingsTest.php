@@ -24,7 +24,7 @@ function groupSettingsInput(array $changes = []): array
 test('batch property selection appends missing filter drafts without replacing existing identities or labels', function () {
     $this->actingAs($this->actor);
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '16', 'Connection_Type' => 'Flange']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '16', 'Connection_Type' => 'Flange']]);
     $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Custom pressure', 'value_order' => ['16'], 'value_labels' => ['16' => 'High']]);
     $page = Livewire::test(EditGroup::class, ['record' => $group->id]);
     $before = $page->get('data.catalog_settings.filters');
@@ -36,8 +36,8 @@ test('batch property selection appends missing filter drafts without replacing e
 
 test('group metadata saves atomically with stable identities and no writes on unchanged save', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10', 'Connection_Type' => 'Flange']]);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '16', 'Connection_Type' => 'Threaded']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10', 'Connection_Type' => 'Flange']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '16', 'Connection_Type' => 'Threaded']]);
     $input = groupSettingsInput(['filters' => [['property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => [['value' => '16', 'label' => 'High'], ['value' => '10', 'label' => '']]]], 'sub_groups' => [['label' => '10 or 16', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10', '16']]]]);
     app(SaveGroupSettings::class)->handle($this->actor, $group, $input);
     $filter = $group->filters()->sole();
@@ -55,7 +55,7 @@ test('group metadata saves atomically with stable identities and no writes on un
 
 test('invalid presets reject the whole metadata change while leaving the previous public result intact', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Original']);
     $input = groupSettingsInput(['filters' => [['id' => $filter->id, 'property_key' => 'Working_Pressure', 'label' => 'Changed', 'values' => []]], 'sub_groups' => [['label' => 'Stale', 'property_key' => 'Working_Pressure', 'allowed_values' => ['999']]]]);
     expect(fn () => app(SaveGroupSettings::class)->handle($this->actor, $group, $input))->toThrow(ValidationException::class);
@@ -64,7 +64,7 @@ test('invalid presets reject the whole metadata change while leaving the previou
 
 test('removed preset hide setting is rejected without saving group changes', function (bool $forceHide) {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $input = groupSettingsInput(['sub_groups' => [[
         'label' => 'Pressure preset',
         'property_key' => 'Working_Pressure',
@@ -80,7 +80,7 @@ test('removed preset hide setting is rejected without saving group changes', fun
 
 test('metadata rejects forged identities duplicate fields arbitrary paths and invalid result sizes', function (string $case) {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $originalGroup = $group->fresh()->getAttributes();
     $input = groupSettingsInput();
     $row = ['property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => []];
@@ -92,7 +92,7 @@ test('metadata rejects forged identities duplicate fields arbitrary paths and in
         $input['filters'] = [$row, $row];
     }
     if ($case === 'path') {
-        $row['property_key'] = 'parts->Part1';
+        $row['property_key'] = str_repeat('x', 101);
         $input['filters'] = [$row];
     }
     if ($case === 'cap') {
@@ -157,7 +157,7 @@ test('invalid card display settings reject the entire draft', function (string $
 
     expect($group->fresh()->getAttributes())->toBe($original);
 })->with([
-    'unknown property' => ['card_properties', ['parts->Part1']],
+    'overlong property' => ['card_properties', [str_repeat('x', 101)]],
     'duplicate property' => ['card_properties', ['Model', 'Model']],
     'properties must be a list' => ['card_properties', 'Model'],
     'zero columns' => ['cards_per_row', 0],
@@ -169,7 +169,7 @@ test('invalid card display settings reject the entire draft', function (string $
 
 test('swapping filter properties keeps ids without transient unique conflicts', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10', 'Connection_Type' => 'Flange']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10', 'Connection_Type' => 'Flange']]);
     $pressure = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure']);
     $connection = GroupFilter::factory()->for($group)->create(['property_key' => 'Connection_Type']);
     app(SaveGroupSettings::class)->handle($this->actor, $group, groupSettingsInput(['filters' => [

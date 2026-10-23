@@ -7,13 +7,14 @@ use App\Models\GroupFilter;
 use App\Models\SubGroup;
 use App\Models\User;
 use App\Services\CatalogDiscovery;
-use App\Services\CatalogImportParser;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogPolicy;
 use App\Services\CatalogRevisions;
+use App\Services\ProductFields;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -31,13 +32,12 @@ class SaveGroupSettings
             abort_if($record === null, 404);
             $filters = $record->filters()->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $presets = $record->subGroups()->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-            $keys = CatalogImportParser::propertyKeys();
             $validated = Validator::make(['settings' => $data], [
                 'settings' => ['required', 'array:filters,sub_groups,result_settings'],
-                'settings.filters' => ['present', 'array', 'list', 'max:18'],
+                'settings.filters' => ['present', 'array', 'list'],
                 'settings.filters.*' => ['array:id,property_key,label,values'],
                 'settings.filters.*.id' => ['nullable', 'integer', 'distinct'],
-                'settings.filters.*.property_key' => ['required', Rule::in($keys), 'distinct'],
+                'settings.filters.*.property_key' => ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()],
                 'settings.filters.*.label' => ['required', 'string', 'max:255'],
                 'settings.filters.*.values' => ['present', 'array', 'list'],
                 'settings.filters.*.values.*' => ['array:value,label'],
@@ -47,7 +47,7 @@ class SaveGroupSettings
                 'settings.sub_groups.*' => ['array:id,label,property_key,allowed_values'],
                 'settings.sub_groups.*.id' => ['nullable', 'integer', 'distinct'],
                 'settings.sub_groups.*.label' => ['required', 'string', 'max:255'],
-                'settings.sub_groups.*.property_key' => ['required', Rule::in($keys)],
+                'settings.sub_groups.*.property_key' => ['required', 'string', 'max:100', ProductFields::referenceRule()],
                 'settings.sub_groups.*.allowed_values' => ['required', 'array', 'list', 'min:1'],
                 'settings.sub_groups.*.allowed_values.*' => ['required', 'string'],
                 'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,cards_per_row,max_results,products_debounce_ms,card_only_differences,card_show_labels,card_property_layout,card_property_columns,card_padding_block,card_padding_inline'],
@@ -56,8 +56,8 @@ class SaveGroupSettings
                 'settings.result_settings.page_size_options' => ['sometimes', 'array', 'list'],
                 'settings.result_settings.page_size_options.*' => ['required', 'integer', 'distinct', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
                 'settings.result_settings.products_debounce_ms' => ['sometimes', 'required', 'integer', 'min:0', 'multiple_of:100', 'max:2147483600'],
-                'settings.result_settings.card_properties' => ['sometimes', 'array', 'list', 'max:'.count($keys)],
-                'settings.result_settings.card_properties.*' => ['required', 'string', 'distinct', Rule::in($keys)],
+                'settings.result_settings.card_properties' => ['sometimes', 'array', 'list'],
+                'settings.result_settings.card_properties.*' => ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()],
                 'settings.result_settings.cards_per_row' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_CARDS_PER_ROW],
                 'settings.result_settings.max_results' => ['sometimes', 'required', Rule::in(['all', ...range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)])],
                 'settings.result_settings.card_only_differences' => ['sometimes', 'required', 'boolean'],
@@ -81,7 +81,14 @@ class SaveGroupSettings
                     $key = $row['property_key'];
                     $vocabulary[$key] ??= array_column($this->discovery->vocabulary($record->id, $key), 'value');
                     $values = $bucket === 'filters' ? array_column($row['values'], 'value') : $row['allowed_values'];
-                    if (count(array_unique($values, SORT_STRING)) !== count($values) || array_diff($values, $vocabulary[$key]) !== []) {
+                    $retained = [];
+                    $original = isset($row['id']) ? $owned->get($row['id']) : null;
+                    if ($original !== null && $original->property_key === $key) {
+                        $retained = $bucket === 'filters'
+                            ? [...($original->value_order ?? []), ...array_map(strval(...), array_keys($original->value_labels ?? []))]
+                            : ($original->allowed_values ?? []);
+                    }
+                    if (count(array_unique($values, SORT_STRING)) !== count($values) || array_diff($values, [...$vocabulary[$key], ...$retained]) !== []) {
                         $field = $bucket === 'filters' ? 'values' : 'allowed_values';
                         $errors['settings.'.$bucket.'.'.$index.'.'.$field] = __('catalog.groups.validation.choose_current_distinct_values');
                     }
@@ -109,9 +116,14 @@ class SaveGroupSettings
             $retainedPresets = array_filter(array_column($validated['sub_groups'], 'id'));
             $changed = $record->filters()->whereNotIn('id', $retainedFilters)->delete() > 0;
             $changed = $record->subGroups()->whereNotIn('id', $retainedPresets)->delete() > 0 || $changed;
+            $reservedKeys = array_fill_keys([...$filters->pluck('property_key')->all(), ...array_column($validated['filters'], 'property_key')], true);
             foreach ($validated['filters'] as $row) {
                 if (isset($row['id']) && $filters[$row['id']]->property_key !== $row['property_key']) {
-                    GroupFilter::whereKey($row['id'])->update(['property_key' => '__moving_'.$row['id']]);
+                    do {
+                        $temporaryKey = '__moving_'.Str::uuid();
+                    } while (isset($reservedKeys[$temporaryKey]));
+                    $reservedKeys[$temporaryKey] = true;
+                    GroupFilter::whereKey($row['id'])->update(['property_key' => $temporaryKey]);
                 }
             }
             foreach ($validated['filters'] as $order => $row) {

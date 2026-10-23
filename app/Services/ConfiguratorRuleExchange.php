@@ -53,7 +53,9 @@ class ConfiguratorRuleExchange
                     $lookups[] = ['configurator_id' => (string) $configurator->id, 'configurator_name' => $configurator->name, 'reference_type' => 'Attribute', 'attribute_key' => $canonical['key'], 'attribute_label' => $attributes[$attribute['id']]['label'], 'value_semantic_id' => '', 'value_label' => '', 'reference_code' => '', 'field' => '', 'literal' => ''];
                 }
             }
-            foreach (CatalogImportParser::propertyKeys() as $property) {
+            $savedRuleKeys = $configurator->rules->flatMap(fn (ConfiguratorRule $rule): array => $rule->conditions->pluck('property_key')->all())
+                ->filter(fn (mixed $key): bool => is_string($key))->values()->all();
+            foreach (ProductFields::keys(configuratorId: $configurator->id, savedRuleKeys: $savedRuleKeys) as $property) {
                 $lookups[] = $this->fieldLookup($configurator, 'ProductProperty', $property, '');
             }
             $choices = app(ConfiguratorDefinitionCompiler::class)->resolveContext($draft['context_schema'], $draft['hidden_context_options'], CatalogContextSettings::current()->choices);

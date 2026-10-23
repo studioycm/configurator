@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\CatalogDiscovery;
 use Database\Seeders\D060FilterSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
 
 function discoveryFixture(): Group
@@ -19,7 +20,7 @@ function discoveryFixture(): Group
         GroupFilter::factory()->for($group)->create(['property_key' => $key, 'label' => $key, 'sort_order' => $order, 'value_order' => [], 'value_labels' => []]);
     }
     foreach ([['A', '25', 'Flange', '2'], ['B', '16', 'Flange', '1'], ['C', '25', 'Threaded', '1']] as [$code, $pressure, $connection, $size]) {
-        Product::factory()->for($group)->create(['product_code' => $code, 'properties' => ['Working_Pressure' => $pressure, 'Connection_Type' => $connection, 'Connection_Size' => $size, 'Model' => $code]]);
+        Product::factory()->for($group)->create(['product_code' => $code, 'profile_fields' => ['Working_Pressure' => $pressure, 'Connection_Type' => $connection, 'Connection_Size' => $size, 'Model' => $code]]);
     }
 
     return $group;
@@ -191,3 +192,19 @@ test('filter availability respects subgroup constraints even on its own property
     $pressures = collect(collect($result->fields)->firstWhere('key', 'Working_Pressure')['values'])->keyBy('value');
     expect($pressures['16']['compatible'])->toBeFalse()->and($pressures['25']['compatible'])->toBeTrue();
 });
+
+test('discovery queries literal dynamic profile keys and counts only invalid non string cells', function (string $key) {
+    $group = Group::factory()->create();
+    GroupFilter::factory()->for($group)->create(['property_key' => $key, 'value_order' => []]);
+    foreach (['0', '01', 'Case', 'case', '', null, 0, false, ['nested' => 'value']] as $value) {
+        Product::factory()->for($group)->create(['profile_fields' => [$key => $value, 'a' => ['b' => 'wrong nested value']]]);
+    }
+    Product::factory()->for($group)->create(['profile_fields' => []]);
+    Log::spy();
+
+    $result = discover($group, [], 'filter', [$key, '0']);
+
+    expect(array_column($result->fields[0]['values'], 'value'))->toBe(['0', '01', 'Case', 'case'])
+        ->and($result->products->total())->toBe(1)->and($result->state->filters)->toBe([$key => '0']);
+    Log::shouldHaveReceived('warning')->with('Catalog facets omitted non-string property values.', ['group_id' => $group->id, 'invalid_counts' => [$key => 3]])->once();
+})->with(['custom field', 'a.b', 'quote"key', "single'key", 'slash\\key', '0']);

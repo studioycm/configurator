@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\AdminAppearance;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
+use App\Services\ProductEditorData;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -73,9 +74,12 @@ class ProductConfigurator extends Component
 
     public function render(): View
     {
+        $product = Product::with('group.filters')->findOrFail($this->productId);
+
         return view('livewire.catalog.product-configurator', [
             'result' => $this->result(),
-            'product' => Product::with('group.filters')->findOrFail($this->productId),
+            'product' => $product,
+            'propertyFields' => ProductEditorData::groupFields($product),
             'showLoadingIndicator' => app(AdminAppearance::class)->current()['show_configurator_loading_indicator'],
         ]);
     }

@@ -112,7 +112,7 @@ test('item providers reject unrecognized keys and unauthorized callers', functio
 test('an array count opens exactly the selected card properties with scoped search', function () {
     $actor = User::factory()->create(['email' => 'ycm@data4.work']);
     $this->actingAs($actor);
-    $properties = array_slice(CatalogImportParser::propertyKeys(), 0, 2);
+    $properties = array_slice(CatalogImportParser::profileKeys(), 0, 2);
     $group = Group::factory()->create(['result_settings' => ['card_properties' => $properties]]);
     $definition = app(ItemLists::class)->definition($actor, 'group-card-properties', $group->id);
     expect(array_keys($definition->query))->toBe($properties);

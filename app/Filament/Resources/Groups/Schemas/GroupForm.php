@@ -10,8 +10,8 @@ use App\Models\Group;
 use App\Models\GroupFilter;
 use App\Models\SubGroup;
 use App\Services\CatalogDiscovery;
-use App\Services\CatalogImportParser;
 use App\Services\CatalogPolicy;
+use App\Services\ProductFields;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -25,7 +25,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 class GroupForm
@@ -49,7 +48,7 @@ class GroupForm
         if (! $record instanceof Group || $record->children()->exists()) {
             return $schema->columns(2)->extraAttributes(['class' => 'catalog-simple-form-grid'], merge: true)->components($details);
         }
-        $sections = self::settingsSections();
+        $sections = self::settingsSections($record);
         $leaf = fn (?Group $record): bool => $record !== null && ! $record->children()->exists();
 
         return $schema->columns(1)->components([Tabs::make(__('catalog.groups.headings.group_settings'))->key('group-settings')->columnSpanFull()
@@ -64,9 +63,9 @@ class GroupForm
     }
 
     /** @return list<Section> */
-    private static function settingsSections(): array
+    private static function settingsSections(?Group $record): array
     {
-        $properties = array_combine(CatalogImportParser::propertyKeys(), array_map(fn (string $key): string => str_replace('_', ' ', $key), CatalogImportParser::propertyKeys()));
+        $properties = ProductFields::options(groupId: $record?->id);
 
         return [
             Section::make(__('catalog.groups.headings.product_cards'))->key(fn (Section $component): string => 'product-cards::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
@@ -116,13 +115,10 @@ class GroupForm
                                 $existing[] = $key;
                             }
                         }
-                        if (count($rows) > 18) {
-                            throw ValidationException::withMessages(['data.filter_properties_to_add' => __('catalog.groups.validation.a_group_supports_up_to_18_filters')]);
-                        }
                         $set('catalog_settings.filters', $rows);
                         $set('filter_properties_to_add', []);
                     })->columnSpanFull(),
-                FormOrderControls::make('catalog_settings.filters')->label(__('ui.tables.filters'))->hiddenLabel()->hintAction(FormHints::make(__('catalog.groups.hints.only_these_properties_appear_as_discovery_filters')))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->maxItems(18)->reorderableWithButtons()->columnSpanFull()->schema([
+                FormOrderControls::make('catalog_settings.filters')->label(__('ui.tables.filters'))->hiddenLabel()->hintAction(FormHints::make(__('catalog.groups.hints.only_these_properties_appear_as_discovery_filters')))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live()
                         ->afterStateUpdated(function (Set $set, mixed $state, ?Group $record): void {
@@ -144,7 +140,7 @@ class GroupForm
                     TextInput::make('label')->label(__('catalog.groups.labels.preset_label'))->required()->maxLength(255),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live(),
                     Select::make('allowed_values')->label(__('catalog.groups.labels.allowed_source_values'))->multiple()->required()->minItems(1)->searchable()
-                        ->options(fn (Get $get, ?Group $record): array => self::valueOptions($record, $get('property_key')))
+                        ->options(fn (Get $get, ?Group $record): array => self::valueOptions($record, $get('property_key'), $get('id')))
                         ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
                         ->hintAction(FormHints::make(__('catalog.groups.hints.one_available_option_hides_this_propertys_filter')))
                         ->columnSpanFull(),
@@ -164,7 +160,7 @@ class GroupForm
     /** @return list<string> */
     private static function values(?Group $record, mixed $key): array
     {
-        if ($record === null || ! is_string($key) || ! in_array($key, CatalogImportParser::propertyKeys(), true)) {
+        if ($record === null || ! is_string($key) || ! ProductFields::validKey($key)) {
             return [];
         }
 
@@ -172,9 +168,15 @@ class GroupForm
     }
 
     /** @return array<string, string> */
-    private static function valueOptions(?Group $record, mixed $key): array
+    private static function valueOptions(?Group $record, mixed $key, mixed $presetId): array
     {
         $values = self::values($record, $key);
+        if ($record !== null && (is_int($presetId) || is_string($presetId))) {
+            $preset = $record->subGroups()->find($presetId);
+            if ($preset?->property_key === $key) {
+                $values = array_values(array_unique([...$values, ...($preset->allowed_values ?? [])], SORT_STRING));
+            }
+        }
 
         return array_combine($values, $values);
     }
@@ -187,7 +189,7 @@ class GroupForm
 
         return [
             'filters' => $record->filters()->orderBy('sort_order')->orderBy('id')->get()->map(function (GroupFilter $filter) use ($record): array {
-                $values = array_values(array_unique([...($filter->value_order ?? []), ...self::values($record, $filter->property_key)], SORT_STRING));
+                $values = array_values(array_unique([...($filter->value_order ?? []), ...array_map(strval(...), array_keys($filter->value_labels ?? [])), ...self::values($record, $filter->property_key)], SORT_STRING));
 
                 return ['id' => $filter->id, 'property_key' => $filter->property_key, 'label' => $filter->label,
                     'values' => array_map(fn (string $value): array => ['value' => $value, 'label' => $filter->value_labels[$value] ?? ''], $values)];

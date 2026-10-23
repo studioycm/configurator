@@ -53,7 +53,7 @@ test('only current cards can publish a properties notice and criteria, retry and
             htmlChunks:[`<article>${index}</article>`], propertiesNotice:notice});
     };
     try {
-        const snapshot = {schema:1, groupId:'1', revision:'1',
+        const snapshot = {schema:2, groupId:'1', revision:'1',
             columns:[{key:'pressure', values:['25','16']}],
             fields:[{key:'pressure', label:'Pressure', column:0,
                 options:[{value:'25',label:'25',code:0},{value:'16',label:'16',code:1}]}],

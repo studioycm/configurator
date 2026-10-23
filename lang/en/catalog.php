@@ -275,6 +275,7 @@ return [
     'products' => [
         'buckets' => [
             'extra_data' => 'Extra data',
+            'others' => 'Others',
             'parts' => 'Parts',
             'properties' => 'Properties',
         ],
@@ -282,9 +283,12 @@ return [
             'product_data' => 'Product data',
         ],
         'hints' => [
+            'edit_group_filter_values' => 'These fields match this Product’s Group filters. Edit their text values; the Group controls their names and order. Clearing a value keeps the field.',
+            'edit_other_profile_fields' => 'Add, rename, delete or edit fields for this Product only. Group filter fields appear in Properties. Imported fields may return or be overwritten on reimport. Non-text source values keep their type and are read-only.',
             'edit_values_of_the_fields_saved_on' => 'Edit values of the fields saved on this Product. Keys stay fixed; clearing a text value keeps its key. Non-text source values retain their original type and are read-only.',
         ],
         'labels' => [
+            'add_field' => 'Add field',
             'all_administrative_records' => 'All administrative records',
             'legacy_group_id' => 'Legacy Group ID',
             'open_catalog' => 'Open catalog',
@@ -295,6 +299,11 @@ return [
             'product_name_2' => 'Product name',
         ],
         'validation' => [
+            'group_filters_changed_after_your_editor_was' => 'This Product’s Group filters changed after your editor was opened. Your draft was kept. Reload the saved record before editing again.',
+            'keep_the_selected_group_fields' => 'Keep each current Group filter field exactly once in Properties. Group settings control these fields.',
+            'profile_field_keys_must_be_valid_and_unique' => 'Use a unique field name of 1–100 characters. A field cannot appear in both Properties and Others.',
+            'numeric_json_cannot_be_preserved' => 'This Product contains a numeric JSON value that cannot be preserved exactly. Editing is blocked until the source value is corrected.',
+            'numeric_json_reimport_cannot_be_preserved' => 'Product :product contains a numeric JSON value that cannot be preserved exactly during reimport.',
             'apply_requires_the_exact_reviewed_parent_metadata' => 'Apply requires the exact reviewed parent metadata SHA-256 hash. Run a new dry-run.',
             'apply_requires_the_exact_reviewed_source_and' => 'Apply requires the exact reviewed source and map SHA-256 hashes. Run a new dry-run.',
             'conflicting_group_names_in_parent_metadata' => 'Conflicting Group names in parent metadata.',

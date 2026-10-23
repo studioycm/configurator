@@ -33,9 +33,8 @@ class CatalogPolicy
         $default = $settings['default_page_size'] ?? 10;
         $default = is_int($default) && $default >= 1 && $default <= self::MAX_PAGE_SIZE ? $default : 10;
         $options = is_array($settings['page_size_options'] ?? null) ? array_values(array_unique(array_filter($settings['page_size_options'], fn (mixed $size): bool => is_int($size) && $size >= 1 && $size <= self::MAX_PAGE_SIZE))) : [1, 2, 10];
-        $properties = CatalogImportParser::propertyKeys();
         $cardProperties = is_array($settings['card_properties'] ?? null)
-            ? array_values(array_unique(array_filter($settings['card_properties'], fn (mixed $key): bool => is_string($key) && in_array($key, $properties, true))))
+            ? array_values(array_unique(array_filter($settings['card_properties'], ProductFields::validKey(...)), SORT_STRING))
             : [];
         $columns = $settings['cards_per_row'] ?? 4;
         $maximum = $settings['max_results'] ?? 'all';

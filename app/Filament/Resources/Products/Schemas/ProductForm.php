@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\Schemas;
 
 use App\Filament\Resources\FormHints;
 use App\Models\Product;
+use App\Services\ProductEditorData;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -30,24 +31,41 @@ class ProductForm
                 ]),
                 Tab::make(__('catalog.products.buckets.properties'))->key(fn (Tab $component): string => 'properties::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('properties', __('catalog.products.buckets.properties'))]),
                 Tab::make(__('catalog.products.buckets.parts'))->key(fn (Tab $component): string => 'parts::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('parts', __('catalog.products.buckets.parts'))]),
-                Tab::make(__('catalog.products.buckets.extra_data'))->key(fn (Tab $component): string => 'extra-data::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('extra_data', __('catalog.products.buckets.extra_data'))]),
+                Tab::make(__('catalog.products.buckets.others'))->key(fn (Tab $component): string => 'others::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('others', __('catalog.products.buckets.others'))]),
             ]),
         ]);
     }
 
     private static function jsonRepeater(string $bucket, string $label): Repeater
     {
+        $mutable = $bucket === 'others';
+
         return Repeater::make($bucket)->label($label)->hiddenLabel()->columnSpanFull()->defaultItems(0)
-            ->addable(false)->deletable(false)->reorderable(false)->compact()
+            ->addable($mutable)->deletable($mutable)->reorderable(false)->compact()
+            ->addActionLabel(__('catalog.products.labels.add_field'))
             ->extraAttributes(['class' => 'catalog-product-json'])
-            ->hintAction(FormHints::make(__('catalog.products.hints.edit_values_of_the_fields_saved_on')))
+            ->hintAction(FormHints::make(__($mutable ? 'catalog.products.hints.edit_other_profile_fields' : ($bucket === 'properties' ? 'catalog.products.hints.edit_group_filter_values' : 'catalog.products.hints.edit_values_of_the_fields_saved_on'))))
             ->table([TableColumn::make(__('ui.fields.field'))->width('32%'), TableColumn::make(__('ui.fields.value'))])
             ->schema([
-                Hidden::make('key')->dehydrateStateUsing(fn (mixed $state): string => (string) $state),
-                Text::make(fn (Get $get): string => (string) $get('key')),
+                ...($mutable ? [
+                    Hidden::make('original_key')->default(null),
+                    TextInput::make('key')->label(__('ui.fields.field'))->hiddenLabel()->maxLength(100)->trim(false),
+                ] : [
+                    Hidden::make('key')->dehydrateStateUsing(fn (mixed $state): string => (string) $state),
+                    Text::make(fn (Get $get, ?Product $record): string => $bucket === 'properties' && $record !== null ? ProductEditorData::propertyLabel($record, (string) $get('key')) : (string) $get('key')),
+                ]),
                 TextInput::make('value')->hiddenLabel()->trim(false)
-                    ->extraInputAttributes(fn (Get $get): array => ['aria-label' => (string) $get('key')])
-                    ->disabled(fn (Get $get, ?Product $record): bool => $record !== null && ! is_string($record->{$bucket}[$get('key')] ?? null) && ($record->{$bucket}[$get('key')] ?? null) !== null)
+                    ->extraInputAttributes(fn (Get $get): array => ['aria-label' => e((string) $get('key'))])
+                    ->disabled(function (Get $get, ?Product $record) use ($bucket): bool {
+                        if ($record === null) {
+                            return false;
+                        }
+                        $values = ProductEditorData::rawMap($record, $bucket === 'parts' ? 'parts' : 'profile_fields');
+                        $key = $bucket === 'others' ? ($get('original_key') ?? $get('key')) : $get('key');
+                        $value = $values[$key] ?? null;
+
+                        return ! is_string($value) && $value !== null;
+                    })
                     ->dehydrated(),
             ]);
     }

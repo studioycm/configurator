@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { catalogLabels, catalogMessages } from '../Fixtures/catalog-labels.js';
 
-const snapshot = {schema:1, groupId:'1', revision:'2', columns:[{key:'pressure',values:['25','16']}],
+const snapshot = {schema:2, groupId:'1', revision:'2', columns:[{key:'pressure',values:['25','16']}],
     fields:[{key:'pressure',label:'Pressure',column:0,options:[{value:'25',label:'25',code:0},{value:'16',label:'16',code:1}]}],
     presets:[], rows:[['A',0],['B',1]], settings:{max_results:'all',cards_per_row:4,products_debounce_ms:60000}};
 let moduleId = 0;
@@ -47,15 +47,17 @@ for (const payload of [undefined, '{', 'null', '[]', '{}', JSON.stringify({...ca
     });
 }
 
-test('a missing snapshot can retry while an unsupported snapshot requires a localized reload', async t => {
-    const c = await harness(t,catalogLabels,null);
-    c.init();
-    assert.equal(c.unavailable,catalogMessages.filters_unavailable);
-    fetch = async () => ({ok:true,status:200,json:async () => ({...snapshot,schema:99})});
-    assert.equal(await c.refreshSnapshot(),false);
-    assert.equal(c.reloadRequired,true);
-    assert.equal(c.freshnessError,catalogMessages.format_changed);
-});
+for (const schema of [1, 99]) {
+    test(`a missing snapshot can retry while unsupported schema ${schema} requires a localized reload`, async t => {
+        const c = await harness(t,catalogLabels,null);
+        c.init();
+        assert.equal(c.unavailable,catalogMessages.filters_unavailable);
+        fetch = async () => ({ok:true,status:200,json:async () => ({...snapshot,schema})});
+        assert.equal(await c.refreshSnapshot(),false);
+        assert.equal(c.reloadRequired,true);
+        assert.equal(c.freshnessError,catalogMessages.format_changed);
+    });
+}
 
 test('304 preserves current choices without reloading cards and a revision refresh keeps valid choices', async t => {
     const c = await harness(t);
@@ -72,6 +74,27 @@ test('304 preserves current choices without reloading cards and a revision refre
     assert.equal(await c.refreshSnapshot(),true);
     assert.deepEqual(c.state,state);
     assert.equal(c.total,1);
+});
+
+test('literal profile field names retain unique accessible heading IDs after reordering', async t => {
+    const keys = ['custom field','custom%20field','line\nbreak','0','__proto__','שדה'];
+    const custom = {...snapshot,
+        columns:keys.map(key => ({key,values:['value']})),
+        fields:keys.map((key,column) => ({key,label:key,column,options:[{value:'value',label:'Value',code:0}]})),
+        rows:[['A',...keys.map(() => 0)]]};
+    const c = await harness(t,catalogLabels,custom);
+    c.init();
+    const headings = new Map(c.fields.map(field => [field.key,field.headingId]));
+    assert.equal(new Set(headings.values()).size,keys.length);
+    for (const id of headings.values()) {
+        assert.equal(typeof id,'string');
+        assert.ok(id.length > 0 && !/\s/.test(id));
+    }
+    c.choose('filter','custom field','value');
+    fetch = async () => ({ok:true,status:200,json:async () => ({...custom,revision:'3',fields:[...custom.fields].reverse()})});
+    assert.equal(await c.refreshSnapshot(),true);
+    assert.equal(c.state.filters['custom field'],'value');
+    for (const field of c.fields) assert.equal(field.headingId,headings.get(field.key));
 });
 
 for (const status of [401,403,419,404,409,503]) {

@@ -279,7 +279,7 @@ class ConfiguratorDefinitionCompiler
                 $this->check(($row['option_ids'] ?? []) === [], $field.'.option_ids', __('configurator.validation.only_selection_conditions_accept_included_value_references'));
                 if ($source === ConditionSource::ProductProperty) {
                     $property = $row['property_key'] ?? null;
-                    $this->check(is_string($property) && in_array($property, CatalogImportParser::propertyKeys(), true), $field.'.property_key', __('configurator.validation.choose_a_registered_product_property'));
+                    $this->check(ProductFields::validKey($property), $field.'.property_key', __('configurator.validation.choose_a_registered_product_property'));
                 } else {
                     $dimension = $source === ConditionSource::Territory ? 'territory' : 'application';
                     $this->check(($row['context_dimension'] ?? null) === $dimension && $operator !== ConditionOperator::Contains, $field.'.context_dimension', __('configurator.validation.choose_the_matching_context_dimension'));

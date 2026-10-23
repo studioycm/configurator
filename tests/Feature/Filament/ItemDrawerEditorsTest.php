@@ -139,7 +139,7 @@ test('assigned group rows open their own editor and reject an unrelated group', 
 });
 
 test('card property rows open the real parent Group on its Presentation tab without adding a fake row', function () {
-    $property = CatalogImportParser::propertyKeys()[0];
+    $property = CatalogImportParser::profileKeys()[0];
     $group = Group::factory()->create(['result_settings' => ['card_properties' => [$property]]]);
     $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'group-card-properties', 'parentId' => $group->id, 'allowLocalEditing' => true]);
 
@@ -205,7 +205,7 @@ test('blocking rules cannot open a local Group or Option editor', function () {
 
 test('Products open and save below their parent list through the existing Product editor', function () {
     $group = Group::factory()->create();
-    $product = Product::factory()->for($group)->create(['properties' => ['pressure' => 'PN 16']]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['pressure' => 'PN 16']]);
     $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'group-products', 'parentId' => $group->id, 'allowLocalEditing' => true]);
 
     $drawer->callAction(TestAction::make('select')->table($product))
@@ -219,7 +219,7 @@ test('Products open and save below their parent list through the existing Produc
         ->assertDispatchedTo(ItemListDrawer::class, 'item-drawer-record-saved', listKey: 'group-products', parentId: $group->id, record: (string) $product->id);
 
     $this->assertDatabaseHas('products', ['id' => $product->id, 'product_name' => 'Updated in the drawer', 'group_id' => $group->id]);
-    expect($product->fresh()->properties)->toBe(['pressure' => 'PN 16']);
+    expect($product->fresh()->profile_fields)->toBe(['pressure' => 'PN 16']);
 });
 
 test('a Product drawer rejects foreign records and records that leave its Group', function () {

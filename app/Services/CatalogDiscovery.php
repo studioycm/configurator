@@ -23,9 +23,8 @@ class CatalogDiscovery
         return DB::transaction(function () use ($groupId, $raw, $action, $argument): CatalogDiscoveryResult {
             app(CatalogAvailability::class)->assertGroup($groupId);
             $group = Group::with(['filters' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'), 'subGroups' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')])->findOrFail($groupId);
-            $registry = CatalogImportParser::propertyKeys();
-            $filters = $group->filters->filter(fn (GroupFilter $filter): bool => in_array($filter->property_key, $registry, true))->keyBy('property_key');
-            $presets = $group->subGroups->filter(fn (SubGroup $preset): bool => in_array($preset->property_key, $registry, true))->keyBy('id');
+            $filters = $group->filters->filter(fn (GroupFilter $filter): bool => ProductFields::validKey($filter->property_key))->keyBy('property_key');
+            $presets = $group->subGroups->filter(fn (SubGroup $preset): bool => ProductFields::validKey($preset->property_key))->keyBy('id');
             $keys = array_values(array_unique([...$filters->keys()->all(), ...$presets->pluck('property_key')->all()]));
             $vocabulary = [];
             foreach ($keys as $key) {
@@ -181,7 +180,7 @@ class CatalogDiscovery
             }
             $showProducts = $settings['max_results'] === 'all' || $total <= $settings['max_results'];
             $products = $showProducts
-                ? $query->orderBy('product_code')->orderBy('id')->paginate($perPage, ['id', 'product_code', 'properties'], page: $page, total: $total)
+                ? $query->orderBy('product_code')->orderBy('id')->paginate($perPage, ['id', 'product_code', 'profile_fields'], page: $page, total: $total)
                 : new LengthAwarePaginator([], $total, $perPage, $page);
             $state = new CatalogDiscoveryState($selected, $replayed['kept'], $presetId, $page, $perPage);
 
@@ -210,9 +209,9 @@ class CatalogDiscovery
 
                 continue;
             }
-            [$value, $type] = $this->expressions($key);
-            $query = $this->predicate($groupId, $others)->whereRaw($type)->whereRaw($value.' <> ?', [''])
-                ->selectRaw('? as property_key, '.$value.' as facet_value', [$key])->distinct()->toBase();
+            ['value' => $value, 'type' => $type, 'binding' => $binding, 'stringType' => $stringType] = ProductFieldQuery::expressions($key);
+            $query = $this->predicate($groupId, $others)->whereRaw($type.' = ?', [$binding, $stringType])->whereRaw($value.' <> ?', [$binding, ''])
+                ->selectRaw('? as property_key, '.$value.' as facet_value', [$key, $binding])->distinct()->toBase();
             $union = $union === null ? $query : $union->unionAll($query);
         }
         foreach ($union?->get() ?? [] as $row) {
@@ -227,8 +226,14 @@ class CatalogDiscovery
     {
         $query = Product::query()->where('group_id', $groupId)->where('is_active', true);
         foreach ($constraints as $constraint) {
-            [$value, $type] = $this->expressions($constraint['property']);
-            $query->whereRaw($type)->whereIn(DB::raw($value), $constraint['values']);
+            ['value' => $value, 'type' => $type, 'binding' => $binding, 'stringType' => $stringType] = ProductFieldQuery::expressions($constraint['property']);
+            $values = array_values($constraint['values']);
+            if ($values === []) {
+                $query->whereRaw('0 = 1');
+            } else {
+                $query->whereRaw($type.' = ?', [$binding, $stringType])
+                    ->whereRaw($value.' IN ('.implode(', ', array_fill(0, count($values), '?')).')', [$binding, ...$values]);
+            }
         }
 
         return $query;
@@ -243,27 +248,11 @@ class CatalogDiscovery
     /** @return list<array{value: string}> */
     private function aggregate(Builder $query, string $key): array
     {
-        [$value, $type] = $this->expressions($key);
+        ['value' => $value, 'type' => $type, 'binding' => $binding, 'stringType' => $stringType] = ProductFieldQuery::expressions($key);
 
-        return $query->whereRaw($type)->whereRaw($value.' <> ?', [''])->selectRaw($value.' as facet_value, min(id) as first_id')
-            ->groupByRaw($value)->orderBy('first_id')->toBase()->get()
+        return $query->whereRaw($type.' = ?', [$binding, $stringType])->whereRaw($value.' <> ?', [$binding, ''])->selectRaw($value.' as facet_value, min(id) as first_id', [$binding])
+            ->groupBy('facet_value')->orderBy('first_id')->toBase()->get()
             ->map(fn (object $row): array => ['value' => $row->facet_value])->all();
-    }
-
-    /** @return array{string, string} */
-    private function expressions(string $key): array
-    {
-        if (! in_array($key, CatalogImportParser::propertyKeys(), true)) {
-            throw new \InvalidArgumentException(__('catalog.messages.unregistered_catalog_property'));
-        }
-        $path = '$."'.$key.'"';
-        if (DB::getDriverName() === 'mysql') {
-            $extract = "JSON_EXTRACT(properties, '".$path."')";
-
-            return ['JSON_UNQUOTE('.$extract.') COLLATE utf8mb4_0900_bin', 'JSON_TYPE('.$extract.") = 'STRING'"];
-        }
-
-        return ["json_extract(properties, '".$path."') COLLATE BINARY", "json_type(properties, '".$path."') = 'text'"];
     }
 
     /** @param list<string> $keys */
@@ -273,13 +262,13 @@ class CatalogDiscovery
             return;
         }
         $expressions = [];
+        $bindings = [];
         foreach ($keys as $index => $key) {
-            $path = '$."'.$key.'"';
-            $type = DB::getDriverName() === 'mysql' ? "JSON_TYPE(JSON_EXTRACT(properties, '".$path."'))" : "json_type(properties, '".$path."')";
-            $accepted = DB::getDriverName() === 'mysql' ? "'STRING', 'NULL'" : "'text', 'null'";
-            $expressions[] = 'sum(case when '.$type.' not in ('.$accepted.') then 1 else 0 end) as invalid_'.$index;
+            ['type' => $type, 'binding' => $binding, 'stringType' => $stringType] = ProductFieldQuery::expressions($key);
+            $expressions[] = 'sum(case when '.$type.' not in (?, ?) then 1 else 0 end) as invalid_'.$index;
+            $bindings = [...$bindings, $binding, $stringType, DB::getDriverName() === 'mysql' ? 'NULL' : 'null'];
         }
-        $counts = $this->predicate($groupId, [])->selectRaw(implode(', ', $expressions))->toBase()->first();
+        $counts = $this->predicate($groupId, [])->selectRaw(implode(', ', $expressions), $bindings)->toBase()->first();
         $invalid = [];
         foreach ($keys as $index => $key) {
             if (($counts->{'invalid_'.$index} ?? 0) > 0) {

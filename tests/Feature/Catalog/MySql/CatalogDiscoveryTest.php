@@ -16,9 +16,9 @@ test('mysql scalar json facets distinguish strings case blanks and json types', 
     $group = Group::factory()->create();
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'value_order' => []]);
     foreach (['0', 0, null, '', 'Aa', 'aa', 'é', 'e', 'A ', ['Aa']] as $value) {
-        Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => $value]]);
+        Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => $value]]);
     }
-    Product::factory()->for($group)->create(['properties' => []]);
+    Product::factory()->for($group)->create(['profile_fields' => []]);
     DB::flushQueryLog();
     DB::enableQueryLog();
     $result = app(CatalogDiscovery::class)->prepare($group->id, []);
@@ -30,7 +30,7 @@ test('mysql scalar json facets distinguish strings case blanks and json types', 
     }
     expect(count($queries))->toBeLessThanOrEqual(10);
     foreach ($result->products->items() as $product) {
-        expect(array_keys($product->getAttributes()))->toBe(['id', 'product_code', 'properties']);
+        expect(array_keys($product->getAttributes()))->toBe(['id', 'product_code', 'profile_fields']);
     }
 });
 
@@ -63,7 +63,7 @@ test('profiles the audited corpus with bounded queries selected card columns and
         $result = $service->prepare($group->id, $state);
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
-        $cardQuery = collect($queries)->first(fn (array $query): bool => str_starts_with($query['query'], 'select `id`, `product_code`, `properties`'));
+        $cardQuery = collect($queries)->first(fn (array $query): bool => str_starts_with($query['query'], 'select `id`, `product_code`, `profile_fields`'));
         expect($cardQuery)->not->toBeNull()->and(count($queries))->toBeLessThanOrEqual(32)->and($result->products->count())->toBe(min(10, $result->products->total()));
         $profile['samples'][$name] = ['query_count' => count($queries), 'sql_ms' => array_sum(array_column($queries, 'time')), 'elapsed_ms' => (hrtime(true) - $started) / 1e6, 'total' => $result->products->total(), 'card_json_bytes' => strlen($result->products->getCollection()->toJson()), 'explain' => DB::select('EXPLAIN '.$cardQuery['query'], $cardQuery['bindings'])];
     }
@@ -72,3 +72,17 @@ test('profiles the audited corpus with bounded queries selected card columns and
     File::ensureDirectoryExists(storage_path('framework/testing'));
     File::put(storage_path('framework/testing/catalog-discovery-profile.json'), json_encode($profile, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 });
+
+test('mysql discovery queries dynamic literal profile keys with strict string values', function (string $key) {
+    $group = Group::factory()->create();
+    GroupFilter::factory()->for($group)->create(['property_key' => $key, 'value_order' => []]);
+    foreach (['0', 'Case', 'case', '', null, 0, false, ['nested']] as $value) {
+        Product::factory()->for($group)->create(['profile_fields' => [$key => $value, 'a' => ['b' => 'nested']]]);
+    }
+    Product::factory()->for($group)->create(['profile_fields' => []]);
+
+    $result = app(CatalogDiscovery::class)->prepare($group->id, [], 'filter', [$key, '0']);
+
+    expect(array_column($result->fields[0]['values'], 'value'))->toBe(['0', 'Case', 'case'])
+        ->and($result->products->total())->toBe(1)->and($result->state->filters)->toBe([$key => '0']);
+})->with(['custom field', 'a.b', 'quote"key', "single'key", 'slash\\key', '0']);

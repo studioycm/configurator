@@ -106,7 +106,7 @@ function catalogFilters() {
                     engine = createFilterEngine(snapshot, labels);
                     this.available = true;
                     confirmedAt = performance.now();
-                    this.publish(engine.normalize(readDiscovery(location.href)), 'replace');
+                    this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace');
                 } else this.unavailable = labels.filters_unavailable;
             } catch {
                 this.available = false;
@@ -117,7 +117,7 @@ function catalogFilters() {
             listen(window, 'popstate', () => {
                 if (!alive || suspended || !engine) return;
                 automaticRetries = 1;
-                this.publish(engine.normalize(readDiscovery(location.href)), 'replace');
+                this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace');
             });
             listen(window, 'focus', () => this.checkFreshness());
             listen(document, 'visibilitychange', () => this.checkFreshness());
@@ -132,7 +132,7 @@ function catalogFilters() {
                 if (!suspended || !alive) return;
                 suspended = false;
                 this.refreshing = false;
-                if (engine) this.publish(engine.normalize(readDiscovery(location.href)), 'replace');
+                if (engine) this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace');
                 this.$nextTick(scheduleHeadings);
                 this.checkFreshness();
             });
@@ -182,6 +182,7 @@ function catalogFilters() {
             if (displayedRevision !== snapshot.revision) {
                 this.presets = snapshot.presets.map(({id,label})=>({id,label}));
                 this.fields = snapshot.fields.map(field => ({key:field.key,label:field.label,hidden:false,
+                    headingId:`catalog-filter-heading-${snapshot.groupId}-${encodeURIComponent(field.key)}`,
                     options:field.options.map(option=>({value:option.value,label:option.label,code:option.code,
                         identity:JSON.stringify([snapshot.groupId,field.key,option.value]),selected:false,compatible:false}))}));
                 displayedRevision = snapshot.revision;
@@ -335,7 +336,7 @@ function catalogFilters() {
                     if (!response.ok) throw {status:response.status};
                     const replacement = await response.json();
                     if (!valid()) return false;
-                    if (replacement.schema !== 1) {
+                    if (replacement.schema !== 2) {
                         this.reloadRequired = true;
                         this.freshnessError = labels.format_changed;
                         return false;
@@ -344,7 +345,7 @@ function catalogFilters() {
                     if (revision && BigInt(replacement.revision) < BigInt(revision)) return false;
                     if (replacement.revision !== revision || !engine) {
                         const newEngine = createFilterEngine(replacement, labels);
-                        const choices = engine ? this.state : readDiscovery(location.href);
+                        const choices = engine ? this.state : readDiscovery(location.href,replacement);
                         const normalized = newEngine.normalize(choices);
                         snapshot = replacement;
                         engine = newEngine;

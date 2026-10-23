@@ -43,8 +43,8 @@
                 <h2 class="mb-2 text-lg font-semibold">{{ __('ui.tables.filters') }}</h2>
                 <div class="catalog-filter-grid grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
                     <template x-for="field in fields" :key="field.key">
-                        <section x-show="!field.hidden" :data-filter-key="field.key" :aria-labelledby="'catalog-filter-heading-{{ $group->id }}-' + field.key" class="catalog-filter-section">
-                            <h3 :id="'catalog-filter-heading-{{ $group->id }}-' + field.key" class="catalog-filter-heading" x-text="field.label"></h3>
+                        <section x-show="!field.hidden" :data-filter-key="field.key" :aria-labelledby="field.headingId" class="catalog-filter-section">
+                            <h3 :id="field.headingId" class="catalog-filter-heading" x-text="field.label"></h3>
                             <div class="grid grid-cols-1 gap-1 p-2">
                                 <template x-for="option in field.options" :key="option.identity">
                                     <button type="button" @click="choose('filter', field.key, option.value)" :aria-pressed="option.selected" :data-availability="option.compatible ? 'available' : 'empty'"

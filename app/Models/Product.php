@@ -14,7 +14,7 @@ class Product extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['legacy_id', 'legacy_group_id', 'group_id', 'product_code', 'product_name', 'description', 'properties', 'parts', 'extra_data', 'is_active'];
+    protected $fillable = ['legacy_id', 'legacy_group_id', 'group_id', 'product_code', 'product_name', 'description', 'profile_fields', 'parts', 'is_active'];
 
     /** @var array<string, mixed> */
     protected $attributes = ['is_active' => true];
@@ -22,12 +22,22 @@ class Product extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'group_id' => 'integer', 'properties' => 'array', 'parts' => 'array', 'extra_data' => 'array'];
+        return ['is_active' => 'boolean', 'group_id' => 'integer', 'profile_fields' => 'array', 'parts' => 'array'];
     }
 
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);
+    }
+
+    protected function profileFields(): EloquentAttribute
+    {
+        return EloquentAttribute::make(set: fn (mixed $value): string => json_encode($value, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    protected function parts(): EloquentAttribute
+    {
+        return EloquentAttribute::make(set: fn (mixed $value): string => json_encode($value, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     protected function name(): EloquentAttribute

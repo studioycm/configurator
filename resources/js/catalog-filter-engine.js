@@ -2,11 +2,13 @@ import { interpolate, requireLabels } from './ui-wording.js';
 
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const own = (object, key) => Object.hasOwn(object, key);
+const setOwn = (object, key, value) => Object.defineProperty(object, key, {value, enumerable:true, configurable:true, writable:true});
+const profileKey = key => key !== '' && [...key].length <= 100 && !key.includes('\0');
 const emptyState = () => ({version: 1, filters: {}, subGroupId: null, precedence: []});
 
 export function createFilterEngine(snapshot, labels) {
     requireLabels(labels, ['link_reset', 'preset_controls', 'field_cleared', 'preset_cleared', 'choices_adjusted']);
-    if (snapshot?.schema !== 1) throw new Error('Unsupported catalog snapshot. Reload this page.');
+    if (snapshot?.schema !== 2) throw new Error('Unsupported catalog snapshot. Reload this page.');
     const fields = new Map(snapshot.fields.map(field => [field.key, field]));
     const presets = new Map(snapshot.presets.map(preset => [preset.id, preset]));
     const codes = new Map(snapshot.fields.map(field => [field.key, new Map(field.options.map(option => [option.value, option.code]))]));
@@ -35,7 +37,7 @@ export function createFilterEngine(snapshot, labels) {
             const entries = Object.entries(raw.filters);
             if (entries.length > fields.size) adjusted = true;
             for (const [key, value] of entries.slice(0, fields.size + 1)) {
-                if (typeof value === 'string' && codes.get(key)?.has(value)) state.filters[key] = value;
+                if (typeof value === 'string' && codes.get(key)?.has(value)) setOwn(state.filters,key,value);
                 else adjusted = true;
             }
         }
@@ -88,7 +90,7 @@ export function createFilterEngine(snapshot, labels) {
             const token = `filter:${action.key}`;
             raw.precedence = raw.precedence.filter(item => item !== token);
             if (raw.filters[action.key] === action.value) delete raw.filters[action.key];
-            else { raw.filters[action.key] = action.value; raw.precedence.push(token); }
+            else { setOwn(raw.filters,action.key,action.value); raw.precedence.push(token); }
         } else if (action.type === 'preset' && (action.id === null || presets.has(action.id))) {
             raw.precedence = raw.precedence.filter(token => !token.startsWith('subgroup:'));
             raw.subGroupId = raw.subGroupId === action.id ? null : action.id;
@@ -130,8 +132,12 @@ export function createFilterEngine(snapshot, labels) {
     return {normalize, change, evaluate};
 }
 
-export function readDiscovery(input) {
+export function readDiscovery(input, snapshot) {
     const url = new URL(input);
+    const fields = new Set(snapshot.fields.map(field => field.key));
+    const tokens = new Set([...fields].map(key => `filter:${key}`).concat(snapshot.presets.map(preset => `subgroup:${preset.id}`)));
+    const maximumPrecedence = fields.size + 1;
+    const maximumEntries = fields.size + maximumPrecedence + 2;
     const raw = {filters: {}, precedence: []};
     const seen = new Set();
     const positions = new Map();
@@ -139,15 +145,20 @@ export function readDiscovery(input) {
     let invalidOrder = false;
     for (const [key, value] of url.searchParams) {
         if (key !== 'd' && !key.startsWith('d[')) continue;
-        if (++examined > 100) { raw.adjusted = true; break; }
+        if (++examined > maximumEntries) { raw.adjusted = true; break; }
         if (seen.has(key) && key !== 'd[precedence][]') { raw.adjusted = true; continue; }
         seen.add(key);
         if (key === 'd[version]') raw.version = value;
         else if (key === 'd[subGroupId]') raw.subGroupId = value || null;
-        else if (/^d\[filters\]\[[A-Za-z][A-Za-z0-9_]*\]$/.test(key)) raw.filters[key.slice(11, -1)] = value;
-        else if (/^d\[precedence\]\[(\d{1,2})?\]$/.test(key)) {
+        else if (/^d\[filters\]\[.+\]$/s.test(key) && profileKey(key.slice(11, -1)) && fields.has(key.slice(11, -1))) setOwn(raw.filters,key.slice(11, -1),value);
+        else if (/^d\[precedence\]\[(\d+)?\]$/.test(key)) {
             const index = key.slice(14, -1);
-            positions.set(index === '' ? positions.size : Number(index), value);
+            const position = index === '' ? positions.size : Number(index);
+            if (!Number.isSafeInteger(position) || position >= maximumPrecedence || positions.has(position) || !tokens.has(value)) {
+                raw.adjusted = true;
+                continue;
+            }
+            positions.set(position, value);
         } else raw.adjusted = true;
     }
     raw.precedence = [...positions].sort((a,b)=>a[0]-b[0]).map(([i,value],offset)=> { if (i !== offset) { raw.adjusted = true; invalidOrder = true; } return value; });

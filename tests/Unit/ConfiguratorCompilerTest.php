@@ -62,11 +62,11 @@ test('compiler rejects malformed references typed operands orders defaults and p
     'duplicate code order' => fn (array &$d) => $d['attributes'][0]['code_order'] = 1,
     'duplicate option membership' => fn (array &$d) => $d['attributes'][0]['options'][1]['option_id'] = 1,
     'unknown policies' => fn (array &$d) => $d['policy_overrides'] = ['allow_empty' => true],
-    'unregistered product path' => function (array &$d) {
+    'overlong product field key' => function (array &$d) {
         $c = fixtureCondition('c');
         $c['source_kind'] = 'ProductProperty';
         $c['source_configurator_attribute_id'] = null;
-        $c['property_key'] = '$.secret';
+        $c['property_key'] = str_repeat('x', 101);
         $c['operand'] = 'x';
         $c['option_ids'] = [];
         $d['rules'] = [fixtureAdvanced('r', [$c])];

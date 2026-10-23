@@ -87,8 +87,8 @@ test('retained server discovery uses the same localized notices as the browser e
     $group = Group::factory()->create();
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Cost $&']);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Connection_Type', 'label' => 'Connection']);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '25', 'Connection_Type' => 'Flange']]);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '16', 'Connection_Type' => 'Threaded']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '25', 'Connection_Type' => 'Flange']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '16', 'Connection_Type' => 'Threaded']]);
     $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['25'], 'label' => 'Preset $&']);
     $service = app(CatalogDiscovery::class);
     $initial = $service->prepare($group->id, [], 'filter', ['Working_Pressure', '16']);

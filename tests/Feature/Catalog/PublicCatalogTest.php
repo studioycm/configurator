@@ -93,7 +93,7 @@ test('a leaf fetches all its own products in code order through a separate JSON 
 });
 
 test('public product facts are escaped and unassigned configuration remains honest', function () {
-    $product = Product::factory()->create(['product_name' => 'Visitor name', 'product_code' => '000123', 'description' => '<script>unsafe</script>', 'properties' => ['operating_pressure' => '25 bar']]);
+    $product = Product::factory()->create(['product_name' => 'Visitor name', 'product_code' => '000123', 'description' => '<script>unsafe</script>', 'profile_fields' => ['operating_pressure' => '25 bar']]);
     $this->get(route('catalog.products.show', $product))->assertOk()->assertSeeLivewire(ProductShow::class)->assertSee('Visitor name')->assertSee('000123')->assertSee('25 bar')
         ->assertSee('<script>unsafe</script>')->assertDontSee('<script>unsafe</script>', false)->assertSee(__('configurator.copy.configuration_is_not_available_for_this_product'))->assertDontSee(__('configurator.copy.configuration_code'));
 });
@@ -103,9 +103,43 @@ test('unknown catalog records return not found', function () {
     $this->get('/dashboard/catalog/products/999999')->assertNotFound();
 });
 
+test('product facts follow filter labels and order while every remaining profile field stays in Others', function () {
+    $group = Group::factory()->create();
+    GroupFilter::factory()->for($group)->create(['property_key' => 'second', 'label' => 'Second label', 'sort_order' => 2]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'first', 'label' => 'First label', 'sort_order' => 1]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'third', 'label' => '0', 'sort_order' => 3]);
+    $profile = ['second' => 'SECOND', 'first' => 'FIRST', 'third' => 'THIRD', ...collect(range(1, 105))->mapWithKeys(fn (int $number): array => ['custom '.$number => 'OTHER-'.$number])->all()];
+    $product = Product::factory()->for($group)->create(['profile_fields' => $profile, 'parts' => ['Part1' => 'PART-FIRST', 'Part28' => 'PART-LAST']]);
+    $html = $this->get(route('catalog.products.show', $product))->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($html);
+    $xpath = new DOMXPath($document);
+
+    expect(trim($xpath->evaluate('string(//section[@aria-label="Properties"]//dt[1])')))->toBe('First label');
+    expect(trim($xpath->evaluate('string((//section[@aria-label="Properties"]//dt)[3])')))->toBe('0');
+    $propertyText = $xpath->evaluate('string(//section[@aria-label="Properties"])');
+    expect($propertyText)->toContain('First label', 'Second label', 'FIRST', 'SECOND')->not->toContain('OTHER-');
+    expect(strpos($propertyText, 'FIRST'))->toBeLessThan(strpos($propertyText, 'SECOND'));
+    $otherText = $xpath->evaluate('string(//section[@aria-label="Others"])');
+    expect($otherText)->toContain('OTHER-1', 'OTHER-105')->not->toContain('FIRST', 'SECOND');
+    expect($xpath->query('//section[@aria-label="Others"]//dt')->length)->toBe(105);
+    expect($xpath->query('//section[@aria-label="Parts"]//dt')->length)->toBe(28);
+});
+
+test('products without filters display no fallback Properties and retain their complete Others', function () {
+    $product = Product::factory()->create(['profile_fields' => ['custom field' => 'ONLY-OTHER']]);
+    $html = $this->get(route('catalog.products.show', $product))->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($html);
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//section[@aria-label="Properties"]//dt')->length)->toBe(0);
+    expect($xpath->evaluate('string(//section[@aria-label="Others"])'))->toContain('ONLY-OTHER');
+});
+
 test('product cards preserve literal zero values and omit blank or malformed properties', function () {
     $group = Group::factory()->make(['id' => 2, 'name' => 'Actual leaf']);
-    $product = Product::factory()->make(['id' => 1, 'product_code' => 'ZERO', 'properties' => ['Working_Pressure' => '0', 'Connection_Type' => '', 'Connection_Size' => null, 'Model' => ['invalid']]]);
+    $product = Product::factory()->make(['id' => 1, 'product_code' => 'ZERO', 'profile_fields' => ['Working_Pressure' => '0', 'Connection_Type' => '', 'Connection_Size' => null, 'Model' => ['invalid']]]);
     $fields = [['key' => 'Working_Pressure', 'label' => 'Pressure']];
     $appearance = CatalogPolicy::resultSettings(null);
     $html = view('components.catalog.product-card', compact('product', 'group', 'fields', 'appearance'))->render();
@@ -120,7 +154,7 @@ test('product cards preserve literal zero values and omit blank or malformed pro
 test('group cards lead with code then real hierarchy and escaped property values without labels', function () {
     $root = Group::factory()->create(['name' => 'Main family']);
     $leaf = Group::factory()->for($root, 'parent')->create(['name' => 'Product series', 'result_settings' => ['card_properties' => ['Working_Pressure', 'Connection_Type', 'Model', 'C'], 'card_only_differences' => false]]);
-    Product::factory()->for($leaf)->create(['product_code' => '000123', 'product_name' => 'Former card title', 'properties' => ['C' => '<final dimension>', 'Model' => 'Model 1', 'Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange'], 'parts' => ['Part1' => 'Private part'], 'extra_data' => ['internal' => 'Private extra']]);
+    Product::factory()->for($leaf)->create(['product_code' => '000123', 'product_name' => 'Former card title', 'profile_fields' => ['C' => '<final dimension>', 'Model' => 'Model 1', 'Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange', 'internal' => 'Private extra'], 'parts' => ['Part1' => 'Private part']]);
     $html = publicCatalogCardHtml($leaf);
     $document = new DOMDocument;
     @$document->loadHTML($html);
@@ -137,7 +171,7 @@ test('group cards lead with code then real hierarchy and escaped property values
 
 test('group cards display selected properties and show none when the default has no filters', function () {
     $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model', 'Working_Pressure'], 'card_only_differences' => false]]);
-    $product = Product::factory()->for($group)->create(['product_code' => 'CARD-SETTINGS', 'properties' => ['Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange', 'Model' => '<Model 1>']]);
+    $product = Product::factory()->for($group)->create(['product_code' => 'CARD-SETTINGS', 'profile_fields' => ['Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange', 'Model' => '<Model 1>']]);
     $html = publicCatalogCardHtml($group);
     expect($html)->toContain('&lt;Model 1&gt;', '25 bar')->not->toContain('<Model 1>', 'Flange');
     expect(strpos($html, '&lt;Model 1&gt;'))->toBeLessThan(strpos($html, '25 bar'));
@@ -152,7 +186,7 @@ test('default card properties follow group filters and their order', function (a
     $group = Group::factory()->create(['result_settings' => [...$settings, 'card_only_differences' => false]]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'sort_order' => 2]);
     $first = GroupFilter::factory()->for($group)->create(['property_key' => 'Connection_Type', 'sort_order' => 1]);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange', 'Model' => 'Card-only model']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '25 bar', 'Connection_Type' => 'Flange', 'Model' => 'Card-only model']]);
     $html = publicCatalogCardHtml($group);
     expect($html)->toContain('Flange', '25 bar')->not->toContain('Card-only model');
     expect(strpos($html, 'Flange'))->toBeLessThan(strpos($html, '25 bar'));
@@ -168,7 +202,7 @@ test('default card properties follow group filters and their order', function (a
 test('presets are embedded once and card requests accept only an owned preset', function () {
     $group = Group::factory()->create();
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Pressure']);
-    Product::factory()->count(2)->for($group)->sequence(['properties' => ['Working_Pressure' => '10']], ['properties' => ['Working_Pressure' => '16']])->create();
+    Product::factory()->count(2)->for($group)->sequence(['profile_fields' => ['Working_Pressure' => '10']], ['profile_fields' => ['Working_Pressure' => '16']])->create();
     $low = SubGroup::factory()->for($group)->create(['label' => 'Low pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10']]);
     $high = SubGroup::factory()->for($group)->create(['label' => 'High pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['16']]);
     $page = Livewire::test(GroupShow::class, ['group' => $group])->assertSee(__('ui.tables.filters'))->assertSee(__('catalog.frontend.copy.sub_groups'))->assertSee(trans_choice('catalog.frontend.copy.profile_count_label', 2))->assertSee(__('catalog.frontend.copy.reset'))->assertDontSee('Clear subgroup')->assertDontSee(__('admin.workspace.labels.clear_filters'))->assertSet('groupId', (string) $group->id);
@@ -181,8 +215,8 @@ test('presets are embedded once and card requests accept only an owned preset', 
 test('a result threshold fetches every match at the boundary and no cards above it', function () {
     $group = Group::factory()->create(['result_settings' => ['max_results' => 2, 'default_page_size' => 1]]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure']);
-    Product::factory()->count(2)->for($group)->sequence(['product_code' => 'MATCH-01'], ['product_code' => 'MATCH-02'])->create(['properties' => ['Working_Pressure' => '25']]);
-    Product::factory()->for($group)->create(['product_code' => 'OTHER-03', 'properties' => ['Working_Pressure' => '16']]);
+    Product::factory()->count(2)->for($group)->sequence(['product_code' => 'MATCH-01'], ['product_code' => 'MATCH-02'])->create(['profile_fields' => ['Working_Pressure' => '25']]);
+    Product::factory()->for($group)->create(['product_code' => 'OTHER-03', 'profile_fields' => ['Working_Pressure' => '16']]);
     expect(publicCatalogCards($group))->toMatchArray(['status' => 'above_threshold', 'total' => 3, 'htmlChunks' => []]);
     $response = publicCatalogCards($group, ['Working_Pressure' => '25']);
     expect($response['status'])->toBe('ready')->and($response['total'])->toBe(2)->and(implode('', $response['htmlChunks']))->toContain('MATCH-01', 'MATCH-02')->not->toContain('OTHER-03');
@@ -211,8 +245,8 @@ test('a difference in product twenty five is shown in every earlier chunk with s
     $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model', 'Working_Pressure'], 'card_show_labels' => true]]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Pressure']);
     Product::factory()->count(24)->for($group)->sequence(fn ($sequence): array => ['product_code' => sprintf('DIFF-%02d', $sequence->index)])
-        ->create(['properties' => ['Model' => 'Same', 'Working_Pressure' => '0']]);
-    Product::factory()->for($group)->create(['product_code' => 'DIFF-24', 'properties' => ['Model' => null, 'Working_Pressure' => '0']]);
+        ->create(['profile_fields' => ['Model' => 'Same', 'Working_Pressure' => '0']]);
+    Product::factory()->for($group)->create(['product_code' => 'DIFF-24', 'profile_fields' => ['Model' => null, 'Working_Pressure' => '0']]);
 
     $response = publicCatalogCards($group);
     expect($response['htmlChunks'])->toHaveCount(2);
@@ -229,7 +263,7 @@ test('a card exposes one escaped native link with configured labels and appearan
         'card_property_columns' => 1, 'card_padding_block' => 0, 'card_padding_inline' => 20,
     ]]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Pressure <img onerror=bad>']);
-    $product = Product::factory()->for($group)->create(['product_code' => 'LINK-01', 'properties' => ['Working_Pressure' => '01', 'Model' => '<script>alert(1)</script>']]);
+    $product = Product::factory()->for($group)->create(['product_code' => 'LINK-01', 'profile_fields' => ['Working_Pressure' => '01', 'Model' => '<script>alert(1)</script>']]);
     $html = publicCatalogCardHtml($group);
     $document = new DOMDocument;
     @$document->loadHTML($html);
@@ -248,9 +282,9 @@ test('a card exposes one escaped native link with configured labels and appearan
 test('ordinary and preset matches determine the displayed differences using exact result identities', function () {
     $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model', 'Working_Pressure']]]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure']);
-    $first = Product::factory()->for($group)->create(['product_code' => 'PAIR-A', 'properties' => ['Model' => 'A', 'Working_Pressure' => '10']]);
-    $second = Product::factory()->for($group)->create(['product_code' => 'PAIR-B', 'properties' => ['Model' => 'B', 'Working_Pressure' => '10']]);
-    Product::factory()->for($group)->create(['product_code' => 'OTHER', 'properties' => ['Model' => 'C', 'Working_Pressure' => '16']]);
+    $first = Product::factory()->for($group)->create(['product_code' => 'PAIR-A', 'profile_fields' => ['Model' => 'A', 'Working_Pressure' => '10']]);
+    $second = Product::factory()->for($group)->create(['product_code' => 'PAIR-B', 'profile_fields' => ['Model' => 'B', 'Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['product_code' => 'OTHER', 'profile_fields' => ['Model' => 'C', 'Working_Pressure' => '16']]);
     $preset = SubGroup::factory()->for($group)->create(['property_key' => 'Model', 'allowed_values' => ['A', 'B']]);
 
     $response = publicCatalogCards($group, ['Working_Pressure' => '10'], (string) $preset->id);

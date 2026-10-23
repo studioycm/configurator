@@ -17,7 +17,7 @@ test('mysql snapshot projection preserves strings without reading unrelated prop
     $group = Group::factory()->create();
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'value_order' => []]);
     foreach (['0', 0, false, null, '', '01', 'Aa', 'aa', 'é', 'e', 'A ', ['Aa']] as $value) {
-        Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => $value, 'Model' => 'Unrelated']]);
+        Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => $value, 'Model' => 'Unrelated']]);
     }
     DB::flushQueryLog();
     DB::enableQueryLog();
@@ -43,7 +43,7 @@ test('repeatable read keeps revisions and product data coherent across concurren
         expect(DB::selectOne('SELECT @@transaction_isolation AS level')->level)->toBe('REPEATABLE-READ');
         $group = Group::factory()->create();
         GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'value_order' => []]);
-        $product = Product::factory()->for($group)->create(['product_code' => 'BEFORE', 'properties' => ['Working_Pressure' => '25']]);
+        $product = Product::factory()->for($group)->create(['product_code' => 'BEFORE', 'profile_fields' => ['Working_Pressure' => '25']]);
         $phase = 'snapshot';
         DB::listen(function (QueryExecuted $query) use (&$phase, $writer, $group, $product): void {
             if ($query->connectionName !== 'mysql' || $phase === null || ! str_contains($query->sql, 'from `groups`')
@@ -53,7 +53,7 @@ test('repeatable read keeps revisions and product data coherent across concurren
             $currentPhase = $phase;
             $phase = null;
             $writer->transaction(function () use ($writer, $group, $product, $currentPhase): void {
-                $writer->table('products')->where('id', $product->id)->update(['product_code' => $currentPhase === 'snapshot' ? 'MIDDLE' : 'AFTER', 'properties' => json_encode(['Working_Pressure' => $currentPhase === 'snapshot' ? '16' : '10'])]);
+                $writer->table('products')->where('id', $product->id)->update(['product_code' => $currentPhase === 'snapshot' ? 'MIDDLE' : 'AFTER', 'profile_fields' => json_encode(['Working_Pressure' => $currentPhase === 'snapshot' ? '16' : '10'])]);
                 $writer->table('groups')->where('id', $group->id)->increment('catalog_revision');
             });
         });
@@ -77,3 +77,17 @@ test('repeatable read keeps revisions and product data coherent across concurren
         DB::beginTransaction();
     }
 });
+
+test('mysql snapshots project dynamic literal profile keys and omit invalid typed cells', function (string $key) {
+    $group = Group::factory()->create();
+    GroupFilter::factory()->for($group)->create(['property_key' => $key, 'value_order' => []]);
+    foreach (['0', 'Case', 'case', '', null, 0, false, ['nested']] as $value) {
+        Product::factory()->for($group)->create(['profile_fields' => [$key => $value, 'a' => ['b' => 'nested']]]);
+    }
+    Product::factory()->for($group)->create(['profile_fields' => []]);
+
+    $snapshot = app(BuildCatalogSnapshot::class)->build($group->id)->data;
+
+    expect(array_column($snapshot['fields'][0]['options'], 'value'))->toBe(['0', 'Case', 'case'])
+        ->and($snapshot['rows'])->toHaveCount(9)->and($snapshot['diagnostics'])->toBe([['key' => $key, 'count' => 3]]);
+})->with(['custom field', 'a.b', 'quote"key', "single'key", 'slash\\key', '0']);

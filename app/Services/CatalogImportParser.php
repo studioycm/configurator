@@ -15,19 +15,19 @@ class CatalogImportParser
         ['header' => 'group_name', 'bucket' => 'group', 'key' => 'group_name'],
         ['header' => 'product_code', 'bucket' => 'core', 'key' => 'product_code'],
         ['header' => 'Description', 'bucket' => 'core', 'key' => 'description'],
-        ['header' => 'product_pic', 'bucket' => 'extra_data', 'key' => 'product_pic'],
-        ['header' => 'sub_group', 'bucket' => 'extra_data', 'key' => 'sub_group'],
-        ['header' => 'Working_Pressure', 'bucket' => 'properties', 'key' => 'Working_Pressure'],
-        ['header' => 'Valve_Type', 'bucket' => 'properties', 'key' => 'Valve_Type'],
-        ['header' => 'Connection_Type', 'bucket' => 'properties', 'key' => 'Connection_Type'],
-        ['header' => 'Connection_Size', 'bucket' => 'properties', 'key' => 'Connection_Size'],
-        ['header' => 'Automatic_Type', 'bucket' => 'properties', 'key' => 'Automatic_Type'],
-        ['header' => 'Automatic_Config', 'bucket' => 'properties', 'key' => 'Automatic_Config'],
-        ['header' => 'Discharge_Outlet_Type', 'bucket' => 'properties', 'key' => 'Discharge_Outlet_Type'],
-        ['header' => 'Addition_to_Product_Code', 'bucket' => 'extra_data', 'key' => 'Addition_to_Product_Code'],
-        ['header' => 'Strainer', 'bucket' => 'extra_data', 'key' => 'Strainer'],
-        ['header' => 'Model', 'bucket' => 'properties', 'key' => 'Model'],
-        ['header' => 'Max_W_Temp', 'bucket' => 'properties', 'key' => 'Max_W_Temp'],
+        ['header' => 'product_pic', 'bucket' => 'profile_fields', 'key' => 'product_pic'],
+        ['header' => 'sub_group', 'bucket' => 'profile_fields', 'key' => 'sub_group'],
+        ['header' => 'Working_Pressure', 'bucket' => 'profile_fields', 'key' => 'Working_Pressure'],
+        ['header' => 'Valve_Type', 'bucket' => 'profile_fields', 'key' => 'Valve_Type'],
+        ['header' => 'Connection_Type', 'bucket' => 'profile_fields', 'key' => 'Connection_Type'],
+        ['header' => 'Connection_Size', 'bucket' => 'profile_fields', 'key' => 'Connection_Size'],
+        ['header' => 'Automatic_Type', 'bucket' => 'profile_fields', 'key' => 'Automatic_Type'],
+        ['header' => 'Automatic_Config', 'bucket' => 'profile_fields', 'key' => 'Automatic_Config'],
+        ['header' => 'Discharge_Outlet_Type', 'bucket' => 'profile_fields', 'key' => 'Discharge_Outlet_Type'],
+        ['header' => 'Addition_to_Product_Code', 'bucket' => 'profile_fields', 'key' => 'Addition_to_Product_Code'],
+        ['header' => 'Strainer', 'bucket' => 'profile_fields', 'key' => 'Strainer'],
+        ['header' => 'Model', 'bucket' => 'profile_fields', 'key' => 'Model'],
+        ['header' => 'Max_W_Temp', 'bucket' => 'profile_fields', 'key' => 'Max_W_Temp'],
         ['header' => 'Part1', 'bucket' => 'parts', 'key' => 'Part1'],
         ['header' => 'Part2', 'bucket' => 'parts', 'key' => 'Part2'],
         ['header' => 'Part3', 'bucket' => 'parts', 'key' => 'Part3'],
@@ -47,27 +47,27 @@ class CatalogImportParser
         ['header' => 'Part17', 'bucket' => 'parts', 'key' => 'Part17'],
         ['header' => 'Part18', 'bucket' => 'parts', 'key' => 'Part18'],
         ['header' => 'Part19', 'bucket' => 'parts', 'key' => 'Part19'],
-        ['header' => 'A', 'bucket' => 'properties', 'key' => 'A'],
-        ['header' => 'B', 'bucket' => 'properties', 'key' => 'B'],
-        ['header' => 'OA', 'bucket' => 'properties', 'key' => 'OA'],
-        ['header' => 'WT', 'bucket' => 'properties', 'key' => 'WT'],
-        ['header' => 'AV', 'bucket' => 'properties', 'key' => 'AV'],
+        ['header' => 'A', 'bucket' => 'profile_fields', 'key' => 'A'],
+        ['header' => 'B', 'bucket' => 'profile_fields', 'key' => 'B'],
+        ['header' => 'OA', 'bucket' => 'profile_fields', 'key' => 'OA'],
+        ['header' => 'WT', 'bucket' => 'profile_fields', 'key' => 'WT'],
+        ['header' => 'AV', 'bucket' => 'profile_fields', 'key' => 'AV'],
         ['header' => 'Product_Name', 'bucket' => 'core', 'key' => 'product_name'],
-        ['header' => 'Indc', 'bucket' => 'extra_data', 'key' => 'Indc'],
-        ['header' => 'Auto_Flow_Type', 'bucket' => 'properties', 'key' => 'Auto_Flow_Type'],
-        ['header' => 'E', 'bucket' => 'properties', 'key' => 'E'],
-        ['header' => 'D_out', 'bucket' => 'properties', 'key' => 'D_out'],
-        ['header' => '', 'bucket' => 'extra_data', 'key' => '_unnamed_column_48'],
-        ['header' => 'MyIndc', 'bucket' => 'extra_data', 'key' => 'MyIndc'],
-        ['header' => 'blank1', 'bucket' => 'extra_data', 'key' => 'blank1'],
-        ['header' => 'blank2', 'bucket' => 'extra_data', 'key' => 'blank2'],
-        ['header' => 'blank3', 'bucket' => 'extra_data', 'key' => 'blank3'],
-        ['header' => 'Connection_Type_Layout', 'bucket' => 'extra_data', 'key' => 'Connection_Type_Layout'],
+        ['header' => 'Indc', 'bucket' => 'profile_fields', 'key' => 'Indc'],
+        ['header' => 'Auto_Flow_Type', 'bucket' => 'profile_fields', 'key' => 'Auto_Flow_Type'],
+        ['header' => 'E', 'bucket' => 'profile_fields', 'key' => 'E'],
+        ['header' => 'D_out', 'bucket' => 'profile_fields', 'key' => 'D_out'],
+        ['header' => '', 'bucket' => 'profile_fields', 'key' => '_unnamed_column_48'],
+        ['header' => 'MyIndc', 'bucket' => 'profile_fields', 'key' => 'MyIndc'],
+        ['header' => 'blank1', 'bucket' => 'profile_fields', 'key' => 'blank1'],
+        ['header' => 'blank2', 'bucket' => 'profile_fields', 'key' => 'blank2'],
+        ['header' => 'blank3', 'bucket' => 'profile_fields', 'key' => 'blank3'],
+        ['header' => 'Connection_Type_Layout', 'bucket' => 'profile_fields', 'key' => 'Connection_Type_Layout'],
         ['header' => 'Part20', 'bucket' => 'parts', 'key' => 'Part20'],
-        ['header' => 'product_supplier', 'bucket' => 'extra_data', 'key' => 'product_supplier'],
-        ['header' => 'product_standard', 'bucket' => 'extra_data', 'key' => 'product_standard'],
-        ['header' => 'standard_compliancy', 'bucket' => 'extra_data', 'key' => 'standard_compliancy'],
-        ['header' => 'C', 'bucket' => 'properties', 'key' => 'C'],
+        ['header' => 'product_supplier', 'bucket' => 'profile_fields', 'key' => 'product_supplier'],
+        ['header' => 'product_standard', 'bucket' => 'profile_fields', 'key' => 'product_standard'],
+        ['header' => 'standard_compliancy', 'bucket' => 'profile_fields', 'key' => 'standard_compliancy'],
+        ['header' => 'C', 'bucket' => 'profile_fields', 'key' => 'C'],
         ['header' => 'Part21', 'bucket' => 'parts', 'key' => 'Part21'],
         ['header' => 'Part22', 'bucket' => 'parts', 'key' => 'Part22'],
         ['header' => 'Part23', 'bucket' => 'parts', 'key' => 'Part23'],
@@ -76,13 +76,13 @@ class CatalogImportParser
         ['header' => 'Part26', 'bucket' => 'parts', 'key' => 'Part26'],
         ['header' => 'Part27', 'bucket' => 'parts', 'key' => 'Part27'],
         ['header' => 'Part28', 'bucket' => 'parts', 'key' => 'Part28'],
-        ['header' => 'with_s50c', 'bucket' => 'extra_data', 'key' => 'with_s50c'],
+        ['header' => 'with_s50c', 'bucket' => 'profile_fields', 'key' => 'with_s50c'],
     ];
 
     /** @return list<string> */
-    public static function propertyKeys(): array
+    public static function profileKeys(): array
     {
-        return array_column(array_filter(self::COLUMNS, fn (array $column): bool => $column['bucket'] === 'properties'), 'key');
+        return array_column(array_filter(self::COLUMNS, fn (array $column): bool => $column['bucket'] === 'profile_fields'), 'key');
     }
 
     public static function mapHash(): string
@@ -133,7 +133,7 @@ class CatalogImportParser
                 $identities['id:'.$values[0]] = true;
                 $codes['code:'.$values[3]] = true;
                 $groups[$values[1]] = $values[2];
-                $data = ['properties' => [], 'parts' => [], 'extra_data' => []];
+                $data = ['profile_fields' => [], 'parts' => []];
                 foreach (self::COLUMNS as $position => $column) {
                     if ($column['bucket'] === 'core') {
                         $data[$column['key']] = $values[$position];

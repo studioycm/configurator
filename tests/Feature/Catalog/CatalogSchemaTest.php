@@ -16,8 +16,7 @@ test('products keep source identities separate from internal relationships and s
     $product = Product::factory()->for($group)->create([
         'legacy_id' => '00017', 'legacy_group_id' => '2144',
         'product_code' => '0017-Aa', 'product_name' => 'Air valve',
-        'properties' => ['pressure' => '0'], 'parts' => ['Part1' => '<metal>'],
-        'extra_data' => ['unknown' => ''],
+        'profile_fields' => ['pressure' => '0', 'unknown' => ''], 'parts' => ['Part1' => '<metal>'],
     ]);
 
     $stored = Product::query()->where('product_code', '0017-Aa')->orderBy('product_code')->firstOrFail();
@@ -25,9 +24,10 @@ test('products keep source identities separate from internal relationships and s
     expect($stored->group->is($group))->toBeTrue();
     expect($stored->name)->toBe('0017-Aa');
     expect($stored->legacy_id)->toBe('00017');
-    expect($stored->properties)->toBe(['pressure' => '0']);
+    expect($stored->profile_fields)->toBe(['pressure' => '0', 'unknown' => '']);
     expect($stored->parts)->toBe(['Part1' => '<metal>']);
-    expect($stored->extra_data)->toBe(['unknown' => '']);
+    expect(Schema::hasColumn('products', 'properties'))->toBeFalse();
+    expect(Schema::hasColumn('products', 'extra_data'))->toBeFalse();
     expect(Schema::hasColumn('products', 'name'))->toBeFalse();
 });
 

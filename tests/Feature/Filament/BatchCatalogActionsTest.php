@@ -162,7 +162,7 @@ test('Group description batches also support branches and preserve saved filter 
     $branch = Group::factory()->create(['description' => 'Branch before']);
     Group::factory()->create(['parent_id' => $branch->id]);
     $leaf = Group::factory()->create(['description' => 'Leaf before']);
-    Product::factory()->for($leaf)->create(['properties' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($leaf)->create(['profile_fields' => ['Working_Pressure' => '10']]);
     $filter = GroupFilter::factory()->for($leaf)->create(['property_key' => 'Working_Pressure', 'value_order' => ['10'], 'value_labels' => ['10' => 'Ten']]);
     $preset = SubGroup::factory()->for($leaf)->create(['property_key' => 'Working_Pressure', 'allowed_values' => ['10']]);
     $before = [$filter->fresh()->getAttributes(), $preset->fresh()->getAttributes(), $leaf->fresh()->result_settings];
@@ -176,8 +176,8 @@ test('Group description batches also support branches and preserve saved filter 
 
 test('presentation batches keep unselected saved vocabulary choices instead of expanding them', function () {
     $group = Group::factory()->create();
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '10']]);
-    Product::factory()->for($group)->create(['properties' => ['Working_Pressure' => '20']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '20']]);
     $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'value_order' => ['10'], 'value_labels' => ['10' => 'Ten']]);
     $before = $filter->fresh()->getAttributes();
     $intent = ['operation' => 'edit', 'changes' => [['field' => 'card_show_labels', 'mode' => 'set', 'value' => true]]];

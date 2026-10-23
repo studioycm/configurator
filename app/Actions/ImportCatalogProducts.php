@@ -83,8 +83,8 @@ class ImportCatalogProducts
                 throw ValidationException::withMessages(['source' => __('catalog.products.validation.existing_product_relationship_conflicts_with_its_recorded', ['value1' => $row['row']])]);
             }
             $product = $product === null ? new Product : clone $product;
-            foreach (['properties', 'parts', 'extra_data'] as $bucket) {
-                $data[$bucket] = array_replace($product->{$bucket} ?? [], $data[$bucket]);
+            foreach (['profile_fields', 'parts'] as $bucket) {
+                $data[$bucket] = (object) array_replace($this->preservedBucket($product, $bucket), $data[$bucket]);
             }
             $product->fill($data);
             $planned[] = ['row' => $row['row'], 'product' => $product, 'group_key' => $sourceNodes[$data['legacy_group_id']]];
@@ -137,6 +137,22 @@ class ImportCatalogProducts
         $totals['absent'] = $products->filter(fn (Product $product): bool => in_array($product->legacy_group_id, $groupIds, true) && ! in_array($product->legacy_id, $identities, true))->count();
 
         return ['mode' => $apply ? 'applied' : 'dry-run', 'format' => $batch['format'], 'source_hash' => $batch['source_hash'], 'map_hash' => $batch['map_hash'], 'parents_hash' => $batch['parents_hash'], 'parents' => $parents, 'totals' => $totals, 'rows' => $details, 'details_truncated' => count($planned) > 1000];
+    }
+
+    /** @return array<int|string, mixed> */
+    private function preservedBucket(Product $product, string $bucket): array
+    {
+        $json = $product->getRawOriginal($bucket) ?? '{}';
+        $values = json_decode($json, flags: JSON_THROW_ON_ERROR);
+        $encoded = json_encode($values, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
+        $pattern = '~"(?:[^"\\\\]|\\\\.)*"(*SKIP)(*F)|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?~s';
+        if (preg_match_all($pattern, $json, $originalNumbers) === false
+            || preg_match_all($pattern, $encoded, $encodedNumbers) === false
+            || $originalNumbers[0] !== $encodedNumbers[0]) {
+            throw ValidationException::withMessages(['source' => __('catalog.products.validation.numeric_json_reimport_cannot_be_preserved', ['product' => $product->id])]);
+        }
+
+        return (array) $values;
     }
 
     /**

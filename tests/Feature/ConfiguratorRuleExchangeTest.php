@@ -109,18 +109,20 @@ test('helpers describe only the referenced Values and Lookups resolve local cont
 
 test('rules in the same job reuse one consistent Configurator aggregate snapshot', function () {
     $rule = ConfiguratorRule::factory()->create();
-    RuleCondition::factory()->for($rule, 'rule')->create();
+    RuleCondition::factory()->for($rule, 'rule')->create(['property_key' => 'Saved.Missing']);
     $second = ConfiguratorRule::factory()->create(['configurator_id' => $rule->configurator_id, 'priority' => 1]);
-    RuleCondition::factory()->for($second, 'rule')->create();
+    $conditionGroup = RuleConditionGroup::factory()->for($second, 'rule')->create();
+    RuleCondition::factory()->for($second, 'rule')->create(['condition_group_id' => $conditionGroup->id, 'property_key' => 'Grouped.Missing']);
     $exchange = app(ConfiguratorRuleExchange::class);
     DB::enableQueryLog();
 
-    $exchange->snapshot($rule);
+    $snapshot = $exchange->snapshot($rule);
     $exchange->snapshot($second);
 
     $definitionReads = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from "configurator_rules"'));
     DB::disableQueryLog();
     expect($definitionReads)->toHaveCount(1);
+    expect(array_column($snapshot['lookups'], 'field'))->toContain('Saved.Missing', 'Grouped.Missing');
 });
 
 test('a missing semantic identity fails the whole snapshot instead of emitting ambiguous Lookups', function () {

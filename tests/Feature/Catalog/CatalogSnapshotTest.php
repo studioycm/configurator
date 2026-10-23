@@ -27,7 +27,7 @@ test('snapshot preserves exact strings and incomplete rows using one product rea
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'value_order' => ['01', '0'], 'value_labels' => ['0' => 'Zero']]);
     SubGroup::factory()->for($group)->create(['property_key' => 'Model', 'allowed_values' => ['Only preset']]);
     foreach (['0', '01', 'Case', 'case', '"quoted"', 'עברית', '', null, 12, false, ['bad']] as $value) {
-        Product::factory()->for($group)->create(['description' => 'Not in dataset', 'parts' => ['Part1' => 'Secret'], 'properties' => ['Working_Pressure' => $value, 'Model' => 'Only preset', 'C' => 'Unrelated']]);
+        Product::factory()->for($group)->create(['description' => 'Not in dataset', 'parts' => ['Part1' => 'Secret'], 'profile_fields' => ['Working_Pressure' => $value, 'Model' => 'Only preset', 'C' => 'Unrelated']]);
     }
     DB::enableQueryLog();
     $snapshot = app(BuildCatalogSnapshot::class)->build($group->id)->data;
@@ -40,6 +40,22 @@ test('snapshot preserves exact strings and incomplete rows using one product rea
         ->and($snapshot['diagnostics'])->toHaveCount(1)->and($snapshot['diagnostics'][0]['count'])->toBe(3)
         ->and(json_encode($snapshot))->not->toContain('Secret', 'Not in dataset', 'Unrelated', 'force_hide');
 });
+
+test('snapshot projects literal dynamic keys and card responses keep unrelated profile fields private', function (string $key) {
+    $group = Group::factory()->create(['result_settings' => ['card_properties' => [$key], 'card_only_differences' => false]]);
+    GroupFilter::factory()->for($group)->create(['property_key' => $key, 'value_order' => []]);
+    foreach (['0', '', null, 0, false, ['nested']] as $value) {
+        Product::factory()->for($group)->create(['profile_fields' => [$key => $value, 'unpublished' => 'Private profile field']]);
+    }
+    $snapshot = app(CatalogSnapshots::class)->get($group->id);
+
+    expect(array_column($snapshot->data['fields'][0]['options'], 'value'))->toBe(['0'])
+        ->and($snapshot->data['diagnostics'])->toBe([['key' => $key, 'count' => 3]])
+        ->and(json_encode($snapshot->data))->not->toContain('Private profile field', 'unpublished');
+    $response = app(CatalogCards::class)->get($group->id, ['version' => 1, 'filters' => [$key => '0'], 'precedence' => ['filter:'.$key], 'subGroupId' => null], $snapshot->revision(), 'dynamic-key');
+    expect($response['total'])->toBe(1)->and($response['status'])->toBe('ready')
+        ->and(implode('', $response['htmlChunks']))->toContain('>0<')->not->toContain('Private profile field', 'unpublished');
+})->with(['custom field', 'a.b', 'quote"key', "single'key", 'slash\\key', '0']);
 
 test('cache stores plain arrays in one replaceable key and replaces stale revisions', function () {
     $group = Group::factory()->create();
@@ -97,7 +113,7 @@ test('warm cards use one product query no SQL counts and preserve exact matching
     }
     $products = [];
     foreach ([['25', 'Flange', '2'], ['16', 'Flange', '1'], ['25', 'Threaded', '1']] as $i => $values) {
-        $products[] = Product::factory()->for($group)->create(['product_code' => 'FIXTURE-'.$i, 'properties' => array_combine(['Working_Pressure', 'Connection_Type', 'Connection_Size'], $values)]);
+        $products[] = Product::factory()->for($group)->create(['product_code' => 'FIXTURE-'.$i, 'profile_fields' => array_combine(['Working_Pressure', 'Connection_Type', 'Connection_Size'], $values)]);
     }
     $snapshot = app(CatalogSnapshots::class)->get($group->id);
     $criteria = ['version' => 1, 'filters' => ['Working_Pressure' => '25', 'Connection_Type' => 'Flange', 'Connection_Size' => '1'], 'precedence' => ['filter:Working_Pressure', 'filter:Connection_Type', 'filter:Connection_Size'], 'subGroupId' => null];
@@ -203,9 +219,9 @@ test('an expired rebuild lease cannot start another build after a concurrent rev
 
 test('card comparison preserves canonical strings and one shared field order', function () {
     $products = collect([
-        Product::factory()->make(['properties' => ['Model' => '01', 'Working_Pressure' => '0', 'Connection_Type' => 'Case', 'C' => '']]),
-        Product::factory()->make(['properties' => ['Model' => '1', 'Working_Pressure' => '0', 'Connection_Type' => 'case', 'C' => false]]),
-        Product::factory()->make(['properties' => ['Model' => null, 'Working_Pressure' => '0', 'Connection_Type' => 'עברית "quoted"', 'C' => ['invalid']]]),
+        Product::factory()->make(['profile_fields' => ['Model' => '01', 'Working_Pressure' => '0', 'Connection_Type' => 'Case', 'C' => '']]),
+        Product::factory()->make(['profile_fields' => ['Model' => '1', 'Working_Pressure' => '0', 'Connection_Type' => 'case', 'C' => false]]),
+        Product::factory()->make(['profile_fields' => ['Model' => null, 'Working_Pressure' => '0', 'Connection_Type' => 'עברית "quoted"', 'C' => ['invalid']]]),
     ]);
     $display = app(CatalogCardDisplay::class)->compare($products, ['Model', 'Working_Pressure', 'Connection_Type', 'C'], ['Model' => 'Model label'], true);
 
@@ -218,7 +234,7 @@ test('card comparison preserves canonical strings and one shared field order', f
 });
 
 test('card comparison explains single shared or unpopulated facts once', function (array $rows, bool $onlyDifferences, ?string $reason) {
-    $products = collect($rows)->map(fn (array $properties) => Product::factory()->make(['properties' => $properties]));
+    $products = collect($rows)->map(fn (array $properties) => Product::factory()->make(['profile_fields' => $properties]));
     $display = app(CatalogCardDisplay::class)->compare($products, ['Model'], [], $onlyDifferences);
 
     expect($display)->toBe(['fields' => [], 'noticeReason' => $reason]);
@@ -232,11 +248,11 @@ test('card comparison explains single shared or unpopulated facts once', functio
 
 test('new snapshots contain appearance metadata but no card-only row values', function () {
     $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model'], 'card_show_labels' => true, 'card_property_columns' => 1]]);
-    Product::factory()->for($group)->create(['properties' => ['Model' => 'Keep outside dataset']]);
+    Product::factory()->for($group)->create(['profile_fields' => ['Model' => 'Keep outside dataset']]);
 
     $snapshot = app(BuildCatalogSnapshot::class)->build($group->id)->data;
 
-    expect($snapshot['schema'])->toBe(1)->and($snapshot['settings'])->toMatchArray([
+    expect($snapshot['schema'])->toBe(CatalogSnapshot::SCHEMA)->and($snapshot['settings'])->toMatchArray([
         'card_show_labels' => true, 'card_property_columns' => 1, 'card_only_differences' => true,
     ]);
     expect(json_encode($snapshot))->not->toContain('Keep outside dataset');
@@ -244,7 +260,7 @@ test('new snapshots contain appearance metadata but no card-only row values', fu
 
 test('old cached appearance metadata receives safe defaults without a snapshot rebuild', function () {
     $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model']]]);
-    Product::factory()->for($group)->create(['product_code' => 'OLD-CACHE', 'properties' => ['Model' => 'One']]);
+    Product::factory()->for($group)->create(['product_code' => 'OLD-CACHE', 'profile_fields' => ['Model' => 'One']]);
     $snapshots = app(CatalogSnapshots::class);
     $cached = $snapshots->get($group->id)->data;
     $cached['settings'] = ['card_properties' => ['Model'], 'cards_per_row' => 4, 'max_results' => 'all', 'products_debounce_ms' => 0];

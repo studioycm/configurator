@@ -10,8 +10,8 @@ use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\RuleEffectKind;
 use App\RuleTargetScope;
-use App\Services\CatalogImportParser;
 use App\Services\ConfiguratorDefinitionCompiler;
+use App\Services\ProductFields;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Hidden;
@@ -42,7 +42,8 @@ class ConfiguratorRuleForm
             }
         }
         $context = app(ConfiguratorDefinitionCompiler::class)->resolveContext($owner->context_schema ?? [], $owner->hidden_context_options ?? [], CatalogContextSettings::current()->choices);
-        $predicate = fn (): array => self::predicate($attributes, $options, $context);
+        $properties = ProductFields::options(configuratorId: $owner->id);
+        $predicate = fn (): array => self::predicate($attributes, $options, $context, $properties);
         $schema = [
             View::make('filament.forms.validation-summary'),
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
@@ -91,7 +92,7 @@ class ConfiguratorRuleForm
     }
 
     /** @param array<int, string> $attributes @param array<int, array<int, string>> $options @param array<string, mixed> $context @return array<\Filament\Schemas\Components\Component> */
-    private static function predicate(array $attributes, array $options, array $context): array
+    private static function predicate(array $attributes, array $options, array $context, array $properties): array
     {
         $selection = fn (Get $get): bool => in_array($get('source_kind'), ['SelectionOption', 'SelectionCode'], true);
         $list = fn (Get $get): bool => in_array($get('operator'), ['In', 'NotIn'], true);
@@ -111,7 +112,7 @@ class ConfiguratorRuleForm
             Select::make('operator')->label(__('configurator.fields.operator'))->options(fn (Get $get): array => collect(ConditionOperator::cases())->filter(fn (ConditionOperator $operator): bool => $operator !== ConditionOperator::Contains || $get('source_kind') === 'ProductProperty')->mapWithKeys(fn (ConditionOperator $operator): array => [$operator->value => $operator->getLabel()])->all())->required()->default('Equals')->live(),
             Select::make('source_configurator_attribute_id')->label(__('configurator.rules.fields.source_attribute'))->options($attributes)->searchable()->live()->default(null)
                 ->visible(fn (Get $get): bool => $selection($get) || filled($get('source_configurator_attribute_id')))->dehydratedWhenHidden(),
-            Select::make('property_key')->label(__('catalog.fields.product_property'))->options(array_combine(CatalogImportParser::propertyKeys(), CatalogImportParser::propertyKeys()))->searchable()->default(null)
+            Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->searchable()->default(null)
                 ->visible(fn (Get $get): bool => $get('source_kind') === 'ProductProperty' || filled($get('property_key')))->dehydratedWhenHidden(),
             Hidden::make('context_dimension')->default(null),
             Select::make('option_ids')->key(fn (Get $get): string => 'condition-values-'.($list($get) ? 'list' : 'single'))->label(__('configurator.labels.included_values_exact_codes'))->multiple()->searchable()->default([])

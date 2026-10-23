@@ -1,7 +1,7 @@
 @props(['product', 'group', 'fields', 'appearance', 'mainGroup' => null])
 @php
     $identity = $group->id.'-'.$product->id;
-    $properties = $product->properties ?? [];
+    $properties = $product->profile_fields ?? [];
 @endphp
 <article {{ $attributes->class(['catalog-product-card']) }}>
     <a href="{{ route('catalog.products.show', $product->id) }}" class="catalog-product-card__link"

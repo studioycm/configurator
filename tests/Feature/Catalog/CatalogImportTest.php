@@ -7,7 +7,9 @@ use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CatalogImportParser;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 test('canonical import preserves all positional buckets without decoding or guessing a parent', function () {
@@ -27,16 +29,92 @@ test('canonical import preserves all positional buckets without decoding or gues
     expect($product->group->legacy_id)->toBe('2144');
     expect($product->group_id)->not->toBe(2144);
     expect($product->group->parent_id)->toBeNull();
-    expect($product->properties)->toHaveCount(18)->toMatchArray(['Working_Pressure' => '25 bar', 'Connection_Size' => '1″']);
+    expect($product->profile_fields)->toBeArray()->toHaveCount(33)->toMatchArray(['Working_Pressure' => '25 bar', 'Connection_Size' => '1″', 'Indc' => '0206', '_unnamed_column_48' => '', 'product_supplier' => 'a:1:{i:0;s:1:"0";}', 'with_s50c' => '']);
     expect($product->parts)->toHaveCount(28)->toMatchArray(['Part1' => 'Outlet<Polypropylene>', 'Part2' => '&lt;still encoded&gt;', 'Part20' => 'Slot 20', 'Part28' => 'Slot 28']);
-    expect($product->extra_data)->toHaveCount(15)->toMatchArray(['Indc' => '0206', '_unnamed_column_48' => '', 'product_supplier' => 'a:1:{i:0;s:1:"0";}', 'with_s50c' => '']);
 });
+
+test('reimport preserves untouched structured custom fields and exact custom keys', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $path = catalogFixtureCsv([catalogFixtureRow()]);
+    applyCatalogFixture($actor, $path);
+    $product = Product::query()->sole();
+    DB::table('products')->where('id', $product->id)->update(['profile_fields' => '{"Working_Pressure":"manual","Indc":"manual","custom":{"empty":{},"list":[],"false":false,"zero":0},"working_pressure":"custom case","001":"leading zero","0":"numeric"}']);
+
+    applyCatalogFixture($actor, $path);
+
+    $profile = json_decode($product->fresh()->getRawOriginal('profile_fields'), flags: JSON_THROW_ON_ERROR);
+    expect($profile->Working_Pressure)->toBe('25 bar');
+    expect($profile->Indc)->toBe('0206');
+    expect($profile->custom->empty)->toBeInstanceOf(stdClass::class);
+    expect($profile->custom->list)->toBe([]);
+    expect($profile->custom->false)->toBeFalse();
+    expect($profile->custom->zero)->toBe(0);
+    expect($profile->working_pressure)->toBe('custom case');
+    expect($profile->{'001'})->toBe('leading zero');
+    expect($profile->{'0'})->toBe('numeric');
+});
+
+test('reimport preserves existing float types while source fields and parts change', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    applyCatalogFixture($actor, catalogFixtureCsv([catalogFixtureRow()]));
+    $product = Product::query()->sole();
+    DB::table('products')->where('id', $product->id)->update([
+        'profile_fields' => '{"Working_Pressure":"25 bar","custom_float":1.0,"nested":{"number":2.0}}',
+        'parts' => '{"Part1":"manual","custom_float":1.0}',
+    ]);
+    $row = catalogFixtureRow();
+    $row[4] = 'Updated source description';
+    $row[7] = '16 bar';
+    $row[18] = 'Updated source part';
+
+    $result = applyCatalogFixture($actor, catalogFixtureCsv([$row]));
+
+    $stored = $product->fresh();
+    $profile = json_decode($stored->getRawOriginal('profile_fields'), flags: JSON_THROW_ON_ERROR);
+    $parts = json_decode($stored->getRawOriginal('parts'), flags: JSON_THROW_ON_ERROR);
+    expect($result['totals']['updated'])->toBe(1);
+    expect($stored->description)->toBe('Updated source description');
+    expect($profile->Working_Pressure)->toBe('16 bar');
+    expect($profile->custom_float)->toBe(1.0);
+    expect($profile->nested->number)->toBe(2.0);
+    expect($parts->Part1)->toBe('Updated source part');
+    expect($parts->custom_float)->toBe(1.0);
+});
+
+test('legacy mapping exposes all mapped profile keys and refuses a review from the old bucket map', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $path = catalogFixtureCsv([catalogFixtureRow()]);
+    $oldMapHash = '8fe96bb514dd68393dda4c8e42eaf73758ed806db13898bb7396735a81879f54';
+
+    expect(CatalogImportParser::profileKeys())->toHaveCount(33)->toContain('Working_Pressure', 'Indc', '_unnamed_column_48', 'product_supplier');
+    expect(fn () => app(ImportCatalogProducts::class)->handle($actor, $path, true, hash_file('sha256', $path), $oldMapHash, parentsHash: hash('sha256', '[]')))
+        ->toThrow(ValidationException::class);
+
+    $this->assertDatabaseCount('products', 0);
+});
+
+test('reimport refuses numeric precision loss without changing the stored profile', function (string $number) {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $path = catalogFixtureCsv([catalogFixtureRow()]);
+    applyCatalogFixture($actor, $path);
+    $product = Product::query()->sole();
+    $profile = '{"Working_Pressure":"manual","custom":{"number":'.$number.'},"text":"9223372036854775809 1e9999"}';
+    DB::table('products')->where('id', $product->id)->update(['profile_fields' => $profile]);
+
+    expect(fn () => applyCatalogFixture($actor, $path))->toThrow(ValidationException::class);
+
+    expect($product->fresh()->getRawOriginal('profile_fields'))->toBe($profile);
+})->with([
+    'integer beyond PHP precision' => ['9223372036854775809'],
+    'decimal beyond PHP precision' => ['0.1234567890123456789012345'],
+    'decimal underflow' => ['1e-9999'],
+]);
 
 test('reimport keeps ids and app metadata while owned blanks win and absent products survive', function () {
     $actor = User::factory()->create(['email' => 'ycm@data4.work']);
     applyCatalogFixture($actor, catalogFixtureCsv([catalogFixtureRow(), catalogFixtureRow('18', '0043')]));
     $product = Product::query()->where('legacy_id', '00017')->firstOrFail();
-    $product->update(['is_active' => false, 'properties' => [...$product->properties, 'app_note' => 'keep'], 'parts' => [...$product->parts, 'app_slot_note' => 'keep'], 'extra_data' => [...$product->extra_data, 'app_note' => 'keep']]);
+    $product->update(['is_active' => false, 'profile_fields' => [...$product->profile_fields, 'app_note' => 'keep'], 'parts' => [...$product->parts, 'app_slot_note' => 'keep']]);
     $parent = Group::factory()->create(['name' => 'Reviewed test parent']);
     $configurator = Configurator::factory()->create();
     $product->group->update(['is_active' => false, 'parent_id' => $parent->id, 'configurator_id' => $configurator->id]);
@@ -54,9 +132,8 @@ test('reimport keeps ids and app metadata while owned blanks win and absent prod
     expect($repeat['totals'])->toMatchArray(['updated' => 0, 'unchanged' => 1, 'absent' => 1]);
     expect($product->fresh()->id)->toBe($product->id);
     expect($product->fresh()->description)->toBe('');
-    expect($product->fresh()->properties)->toMatchArray(['Working_Pressure' => '', 'app_note' => 'keep']);
+    expect($product->fresh()->profile_fields)->toMatchArray(['Working_Pressure' => '', 'Indc' => '', 'app_note' => 'keep']);
     expect($product->fresh()->parts)->toMatchArray(['Part1' => '', 'app_slot_note' => 'keep']);
-    expect($product->fresh()->extra_data)->toMatchArray(['Indc' => '', 'app_note' => 'keep']);
     expect($product->group->fresh()->parent_id)->toBe($parent->id);
     expect($product->group->fresh()->configurator_id)->toBe($configurator->id);
     expect($product->fresh()->is_active)->toBeFalse()->and($product->group->fresh()->is_active)->toBeFalse();
