@@ -26,7 +26,7 @@ class CatalogPolicy
         'page_size_options' => [1, 2, 10],
     ];
 
-    /** @return array{default_page_size: int, allow_page_size_change: bool, page_size_options: list<int>, card_properties: list<string>, cards_per_row: int, max_results: int|'all', products_debounce_ms: int, card_only_differences: bool, card_show_labels: bool, card_property_layout: string, card_property_columns: int, card_padding_block: int, card_padding_inline: int} */
+    /** @return array{default_page_size: int, allow_page_size_change: bool, page_size_options: list<int>, card_properties: list<string>, editor_properties: list<string>, cards_per_row: int, max_results: int|'all', products_debounce_ms: int, card_only_differences: bool, card_show_labels: bool, card_property_layout: string, card_property_columns: int, card_padding_block: int, card_padding_inline: int} */
     public static function resultSettings(?array $settings): array
     {
         $settings ??= self::RESULT_SETTINGS;
@@ -35,6 +35,9 @@ class CatalogPolicy
         $options = is_array($settings['page_size_options'] ?? null) ? array_values(array_unique(array_filter($settings['page_size_options'], fn (mixed $size): bool => is_int($size) && $size >= 1 && $size <= self::MAX_PAGE_SIZE))) : [1, 2, 10];
         $cardProperties = is_array($settings['card_properties'] ?? null)
             ? array_values(array_unique(array_filter($settings['card_properties'], ProductFields::validKey(...)), SORT_STRING))
+            : [];
+        $editorProperties = is_array($settings['editor_properties'] ?? null)
+            ? array_values(array_unique(array_filter($settings['editor_properties'], ProductFields::validKey(...)), SORT_STRING))
             : [];
         $columns = $settings['cards_per_row'] ?? 4;
         $maximum = $settings['max_results'] ?? 'all';
@@ -49,6 +52,7 @@ class CatalogPolicy
             'allow_page_size_change' => ($settings['allow_page_size_change'] ?? false) === true && in_array($default, $options, true),
             'page_size_options' => $options,
             'card_properties' => $cardProperties,
+            'editor_properties' => $editorProperties,
             'cards_per_row' => is_int($columns) && $columns >= 1 && $columns <= self::MAX_CARDS_PER_ROW ? $columns : 4,
             'products_debounce_ms' => is_int($delay) && $delay >= 0 && $delay <= 2147483600 && $delay % 100 === 0 ? $delay : 0,
             'max_results' => is_int($maximum) && $maximum >= 1 && $maximum <= self::MAX_RESULT_THRESHOLD ? $maximum : 'all',

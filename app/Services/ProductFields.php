@@ -55,7 +55,7 @@ class ProductFields
         $saved = [...GroupFilter::whereIn('group_id', $groupIds)->pluck('property_key')->all(),
             ...SubGroup::whereIn('group_id', $groupIds)->pluck('property_key')->all()];
         foreach ($groups as $group) {
-            $saved = [...$saved, ...($group->result_settings['card_properties'] ?? [])];
+            $saved = [...$saved, ...($group->result_settings['card_properties'] ?? []), ...($group->result_settings['editor_properties'] ?? [])];
         }
         $configuratorIds = $configuratorId !== null ? [$configuratorId] : $groups->pluck('configurator_id')->filter()->unique()->all();
         $savedRuleKeys ??= RuleCondition::query()->whereHas('rule', fn ($query) => $query->whereIn('configurator_id', $configuratorIds))

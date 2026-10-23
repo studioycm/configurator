@@ -58,7 +58,7 @@ class GroupForm
                 Tab::make(__('ui.tabs.details'))->key(fn (Tab $component): string => 'details::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->columns(2)->extraAttributes(['class' => 'catalog-simple-form'])->schema($details),
                 Tab::make(__('ui.tables.filters'))->key(fn (Tab $component): string => 'filters::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema($sections[3]->getDefaultChildComponents())->visible($leaf),
                 Tab::make(__('catalog.groups.tabs.presets'))->key(fn (Tab $component): string => 'presets::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema($sections[4]->getDefaultChildComponents())->visible($leaf),
-                Tab::make(__('catalog.groups.tabs.presentation'))->key(fn (Tab $component): string => 'presentation::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([$sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
+                Tab::make(__('catalog.groups.tabs.presentation'))->key(fn (Tab $component): string => 'presentation::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([$sections[6], $sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
             ])]);
     }
 
@@ -154,6 +154,12 @@ class GroupForm
                     ->schema([TextInput::make('size')->label(__('catalog.groups.labels.products_per_page'))->integer()->required()->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE)])
                     ->default([['size' => 1], ['size' => 2], ['size' => 10]])->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
+            Section::make(__('catalog.groups.headings.product_editor'))->key(fn (Section $component): string => 'product-editor::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
+                Select::make('catalog_settings.result_settings.editor_properties')->label(__('catalog.groups.labels.properties_tab_fields'))->multiple()->searchable()
+                    ->options($properties)->default([])->placeholder(__('catalog.groups.help.use_group_filter_properties'))
+                    ->hintAction(FormHints::make(__('catalog.groups.hints.choose_properties_tab_fields')))
+                    ->columnSpanFull(),
+            ])->columnSpanFull(),
         ];
     }
 

@@ -2,6 +2,8 @@
 
 use App\Actions\SaveCatalogProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
+use App\Livewire\Catalog\ProductConfigurator;
+use App\Models\Group;
 use App\Models\GroupFilter;
 use App\Models\Product;
 use App\Models\User;
@@ -15,6 +17,112 @@ function profileEditorPayload(Product $product): array
     return ['product_code' => $product->product_code, 'product_name' => $product->product_name, 'description' => $product->description,
         ...ProductEditorData::formData($product)];
 }
+
+test('explicit editor Properties selection controls order labels and blank rows while preserving the remaining profile', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $group = Group::factory()->create(['result_settings' => ['editor_properties' => ['Missing_Field', 'custom.key', 'pressure'], 'card_properties' => ['filter_only']]]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => (object) [
+        'pressure' => '10', 'custom.key' => '001', 'filter_only' => 'flange', 'nested' => (object) ['empty' => (object) [], 'list' => []],
+    ]]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'filter_only', 'label' => 'Filter only', 'sort_order' => 0]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'pressure', 'label' => 'Pressure label', 'sort_order' => 1]);
+
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id]);
+
+    expect(array_values($editor->get('data.properties')))->toBe([
+        ['key' => 'Missing_Field', 'value' => ''], ['key' => 'custom.key', 'value' => '001'], ['key' => 'pressure', 'value' => '10'],
+    ]);
+    expect(array_column(array_values($editor->get('data.others')), 'key'))->toBe(['filter_only', 'nested']);
+    $editor->assertSee('Missing Field')->assertSee('Pressure label')->fillForm(['properties' => [
+        ['key' => 'Missing_Field', 'value' => ''], ['key' => 'custom.key', 'value' => '002'], ['key' => 'pressure', 'value' => '10'],
+    ]])->call('save')->assertHasNoFormErrors();
+    $profile = json_decode($product->fresh()->getRawOriginal('profile_fields'));
+    expect($profile->{'custom.key'})->toBe('002')->and($profile->filter_only)->toBe('flange');
+    expect(property_exists($profile, 'Missing_Field'))->toBeFalse();
+    expect($profile->nested->empty)->toBeInstanceOf(stdClass::class)->and($profile->nested->list)->toBe([]);
+    expect($group->fresh()->result_settings['card_properties'])->toBe(['filter_only']);
+    expect($group->filters()->orderBy('sort_order')->pluck('property_key')->all())->toBe(['filter_only', 'pressure']);
+});
+
+test('editor Properties selection does not reclassify the read only product facts', function () {
+    $group = Group::factory()->create(['result_settings' => ['editor_properties' => ['Editor_Only']]]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['Editor_Only' => 'draft value', 'Public_Field' => 'public value']]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'Public_Field', 'label' => 'Public filter']);
+
+    $component = Livewire::test(ProductConfigurator::class, ['productId' => $product->id]);
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="utf-8" ?>'.$component->html());
+    $xpath = new DOMXPath($document);
+
+    expect(collect($xpath->query('//section[@aria-label="Properties"]//dt'))->map(fn (DOMNode $node): string => trim($node->textContent))->all())->toBe(['Public filter']);
+    expect(collect($xpath->query('//section[@aria-label="Others"]//dt'))->map(fn (DOMNode $node): string => trim($node->textContent))->all())->toBe(['Editor_Only']);
+});
+
+test('missing or empty editor Properties selection follows current ordered filters', function (array $settings) {
+    $group = Group::factory()->create(['result_settings' => $settings]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['last' => 'value', 'other' => 'retained']]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'last', 'label' => 'Last', 'sort_order' => 2]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'first', 'label' => 'First', 'sort_order' => 1]);
+
+    $data = ProductEditorData::formData($product);
+
+    expect($data['properties'])->toBe([['key' => 'first', 'value' => ''], ['key' => 'last', 'value' => 'value']]);
+    expect($data['others'])->toBe([['key' => 'other', 'value' => 'retained', 'original_key' => 'other']]);
+})->with(['missing setting' => [[]], 'empty setting' => [['editor_properties' => []]]]);
+
+test('changing editor Properties selection rejects an open Product editor and preserves its draft', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $group = Group::factory()->create(['result_settings' => ['editor_properties' => ['before']]]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['before' => '1', 'after' => '2']]);
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id])->fillForm(['product_name' => 'Retained draft']);
+    $group->update(['result_settings' => ['editor_properties' => ['after']]]);
+
+    $editor->call('save')->assertHasFormErrors(['group_classification'])->assertSet('data.product_name', 'Retained draft')->assertNotNotified();
+
+    expect($product->fresh()->product_name)->toBe('Test product');
+    $editor->call('reloadBatchEditor')->assertHasNoErrors();
+    expect(array_values($editor->get('data.properties')))->toBe([['key' => 'after', 'value' => '2']]);
+});
+
+test('unrelated filter changes do not invalidate an explicit editor Properties draft', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $group = Group::factory()->create(['result_settings' => ['editor_properties' => ['chosen']]]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['chosen' => '1', 'other' => '2']]);
+    $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'unrelated', 'label' => 'Unrelated']);
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id])->fillForm(['product_name' => 'Saved draft']);
+    $filter->update(['property_key' => 'different', 'sort_order' => 7]);
+
+    $editor->call('save')->assertHasNoFormErrors();
+
+    expect($product->fresh()->product_name)->toBe('Saved draft');
+    expect($product->fresh()->profile_fields)->toBe(['chosen' => '1', 'other' => '2']);
+});
+
+test('choosing the same effective editor Properties list does not invalidate an open draft', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $group = Group::factory()->create();
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['chosen' => '1']]);
+    GroupFilter::factory()->for($group)->create(['property_key' => 'chosen', 'label' => 'Chosen']);
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id])->fillForm(['product_name' => 'Saved draft']);
+    $group->update(['result_settings' => ['editor_properties' => ['chosen']]]);
+
+    $editor->call('save')->assertHasNoFormErrors();
+
+    expect($product->fresh()->product_name)->toBe('Saved draft');
+});
+
+test('matching filter label changes still invalidate an explicit editor Properties draft', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $group = Group::factory()->create(['result_settings' => ['editor_properties' => ['chosen']]]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['chosen' => '1']]);
+    $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'chosen', 'label' => 'Before']);
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id])->fillForm(['product_name' => 'Retained draft']);
+    $filter->update(['label' => 'After']);
+
+    $editor->call('save')->assertHasFormErrors(['group_classification'])->assertSet('data.product_name', 'Retained draft')->assertNotNotified();
+
+    expect($product->fresh()->product_name)->toBe('Test product');
+});
 
 test('the Product editor classifies Properties from ordered Group filters including absent keys', function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));

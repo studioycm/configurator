@@ -14,6 +14,8 @@ use App\Services\CatalogPolicy;
 use App\Services\ConfiguratorDefinitionCompiler;
 use App\Services\ConfiguratorEngine;
 use App\Services\ProductFields;
+use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -49,6 +51,28 @@ test('field suggestions refresh after an edit without losing saved references', 
     $product->update(['profile_fields' => ['After' => 'value']]);
 
     expect(ProductFields::keys(groupId: $group->id))->toContain('Before', 'After');
+});
+
+test('editor Properties saved references remain suggested after the last product occurrence disappears', function () {
+    $configurator = Configurator::factory()->create();
+    $group = Group::factory()->create(['configurator_id' => $configurator->id, 'result_settings' => ['editor_properties' => ['Gone.Custom']]]);
+    Group::factory()->create(['result_settings' => ['editor_properties' => ['Foreign.Custom']]]);
+    $product = Product::factory()->for($group)->create(['profile_fields' => ['Gone.Custom' => 'value']]);
+    expect(ProductFields::keys(groupId: $group->id))->toContain('Gone.Custom')->not->toContain('Foreign.Custom');
+    expect(ProductFields::keys(configuratorId: $configurator->id))->toContain('Gone.Custom')->not->toContain('Foreign.Custom');
+
+    $product->update(['profile_fields' => (object) []]);
+
+    expect(ProductFields::keys(groupId: $group->id))->toContain('Gone.Custom');
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id]);
+    $picker = collect($editor->instance()->form->getFlatFields(withHidden: true))
+        ->first(fn (Field $field): bool => $field->getName() === 'catalog_settings.result_settings.editor_properties');
+    expect($picker)->toBeInstanceOf(Select::class);
+    expect($picker->getOptions())->toHaveKey('Gone.Custom');
+    expect($editor->get('data.catalog_settings.result_settings.editor_properties'))->toBe(['Gone.Custom']);
+    $editor->fillForm(['name' => 'Saved without the source value'])->call('save')->assertHasNoFormErrors();
+    expect($group->fresh()->result_settings['editor_properties'])->toBe(['Gone.Custom']);
 });
 
 test('rules can use a custom profile field independently of group filters', function () {

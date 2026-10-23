@@ -19,9 +19,22 @@ class ProductEditorData
             ->values()->all();
     }
 
+    /** @return list<array{key: string, label: string}> */
+    public static function editorFields(Product $product): array
+    {
+        $filters = self::groupFields($product);
+        $keys = CatalogPolicy::resultSettings($product->group->result_settings)['editor_properties'];
+        if ($keys === []) {
+            return array_map(fn (array $field): array => ['key' => $field['key'], 'label' => $field['label']], $filters);
+        }
+        $labels = array_column($filters, 'label', 'key');
+
+        return array_map(fn (string $key): array => ['key' => $key, 'label' => $labels[$key] ?? str_replace('_', ' ', $key)], $keys);
+    }
+
     public static function groupFingerprint(Product $product): string
     {
-        return hash('sha256', json_encode([$product->group_id, self::groupFields($product)], JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([$product->group_id, self::editorFields($product)], JSON_THROW_ON_ERROR));
     }
 
     /** @return array{properties: list<array{key: string, value: string}>, others: list<array{key: string, value: string, original_key: string}>, parts: list<array{key: string, value: string}>} */
@@ -30,7 +43,7 @@ class ProductEditorData
         $profile = self::rawMap($product, 'profile_fields');
         $properties = [];
         $selected = [];
-        foreach (self::groupFields($product) as $field) {
+        foreach (self::editorFields($product) as $field) {
             $properties[] = ['key' => $field['key'], 'value' => self::displayValue($profile[$field['key']] ?? null)];
             $selected[$field['key']] = true;
         }
@@ -66,7 +79,7 @@ class ProductEditorData
 
     public static function propertyLabel(Product $product, string $key): string
     {
-        foreach (self::groupFields($product) as $field) {
+        foreach (self::editorFields($product) as $field) {
             if ($field['key'] === $key) {
                 return $field['label'] !== '' ? $field['label'] : $key;
             }
@@ -83,7 +96,7 @@ class ProductEditorData
     public static function applyProfile(Product $product, array $properties, array $others): array
     {
         $original = self::rawMap($product, 'profile_fields');
-        $selected = array_fill_keys(array_column(self::groupFields($product), 'key'), true);
+        $selected = array_fill_keys(array_column(self::editorFields($product), 'key'), true);
         $values = [];
         $seen = [];
         foreach ($properties as $row) {

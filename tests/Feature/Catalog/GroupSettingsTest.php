@@ -21,6 +21,44 @@ function groupSettingsInput(array $changes = []): array
     return array_replace(['filters' => [], 'sub_groups' => [], 'result_settings' => CatalogPolicy::RESULT_SETTINGS], $changes);
 }
 
+test('editor Properties selection keeps exact ordered keys across partial group settings saves and can return to filters', function () {
+    $group = Group::factory()->create();
+    $keys = ['Custom.Field', '0', 'Pressure', 'pressure', 'צבע."חדש"'];
+    $input = groupSettingsInput(['filters' => [['property_key' => 'Working_Pressure', 'label' => 'Pressure', 'values' => []]],
+        'result_settings' => ['editor_properties' => $keys, 'card_properties' => ['Model']]]);
+
+    app(SaveGroupSettings::class)->handle($this->actor, $group, $input);
+    $filter = $group->filters()->sole();
+    $input['filters'][0]['id'] = $filter->id;
+    $input['result_settings'] = ['default_page_size' => 2];
+    app(SaveGroupSettings::class)->handle($this->actor, $group, $input);
+
+    expect($group->fresh()->result_settings)->toMatchArray(['editor_properties' => $keys, 'card_properties' => ['Model'], 'default_page_size' => 2]);
+    expect($filter->fresh()->property_key)->toBe('Working_Pressure');
+
+    $input['result_settings'] = ['editor_properties' => []];
+    app(SaveGroupSettings::class)->handle($this->actor, $group, $input);
+    expect($group->fresh()->result_settings['editor_properties'])->toBe([]);
+});
+
+test('invalid editor Properties selections reject the whole settings update', function (mixed $selection) {
+    $group = Group::factory()->create(['result_settings' => ['editor_properties' => ['keep']]]);
+    $filter = GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Original']);
+    $before = [$group->fresh()->getAttributes(), $filter->fresh()->getAttributes()];
+    $input = groupSettingsInput(['filters' => [['id' => $filter->id, 'property_key' => 'Working_Pressure', 'label' => 'Must not save', 'values' => []]],
+        'result_settings' => ['editor_properties' => $selection]]);
+
+    expect(fn () => app(SaveGroupSettings::class)->handle($this->actor, $group, $input))
+        ->toThrow(fn (ValidationException $exception) => expect(collect(array_keys($exception->errors()))
+            ->contains(fn (string $key): bool => str_starts_with($key, 'settings.result_settings.editor_properties')))->toBeTrue());
+
+    expect([$group->fresh()->getAttributes(), $filter->fresh()->getAttributes()])->toBe($before);
+})->with([
+    'null list' => [null], 'scalar list' => ['Model'], 'associative list' => [['field' => 'Model']],
+    'duplicate keys' => [['Model', 'Model']], 'non text key' => [[0]], 'empty key' => [['']],
+    'overlong key' => [[str_repeat('x', 101)]], 'null byte key' => [["bad\0key"]],
+]);
+
 test('batch property selection appends missing filter drafts without replacing existing identities or labels', function () {
     $this->actingAs($this->actor);
     $group = Group::factory()->create();
