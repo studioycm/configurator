@@ -1,5 +1,11 @@
 export function configuratorProductSearch(code = '') {
     return {
+        workspace: null,
+        get busy() { return this.choosing || !!this.workspace?.busy; },
+        init() {
+            const owner = this.$el?.closest('[data-preview-operation-owner]');
+            if (owner && globalThis.window?.Alpine) this.workspace = window.Alpine.$data(owner);
+        },
         query: code,
         selectedCode: code,
         options: [],
@@ -11,6 +17,7 @@ export function configuratorProductSearch(code = '') {
         request: 0,
 
         async search() {
+            if (this.busy) return;
             const request = ++this.request;
             this.open = true;
             this.loading = true;
@@ -38,6 +45,7 @@ export function configuratorProductSearch(code = '') {
         },
 
         move(direction) {
+            if (this.busy) return;
             if (!this.open) {
                 this.search();
                 return;
@@ -48,28 +56,31 @@ export function configuratorProductSearch(code = '') {
         },
 
         chooseActive() {
-            if (this.activeIndex < 0 || this.loading) return;
+            if (this.busy || this.activeIndex < 0 || this.loading) return;
             return this.choose(this.options[this.activeIndex]);
         },
 
         async choose(option = null) {
-            if (this.choosing) return;
-            this.close();
-            this.failed = false;
-            this.choosing = true;
-            try {
-                const acceptedId = await this.$wire.chooseProduct(option?.id ?? null);
-                if (acceptedId !== (option ? Number(option.id) : null)) {
+            if (this.busy) return;
+            const choose = async () => {
+                this.close();
+                this.failed = false;
+                this.choosing = true;
+                try {
+                    const acceptedId = await this.$wire.chooseProduct(option?.id ?? null);
+                    if (acceptedId !== (option ? Number(option.id) : null)) throw new Error('Product was not accepted');
+                    this.selectedCode = option?.label ?? '';
+                    this.query = this.selectedCode;
+                    return true;
+                } catch {
                     this.failed = true;
-                    return;
+                    if (this.workspace) this.workspace.collectionFailed = true;
+                    return false;
+                } finally {
+                    this.choosing = false;
                 }
-                this.selectedCode = option?.label ?? '';
-                this.query = this.selectedCode;
-            } catch {
-                this.failed = true;
-            } finally {
-                this.choosing = false;
-            }
+            };
+            return this.workspace ? this.workspace.request(choose) : choose();
         },
     };
 }

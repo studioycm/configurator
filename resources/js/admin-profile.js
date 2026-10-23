@@ -139,22 +139,6 @@ export function localOrderProfile(config) {
     };
 }
 
-export function localTraceProfile(config) {
-    let unsubscribe;
-    return {
-        init() {
-            const profile = browserProfile(config.user, `page:${window.location.pathname}:preview`);
-            const saved = profile.read();
-            if (typeof saved?.trace === 'boolean' && saved.trace !== this.$wire.showTrace) this.$wire.$call('toggleTrace');
-            unsubscribe = window.Livewire.interceptMessage(({ message, onSuccess }) => {
-                if (message.component.id !== this.$wire.$id) return;
-                onSuccess(({ onMorphed }) => onMorphed(() => profile.save({ trace: this.$wire.showTrace })));
-            });
-        },
-        destroy() { unsubscribe?.(); },
-    };
-}
-
 export function personalAppearance(settings, config) {
     if (!object(settings)) return null;
     settings = { ...config.settings, ...Object.fromEntries(Object.entries(settings).filter(([key]) => Object.hasOwn(config.settings, key) && key !== 'show_configurator_loading_indicator')) };

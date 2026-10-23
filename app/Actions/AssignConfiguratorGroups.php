@@ -37,7 +37,7 @@ class AssignConfiguratorGroups
             }
             $ids = $assign ? array_values(array_unique([...$ids, $groupId])) : array_values(array_diff($ids, [$groupId]));
             $this->handle($actor, $record, $ids);
-        });
+        }, attempts: 3);
     }
 
     /** @param list<int|string> $groupIds */
@@ -67,6 +67,6 @@ class AssignConfiguratorGroups
             }
             Group::where('configurator_id', $record->id)->whereNotIn('id', $ids)->update(['configurator_id' => null]);
             Group::whereKey($ids)->whereNull('configurator_id')->update(['configurator_id' => $record->id]);
-        });
+        }, attempts: 3);
     }
 }

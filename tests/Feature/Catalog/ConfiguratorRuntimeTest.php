@@ -2,12 +2,16 @@
 
 use App\Actions\SaveCanonicalOption;
 use App\Actions\SaveConfiguratorDefinition;
+use App\Livewire\Catalog\ConfiguratorPreview;
+use App\Livewire\Catalog\ProductConfigurator;
 use App\Models\Group;
+use App\Models\Option;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 require_once dirname(__DIR__, 2).'/ConfiguratorFixtures.php';
 
@@ -77,4 +81,79 @@ test('rules read all profile fields independently of the groups discovery filter
 
     expect($group->filters()->count())->toBe(0)->and($input->properties)->toBe([$key => '0'])
         ->and($result->configurationCode)->toBe('A0-B1-C0')->and($result->state())->not->toHaveKeys(['profile_fields', 'properties']);
+});
+
+/** @return array{DOMDocument, DOMXPath} */
+function catalogRuntimeControlDocument(string $html): array
+{
+    $document = new DOMDocument;
+    $previous = libxml_use_internal_errors(true);
+    $document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    return [$document, new DOMXPath($document)];
+}
+
+test('catalog native select and radio controls preserve effective escaped text and hide default metadata', function () {
+    $this->actingAs($this->actor);
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $draft['attributes'][0]['input_type'] = 'select';
+    $draft['attributes'][0]['label_override'] = 'Attribute <script>unsafe()</script>';
+    $draft['attributes'][1]['options'][1]['disabled_by_default'] = true;
+    $hidden = Option::factory()->create(['attribute_id' => $draft['attributes'][1]['attribute_id'], 'code' => 'BH']);
+    $draft['attributes'][1]['options'][] = [...$draft['attributes'][1]['options'][1], 'id' => 'new:BH', 'option_id' => $hidden->id, 'hidden_by_default' => true, 'display_order' => 2];
+    $draft['rules'] = [fixtureAdvanced('label', [], 'A', 'SetLabel', ['new:A0'], 'Effective <b>label</b>'), fixtureAdvanced('hint', [], 'A', 'SetHint', ['new:A0'], 'Effective hint'), fixtureAdvanced('display', [], 'A', 'SetDisplayValue', ['new:A0'], 'Effective display'), fixtureAdvanced('hide-c', [], 'C')];
+    foreach ($draft['rules'] as $index => &$rule) {
+        $rule['priority'] = $index;
+    }
+    unset($rule);
+    Option::findOrFail($draft['attributes'][0]['options'][0]['option_id'])->value->update(['semantic_id' => 'private_a0_identity']);
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $draft);
+    $product = Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
+    $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+
+    $component = Livewire::test(ProductConfigurator::class, ['productId' => $product->id])
+        ->assertSee('Effective <b>label</b>')->assertSee('Effective hint')->assertSee('Effective display')->assertDontSee('<script>unsafe()</script>', false)->assertDontSee('private_a0_identity');
+    [, $xpath] = catalogRuntimeControlDocument($component->html());
+    $selects = $xpath->query('//select');
+    $radios = $xpath->query('//input[@type="radio"]');
+
+    expect($selects)->toHaveCount(1);
+    expect($selects->item(0)->textContent)->toContain('Effective <b>label</b>')->not->toContain(' · A0');
+    expect($radios)->toHaveCount(2);
+    expect($radios->item(0)->getAttribute('name'))->toBe('configuration-'.$component->instance()->getId().'-'.$saved['attributes'][1]['id']);
+    expect($radios->item(1)->hasAttribute('disabled'))->toBeTrue();
+    expect($xpath->query('//script'))->toHaveCount(0);
+
+    $component->call('selectOption', $saved['attributes'][0]['id'], $saved['attributes'][0]['options'][1]['id'])->assertSee('A1-B0');
+    $component->call('selectOption', $saved['attributes'][1]['id'], $saved['attributes'][1]['options'][1]['id'])->assertSet('runtime.selections.'.$saved['attributes'][1]['id'], $saved['attributes'][1]['options'][0]['id']);
+});
+
+test('Preview catalog adapter shares select and radio behavior while all-state identities remain distinct', function () {
+    $this->actingAs($this->actor);
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $draft['attributes'][0]['input_type'] = 'select';
+    $draft['attributes'][0]['options'][1]['hidden_by_default'] = true;
+    $draft['attributes'][1]['options'][1]['disabled_by_default'] = true;
+    $draft['rules'] = [fixtureAdvanced('hide-c', [], 'C')];
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $draft);
+    Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
+    $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+
+    $component = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    [, $xpath] = catalogRuntimeControlDocument($component->html());
+    $catalog = '//div[@*[name()="wire:key"]="preview-catalog-presentation"]';
+    $all = '//div[@*[name()="wire:key"]="preview-all-presentation"]';
+
+    expect($xpath->query($catalog.'//select/option'))->toHaveCount(1);
+    expect($xpath->query($catalog.'//input[@type="radio"]'))->toHaveCount(2);
+    expect($xpath->query($all.'//input[@type="radio"]'))->toHaveCount(6);
+    expect($xpath->query($catalog.'//input[@type="radio"]')->item(0)->getAttribute('name'))->toStartWith('preview-catalog-');
+    expect($xpath->query($all.'//input[@type="radio"]')->item(0)->getAttribute('name'))->toStartWith('preview-all-');
+    expect($xpath->query($catalog.'//input[@type="radio"]')->item(1)->hasAttribute('disabled'))->toBeTrue();
+    expect($component->get('previewView.inspection.attributes.'.$saved['attributes'][2]['id'].'.state'))->toBe('hidden');
+
+    $component->call('selectOption', $saved['attributes'][0]['id'], $saved['attributes'][0]['options'][1]['id'])
+        ->assertSet('runtime.selections.'.$saved['attributes'][0]['id'], $saved['attributes'][0]['options'][0]['id']);
 });

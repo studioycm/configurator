@@ -1,13 +1,23 @@
+@php
+    $reviewStale = ($definitionStale ?? false) || ($editorPreviewStale ?? false)
+        || (($tested['source'] ?? null) === 'unsaved' && ($tested['inventory_hash'] ?? null) !== ($inventoryHash ?? null));
+    $reviewNotValidated = $changes !== [] && (($tested['source'] ?? null) !== 'unsaved' || ($tested['status'] ?? 'ready') !== 'ready');
+@endphp
 <div class="space-y-4 text-sm">
-    @if ($tested !== [])
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('configurator.preview.review_help') }}</p>
+    @if (($inventoryErrors ?? []) !== [] || ($previewErrors ?? []) !== [])<ul class="space-y-1 text-danger-600 dark:text-danger-400">@foreach (array_unique([...($inventoryErrors ?? []), ...($previewErrors ?? [])]) as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
+    @if ($changes === [])<p>{{ __('configurator.preview.no_unsaved') }}</p>@endif
+    @if ($reviewStale)<p role="status" class="text-warning-600 dark:text-warning-400">{{ __('configurator.preview.preview_stale') }}</p>
+    @elseif ($reviewNotValidated)<p role="status" class="text-warning-600 dark:text-warning-400">{{ __('configurator.preview.review_not_validated') }}</p>@endif
+    @if (($tested ?? []) !== [])
         <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-            <p class="font-semibold">{{ __('configurator.preview.tested_product', ['code' => $tested['product']]) }}</p>
-            <p class="mt-1 text-xs">{{ $tested['source'] }} · {{ __('configurator.copy.configuration_code') }}: <span class="font-mono">{{ $tested['code'] }}</span></p>
+            @if (($productCode ?? '') !== '')<p class="font-semibold">{{ __('configurator.preview.tested_product', ['code' => $productCode]) }}</p>@endif
+            <p class="mt-1 text-xs">{{ __($tested['source'] === 'saved' ? 'configurator.preview.saved_source' : 'configurator.preview.unsaved_source') }} · {{ __('configurator.copy.configuration_code') }}: <span class="font-mono">{{ $tested['configuration_code'] ?? '—' }}</span></p>
             <p class="mt-2 text-xs text-gray-500">{{ __('configurator.preview.tested_only_this_case') }}</p>
             <details class="mt-2">
                 <summary class="cursor-pointer">{{ __('configurator.preview.tested_choices') }}</summary>
                 <dl class="mt-2 grid gap-2 sm:grid-cols-2">
-                    @foreach ($tested['values'] as $value)<div><dt class="text-xs">{{ $value['attribute'] }}</dt><dd>{{ $value['value'] }}</dd></div>@endforeach
+                    @foreach ($tested['notes']['selected_values'] ?? [] as $value)<div><dt class="text-xs">{{ $value['attribute'] }}</dt><dd>{{ $value['value'] }}</dd></div>@endforeach
                 </dl>
             </details>
         </div>
@@ -15,6 +25,9 @@
     @foreach ($changes as $index => $change)
         <section class="rounded-lg border border-gray-200 p-3 dark:border-gray-700" wire:key="review-change-{{ $index }}">
             <h3 class="font-semibold">{{ __('configurator.preview.types.'.$change['type']) }} · {{ $change['label'] }} @if ($change['new'])<span class="text-primary-600">({{ __('configurator.preview.new_record') }})</span>@endif</h3>
+            @if ($change['invalid'] ?? false)<p class="mt-1 text-xs text-danger-600 dark:text-danger-400">{{ __('configurator.preview.invalid_change') }}</p>@endif
+            @if ($change['stale'] ?? false)<p class="mt-1 text-xs text-warning-600 dark:text-warning-400">{{ __('configurator.preview.stale_change') }}</p>@endif
+            @foreach ($change['errors'] ?? [] as $error)<p class="mt-1 text-xs text-danger-600 dark:text-danger-400">{{ $error }}</p>@endforeach
             <dl class="mt-2 space-y-3">
                 @foreach ($change['fields'] as $field => $difference)
                     <div class="break-words" wire:key="review-change-{{ $index }}-{{ $field }}">

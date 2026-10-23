@@ -178,12 +178,11 @@ test('preview diagnostics use translated status and count labels without changin
     $product = Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
     app('translator')->addLines([
         'configurator.preview.rule_details' => 'RULE_TRANSLATED :kind :status :priority',
-        'configurator.preview.hidden_and_disabled' => 'STATE_TRANSLATED :hidden :disabled',
-        'configurator.preview.legal_values' => '{1} ONE_LEGAL_VALUE|[0,*] MANY_LEGAL_VALUES',
+        'configurator.preview.rule_outcomes.recorded_applied' => 'APPLIED_TRANSLATED',
+        'configurator.preview.states.available' => 'AVAILABLE_TRANSLATED',
     ], 'en');
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('chooseProduct', $product->id)->call('toggleTrace')
-        ->assertSee('RULE_TRANSLATED Mapping Enabled 0')->assertSee('STATE_TRANSLATED')
-        ->assertSee('ONE_LEGAL_VALUE')->assertSee('MANY_LEGAL_VALUES');
+        ->assertSee('RULE_TRANSLATED Mapping Enabled 0')->assertSee('APPLIED_TRANSLATED')->assertSee('AVAILABLE_TRANSLATED');
     expect($configurator->rules()->sole()->kind)->toBe('Mapping');
 });

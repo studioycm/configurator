@@ -39,12 +39,20 @@ class ConfiguratorOverview extends Component implements HasSchemas
         $this->previewOriginal = $this->data;
     }
 
+    #[Locked]
+    public ?string $lastAppliedPreviewSave = null;
+
     /** @param list<array<string, mixed>> $captures @param array<string, array<string, mixed>> $newRules */
     #[On('configurator-preview-saved')]
-    public function acceptPreviewSave(int $configuratorId, array $captures, array $newRules = []): void
+    public function acceptPreviewSave(int $configuratorId, array $captures, array $newRules = [], ?string $operationId = null): void
     {
         Gate::authorize('manage-catalog');
         if ($configuratorId !== $this->configuratorId) {
+            return;
+        }
+        if ($operationId !== null && $this->lastAppliedPreviewSave === $operationId) {
+            $this->dispatch('configurator-preview-editor-reconciled', configuratorId: $configuratorId, operationId: $operationId, componentId: $this->getId());
+
             return;
         }
         $changes = app(ConfiguratorEditorChanges::class);
@@ -61,6 +69,10 @@ class ConfiguratorOverview extends Component implements HasSchemas
             } else {
                 $this->form->fill($changes->rebase('overview', $current, $row['after'], $this->previewOriginal));
             }
+        }
+        if ($operationId !== null) {
+            $this->lastAppliedPreviewSave = $operationId;
+            $this->dispatch('configurator-preview-editor-reconciled', configuratorId: $configuratorId, operationId: $operationId, componentId: $this->getId());
         }
     }
 

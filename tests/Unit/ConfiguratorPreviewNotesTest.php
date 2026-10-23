@@ -210,3 +210,24 @@ test('shared library unavailability does not offer a misleading local Value edit
     expect($conflict['values'][2]['causes'][0]['target'])->toBeNull();
     expect($conflict['values'][1]['causes'][0]['message'])->toBe(__('configurator.preview.canonical_unavailable_reason'));
 });
+
+test('Preview notes consumes the supplied conflict projection without deriving a second report', function () {
+    $result = previewNotesResult(fn (array &$data) => $data['rules'] = [fixtureMapping('replace')]);
+    $conflicts = [['attribute_id' => 'new:B', 'attribute' => 'Projected conflict', 'rules' => [], 'causes' => [], 'values' => []]];
+
+    $notes = app(ConfiguratorPreviewNotes::class)->build($result, ['conflicts' => $conflicts]);
+
+    expect($notes['conflicts'])->toBe($conflicts);
+    expect($notes['effects'])->toHaveCount(1);
+});
+
+test('selection notes preserve Attribute and Value identity for Explain effect navigation', function () {
+    $result = previewNotesResult(fn (array &$data) => $data['rules'] = [fixtureAdvanced('hint-value', [fixtureCondition('a0')], 'B', 'SetHint', ['new:B1'], 'Selected value hint'), fixtureAdvanced('hide-c', [fixtureCondition('another-a0')], 'C')], selections: ['new:B' => 'new:B1']);
+
+    $notes = app(ConfiguratorPreviewNotes::class)->build($result);
+    $hint = collect($notes['effects'])->firstWhere('text', 'Selected value hint');
+    $hidden = collect($notes['effects'])->firstWhere('attribute', 'C');
+
+    expect($hint)->toMatchArray(['attribute_id' => 'new:B', 'option_id' => 'new:B1']);
+    expect($hidden)->toMatchArray(['attribute_id' => 'new:C', 'option_id' => null]);
+});

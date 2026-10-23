@@ -85,12 +85,20 @@ class RulesRelationManager extends RelationManager
     #[Locked]
     public array $editorStaleRows = [];
 
+    #[Locked]
+    public ?string $lastAppliedPreviewSave = null;
+
     /** @param list<array<string, mixed>> $captures @param array<string, array<string, mixed>> $newRules */
     #[On('configurator-preview-saved')]
-    public function acceptPreviewSave(int $configuratorId, array $captures, array $newRules = []): void
+    public function acceptPreviewSave(int $configuratorId, array $captures, array $newRules = [], ?string $operationId = null): void
     {
         Gate::authorize('manage-catalog');
         if ($configuratorId !== $this->owner()->id) {
+            return;
+        }
+        if ($operationId !== null && $this->lastAppliedPreviewSave === $operationId) {
+            $this->dispatch('configurator-preview-editor-reconciled', configuratorId: $configuratorId, operationId: $operationId, componentId: $this->getId());
+
             return;
         }
         $changes = app(ConfiguratorEditorChanges::class);
@@ -139,6 +147,10 @@ class RulesRelationManager extends RelationManager
             }
         }
         $this->flushCachedTableRecords();
+        if ($operationId !== null) {
+            $this->lastAppliedPreviewSave = $operationId;
+            $this->dispatch('configurator-preview-editor-reconciled', configuratorId: $configuratorId, operationId: $operationId, componentId: $this->getId());
+        }
     }
 
     /** @return array<string, mixed> */

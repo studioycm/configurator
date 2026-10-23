@@ -1,6 +1,6 @@
 # Preview & Test Workspace Implementation Plan
 
-> **For agentic workers:** Implementation requires a separate operator instruction. Checkboxes describe future work, not completed implementation. This plan authorizes no application changes, database writes, commits, pushes or deployment. The operator authorized the present plan/audit reconciliation and standalone mockup work only.
+> **Execution status, 2026-10-23:** The operator subsequently authorized local implementation of this audited plan. The original planning baseline and review records below remain historical evidence. Application implementation and verification are now recorded in section 8; unchecked items are precise remaining verification gates. No commit, push or application deployment is authorized.
 
 **Goal:** Make Preview & Test a compact workspace for testing saved/current editor data, reviewing and immediately saving valid changes, and explaining every Attribute and Value state.
 
@@ -12,11 +12,11 @@
 
 **Baseline:** Read-only source/browser review on 2026-10-23, primary checkout /Users/studioycm/Herd/configurator, branch master, HEAD 958af03ebcd66fcc5e8c0ecb4e1c420236089197. The dirty checkout also contains concurrent Product profile/exact-key consolidation, loader/compiler/runtime, Product editing/import/discovery, tests, skills, plans and a security audit. This is a snapshot, not a clean execution base. Reconcile exact overlapping ownership before coding. The locally ignored public/demo/D60--temp_images/ and all its originals remain outside scope.
 
-**Audit disposition:** The reconciled findings and evidence are in [PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md](PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md). Original auditor reports remain separate evidence. In particular, the first structure audit's suggestion to retain implicit render-time reevaluation is superseded by the stable snapshot contract below. No application fix has been implemented by amending this plan.
+**Audit disposition:** The reconciled findings and evidence are in [PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md](PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md). Original auditor reports remain separate evidence. In particular, the first structure audit's suggestion to retain implicit render-time reevaluation is superseded by the stable snapshot contract below. That statement described the planning-only reconciliation; section 8 records the later separately authorized implementation.
 
 ## Global constraints
 
-- Implement only after separate approval. Keep work local until publication is explicitly requested.
+- Local implementation has separate approval. Keep the application changes local; no commit, push or application deployment without a further instruction.
 - Preserve existing manage-catalog authorization, Configurator/Product membership, capture signatures, owned-record checks, compiler validation, fingerprint checks and atomic writer behavior.
 - Test/save existing Overview, Attribute, Value and Rule editors, including new Rules. Structural inclusion/removal, ordering and Group assignment continue saving immediately through their existing actions.
 - Unsaved changes mean current temporary editor states on this page. Do not introduce a persisted draft/version/publication model or visitor saved configurations.
@@ -305,10 +305,10 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Files:** no application edits. Read this plan, AGENTS.md, current applicable .ai/rules, current scoped diffs and latest package versions.
 
-- [ ] Record current HEAD, branch, worktrees and exact dirty paths. Coordinate any overlapping Preview/runtime edits before starting. This plan's snapshot is not permission to overwrite a newer checkout.
-- [ ] Confirm the browser/Herd URL serves the checkout being edited. Do not run a development web server for this Laravel app.
-- [ ] Run the existing affected PHP/JS baseline, using the commands in section 7. Report pre-existing failures separately. Do not install a browser-test plugin or point tests at the development database.
-- [ ] Refresh relevant docs only if the installed versions/API assumptions changed. Keep the existing no-push boundary.
+- [x] Record current HEAD, branch, worktrees and exact dirty paths. Coordinate any overlapping Preview/runtime edits before starting. This plan's snapshot is not permission to overwrite a newer checkout.
+- [x] Confirm the browser/Herd URL serves the checkout being edited. Do not run a development web server for this Laravel app.
+- [x] Run the existing affected PHP/JS baseline, using the commands in section 7. Report pre-existing failures separately. Do not install a browser-test plugin or point tests at the development database.
+- [x] Refresh relevant docs only if the installed versions/API assumptions changed. Keep the existing no-push boundary.
 
 **Deliverable:** a reproducible baseline and protected file allowlist, before runtime work.
 
@@ -318,11 +318,11 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** existing signed capture and exportPreviewChanges contracts. **Produces:** inspect and refreshEditorInventory from section 4.
 
-- [ ] Add a failing feature test with changed Overview description, changed Value hint and an incomplete new Mapping Rule. Assert three review rows and a retained temporary Rule ID; a subsequent failed current-edits rebuild exposes the located Rule error while all three rows remain. Saved-source Review can show the inventory without claiming it is validated. Saved models remain byte-for-byte equivalent through the definition loader.
-- [ ] Add cases for saved-source inventory, no-op normalized blanks, an external field already equal to the intended value, stale changed fields, invalid signature, duplicate identity, foreign Configurator, missing owner row and existing capture/row limits. Tampering cannot yield a partial accepted inventory. Test that collecting a different inventory marks an old current test stale and permits a new validation attempt; identical exports do not invalidate it.
-- [ ] Run only those tests and confirm the new expectations fail for the missing inventory behavior, then implement the read-only split without weakening prepare.
-- [ ] Make rebuildPreview retain the inventory after compilation failure. Keep saved-source rendering independent of inventory errors, and current-edits rendering explicit about invalid data.
-- [ ] Rerun the two affected feature files; verify no database writes from inventory or Review. Check formatting/whitespace before treating the task as complete.
+- [x] Add a failing feature test with changed Overview description, changed Value hint and an incomplete new Mapping Rule. Assert three review rows and a retained temporary Rule ID; a subsequent failed current-edits rebuild exposes the located Rule error while all three rows remain. Saved-source Review can show the inventory without claiming it is validated. Saved models remain byte-for-byte equivalent through the definition loader.
+- [x] Add cases for saved-source inventory, no-op normalized blanks, an external field already equal to the intended value, stale changed fields, invalid signature, duplicate identity, foreign Configurator, missing owner row and existing capture/row limits. Tampering cannot yield a partial accepted inventory. Test that collecting a different inventory marks an old current test stale and permits a new validation attempt; identical exports do not invalidate it.
+- [x] Run only those tests and confirm the new expectations fail for the missing inventory behavior, then implement the read-only split without weakening prepare.
+- [x] Make rebuildPreview retain the inventory after compilation failure. Keep saved-source rendering independent of inventory errors, and current-edits rendering explicit about invalid data.
+- [x] Rerun the two affected feature files; verify no database writes from inventory or Review. Check formatting/whitespace before treating the task as complete.
 
 **Acceptance:** every gathered change can be reviewed even when it cannot compile; strict preparation and writer tests still pass.
 
@@ -330,11 +330,11 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Files:** ConfiguratorPreview.php; new ConfiguratorPreviewInspection.php skeleton/projection; ConfiguratorPreviewNotes.php only as required; workspace/projection tests. **Prerequisite:** Task 1; implement before new modal/display requests depend on snapshot behavior.
 
-- [ ] Add a failing behavioral hydration test: evaluate saved source with A selected and exact code/trace; mutate a saved Rule or Product availability so a new evaluation selects B; exercise display roundtrips and native Review/notices/inspection. Assert exact previewView, code, trace and both sourceRuntimes stay unchanged. Review's freshness check marks stale. Explicit Rebuild then applies B and replaces the snapshot. Browser-only display alone cannot discover the silent external mutation.
-- [ ] Add current-source inventory freshness test: newer captures collected by Review retain old result only with stale indication; unchanged captures leave it fresh; new invalid current compilation replaces the view with unavailable while all inventory survives. An old current error must not block attempting validation of newer inventory.
-- [ ] Evaluate current capture A, Review collects newer B, then make a legal choice/legacy refresh using retained previewData. Assert snapshot inventory hash still names A and the stale label remains; explicit Test current/Rebuild B then updates the hash/rows and clears only resolved staleness. No latest inventory hash may relabel old evaluated data.
-- [ ] Add inactive included Attribute and inactive/hidden default tests where engine result.definition=null but input.definition exists. Inspection retains original identities/lifecycle provenance as unavailable, legal=null; no selected/legal state or configuration code. A subsequent no-Product/invalid-editor evaluation must not reuse prior request-local metadata.
-- [ ] Implement the exact snapshot/read-transaction/metadata lifecycle in section 4.1. Assert repeated native actions do not call evaluate or append projections; use behavior/dependency instrumentation available in existing tests, not a new production interface merely for a spy. Keep parent public catalog behavior.
+- [x] Add a failing behavioral hydration test: evaluate saved source with A selected and exact code/trace; mutate a saved Rule or Product availability so a new evaluation selects B; exercise display roundtrips and native Review/notices/inspection. Assert exact previewView, code, trace and both sourceRuntimes stay unchanged. Review's freshness check marks stale. Explicit Rebuild then applies B and replaces the snapshot. Browser-only display alone cannot discover the silent external mutation.
+- [x] Add current-source inventory freshness test: newer captures collected by Review retain old result only with stale indication; unchanged captures leave it fresh; new invalid current compilation replaces the view with unavailable while all inventory survives. An old current error must not block attempting validation of newer inventory.
+- [x] Evaluate current capture A, Review collects newer B, then make a legal choice/legacy refresh using retained previewData. Assert snapshot inventory hash still names A and the stale label remains; explicit Test current/Rebuild B then updates the hash/rows and clears only resolved staleness. No latest inventory hash may relabel old evaluated data.
+- [x] Add inactive included Attribute and inactive/hidden default tests where engine result.definition=null but input.definition exists. Inspection retains original identities/lifecycle provenance as unavailable, legal=null; no selected/legal state or configuration code. A subsequent no-Product/invalid-editor evaluation must not reuse prior request-local metadata.
+- [x] Implement the exact snapshot/read-transaction/metadata lifecycle in section 4.1. Assert repeated native actions do not call evaluate or append projections; use behavior/dependency instrumentation available in existing tests, not a new production interface merely for a spy. Keep parent public catalog behavior.
 
 **Acceptance:** hydration cannot silently replace a test; unavailable lifecycle inventory is truthful and complete when compilation succeeded.
 
@@ -344,15 +344,15 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** Task 1 inventory, Task 1B snapshot; current source runtimes and existing writer. **Produces:** one Save path plus commit/reconciliation barrier in sections 2.3/4.3.
 
-- [ ] Replace obsolete required-confirmation behavior assertions without deleting regression coverage. Through Livewire::test(ConfiguratorPreview::class), call saveChanges with a changed description capture, assert committed outcome/receipt, fresh saved description, saved snapshot and one configurator-preview-saved event. Counts become fresh only after acknowledgments and recollection. Review is absent unless intentionally mounted; close it only if still the mounted action.
+- [x] Replace obsolete required-confirmation behavior assertions without deleting regression coverage. Through Livewire::test(ConfiguratorPreview::class), call saveChanges with a changed description capture, assert committed outcome/receipt, fresh saved description, saved snapshot and one configurator-preview-saved event. Counts become fresh only after acknowledgments and recollection. Review is absent unless intentionally mounted; close it only if still the mounted action.
 
-- [ ] Add discriminating cases: saved source legal/current edits all-Values-hidden; invalid current Rule; expected replacement but otherwise complete; no Product; no pending change; revoked permission; Product outside assigned eligible Groups. Every denied save has zero definition/revision writes and no success event.
-- [ ] Retain the existing stale-fingerprint assertion at the writer boundary. Deterministically change a Product fact/definition after the pre-save evaluation but before handle; assert full rejection. Keep existing editor reconciliation tests proving a later typed hint/Rule label survives the successful collected save.
-- [ ] Add JS tests that Save recollects after Review, never calls the server after one export fails, ignores double clicks, and does not write after leaving Preview during collection. Once the transactional method has been submitted, do not pretend leaving the tab cancels a committed operation; reconciliation must still run.
-- [ ] Delay/fail a new Rule editor's reconciliation response after commit; attempt Save/reenter Preview. Assert no second writer call, transaction/new Rule or automatic recollection until acknowledgment. Retry only pending acceptPreviewSave calls with the returned mapping; one applied receipt, preserved later text and eventual current inventory. Include stale/wrong acknowledgment identities and an acknowledgment lost after a successful handler so an idempotent retry cannot rebase twice.
-- [ ] Force post-commit saved-preview reload/projection failure. Assert the definition is written once, commit receipt/captures/map still reach reconciliation, later typed fields survive, and feedback says saved/refresh failed. Retrying preview/editor refresh never invokes the writer. A pre-commit validation error has no success event or revision mutation; no test assumes every definition Save advances catalog_revision.
-- [ ] Implement the shared Save method and success/failure sequence. Remove the reviewed-fingerprint permission dependency and old confirmation entry, update stale helper copy and preserve existing new-Rule mapping/rebase behavior.
-- [ ] Run the affected PHP/JS files and current editor-navigation tests. Confirm toolbar and Review Save use the same collector/writer path.
+- [x] Add discriminating cases: saved source legal/current edits all-Values-hidden; invalid current Rule; expected replacement but otherwise complete; no Product; no pending change; revoked permission; Product outside assigned eligible Groups. Every denied save has zero definition/revision writes and no success event.
+- [x] Retain the existing stale-fingerprint assertion at the writer boundary. Deterministically change a Product fact/definition after the pre-save evaluation but before handle; assert full rejection. Keep existing editor reconciliation tests proving a later typed hint/Rule label survives the successful collected save.
+- [x] Add JS tests that Save recollects after Review, never calls the server after one export fails, ignores double clicks, and does not write after leaving Preview during collection. Once the transactional method has been submitted, do not pretend leaving the tab cancels a committed operation; reconciliation must still run.
+- [x] Delay/fail a new Rule editor's reconciliation response after commit; attempt Save/reenter Preview. Assert no second writer call, transaction/new Rule or automatic recollection until acknowledgment. Retry only pending acceptPreviewSave calls with the returned mapping; one applied receipt, preserved later text and eventual current inventory. Include stale/wrong acknowledgment identities and an acknowledgment lost after a successful handler so an idempotent retry cannot rebase twice.
+- [x] Force post-commit saved-preview reload/projection failure. Assert the definition is written once, commit receipt/captures/map still reach reconciliation, later typed fields survive, and feedback says saved/refresh failed. Retrying preview/editor refresh never invokes the writer. A pre-commit validation error has no success event or revision mutation; no test assumes every definition Save advances catalog_revision.
+- [x] Implement the shared Save method and success/failure sequence. Remove the reviewed-fingerprint permission dependency and old confirmation entry, update stale helper copy and preserve existing new-Rule mapping/rebase behavior.
+- [x] Run the affected PHP/JS files and current editor-navigation tests. Confirm toolbar and Review Save use the same collector/writer path.
 
 **Acceptance:** one click writes only a freshly validated complete capture, or writes nothing and retains every draft. Optional Review cannot authorize an old capture.
 
@@ -362,12 +362,12 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** Tasks 1–2. **Produces:** the action inventory and notice hierarchy in section 2.
 
-- [ ] Add focused tests for Review opening on invalid/conflicting data, source/choice preservation on open/close, and the notice headline remaining an error while a selection replacement is informational. Assert content/behavior, not Filament's generic modal implementation.
+- [x] Add focused tests for Review opening on invalid/conflicting data, source/choice preservation on open/close, and the notice headline remaining an error while a selection replacement is informational. Assert content/behavior, not Filament's generic modal implementation.
 - [ ] Implement native reviewChanges and previewNotices slide-overs with read-only content. Review Save uses extraModalFooterActions with a developer-defined scoped alpineClickHandler dispatch and default Close. No relationship-bound schema or callback can persist editor data implicitly. Verify both actions remain sticky with a long invalid inventory at small viewport/zoom.
-- [ ] Build Product/Testing/Unsaved groups, permanent count/status lines and the single top notice slot. Move detailed conditional full-width errors into the notice/inspection surfaces; remove the old separate reserved feedback gap.
-- [ ] Reuse autocomplete, default Product, catalog destination tooltip, source toggles and Rebuild. Save from Test saved makes the current-edits validation transition explicit.
-- [ ] Update Product search JS/partial and tests: hold an export promise; attempt clear, choose via pointer/Enter, source change and cause/editor navigation. Shared admission blocks all competing changes. Start a Product choice first, then Save; collection waits for it. Serialize native modal/inspection requests too; no old response overwrites a newer source/Save result.
-- [ ] Visually check empty, pending, collecting, invalid, conflict, success, replacement and stale states at 390/768/960/1440 px, both themes. Confirm appearance/removal of notices does not move the configuration's initial top position at a fixed viewport.
+- [x] Build Product/Testing/Unsaved groups, permanent count/status lines and the single top notice slot. Move detailed conditional full-width errors into the notice/inspection surfaces; remove the old separate reserved feedback gap.
+- [x] Reuse autocomplete, default Product, catalog destination tooltip, source toggles and Rebuild. Save from Test saved makes the current-edits validation transition explicit.
+- [x] Update Product search JS/partial and tests: hold an export promise; attempt clear, choose via pointer/Enter, source change and cause/editor navigation. Shared admission blocks all competing changes. Start a Product choice first, then Save; collection waits for it. Serialize native modal/inspection requests too; no old response overwrites a newer source/Save result.
+- [x] Visually check empty, pending, collecting, invalid, conflict, success, replacement and stale states at 390/768/960/1440 px, both themes. Confirm appearance/removal of notices does not move the configuration's initial top position at a fixed viewport.
 
 **Acceptance:** actions are discoverable by purpose; errors and changes remain reviewable without introducing page jumps or a required confirmation.
 
@@ -377,11 +377,11 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** evaluated definition and current per-Attribute state. **Produces:** one runtime with two presentations.
 
-- [ ] Add tests with one inapplicable Attribute; one selected, one other legal, one disabled and two hidden Values with distinct display orders. Assert the full inventory and stable hidden-last order in All states; Catalog result omits only hidden/inapplicable records and retains disabled choices.
-- [ ] Test both native select and radio Catalog input types, dynamic labels/hints/display values, and absent semantic IDs. The shared catalog component's default props must still omit codes/IDs, and its existing runtime tests must pass unchanged in behavior. Add saved/new-unsaved global-context Rule exclusions and verify an ordinary Attribute named Territory is still evaluated as a selection source.
-- [ ] Implement cards and the projectedRows adapter exactly as section 4.1. Remove only Preview choice form, formState/form-fill calls and manual cache resets. Retain native action schema contracts/traits, public engine methods and mounted-action state. Existing catalog result/default props/native select/radio tests remain unchanged in behavior; Preview never obtains a fresh result merely to render Catalog result.
-- [ ] Add source × presentation roundtrip tests: change a choice in saved; change another in current edits; flip All/Catalog repeatedly. Each source's choice, code, captures and inventory remain the same as before its presentation switch.
-- [ ] Verify disabled/hidden cards cannot submit a selection, while their sibling Explain actions remain keyboard reachable. Display actual hints with distinct help affordances.
+- [x] Add tests with one inapplicable Attribute; one selected, one other legal, one disabled and two hidden Values with distinct display orders. Assert the full inventory and stable hidden-last order in All states; Catalog result omits only hidden/inapplicable records and retains disabled choices.
+- [x] Test both native select and radio Catalog input types, dynamic labels/hints/display values, and absent semantic IDs. The shared catalog component's default props must still omit codes/IDs, and its existing runtime tests must pass unchanged in behavior. Add saved/new-unsaved global-context Rule exclusions and verify an ordinary Attribute named Territory is still evaluated as a selection source.
+- [x] Implement cards and the projectedRows adapter exactly as section 4.1. Remove only Preview choice form, formState/form-fill calls and manual cache resets. Retain native action schema contracts/traits, public engine methods and mounted-action state. Existing catalog result/default props/native select/radio tests remain unchanged in behavior; Preview never obtains a fresh result merely to render Catalog result.
+- [x] Add source × presentation roundtrip tests: change a choice in saved; change another in current edits; flip All/Catalog repeatedly. Each source's choice, code, captures and inventory remain the same as before its presentation switch.
+- [x] Verify disabled/hidden cards cannot submit a selection, while their sibling Explain actions remain keyboard reachable. Display actual hints with distinct help affordances.
 
 **Acceptance:** all-state visibility is inspection only; catalog behavior and legal-selection rules do not change.
 
@@ -391,12 +391,12 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** the current evaluation result/definition/trace; safe existing editor targets. **Produces:** the projection and inspector interface in section 4.
 
-- [ ] Add pure fixture tests for initial hidden/disabled flags, lifecycle/canonical unavailability, whole-Attribute hiding, Mapping set restrictions, AllowOptions, selection replacement, unavailable configuration and no legal Values. Keep existing report contracts for conflict editor targets.
-- [ ] Use a four-Value case: Metal Shell hides B/C/D; 1-inch also hides B/C/D; USA hides A/D. Assert no legal Values, three contributing causes, and zero additional removals for the overlapping 1-inch effect after Metal Shell. A priority change does not make any Value legal.
-- [ ] For presentation rules, use priorities 3 and 8 with different hints, then two priority-8 different hints. Assert the winner in the first case, the existing tie/base outcome in the second, and saving blocked only for the conflict case. Include Attribute- and Value-scoped effects.
-- [ ] Index trace by Attribute/Rule/Value once per build. Generalize existing conflict causes rather than reimplementing conditions. Test unmatched presentation-only Rule=not_recorded, definition-disabled separately, restriction skipped trace, several presentation effects, excluded saved/new unsaved global-context Rules. Produce truthful outcomes/overlap/safe editor links; no invented match/failing nested predicate or translated-message parsing.
-- [ ] Keep selection-only explanatory notes separate from product/mixed/system causes. Add Explain effect links and render the inspector's ordered sections. Preserve selected-ID disclosure open state.
-- [ ] Run projection, notes and workspace tests. Build inspection once at explicit evaluation and reuse snapshot rows/notes/trace. Assert build executes zero SQL, two different inspection targets add no per-Value queries, and repeated render/action interactions do not append histories/duplicate projections or grow public-state shape.
+- [x] Add pure fixture tests for initial hidden/disabled flags, lifecycle/canonical unavailability, whole-Attribute hiding, Mapping set restrictions, AllowOptions, selection replacement, unavailable configuration and no legal Values. Keep existing report contracts for conflict editor targets.
+- [x] Use a four-Value case: Metal Shell hides B/C/D; 1-inch also hides B/C/D; USA hides A/D. Assert no legal Values, three contributing causes, and zero additional removals for the overlapping 1-inch effect after Metal Shell. A priority change does not make any Value legal.
+- [x] For presentation rules, use priorities 3 and 8 with different hints, then two priority-8 different hints. Assert the winner in the first case, the existing tie/base outcome in the second, and saving blocked only for the conflict case. Include Attribute- and Value-scoped effects.
+- [x] Index trace by Attribute/Rule/Value once per build. Generalize existing conflict causes rather than reimplementing conditions. Test unmatched presentation-only Rule=not_recorded, definition-disabled separately, restriction skipped trace, several presentation effects, excluded saved/new unsaved global-context Rules. Produce truthful outcomes/overlap/safe editor links; no invented match/failing nested predicate or translated-message parsing.
+- [x] Keep selection-only explanatory notes separate from product/mixed/system causes. Add Explain effect links and render the inspector's ordered sections. Preserve selected-ID disclosure open state.
+- [x] Run projection, notes and workspace tests. Build inspection once at explicit evaluation and reuse snapshot rows/notes/trace. Assert build executes zero SQL, two different inspection targets add no per-Value queries, and repeated render/action interactions do not append histories/duplicate projections or grow public-state shape.
 
 **Acceptance:** an operator can explain selected, available, disabled and hidden states, see every conflict contributor and open the correct existing editor without losing work.
 
@@ -406,11 +406,11 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** Tasks 3–5 and browserProfile. **Produces:** the exact preferences/defaults/layout matrix in sections 2.5–2.7.
 
-- [ ] Write JS tests for defaults, legacy trace migration, per-presentation metadata, nested patch merging, invalid keys/types/sizes/ratios, corrupt/oversized/blocked storage, user/page isolation, listener cleanup, display during Save and zero server requests for all display/resize controls.
-- [ ] Implement one normalized local profile/controller. Remove the Preview-only trace adapter only after migrating its caller; do not change unrelated profiles. No Livewire setting patch/entanglement. Scoped Explain reveal events update that same local owner.
-- [ ] Add notes/diagnostics show-hide, density and exact label sizes in Display. Global Light/Dark uses the existing theme event. Keep the menu open through density/layout changes; reposition or scroll it within the viewport.
-- [ ] Implement section 2.7's single primary divider, exact minima/feasibility/defaults, equal combined side panels and independent stored ratios. Add Preview options to existing splitter while keeping Attributes/Rules default behavior/tests. Pointer release saves once, cancel/Escape restores, keyboard/RTL/Home/End/Enter/double-click work, observers/listeners clean up. No alternate Actions-layout/design switch.
-- [ ] Test all four visible panel combinations, threshold/min-width clamping, temporarily stacked preference retention, hide/restore/reload, reset and unrelated morph. Long pointer/keyboard resize sequence proves zero Livewire/evaluator/capture/writer calls and unchanged source/choices/code/drafts. Include existing WorkspaceSizing tests when extending shared splitter.
+- [x] Write JS tests for defaults, legacy trace migration, per-presentation metadata, nested patch merging, invalid keys/types/sizes/ratios, corrupt/oversized/blocked storage, user/page isolation, listener cleanup, display during Save and zero server requests for all display/resize controls.
+- [x] Implement one normalized local profile/controller. Remove the Preview-only trace adapter only after migrating its caller; do not change unrelated profiles. No Livewire setting patch/entanglement. Scoped Explain reveal events update that same local owner.
+- [x] Add notes/diagnostics show-hide, density and exact label sizes in Display. Global Light/Dark uses the existing theme event. Keep the menu open through density/layout changes; reposition or scroll it within the viewport.
+- [x] Implement section 2.7's single primary divider, exact minima/feasibility/defaults, equal combined side panels and independent stored ratios. Add Preview options to existing splitter while keeping Attributes/Rules default behavior/tests. Pointer release saves once, cancel/Escape restores, keyboard/RTL/Home/End/Enter/double-click work, observers/listeners clean up. No alternate Actions-layout/design switch.
+- [x] Test all four visible panel combinations, threshold/min-width clamping, temporarily stacked preference retention, hide/restore/reload, reset and unrelated morph. Long pointer/keyboard resize sequence proves zero Livewire/evaluator/capture/writer calls and unchanged source/choices/code/drafts. Include existing WorkspaceSizing tests when extending shared splitter.
 - [ ] Verify 390/768/960/1440 px, 200% zoom, long labels/codes and open menus in both themes. Check horizontal overflow, heading/code wrapping, menu reachability, focus, contrast and stable selected-ID disclosure.
 
 **Acceptance:** display changes persist safely and never become unsaved definition changes or reset test choices.
@@ -421,13 +421,13 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Consumes:** all preceding tasks and existing editor collection/navigation. **Produces:** verified end-to-end behavior with documented limits.
 
-- [ ] Extend existing navigation tests for Explain -> Edit Rule and Explain -> Edit Value, lazy editors, an unavailable target, manual tab changes during collection, a Product switch, and a successful Save while another editor retains a later change.
-- [ ] Run the full checks in section 7, after focused checks pass. Do not claim the full suite or MySQL checks passed unless their actual command output confirms it.
-- [ ] In the existing guarded disposable MySQL test setup, use two independent connections/processes and deterministic barriers to overlap tested Preview Save with actual SaveCatalogProduct and relevant Group/Configurator writers. Exercise the verified opposite lock acquisitions, not sequential stale calls. Require bounded retry success or complete stale rejection, no partial definition/revision writes, no duplicate new Rule/event and preserved authoritative Product profile. An unrun case remains a named gate. A reproduced failure is coordinated with writer owners before changing lock order; do not infer deadlock from source or claim SQLite proves safety.
-- [ ] Browser-check both source modes × both presentations; Review open/Close; validation failure and direct Save; successful Save/reload; no legal Values; expected replacement; stale saved data; Product change/clear; and all panel combinations. Use a dedicated explicitly disposable local fixture for actual save/failure exercises, retain the existing real Configurator, and restore approved fixture state afterwards.
-- [ ] Complete 100 presentation switches, 100 legal Value choices, 40 panel/metadata changes, 20 source switches, 20 Product switches, 20 Explain/editor roundtrips and 20 Review open/close operations. Add 10 rapid/double-click Save attempts split across valid, invalid and conflicting fixture states. Test that one in-flight click sequence produces at most one successful transaction/event; preserve later edits and no duplicate new Rules.
+- [x] Extend existing navigation tests for Explain -> Edit Rule and Explain -> Edit Value, lazy editors, an unavailable target, manual tab changes during collection, a Product switch, and a successful Save while another editor retains a later change.
+- [x] Run the full checks in section 7, after focused checks pass. Do not claim the full suite or MySQL checks passed unless their actual command output confirms it.
+- [x] In the existing guarded disposable MySQL test setup, use two independent connections/processes and deterministic barriers to overlap tested Preview Save with actual SaveCatalogProduct and relevant Group/Configurator writers. Exercise the verified opposite lock acquisitions, not sequential stale calls. Require bounded retry success or complete stale rejection, no partial definition/revision writes, no duplicate new Rule/event and preserved authoritative Product profile. An unrun case remains a named gate. A reproduced failure is coordinated with writer owners before changing lock order; do not infer deadlock from source or claim SQLite proves safety.
+- [x] Browser-check both source modes × both presentations; Review open/Close; validation failure and direct Save; successful Save/reload; no legal Values; expected replacement; stale saved data; Product change/clear; and all panel combinations. Use a dedicated explicitly disposable local fixture for actual save/failure exercises, retain the existing real Configurator, and restore approved fixture state afterwards.
+- [x] Complete 100 presentation switches, 100 legal Value choices, 40 panel/metadata changes, 20 source switches, 20 Product switches, 20 Explain/editor roundtrips and 20 Review open/close operations. Add 10 rapid/double-click Save attempts split across valid, invalid and conflicting fixture states. Test that one in-flight click sequence produces at most one successful transaction/event; preserve later edits and no duplicate new Rules.
 - [ ] Add 100 pointer/keyboard resize operations across visible combinations, including pointercancel/Escape/reset/RTL, reload/morph, storage failure and resizing during Save. Record browser timings, request counts/transferred bytes, hydrated/teleported DOM, listeners and public-state shape separately from PHP queries/render time. All states DOM grows linearly with inventory by design; per-click accumulation and repeated hidden database work are failures. Check no duplicates, uncaught errors, unexpected saves/overflow. Investigate reproducible p95 regression >20% against a named same-data baseline; no invented universal speed/heap cap.
-- [ ] Report each remaining issue and its saved-data impact. Stop before committing/pushing or deploying unless separately authorized.
+- [x] Report each remaining issue and its saved-data impact. Stop before committing/pushing or deploying unless separately authorized.
 
 **Acceptance:** the new presentation remains usable under repeated interaction, and the existing safe editing/persistence guarantees hold.
 
@@ -435,9 +435,9 @@ Display fields are labelled native HTML inputs inside the existing Filament Blad
 
 **Files:** this plan and PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md only. Exclude docs/README.md and every other chat's plan.
 
-- [ ] Record historical deferred/confirmation contract discrepancies here; coordinate any later edits to IMPLEMENTATION_GUIDELINES.md, contracts/FILAMENT_ADMIN.md or CONFIGURATOR_WORKSPACE_IMPLEMENTATION_PLAN.md separately with their owners. This task does not authorize those edits.
-- [ ] Mark only completed tasks as complete. Attach exact checks, browser fixture identity/cleanup, known Rules conflicts, unrun checks and any local-only data; do not describe the mockup's simulation as application verification.
-- [ ] Self-review requirements against tasks and report the exact implementation file allowlist. A future commit must be separately authorized, reviewed and scoped; no automatic push/deployment.
+- [x] Record historical deferred/confirmation contract discrepancies here; coordinate any later edits to IMPLEMENTATION_GUIDELINES.md, contracts/FILAMENT_ADMIN.md or CONFIGURATOR_WORKSPACE_IMPLEMENTATION_PLAN.md separately with their owners. This task does not authorize those edits.
+- [x] Mark only completed tasks as complete. Attach exact checks, browser fixture identity/cleanup, known Rules conflicts, unrun checks and any local-only data; do not describe the mockup's simulation as application verification.
+- [x] Self-review requirements against tasks and report the exact implementation file allowlist. A future commit must be separately authorized, reviewed and scoped; no automatic push/deployment.
 
 ## 7. Commands and verification prerequisites
 
@@ -488,6 +488,8 @@ Use the existing MySQL bootstrap safety guards and configured local test credent
 
 ## 8. Completion record and self-review
 
+### Historical planning-only record — 2026-10-23
+
 Planning checks completed on 2026-10-23: current Preview/source/editor-export/writer/notes/engine/profile/test interfaces inspected; native modal/lifecycle APIs checked against Boost documentation and installed source; installed Blueprint overview/actions/testing/checklist applied; independent structure/Livewire/Filament/Laravel/deep-architecture reports reconciled. The selected mockup/baseline browser review belongs to the preceding review, not proof of this unimplemented plan. The present repository edit allowlist contains this plan and its structure audit only.
 
 Implementation, automated tests, fixture writes, new browser stress runs, commits, pushes and deployment have **not** been performed by writing this plan.
@@ -504,4 +506,129 @@ Plan review checklist:
 - [x] Structural actions remain immediate; alternative gallery designs and review-site controls are excluded.
 - [x] Other chats' changes, local images, no-push boundary and the distinction between planning and implementation are explicit.
 
-Next stage: operator review of this plan. Implementation requires a separate instruction.
+Historical next stage: operator review and separate implementation instruction. That instruction has since been received; the execution record follows.
+
+### Local implementation record — 2026-10-23
+
+The operator authorized application implementation after approving the full mockup and the independent structure/framework reviews. Execution began at `fcac0ad1fdef50ec2a4019f34bb6261b6b88018b` in the managed checkout `/Users/studioycm/.codex/worktrees/preview-test-workspace/configurator`. Before the final gates, it advanced safely to the concurrent primary tip, **detached HEAD `4e82c222da421d098e8d1a9b5e50ef5a442b6ecc`**, which also matched the primary checkout at the final check. `preview-test-workspace` is the managed worktree name, not a checked-out branch. No application commit was created. Other sessions may advance the primary checkout; this execution did not edit or restore its runtime files, docs, skills, index or database. The native worktree and its uncommitted diff are the recovery point. Upstream runtime changes were disjoint; only these two plan/audit documents overlapped and were restored with the reconciled content. SHA-256 comparison confirmed all **42** owned runtime files unchanged across the base advance; `preview-latest-base-integration.json` records the exact source/destination bases, overlap and hash proof. No reset or commit was used.
+
+The isolated affected baseline was **49 PHP tests / 265 assertions and 56 JavaScript tests**, after worktree-only dependency cloning and APP_KEY setup. No package was installed or changed. `.ai/rules` was absent; `AGENTS.md`, installed versions, relevant skills, Boost documentation and installed framework source were applied. Herd serves this isolated checkout at `http://configurator-preview-workspace.test`; the primary `configurator.test` was not used for save exercises.
+
+Implemented responsibilities:
+
+- `ConfiguratorEditorChanges::inspect()` retains valid, incomplete and stale owned editor changes as a reviewable bounded signed inventory, while `prepare()` remains the strict compile/write boundary. `captureHash()` is distinct from the evaluated dataset hash and database fingerprint.
+- `ConfiguratorPreview` assembles one locked `previewView` at explicit evaluations, including original compiled provenance for unavailable results. Render, Review and inspection reuse it. Saved/current choices remain independent; collecting newer inventory marks the old test stale without relabelling its evaluated dataset.
+- Toolbar and native Review footer share the same immediate Save path. A successful receipt is retained before optional saved-preview refresh; current state is restored if that refresh fails. Overview/Attribute/Rule handlers acknowledge the same operation idempotently and preserve newer text. Missing acknowledgment retries only reconciliation; ambiguous submitted transport never automatically retries the writer.
+- One query-free `ConfiguratorPreviewInspection` projects inventory, restrictions, overlaps, priorities, candidate/winner/conflict provenance, truthful `not_recorded`, excluded definitions and outgoing references. Notes retain selection effects/replacement explanations. Source links reuse the existing Rule/Value editors.
+- Grouped actions, optional Review/notices slide-overs, the reserved notice slot, All states/Catalog result, a local Display menu and the primary splitter use existing native components and browser profile storage. Value order is hidden-last; Attribute order remains its original display order. Public Catalog metadata defaults and native select/radio behavior remain.
+- Actual MySQL overlap reproduced SQLSTATE `40001` / MySQL `1213` in both outer Group-assignment entry points. The only production writer change is `attempts: 3` on the two existing `AssignConfiguratorGroups` transactions. No lock-order, engine-policy, schema or dependency change was made. The original source-only PVS-04 risk is now a reproduced-and-verified bounded-retry fix, not a claim that lock inversion was eliminated.
+
+Independent implementation reviews accepted these responsibility boundaries without a new DTO/interface/trait/provider/repository family. The focused fix wave resolved local controls inheriting request disabling, native checked/selected property binding, Review freshness wording, post-commit refresh rollback, the Preview divider hairline, missing unevaluated targeting Rules and negative-predicate outgoing references. The last PRV-02 third-unselected-Value edge is covered in the current rendered regression; historical reviewer reports preserve the earlier states. A final invalid-Overview browser check did expose stale Save eligibility: strict preparation failed after inventory collection set the old-preview flag, and the validation catch left that flag set even though it assembled a new unavailable snapshot. A failing regression reproduced it; the validation catch now clears that stale marker so the actual invalid-current error disables Save. The latest focused Snapshot/Presentation run passed **22 tests / 181 assertions**, including inactive/hidden-default metadata reset and explicit no-Product/no-change Save denial cases. The final complete PHP and JavaScript suites passed after this one-line fix, as recorded below.
+
+A suspected stuck Review close was **not reproduced**: installed Livewire `Action.fire()` bypasses action interception, and browser completion occurred asynchronously. The existing test now holds close unresolved and proves the operation owner remains busy until it finishes; no speculative JavaScript fix was added.
+
+#### Automated verification actually executed
+
+| Gate | Result and evidence |
+| --- | --- |
+| Full SQLite/PHP suite | Final run on integrated base `4e82c22`: **1,045 passed / 6,556 assertions**, 67.81 s; `/private/tmp/preview-full-php-latest-base.log`. Explicit testing environment, SQLite `:memory:`, array cache/session and sync queue; not the development database. |
+| Full JavaScript suite | Final combined run: **147 passed**; `/private/tmp/preview-full-js-final-gate.log`, including the strengthened delayed-close regression. |
+| Actual competing-writer MySQL gate | **4 passed / 102 assertions**; `preview-concurrency-green.log`. Deterministic two-process actual Product/Group/Definition writer overlaps; assignment direct/unassign retry, Product retry and complete stale rejection. RED evidence is retained. |
+| Full guarded MySQL suite | Final integrated-base rerun: **42 passed / 274 assertions**, 4.75 s; `preview-full-mysql-latest-base.log`. `tests/bootstrap-mysql.php` guards the explicit local disposable test database. |
+| Build / formatting / static checks | `npm run build` passed. Final `vendor/bin/pint --dirty --format agent`, `vendor/bin/filacheck --fix --dirty` (zero remaining findings) and `git diff --check` passed; Pint corrected spacing in the latest test. |
+| Pure projection | Tests assert zero SQL during projection, stable original trace size, unavailable provenance, all restriction contributors, literal Product keys, presentation ties and truthful outcomes. |
+| Regression coverage retained | Public catalog, editor rebasing/signatures/ownership, Product eligibility, snapshot hydration, saved/current separation, stale-write rejection, invalid Rule inventory, post-commit failure and scoped/idempotent acknowledgment tests remain in the passing suite. |
+
+An initial full PHP run had two failures because the isolated checkout lacked an existing ignored import corpus; the third was an obsolete semantic-ID DOM assertion after All states intentionally retained the full inventory. The exact ignored corpus was copied from the primary without modification, and the test now checks selected semantic IDs rather than demanding unselected metadata be absent from the whole inspectable DOM. Later complete runs produced the green result above, including the pre-integration post-fix 1,027/6,463 run and the final integrated-base 1,045/6,556 run. The higher final count includes concurrent Product tests brought in with the newer base; it does not represent 18 additional Preview tests. The MySQL full suite likewise passed after that fixture prerequisite was supplied. These are disclosed setup/assertion corrections, not suppressed runtime failures.
+
+All named report/log artifacts below reside in `/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/`: `preview-inventory-service-report.md`, `preview-inspection-implementation-report.md`, `preview-reconciliation-report.md`, `preview-presentation-fixwave-report.md`, `preview-concurrency-report.md`, `preview-concurrency-red.log`, `preview-concurrency-green.log`, `preview-full-mysql-suite-with-corpus.log`, `preview-implementation-final-review.md`, `preview-ui-final-review.md`, `preview-ui-final-delta-review.md` and `preview-mysql-corpus-copy-proof.json`, `preview-latest-base-integration.json`, `preview-full-mysql-latest-base.log`, `preview-review-sticky-footer.png`, `preview-workspace-desktop-final.png`, `preview-workspace-inspection-final.png` and `preview-workspace-mobile-final.png`.
+
+#### Actual application browser verification reported by the parent
+
+This is the isolated Laravel application, not the published mockup. Completed flows include both test sources × both presentations; four editor captures with readable before/after Review; successful direct Save from Test saved; successful new Rule Save from the native Review footer with reconciliation; invalid new Rule blocked; all four Body Values hidden under the deliberate USA conflict; EPDM replaced by Buna-N with the native selected property and selection note correct; persistent selected-ID disclosure; ten completed Edit Rule and ten completed Edit Value roundtrips preserving the Overview buffer; Product choose/clear; successful saved reload with 69% width, compact spacing, metadata and Light theme remembered; local Display and resizing while Save is pending; Light/Dark; 390/768/960 px stacking and 1440 px horizontal layout without overflow.
+
+A valid **50-line Description** made the native Review body scroll across three pages. Save remained enabled and its sticky footer rectangle stayed **top=680 / bottom=712 px** before and after scrolling (`preview-review-sticky-footer.png`). This long text was **not saved**; the exact prior Description was restored, no unsaved changes remained and the console was clean. This confirms ordinary long-content scrolling, not actual 200% zoom.
+
+Completed stress evidence:
+
+| Operation | Completed observation |
+| --- | --- |
+| 100 presentation switches | DOM count remained **3,742**; presentation is local, with no presentation-triggered Livewire request. |
+| 100 legal Value choices | **100 `selectOption` requests** plus five unrelated `$refresh` requests; **1,788,110 transferred bytes**. Same-data first-20 p95 **417.103 ms**, last-20 p95 **240.809 ms**; no measured >20% regression. |
+| 40 panel/metadata changes | DOM count remained **3,784**; local display state did not become an editor change. |
+| 20 source switches; 20 Product interactions including clear | Completed without browser errors; selections/source resets and retained editor buffers checked. |
+| 20 Explain/editor roundtrips | Ten Rule and ten Value completed roundtrips, with the Overview edit retained. |
+| 20 Review open/close cycles | Five Close and fifteen Escape cycles awaited actual hidden-dialog completion; no error. |
+| Resizing | 100 keyboard resize operations and actual pointer dragging passed; default two-column 67% measured **892/446 px**; three-column 50% preserved equal side widths; resizing while Save pending worked. Actual pointer drag then Escape returned to 69% with dragging=false. Cancellation/RTL/storage-denial/cleanup also have focused controller coverage. |
+| Notice stability | Notice slot stayed **80 px** and controls top stayed **207 px** across the conflict transition at the same desktop viewport. |
+| Rapid Save admission | Ten conflicting-state attempts blocked; ten rapid valid attempts produced one visible successful receipt; ten native clicks on invalid Overview Save were blocked after the eligibility fix. Restoring the Name returned to no unsaved changes with a clean console. |
+
+These DOM totals belong to different measured panel/presentation states and are not comparable as a growth series. Raw JavaScript heap and listener totals could not be measured through the available CDP surface; listener/observer cleanup has automated coverage. Do not substitute controller tests for unmeasured browser heap/listener counts or claim pointer cancellation/RTL were all browser gestures.
+
+#### Disposable fixture, known conflict and local-only files
+
+Actual save/failure exercises use only ignored `database/preview-browser.sqlite` in this isolated worktree. It contains Configurator **1, “Preview & Test QA”**, Group **1, “Preview QA only”**, two Products **D60-QA-METAL-01 / D60-QA-PLASTIC-04**, six Attributes, fifteen Values and nine Rules after the intentional new-Rule save. The private guarded seed is under `.superpowers/sdd/PREVIEW_TEST_WORKSPACE_IMPLEMENTATION_PLAN/browser-fixture.php`; worktree `.env`, SQLite data, fixture credentials and runtime files must never be committed. The fixture is retained for review with **nine** Rules, including the intentional QA save example; it was not reset to its original eight Rules or deleted. All editor buffers are clean, the Metal Product is selected and Territory is Global; test choices retain Metal/Buna-N after the expected replacement. Final display was reset to Light, All states, Codes on, IDs off, notes shown, diagnostics hidden and the default two-column 67% split; viewport override was reset. Saved reload/persistence passed; no primary or Forge record was changed.
+
+The QA USA conflict is deliberate local test data: Metal Shell and 1-inch Product restrictions each hide CS/S3/D5 Body choices, while USA selection hides DI/D5. Together all four Kinetic Valve Body Material Values are hidden; the second overlapping Product cause contributes zero additional removals, and restriction priority cannot restore a Value. Save correctly blocks this test. The earlier real **USA + 1-inch/Metal Shell** conflict remains a known domain-rule configuration case; this implementation does not change its Rules or engine policy.
+
+The ignored import corpus `storage/app/imports/ari/d060.groups_2144.normalized.csv` is a byte-for-byte local copy of the existing primary file, **484,540 bytes**, SHA-256 `5a8adbd4439bb1f020ab625d84fa6fde3a62ce67fbd74f94cf2b2e3b19758f72`; source-before/source-after/destination hashes match in `preview-mysql-corpus-copy-proof.json`. It is a test prerequisite, not an application source change. The locally ignored `public/demo/D60--temp_images/` and skills remain excluded and untouched by this implementation.
+
+#### Precise remaining verification gates at this record
+
+- Actual browser **200% zoom**, including long Review/sticky footer/menu reachability, remains manual: native Command-plus automation left innerWidth=1440 and devicePixelRatio=1 unchanged, so it did not verify zoom. Responsive viewport checks do not replace this gate.
+- Raw browser heap/listener totals are unavailable, rather than passed. Existing cleanup tests and stable repeated DOM observations are the supported evidence.
+
+The unchecked composite tasks retain the 200% zoom and unavailable raw heap/listener checks. Final screenshots, viewport reset and default-display housekeeping are complete; the retained QA fixture state above is intentional. No new saved-data defect is claimed by a missing measurement or unlocated test. No commit, push or application deployment has occurred; a future integration must reconcile this allowlist with the then-current primary/remote tip before any scoped commit.
+
+#### Approved integration onto master
+
+After reviewing the working application, the operator explicitly authorized moving this exact Preview & Test scope onto `master`, rerunning the checks and creating a local feature-only commit. The preceding execution record describes the pre-commit review snapshot. Fresh pre-commit checks passed: 1,045 PHP tests / 6,556 assertions, 147 JavaScript tests, 42 guarded MySQL tests / 274 assertions, asset build, Pint and FilaCheck. The unrelated primary-checkout documentation, temporary QA SQLite database, fixture credentials, import corpus and demo images are excluded. No push or deployment is authorized by this integration instruction.
+
+#### Exact application and documentation file allowlist
+
+The following is the actual uncommitted implementation/documentation allowlist, not permission to stage every future dirty file. Unmodified planned dependencies such as the cause component, notes view and AdminProfile test are not changed merely because the earlier file map listed them.
+
+- `app/Actions/AssignConfiguratorGroups.php`
+- `app/Filament/Resources/Configurators/RelationManagers/AttributesRelationManager.php`
+- `app/Filament/Resources/Configurators/RelationManagers/RulesRelationManager.php`
+- `app/Livewire/Catalog/ConfiguratorOverview.php`
+- `app/Livewire/Catalog/ConfiguratorPreview.php`
+- `app/Services/ConfiguratorDefinitionLoader.php`
+- `app/Services/ConfiguratorEditorChanges.php`
+- `app/Services/ConfiguratorPreviewNotes.php`
+- `lang/en/configurator.php`
+- `resources/css/filament/admin/theme.css`
+- `resources/js/admin-profile.js`
+- `resources/js/app.js`
+- `resources/js/configurator-preview-workspace.js`
+- `resources/js/configurator-product-search.js`
+- `resources/js/workspace-split.js`
+- `resources/views/components/catalog/configuration-fields.blade.php`
+- `resources/views/components/catalog/workspace-splitter.blade.php`
+- `resources/views/livewire/catalog/configurator-preview-changes.blade.php`
+- `resources/views/livewire/catalog/configurator-preview-product-search.blade.php`
+- `resources/views/livewire/catalog/configurator-preview.blade.php`
+- `tests/Feature/AdminValueIdentificationTest.php`
+- `tests/Feature/Catalog/ConfiguratorIntegrationTest.php`
+- `tests/Feature/Catalog/ConfiguratorRuntimeTest.php`
+- `tests/Feature/ConfiguratorEditorChangesTest.php`
+- `tests/Feature/ConfiguratorPreviewWorkspaceTest.php`
+- `tests/Feature/UiWordingTest.php`
+- `tests/Unit/ConfiguratorPreviewNotesTest.php`
+- `tests/Unit/ConfiguratorPreviewWorkspace.test.js`
+- `tests/Unit/ConfiguratorProductSearch.test.js`
+- `tests/Unit/WorkspaceSizing.test.js`
+- `app/Services/ConfiguratorPreviewInspection.php`
+- `docs/catalog/PREVIEW_TEST_WORKSPACE_IMPLEMENTATION_PLAN.md`
+- `docs/catalog/PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md`
+- `resources/js/configurator-preview-display.js`
+- `resources/views/livewire/catalog/configurator-preview-controls.blade.php`
+- `resources/views/livewire/catalog/configurator-preview-inspection.blade.php`
+- `resources/views/livewire/catalog/configurator-preview-notices.blade.php`
+- `resources/views/livewire/catalog/configurator-preview-values.blade.php`
+- `tests/Feature/Catalog/MySql/ConfiguratorPreviewSaveConcurrencyTest.php`
+- `tests/Feature/ConfiguratorPreviewPresentationTest.php`
+- `tests/Feature/ConfiguratorPreviewReconciliationTest.php`
+- `tests/Feature/ConfiguratorPreviewSnapshotTest.php`
+- `tests/Unit/ConfiguratorPreviewDisplay.test.js`
+- `tests/Unit/ConfiguratorPreviewInspectionTest.php`

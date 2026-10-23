@@ -52,100 +52,280 @@ export async function navigateConfiguratorEditor(workspace, target, find = id =>
 
 export function configuratorPreviewWorkspace(configuratorId) {
     return {
-        collecting: false,
+        phase: 'idle',
+        legacyCollecting: false,
         collectionFailed: false,
         navigationFailed: false,
         generation: 0,
         active: false,
         pendingAutomatic: false,
         configuratorId,
+        receipt: null,
+        pendingEditors: [],
+        collectedEditors: [],
+        earlyAcknowledgments: [],
+        acknowledgmentTimeoutMs: 10000,
+        eventTarget: null,
+        cleanups: [],
+        deferredUnmounts: [],
+        requestPromise: null,
+        saveQueued: false,
+        submitted: false,
+        ownUnmount: false,
+        closeQueued: false,
+        destroyed: false,
+        acknowledgmentWaiter: null,
+        get busy() { return this.phase !== 'idle' || this.legacyCollecting; },
+        get collecting() { return this.phase === 'collecting' || this.legacyCollecting; },
+        set collecting(value) { this.legacyCollecting = !!value; },
         init() {
-            this.$nextTick(() => {
-                this.visibility({ configuratorId, active: !!this.$el.closest('[role="tabpanel"]')?.classList.contains('fi-active') });
+            this.eventTarget ??= globalThis.window;
+            const listen = (name, callback) => {
+                this.eventTarget?.addEventListener(name, callback);
+                this.cleanups.push(() => this.eventTarget?.removeEventListener(name, callback));
+            };
+            listen('configurator-preview-editor-reconciled', event => this.acknowledgeEditor(event.detail));
+            listen('configurator-preview-save-request', event => {
+                if (event.detail?.configuratorId === this.configuratorId && event.detail?.componentId === this.componentId() && this.active) this.save();
             });
+            if (typeof this.$wire?.$intercept === 'function') {
+                this.cleanups.push(this.$wire.$intercept('unmountAction', ({ action }) => {
+                    if (this.ownUnmount) return;
+                    action.defer();
+                    this.deferredUnmounts.push(action);
+                    if (!this.busy) this.release();
+                }));
+            }
+            this.$nextTick(() => this.visibility({ configuratorId, active: !!this.$el?.closest('[role="tabpanel"]')?.classList.contains('fi-active') }));
+        },
+        destroy() {
+            this.destroyed = true;
+            ++this.generation;
+            this.cleanups.splice(0).forEach(cleanup => cleanup?.());
+            this.deferredUnmounts.splice(0).forEach(action => action.cancel?.());
+            this.acknowledgmentWaiter?.reject(new Error('Configurator workspace was removed'));
+        },
+        componentId() {
+            return this.$wire?.$id ?? this.$el?.closest('[wire\\:id]')?.getAttribute('wire:id');
+        },
+        workspace() {
+            return this.$el?.closest('[data-configurator-workspace]');
+        },
+        editorIds() {
+            return [...new Set([...(this.workspace()?.querySelectorAll('[data-preview-editor]') ?? [])].map(element => element.closest('[wire\\:id]')?.getAttribute('wire:id')).filter(Boolean))];
+        },
+        findEditor(id) {
+            return globalThis.window?.Livewire?.find(id);
         },
         collect() {
-            return collectConfiguratorEditors(this.$el.closest('[data-configurator-workspace]'));
+            return collectConfiguratorEditors(this.workspace());
         },
         navigate(target) {
-            return navigateConfiguratorEditor(this.$el.closest('[data-configurator-workspace]'), target);
+            return navigateConfiguratorEditor(this.workspace(), target);
         },
-        async openSource(target) {
-            if (this.collecting) return;
+        async release() {
+            this.phase = 'idle';
+            if (this.destroyed) return;
+            while (this.deferredUnmounts.length) {
+                const action = this.deferredUnmounts.shift();
+                this.phase = 'request';
+                try {
+                    action.fire();
+                    await action.promise;
+                } catch {
+                    this.collectionFailed = true;
+                } finally {
+                    this.phase = 'idle';
+                }
+            }
+            if (this.closeQueued) {
+                this.closeQueued = false;
+                await this.closeReview();
+            }
+            if (this.pendingAutomatic && this.active && !this.saveQueued) {
+                this.pendingAutomatic = false;
+                await this.rebuild(undefined, true);
+            }
+        },
+        async request(callback) {
+            if (this.busy || this.destroyed) return false;
+            this.phase = 'request';
+            const operation = Promise.resolve().then(callback);
+            this.requestPromise = operation;
+            try {
+                return await operation;
+            } catch {
+                this.collectionFailed = true;
+                return false;
+            } finally {
+                if (this.requestPromise === operation) this.requestPromise = null;
+                await this.release();
+            }
+        },
+        async collectedRequest(callback, navigation = false) {
+            if (this.busy || this.destroyed) return;
             const generation = ++this.generation;
-            this.collecting = true;
+            this.phase = 'collecting';
             this.collectionFailed = false;
             this.navigationFailed = false;
             let collected = false;
             try {
-                await this.collect();
+                const captures = await this.collect();
                 if (generation !== this.generation) return;
                 collected = true;
-                await this.navigate(target);
+                this.phase = 'request';
+                await callback(captures);
             } catch {
-                if (!collected) this.collectionFailed = true;
+                if (!navigation || !collected) this.collectionFailed = true;
                 else {
                     this.navigationFailed = true;
                     await this.$wire.notifyNavigationFailure().catch(() => {});
                 }
             } finally {
-                this.collecting = false;
-                if (this.pendingAutomatic && this.active) {
-                    this.pendingAutomatic = false;
-                    await this.rebuild(undefined, true);
-                }
+                await this.release();
             }
         },
-        async explainConflicts() {
-            await this.$wire.showConflictDetails();
-            this.$nextTick(() => this.$el.querySelector('[data-preview-conflicts]')?.focus());
+        openSource(target) {
+            return this.collectedRequest(() => this.navigate(target), true);
+        },
+        explainConflicts() {
+            return this.request(async () => {
+                await this.$wire.showConflictDetails();
+                this.$nextTick(() => this.$el?.querySelector('[data-preview-conflicts]')?.focus());
+            });
         },
         visibility(detail) {
             if (detail.configuratorId !== this.configuratorId || detail.active === this.active) return;
             this.active = detail.active;
             if (detail.active) {
-                if (this.collecting) this.pendingAutomatic = true;
+                if (this.busy || this.saveQueued) this.pendingAutomatic = true;
                 else this.rebuild(undefined, true);
-            } else ++this.generation;
+            } else if (!this.submitted && !this.receipt) ++this.generation;
         },
-        async rebuild(source, automatic = false) {
-            if (this.collecting) return;
-            const generation = ++this.generation;
-            this.collecting = true;
-            this.collectionFailed = false;
-            try {
-                const captures = await this.collect();
-                if (generation !== this.generation) return;
+        rebuild(source, automatic = false) {
+            if (this.busy) {
+                if (automatic) this.pendingAutomatic = true;
+                return;
+            }
+            return this.collectedRequest(captures => {
                 const mode = automatic ? (captures.some(capture => capture.rows.length) ? 'unsaved' : 'saved') : (source ?? this.$wire.previewSource);
-                await this.$wire.rebuildPreview(captures, mode);
+                return this.$wire.rebuildPreview(captures, mode);
+            });
+        },
+        review() {
+            return this.collectedRequest(captures => this.$wire.reviewChanges(captures));
+        },
+        selectOption(attributeId, optionId) {
+            return this.request(() => this.$wire.selectOption(attributeId, optionId));
+        },
+        inspect(attributeId, optionId = null) {
+            return this.request(() => this.$wire.inspectState(attributeId, optionId));
+        },
+        clearInspection() {
+            return this.request(() => this.$wire.clearInspection());
+        },
+        notices() {
+            return this.request(() => this.$wire.mountAction('previewNotices'));
+        },
+        closeReview() {
+            if (this.busy) {
+                this.closeQueued = true;
+                return;
+            }
+            return this.request(async () => {
+                this.ownUnmount = true;
+                try { await this.$wire.unmountAction(); }
+                finally { this.ownUnmount = false; }
+            });
+        },
+        async save() {
+            if (this.saveQueued || this.receipt || (this.busy && !(this.phase === 'request' && this.requestPromise))) return;
+            this.saveQueued = true;
+            const generation = this.generation;
+            try {
+                if (this.requestPromise) await this.requestPromise.catch(() => {});
+                if (this.busy || generation !== this.generation || this.destroyed) return;
+                this.phase = 'collecting';
+                this.collectionFailed = false;
+                this.navigationFailed = false;
+                this.collectedEditors = this.editorIds();
+                this.earlyAcknowledgments = [];
+                const captures = await this.collect();
+                if (generation !== this.generation || this.destroyed) return;
+                this.phase = 'request';
+                this.submitted = true;
+                const result = await this.$wire.saveChanges(captures, this.collectedEditors);
+                if (result?.status === 'rejected') {
+                    this.submitted = false;
+                    return;
+                }
+                if (result?.status !== 'committed' || !result.receipt?.operation_id) throw new Error('Save outcome is unavailable');
+                this.receipt = result.receipt;
+                this.pendingEditors = [...result.receipt.editor_ids];
+                this.phase = 'reconciling';
+                this.earlyAcknowledgments.splice(0).forEach(detail => this.acknowledgeEditor(detail));
+                await this.waitForAcknowledgments();
+                await this.completeReconciliation();
             } catch {
-                this.collectionFailed = true;
+                if (this.receipt) this.phase = 'reconcile_failed';
+                else if (this.submitted) this.phase = 'outcome_unknown';
+                else this.collectionFailed = true;
             } finally {
-                this.collecting = false;
-                if (this.pendingAutomatic && this.active) {
-                    this.pendingAutomatic = false;
-                    await this.rebuild(undefined, true);
+                this.saveQueued = false;
+                if (!['reconcile_failed', 'outcome_unknown'].includes(this.phase)) {
+                    this.submitted = false;
+                    await this.release();
                 }
             }
         },
-        async review() {
-            if (this.collecting) return;
-            const generation = ++this.generation;
-            this.collecting = true;
-            this.collectionFailed = false;
-            try {
-                const captures = await this.collect();
-                if (generation !== this.generation) return;
-                await this.$wire.reviewChanges(captures);
-            } catch {
-                this.collectionFailed = true;
-            } finally {
-                this.collecting = false;
-                if (this.pendingAutomatic && this.active) {
-                    this.pendingAutomatic = false;
-                    await this.rebuild(undefined, true);
-                }
+        acknowledgeEditor(detail) {
+            if (detail?.configuratorId !== this.configuratorId || typeof detail.operationId !== 'string') return;
+            if (!this.receipt) {
+                if (this.submitted && this.collectedEditors.includes(detail.componentId) && this.earlyAcknowledgments.length < 20) this.earlyAcknowledgments.push(detail);
+                return;
             }
+            if (detail.operationId !== this.receipt.operation_id || !this.pendingEditors.includes(detail.componentId)) return;
+            this.pendingEditors = this.pendingEditors.filter(id => id !== detail.componentId);
+            if (!this.pendingEditors.length) this.acknowledgmentWaiter?.resolve();
+        },
+        waitForAcknowledgments() {
+            if (!this.pendingEditors.length) return Promise.resolve();
+            let timeout;
+            return new Promise((resolve, reject) => {
+                this.acknowledgmentWaiter = { resolve, reject };
+                timeout = setTimeout(() => reject(new Error('Editor acknowledgment is missing')), this.acknowledgmentTimeoutMs);
+            }).finally(() => {
+                clearTimeout(timeout);
+                this.acknowledgmentWaiter = null;
+            });
+        },
+        async completeReconciliation() {
+            await this.$wire.finishPreviewSave(this.receipt.operation_id);
+            const captures = await this.collect();
+            await this.$wire.refreshEditorInventory(captures);
+            this.receipt = null;
+            this.pendingEditors = [];
+            this.submitted = false;
+        },
+        async retryReconciliation() {
+            if (this.phase !== 'reconcile_failed' || !this.receipt) return;
+            this.phase = 'reconciling';
+            try {
+                const results = await Promise.allSettled(this.pendingEditors.map(async id => {
+                    const editor = this.findEditor(id);
+                    if (!editor) throw new Error('Collected editor is no longer mounted');
+                    await editor.acceptPreviewSave(this.configuratorId, this.receipt.captures, this.receipt.newRules, this.receipt.operation_id);
+                    this.acknowledgeEditor({ configuratorId: this.configuratorId, operationId: this.receipt.operation_id, componentId: id });
+                }));
+                if (results.some(result => result.status === 'rejected') || this.pendingEditors.length) throw new Error('Editor refresh failed');
+                await this.completeReconciliation();
+                await this.release();
+            } catch {
+                this.phase = 'reconcile_failed';
+            }
+        },
+        refreshSavedPreview() {
+            return this.request(() => this.$wire.refreshSavedPreview());
         },
     };
 }

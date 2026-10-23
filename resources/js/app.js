@@ -1,5 +1,5 @@
 import { interpolate } from './ui-wording';
-import { localTableProfile, adminBrowserProfile, rememberSchemaState, localTraceProfile, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
+import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
 import './catalog-filters';
 import { catalogShell } from './catalog-shell';
 import { itemCountPreview } from './item-count-preview';
@@ -10,6 +10,7 @@ import { editorDrafts, configuratorDrafts } from './editor-drafts';
 import { tablePagination } from './table-pagination';
 import { configuratorProductSearch } from './configurator-product-search';
 import { configuratorPreviewWorkspace } from './configurator-preview-workspace';
+import { configuratorPreviewDisplay } from './configurator-preview-display';
 
 window.uiInterpolate = interpolate;
 window.workspaceColumnManager = workspaceColumnManager;
@@ -29,7 +30,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('tablePagination', tablePagination);
     window.Alpine.data('localTableProfile', localTableProfile);
     window.Alpine.data('adminBrowserProfile', adminBrowserProfile);
-    window.Alpine.data('localTraceProfile', localTraceProfile);
+    window.Alpine.data('configuratorPreviewDisplay', configuratorPreviewDisplay);
     window.Alpine.data('localSectionProfile', localSectionProfile);
     window.Alpine.data('localOrderProfile', localOrderProfile);
 }, { once: true });
@@ -44,7 +45,7 @@ if (window.Alpine) {
     window.Alpine.data('tablePagination', tablePagination);
     window.Alpine.data('localTableProfile', localTableProfile);
     window.Alpine.data('adminBrowserProfile', adminBrowserProfile);
-    window.Alpine.data('localTraceProfile', localTraceProfile);
+    window.Alpine.data('configuratorPreviewDisplay', configuratorPreviewDisplay);
     window.Alpine.data('localSectionProfile', localSectionProfile);
     window.Alpine.data('localOrderProfile', localOrderProfile);
 }

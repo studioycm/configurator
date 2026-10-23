@@ -107,10 +107,11 @@ test('dashboard Product configurator keeps semantic IDs private while Admin Prev
         ->assertSee('Local Viton')->assertSee('Polypropylene')->assertSee('A0-B1-C0')
         ->assertDontSee('viton_body')->assertDontSee('viton_seal')->assertDontSee('polypropylene_float');
 
-    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('chooseProduct', $product->id)
         ->assertSee('Local Viton')->assertSee('Polypropylene')->assertSee('A0-B1-C0')
-        ->assertSee('viton_body')->assertSee('polypropylene_float')->assertDontSee('viton_seal');
+        ->assertSee('viton_body')->assertSee('polypropylene_float');
+    expect(implode(' ', array_column($preview->get('previewView')['notes']['selected_values'], 'value')))->not->toContain('viton_seal');
 });
 
 test('Configurator Option labels follow local Attribute names and unsaved Value name overrides', function () {

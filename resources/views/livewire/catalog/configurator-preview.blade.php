@@ -1,206 +1,81 @@
-<div x-data="localTraceProfile({{ \Illuminate\Support\Js::from(['user' => auth()->id()]) }})" class="catalog-configurator-preview space-y-3" wire:loading.attr="aria-busy">
-    <div wire:key="preview-workspace-controls" class="space-y-3" x-data="configuratorPreviewWorkspace({{ $configuratorId }})" x-on:configurator-preview-visibility.window="visibility($event.detail)">
-    <div class="catalog-configurator-preview-toolbar rounded-lg border border-gray-200 p-2 dark:border-gray-700">
-        <div class="catalog-configurator-preview-selection">
-            @include('livewire.catalog.configurator-preview-product-search')
-            @php($catalogHint = $dashboardProduct ? __($productId === null ? 'configurator.preview.opens_first_product' : 'configurator.preview.opens_product', ['code' => $dashboardProduct->product_code]) : __($productId === null ? 'configurator.preview.no_dashboard_product' : 'configurator.preview.selected_product_unavailable'))
-            <div class="catalog-configurator-preview-catalog-actions">
-                <x-filament::icon-button color="gray" size="sm" icon="heroicon-o-information-circle" :label="$catalogHint" :tooltip="$catalogHint" />
-                @if ($dashboardProduct)
-                    <x-filament::button class="catalog-configurator-preview-catalog-action" tag="a" :href="route('catalog.products.show', $dashboardProduct)" target="_blank" rel="noopener noreferrer" :aria-label="__('configurator.copy.view_in_dashboard_catalog')" :tooltip="$catalogHint" icon="heroicon-o-arrow-top-right-on-square" size="sm"><span class="catalog-configurator-preview-catalog-label">{{ __('configurator.copy.view_in_dashboard_catalog') }}</span></x-filament::button>
+<div class="catalog-configurator-preview" data-preview-operation-owner x-data="configuratorPreviewWorkspace({{ $configuratorId }})" x-on:configurator-preview-visibility.window="visibility($event.detail)" wire:loading.attr="aria-busy">
+    <div wire:key="preview-display-owner" x-data="configuratorPreviewDisplay({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'componentId' => $this->getId(), 'configuratorId' => $configuratorId]) }})" x-bind:style="displayStyle" x-bind:data-preview-compact="String(settings.compact)">
+        @php($notices = $notices ?? $this->notices())
+        @php($headline = $notices[0] ?? ['type' => 'neutral', 'title' => __('configurator.preview.ready'), 'message' => __('configurator.preview.tested_only_this_case')])
+        <div class="catalog-preview-notice" data-tone="{{ $headline['type'] }}" x-bind:data-tone="collectionFailed || navigationFailed || phase === 'reconcile_failed' || phase === 'outcome_unknown' ? 'error' : '{{ $headline['type'] }}'" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" aria-live="polite" wire:key="preview-notice-slot">
+            <x-filament::icon icon="heroicon-o-information-circle" />
+            <div class="min-w-0">
+                <div x-cloak x-show="collectionFailed || navigationFailed" role="alert"><h3>{{ __('configurator.preview.operation_failed') }}</h3><p x-text="collectionFailed ? {{ \Illuminate\Support\Js::from(__('configurator.preview.collection_failed')) }} : {{ \Illuminate\Support\Js::from(__('configurator.preview.source_unavailable')) }}"></p></div>
+                <div x-cloak x-show="!collectionFailed && !navigationFailed && phase === 'reconcile_failed'" role="alert"><h3>{{ __('configurator.preview.reconcile_failed') }}</h3><p>{{ __('configurator.preview.reconcile_help') }}</p></div>
+                <div x-cloak x-show="!collectionFailed && !navigationFailed && phase === 'outcome_unknown'" role="alert"><h3>{{ __('configurator.preview.outcome_unknown') }}</h3><p>{{ __('configurator.preview.outcome_unknown_help') }}</p></div>
+                <div x-cloak x-show="!collectionFailed && !navigationFailed && !['reconcile_failed','outcome_unknown'].includes(phase) && busy"><h3>{{ __('configurator.preview.working') }}</h3><p>{{ __('configurator.preview.collecting') }}</p></div>
+                <div x-show="!collectionFailed && !navigationFailed && !['reconcile_failed','outcome_unknown'].includes(phase) && !busy"><h3>{{ $headline['title'] }}</h3><p>{{ $headline['message'] ?? '' }}</p></div>
+            </div>
+            <div class="catalog-preview-notice-actions">
+                <button type="button" class="catalog-preview-text-action" x-cloak x-show="phase === 'reconcile_failed'" x-on:click="retryReconciliation()">{{ __('configurator.preview.retry_editor_refresh') }}</button>
+                @if (($saveReceipt['refresh_error'] ?? null) !== null)
+                    <button type="button" class="catalog-preview-text-action" x-on:click="refreshSavedPreview()" x-bind:disabled="busy">{{ __('configurator.preview.retry_preview_refresh') }}</button>
                 @endif
+                @if (in_array($headline['action'] ?? null, ['review', 'review_changes'], true))
+                    <button type="button" class="catalog-preview-text-action" x-on:click="review()" x-bind:disabled="busy">{{ __('configurator.preview.review_changes') }}</button>
+                @elseif (($headline['action'] ?? null) === 'rebuild')
+                    <button type="button" class="catalog-preview-text-action" x-on:click="rebuild()" x-bind:disabled="busy">{{ __('configurator.preview.rebuild') }}</button>
+                @elseif (in_array($headline['action'] ?? null, ['inspect', 'conflicts'], true))
+                    <button type="button" class="catalog-preview-text-action" x-on:click="explainConflicts()" x-bind:disabled="busy">{{ __('configurator.preview.view_conflict_details') }}</button>
+                @endif
+                @if ($notices !== [])<button type="button" class="catalog-preview-text-action" x-on:click="notices()" x-bind:disabled="busy">{{ __('configurator.preview.all_notices') }}@if (count($notices) > 1) ({{ count($notices) }})@endif</button>@endif
             </div>
         </div>
-        <div class="flex flex-wrap items-end gap-2">
-            <fieldset class="min-w-0">
-                <legend class="mb-1 text-xs font-medium">{{ __('configurator.preview.test_using') }}</legend>
-                <div class="flex flex-wrap items-center gap-1">
-                    <x-filament::button size="sm" :color="$previewSource === 'saved' ? 'primary' : 'gray'" aria-pressed="{{ $previewSource === 'saved' ? 'true' : 'false' }}" x-on:click="rebuild('saved')" x-bind:disabled="collecting">{{ __('configurator.preview.saved_source') }}</x-filament::button>
-                    <x-filament::button size="sm" :color="$previewSource === 'unsaved' ? 'primary' : 'gray'" aria-pressed="{{ $previewSource === 'unsaved' ? 'true' : 'false' }}" x-on:click="rebuild('unsaved')" x-bind:disabled="collecting">{{ __('configurator.preview.unsaved_source') }}</x-filament::button>
-                    <x-filament::icon-button color="gray" size="sm" icon="heroicon-o-question-mark-circle" :label="__('configurator.preview.source_help')" :tooltip="__('configurator.preview.source_help')" />
-                </div>
-            </fieldset>
-            <x-filament::button color="gray" size="sm" x-on:click="rebuild()" x-bind:disabled="collecting">{{ __('configurator.preview.rebuild') }}</x-filament::button>
-            @if ($previewSource === 'unsaved' && $previewChanges !== [])
-                <x-filament::button size="sm" x-on:click="review()" x-bind:disabled="collecting" :disabled="! $this->canSaveTestedChanges()">{{ __('configurator.preview.save_tested') }}</x-filament::button>
-            @endif
-            <x-filament::button color="gray" size="sm" wire:click="toggleTrace" wire:loading.attr="disabled" wire:target="toggleTrace" aria-controls="preview-diagnostics-{{ $this->getId() }}" aria-expanded="{{ $showTrace ? 'true' : 'false' }}">{{ __($showTrace ? 'configurator.preview.hide_diagnostics' : 'configurator.preview.show_diagnostics') }}</x-filament::button>
-        </div>
-    </div>
-    <div wire:key="preview-feedback" class="catalog-configurator-preview-feedback space-y-1 text-xs text-gray-500" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" tabindex="0">
-        <p x-cloak x-show="collecting" role="status">{{ __('configurator.preview.collecting') }}</p>
-        <p x-cloak x-show="collectionFailed" role="alert" class="text-danger-600">{{ __('configurator.preview.collection_failed') }}</p>
-        <p x-cloak x-show="navigationFailed" role="alert" class="text-danger-600">{{ __('configurator.preview.source_unavailable') }}</p>
-        <div x-show="!collecting" role="status">
-            @if ($previewSource === 'unsaved' && $previewChanges !== [])
-                <p>{{ trans_choice('configurator.preview.pending_count', count($previewChanges), ['count' => count($previewChanges)]) }} · {{ __('configurator.preview.tested_scope') }}</p>
-            @elseif ($previewSource === 'unsaved' && $previewErrors === [])
-                <p>{{ __('configurator.preview.no_unsaved') }}</p>
-            @endif
-        </div>
-        @if ($productResetNotice)<p role="status">{{ $productResetNotice }}</p>@endif
-        @if ($definitionStale)<p role="status" class="text-warning-600">{{ __('configurator.copy.saved_changes_are_available_refresh_to_retest_your_choices') }}</p>@endif
-    </div>
-    @if ($previewErrors !== [])
-        <div id="preview-errors-{{ $this->getId() }}" tabindex="-1" role="alert" class="scroll-mt-6 rounded-lg border border-danger-300 p-3 text-sm text-danger-700 dark:text-danger-400">
-            <p class="font-medium">{{ __('configurator.preview.invalid_edits') }}</p>
-            <ul class="mt-1 list-inside list-disc">@foreach ($previewErrors as $index => $error)<li wire:key="preview-build-error-{{ $index }}">{{ $error }}</li>@endforeach</ul>
-        </div>
-    @endif
-    @if ($previewErrors === [] && $blockingIssues !== [])
-        <div id="preview-errors-{{ $this->getId() }}" tabindex="-1" role="alert" class="scroll-mt-6 space-y-2 rounded-lg border border-danger-300 p-3 text-sm text-danger-700 dark:text-danger-400">
-            <ul>@foreach ($blockingIssues as $index => $issue)<li wire:key="preview-issue-{{ $index }}">{{ $issue }}</li>@endforeach</ul>
-            @foreach ($notes['conflicts'] as $conflict)
-                <div class="space-y-2" wire:key="preview-conflict-actions-{{ $conflict['attribute_id'] }}">
-                    @if (count($notes['conflicts']) > 1)<p class="font-medium">{{ $conflict['attribute'] }}</p>@endif
-                    @foreach ($conflict['causes'] as $cause)
-                        <x-catalog.configurator-preview-cause :cause="$cause" :name="$cause['rule']">{{ $cause['rule'] }}</x-catalog.configurator-preview-cause>
-                    @endforeach
-                    @foreach ($conflict['values'] as $value)
-                        @foreach ($value['causes'] as $cause)
-                            @if (($cause['target']['type'] ?? null) !== 'rule')
-                                <x-catalog.configurator-preview-cause :cause="$cause" :name="$value['value']">{{ $value['value'] }} · {{ $cause['message'] }}</x-catalog.configurator-preview-cause>
-                            @endif
-                        @endforeach
-                    @endforeach
-                </div>
-            @endforeach
-            @if ($notes['conflicts'] !== [])<x-filament::button color="gray" size="sm" x-on:click="explainConflicts()">{{ __('configurator.preview.view_conflict_details') }}</x-filament::button>@endif
-        </div>
-    @endif
-    <div @class(['catalog-configurator-preview-layout', 'catalog-configurator-preview-layout-with-diagnostics' => $showTrace])>
-        <div id="preview-choices-{{ $this->getId() }}" tabindex="-1" class="catalog-configurator-preview-controls min-w-0 scroll-mt-6 space-y-3">
-            @if ($result)
-                <div class="catalog-configurator-preview-result rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
-                    @if ($result->definition)
-                        <x-catalog.configuration-result :result="$result" inline :show-diagnostics="false" />
-                    @elseif ($previewErrors === [])
-                        <p class="text-sm">{{ __('configurator.copy.configuration_is_not_available_for_this_product') }}</p>
+        @include('livewire.catalog.configurator-preview-controls')
+        <div class="catalog-preview-panels" wire:key="preview-primary-split" x-data="workspaceSplit({ preview: { read: () => splitRatio, write: value => setSplitRatio(value), sideCount: () => visibleSideCount, threshold: 1040, primaryMinimum: 440, sideMinimum: 240, track: 16, gap: 0, sideGap: 12 } })" x-effect="syncPreviewPanels(visibleSideCount, splitRatio)" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
+            <section id="preview-choices-{{ $this->getId() }}" class="catalog-preview-configuration" aria-labelledby="preview-configuration-heading-{{ $this->getId() }}">
+                <div class="catalog-preview-code">
+                    <h2 id="preview-configuration-heading-{{ $this->getId() }}">{{ __('configurator.copy.configuration_code') }}</h2>
+                    @if (($previewView['is_complete'] ?? false) && $previewView['configuration_code'] !== null)
+                        <p class="font-mono">{{ $previewView['configuration_code'] }}</p>
+                    @else
+                        <p class="text-xs">{{ __($productId === null ? 'configurator.preview.choose_product' : (($previewView['status'] ?? 'unavailable') === 'unavailable' ? ($previewSource === 'unsaved' && ($previewErrors ?? []) !== [] ? 'configurator.preview.current_unavailable' : 'configurator.copy.configuration_is_not_available_for_this_product') : 'configurator.copy.configuration_is_incomplete_no_configuration_code_is_available')) }}</p>
                     @endif
-                    @php($feedbackErrors = count($previewErrors ?: $blockingIssues))
-                    <div class="catalog-configurator-preview-mobile-feedback mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-2 text-xs dark:border-gray-700" aria-live="polite">
-                        @if ($feedbackErrors)
-                            <span class="font-medium text-danger-600">{{ trans_choice('configurator.preview.feedback_errors', $feedbackErrors, ['count' => $feedbackErrors]) }}</span>
-                            <a class="text-primary-600 underline" href="#preview-errors-{{ $this->getId() }}">{{ __('configurator.preview.view_errors') }}</a>
-                        @else
-                            <span>{{ trans_choice('configurator.preview.feedback_notices', count($selectionWarnings), ['count' => count($selectionWarnings)]) }} · {{ trans_choice('configurator.preview.feedback_effects', count($notes['effects']), ['count' => count($notes['effects'])]) }}</span>
-                            <a class="text-primary-600 underline" href="#preview-notes-heading-{{ $this->getId() }}">{{ __('configurator.preview.view_notes') }}</a>
-                        @endif
-                    </div>
                 </div>
-            @endif
-            <div class="catalog-configurator-preview-form">{{ $this->form }}</div>
-        </div>
-        <section class="catalog-configurator-preview-state-notes min-w-0 rounded-lg border border-gray-200 p-3 text-xs break-words dark:border-gray-700" aria-labelledby="preview-notes-heading-{{ $this->getId() }}">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="preview-notes-heading-{{ $this->getId() }}" tabindex="-1" class="scroll-mt-6 text-sm font-medium">{{ __('configurator.preview.rules_and_state_notes') }}</h2>
-                <a class="catalog-configurator-preview-mobile-feedback text-primary-600 underline" href="#preview-choices-{{ $this->getId() }}">{{ __('configurator.preview.back_to_choices') }}</a>
-            </div>
-            @if ($selectionWarnings !== [])
-                <ul class="mt-2 space-y-1" aria-live="polite">
-                    @foreach ($selectionWarnings as $index => $diagnostic)<li wire:key="preview-note-{{ $index }}">{{ $diagnostic['message'] }}</li>@endforeach
-                </ul>
-            @endif
-            @if ($notes['effects'] !== [])
-                <ul class="mt-2 space-y-3">
-                    @foreach ($notes['effects'] as $index => $note)
-                        <li wire:key="preview-selection-effect-{{ $index }}" class="space-y-1">
-                            <p class="font-medium">{{ $note['attribute'] }} · {{ $note['message'] }}</p>
-                            @if ($note['values'] !== [])<p class="break-words">{{ implode(', ', $note['values']) }}</p>@endif
+                <div x-show="settings.presentation === 'all'" x-bind:inert="settings.presentation !== 'all'" x-bind:aria-hidden="settings.presentation !== 'all'" wire:key="preview-all-presentation">
+                    @include('livewire.catalog.configurator-preview-values')
+                </div>
+                <div x-cloak x-show="settings.presentation === 'catalog'" x-bind:inert="settings.presentation !== 'catalog'" x-bind:aria-hidden="settings.presentation !== 'catalog'" wire:key="preview-catalog-presentation">
+                    @if (($previewView['status'] ?? 'unavailable') === 'ready')
+                        @if (($previewView['excluded_rules'] ?? []) !== [])<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">{{ __('configurator.preview.catalog_scope') }}</p>@endif
+                        <x-catalog.configuration-fields :projected-rows="$previewView['inspection']['attributes']" input-namespace="preview-catalog" :preview-workspace="true" />
+                    @else
+                        <p class="py-3 text-sm">{{ __($productId === null ? 'configurator.preview.choose_product' : 'configurator.preview.current_unavailable') }}</p>
+                    @endif
+                </div>
+            </section>
+            <x-catalog.workspace-splitter :preview="true" />
+            <div class="catalog-preview-side-panels" x-show="visibleSideCount > 0" x-bind:data-side-count="visibleSideCount">
+                <section class="catalog-preview-panel catalog-preview-notes" x-show="settings.notes" aria-labelledby="preview-notes-heading-{{ $this->getId() }}" wire:key="preview-selection-notes">
+                    <div class="catalog-preview-panel-heading"><h2 id="preview-notes-heading-{{ $this->getId() }}" tabindex="-1">{{ __('configurator.preview.rules_and_state_notes') }}</h2></div>
+                    @if (($notes['warnings'] ?? []) !== [])
+                        <ul class="space-y-2" aria-live="polite">@foreach ($notes['warnings'] as $index => $warning)<li wire:key="preview-warning-{{ $index }}">{{ $warning['message'] }} @if (isset($warning['attribute_id']))<button type="button" class="catalog-preview-text-action" x-on:click="rememberInspectionTrigger($el); inspect({{ \Illuminate\Support\Js::from($warning['attribute_id']) }})" x-bind:disabled="busy">{{ __('configurator.preview.explain_effect') }}</button>@endif</li>@endforeach</ul>
+                    @endif
+                    @forelse ($notes['effects'] ?? [] as $index => $note)
+                        <div class="catalog-preview-selection-effect" wire:key="preview-selection-effect-{{ $index }}"><h3>{{ $note['attribute'] }} · {{ $note['message'] }}</h3>
+                            @if ($note['values'] !== [])<p>{{ implode(', ', $note['values']) }}</p>@endif
                             @if ($note['text'] !== '')<p>{{ $note['text'] }}</p>@endif
-                            @if ($note['sources'] !== [])<p class="text-gray-500">{{ __('configurator.preview.selection_sources') }}: {{ implode(' · ', $note['sources']) }}</p>@endif
-                            <p class="text-gray-500">{{ __('configurator.preview.selection_rule') }}: {{ $note['rule'] }}</p>
-                        </li>
-                    @endforeach
-                </ul>
-            @elseif ($selectionWarnings === [])
-                <p class="mt-2 text-gray-500">{{ __($result?->definition ? 'configurator.preview.no_selection_effects' : ($productId === null ? 'configurator.preview.choose_product' : 'configurator.preview.unavailable')) }}</p>
-            @endif
-            @if ($notes['selected_values'] !== [])
-                <details wire:key="preview-selected-value-ids" wire:ignore.self class="mt-3 border-t border-gray-200 pt-2 dark:border-gray-700">
-                    <summary class="cursor-pointer font-medium">{{ __('configurator.preview.selected_value_ids') }}</summary>
-                    <dl class="mt-2 space-y-2">
-                        @foreach ($notes['selected_values'] as $index => $value)
-                            <div wire:key="preview-selected-value-{{ $index }}"><dt>{{ $value['attribute'] }}</dt><dd class="text-gray-500">{{ $value['value'] }}</dd></div>
-                        @endforeach
-                    </dl>
-                </details>
-            @endif
-        </section>
-        @if ($showTrace)
-        <aside id="preview-diagnostics-{{ $this->getId() }}" class="catalog-configurator-preview-diagnostics min-w-0 text-sm" aria-label="{{ __('configurator.copy.preview_diagnostics') }}">
-            @if ($notes['conflicts'] !== [])
-                <section data-preview-conflicts tabindex="-1" class="scroll-mt-6 space-y-3 rounded-lg border border-danger-300 p-3 text-xs" aria-label="{{ __('configurator.preview.unavailable_values_heading') }}">
-                    <h3 class="font-medium">{{ __('configurator.preview.unavailable_values_heading') }}</h3>
-                    <p>{{ __('configurator.preview.all_restrictions_apply') }}</p>
-                    @foreach ($notes['conflicts'] as $conflict)
-                        <div wire:key="preview-conflict-{{ $conflict['attribute_id'] }}" class="space-y-2">
-                            <h4 class="font-semibold">{{ $conflict['attribute'] }}</h4>
-                            @foreach ($conflict['causes'] as $cause)
-                                <x-catalog.configurator-preview-cause :cause="$cause" :name="$cause['rule']"><p><span class="font-medium">{{ $cause['rule'] }}</span><br>{{ $cause['conditions'] }}</p></x-catalog.configurator-preview-cause>
-                            @endforeach
-                            <dl class="space-y-2">
-                                @foreach ($conflict['values'] as $value)
-                                    <div><dt class="font-medium">{{ $value['value'] }}</dt><dd class="space-y-1">
-                                        @foreach ($value['causes'] as $cause)
-                                            <x-catalog.configurator-preview-cause :cause="$cause" :name="($cause['target']['type'] ?? null) === 'rule' ? $cause['message'] : $value['value']">{{ $cause['message'] }}</x-catalog.configurator-preview-cause>
-                                        @endforeach
-                                    </dd></div>
-                                @endforeach
-                            </dl>
+                            @if ($note['sources'] !== [])<p class="text-gray-500 dark:text-gray-400">{{ __('configurator.preview.selection_sources') }}: {{ implode(' · ', $note['sources']) }}</p>@endif
+                            <p class="text-gray-500 dark:text-gray-400">{{ __('configurator.preview.selection_rule') }}: {{ $note['rule'] }}</p>
+                            @if (isset($note['attribute_id']))<button type="button" class="catalog-preview-text-action" x-on:click="rememberInspectionTrigger($el); inspect({{ \Illuminate\Support\Js::from($note['attribute_id']) }}, {{ \Illuminate\Support\Js::from($note['option_id'] ?? null) }})" x-bind:disabled="busy">{{ __('configurator.preview.explain_effect') }}</button>@endif
                         </div>
-                    @endforeach
+                    @empty
+                        @if (($notes['warnings'] ?? []) === [])<p class="text-gray-500 dark:text-gray-400">{{ __('configurator.preview.no_selection_effects') }}</p>@endif
+                    @endforelse
+                    @if (($notes['selected_values'] ?? []) !== [])
+                        <details wire:key="preview-selected-value-ids" wire:ignore.self class="catalog-preview-selected-ids"><summary>{{ __('configurator.preview.selected_value_ids') }}</summary><dl>@foreach ($notes['selected_values'] as $index => $value)<div wire:key="preview-selected-value-{{ $index }}"><dt>{{ $value['attribute'] }}</dt><dd class="text-gray-500 dark:text-gray-400">{{ $value['value'] }}</dd></div>@endforeach</dl></details>
+                    @endif
                 </section>
-            @endif
-            <section class="min-w-0 rounded-lg border border-gray-200 p-2 break-words dark:border-gray-700" aria-labelledby="preview-rules-heading-{{ $this->getId() }}">
-                <h2 id="preview-rules-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.rule_diagnostics') }}</h2>
-                @if ($result)
-                    <ul class="mt-2 space-y-1 text-xs">
-                        @foreach ($notes['diagnostics'] as $index => $diagnostic)<li wire:key="preview-system-diagnostic-{{ $index }}">{{ $diagnostic['message'] }}</li>@endforeach
-                    </ul>
-                @endif
-                @if ($result?->definition)
-                    <ul class="mt-2 space-y-2 text-xs">
-                        @foreach ($result->definition->rules as $rule)
-                            <li wire:key="preview-rule-{{ $rule->id }}">{{ __('configurator.preview.rule_details', ['label' => $rule->label, 'kind' => __($rule->kind->value === 'Mapping' ? 'admin.workspace.labels.mapping' : 'admin.workspace.labels.advanced'), 'status' => __($rule->active ? 'ui.status.enabled' : 'ui.status.disabled'), 'priority' => $rule->priority]) }}</li>
-                        @endforeach
-                        @foreach ($result->attributes as $id => $state)
-                            <li wire:key="preview-attribute-diagnostic-{{ $id }}">
-                                <p class="font-medium">{{ $state['label'] }} · {{ $state['applicable'] ? trans_choice('configurator.preview.legal_values', count($state['legal'])) : __('configurator.preview.inapplicable') }}</p>
-                                <p class="text-gray-500">{{ __('configurator.preview.hidden_and_disabled', ['hidden' => collect($state['hidden'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: __('configurator.preview.none'), 'disabled' => collect($state['disabled'])->map(fn ($optionId) => $result->definition->attributes[$id]->options[$optionId]->code)->implode(', ') ?: __('configurator.preview.none')]) }}</p>
-                                @if ($state['applicable'])
-                                    @include('livewire.catalog.configurator-preview-notes', ['attribute' => $result->definition->attributes[$id], 'selectedId' => $result->selections[$id] ?? null])
-                                @endif
-                            </li>
-                        @endforeach
-                        @foreach ($publicOnlyRules as $index => $label)
-                            <li wire:key="preview-public-rule-{{ $index }}">{{ __('configurator.preview.skipped_public_rule', ['label' => $label]) }}</li>
-                        @endforeach
-                    </ul>
-                @else
-                    <span class="mt-2 block text-xs text-gray-500">{{ __($result ? 'configurator.preview.unavailable' : 'configurator.preview.choose_product') }}</span>
-                @endif
-            </section>
-            <section class="min-w-0 rounded-lg border border-gray-200 p-2 break-words dark:border-gray-700" aria-labelledby="preview-trace-heading-{{ $this->getId() }}">
-                <h2 id="preview-trace-heading-{{ $this->getId() }}" class="font-medium">{{ __('configurator.copy.engine_trace') }}</h2>
-                @if ($showTrace && $result?->definition)
-                    <ol class="mt-2 space-y-2 text-xs">
-                        @foreach ($result->trace as $index => $entry)
-                            <li wire:key="preview-trace-{{ $index }}">{{ $result->definition->attributes[$entry['attribute_id']]->label }} · {{ $entry['message'] }}
-                                @if (isset($entry['excluded']))
-                                    · {{ __('configurator.preview.excluded_values', ['values' => collect($entry['excluded'])->map(fn ($id) => $result->definition->attributes[$entry['attribute_id']]->options[$id]->code)->implode(', ') ?: __('configurator.preview.none')]) }}
-                                @endif
-                                @if (isset($entry['choice_id'])) · {{ $result->definition->attributes[$entry['attribute_id']]->options[$entry['choice_id']]->code }} @endif
-                            </li>
-                        @endforeach
-                    </ol>
-                @else
-                    <span class="mt-2 block text-xs text-gray-500">{{ __(! $showTrace ? 'configurator.preview.trace_off' : ($result ? 'configurator.preview.unavailable' : 'configurator.preview.choose_product')) }}</span>
-                @endif
-            </section>
-        </aside>
-        @endif
+                <aside id="preview-diagnostics-{{ $this->getId() }}" class="catalog-preview-panel catalog-preview-inspection" x-cloak x-show="settings.trace" aria-labelledby="preview-inspection-heading-{{ $this->getId() }}" wire:key="preview-inspection-panel">
+                    @include('livewire.catalog.configurator-preview-inspection')
+                </aside>
+            </div>
+        </div>
     </div>
     <x-filament-actions::modals />
-    </div>
 </div>

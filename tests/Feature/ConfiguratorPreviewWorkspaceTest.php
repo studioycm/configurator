@@ -65,7 +65,7 @@ test('invalid unsaved edits show errors without silently displaying saved config
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('rebuildPreview', [$capture], 'unsaved')->assertReturned(false)->assertDontSee('A0-B0-C0')
         ->assertSet('previewSource', 'unsaved')->assertSet('previewData', null)
-        ->call('reviewChanges', [$capture])->assertNotified(__('configurator.preview.test_errors'));
+        ->call('reviewChanges', [$capture])->assertActionMounted('reviewChanges');
 
     expect($configurator->rules()->count())->toBe(0);
 });
@@ -74,8 +74,8 @@ test('review lists every pending change and cancellation saves nothing', functio
     [$configurator, $product, $saved, $capture] = previewWorkspaceFixture();
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
 
-    $preview->call('reviewChanges', [$capture])->assertActionMounted('saveTestedChanges')
-        ->assertMountedActionModalSee(['Tested temporary label', 'Tested description', $product->product_code, 'A0-B0-C0', __('configurator.preview.unsaved_source')]);
+    $preview->call('reviewChanges', [$capture])->assertActionMounted('reviewChanges')
+        ->assertMountedActionModalSee(['Tested temporary label', 'Tested description', $product->product_code, 'A0-B0-C0', __('configurator.preview.saved_source')]);
     $preview->call('unmountAction');
 
     expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
@@ -115,24 +115,23 @@ test('invalid Mapping editor data includes the Rule and set before definition co
         ->assertSee('Territory mapping')->assertSee('Allowed-value sets 1');
 });
 
-test('confirmed tested edits save together and become the saved preview', function () {
+test('validated edits save immediately together and become the saved preview', function () {
     [$configurator, $product, $saved, $capture] = previewWorkspaceFixture();
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
 
-    $preview->call('reviewChanges', [$capture])->assertActionMounted('saveTestedChanges')->callMountedAction()
-        ->assertHasNoErrors()->assertSet('previewSource', 'saved')->assertSet('previewChanges', [])
+    $preview->call('saveChanges', [$capture])->assertHasNoErrors()->assertSet('previewSource', 'saved')
         ->assertSee('Tested temporary label')->assertDispatched('configurator-preview-saved');
 
     expect($configurator->fresh()->description)->toBe('Tested description');
     expect($configurator->attributes()->findOrFail($saved['attributes'][0]['id'])->label_override)->toBe('Tested temporary label');
 });
 
-test('a saved change after confirmation rejects the entire preview save', function () {
+test('a saved change after optional Review rejects the entire preview save', function () {
     [$configurator, $product, $saved, $capture] = previewWorkspaceFixture();
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('reviewChanges', [$capture]);
     $configurator->update(['description' => 'Saved elsewhere']);
 
-    $preview->callMountedAction()->assertHasErrors()->assertSet('previewSource', 'unsaved');
+    $preview->call('saveChanges', [$capture])->assertReturned(fn (array $outcome): bool => $outcome['status'] === 'rejected')->assertSet('previewSource', 'unsaved');
 
     expect($configurator->fresh()->description)->toBe('Saved elsewhere');
     expect($configurator->attributes()->findOrFail($saved['attributes'][0]['id'])->label_override)->toBeNull();
@@ -148,12 +147,12 @@ test('Preview blocks incomplete configurations while allowing expected replaceme
     $capture = $changes->capture($configurator->id, [['type' => 'rule', 'id' => $block['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($block)]]);
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
 
-    $preview->call('reviewChanges', [$capture])->assertActionNotMounted('saveTestedChanges')->assertNotified(__('configurator.preview.test_errors'));
+    $preview->call('reviewChanges', [$capture])->assertActionMounted('reviewChanges')->call('saveChanges', [$capture])->assertReturned(fn (array $outcome): bool => $outcome['status'] === 'rejected');
     expect($configurator->rules()->count())->toBe(0);
 
     $block['effects'][0]['option_ids'] = [$b['options'][0]['id']];
     $capture = $changes->capture($configurator->id, [['type' => 'rule', 'id' => $block['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($block)]]);
-    $preview->call('reviewChanges', [$capture])->assertActionMounted('saveTestedChanges')->callMountedAction()->assertHasNoErrors();
+    $preview->call('saveChanges', [$capture])->assertHasNoErrors();
     expect($configurator->rules()->count())->toBe(1);
 });
 
@@ -172,7 +171,7 @@ test('a newly tested Rule becomes a saved editor without remaining as a duplicat
         return true;
     });
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
-    $preview->call('reviewChanges', [$capture])->callMountedAction()->assertHasNoErrors();
+    $preview->call('saveChanges', [$capture])->assertHasNoErrors();
     $newRule = $configurator->rules()->sole();
     $newRules = [$rule['id'] => app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['rules'][0]];
 
@@ -180,12 +179,12 @@ test('a newly tested Rule becomes a saved editor without remaining as a duplicat
         ->assertSet('selectedRuleId', $newRule->id)->call('exportPreviewChanges')->assertReturned(fn (array $capture): bool => $capture['rows'] === []);
 });
 
-test('Preview capture rebuild review and confirmation reauthorize against the current user', function () {
+test('Preview capture rebuild review and immediate Save reauthorize against the current user', function () {
     [$configurator, $product, $saved, $capture] = previewWorkspaceFixture();
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('reviewChanges', [$capture]);
     $this->actingAs(User::factory()->create());
 
-    $preview->callMountedAction()->assertForbidden();
+    $preview->call('saveChanges', [$capture])->assertForbidden();
     expect($configurator->fresh()->description)->toBeNull();
     expect($configurator->attributes()->findOrFail($saved['attributes'][0]['id'])->label_override)->toBeNull();
 });

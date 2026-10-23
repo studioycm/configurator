@@ -101,7 +101,7 @@ class ConfiguratorDefinitionLoader
     }
 
     /** @param list<array<string, mixed>> $conditions */
-    private function hasPublicContextCondition(array $conditions): bool
+    public function hasPublicContextCondition(array $conditions): bool
     {
         foreach ($conditions as $condition) {
             if (in_array($condition['source_kind'] ?? null, ['Territory', 'Application'], true)) {

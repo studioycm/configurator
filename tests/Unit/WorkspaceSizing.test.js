@@ -505,3 +505,44 @@ test('page-scoped dialog reset suppresses legacy widths and leaves other pages i
     assert.equal(dialog().root.style.width, '1280px');
     assert.equal(values.get('aquestia:dialog:1:admin:columns:v1'), '1280');
 });
+
+test('Preview split uses actual pane and side gaps, minima and independent profile callbacks', t => {
+    const { writes } = environment(t); let ratio = 0.5; let count = 2; const saved = [];
+    const split = workspaceSplit({ preview: { read: () => ratio, write: value => saved.push(value), sideCount: () => count, threshold: 1040, primaryMinimum: 440, sideMinimum: 240, track: 16, gap: 8, sideGap: 12 } });
+    split.restore(); split.resize(1040);
+    assert.equal(split.stacked, false); assert.equal(split.availablePaneWidth, 1008); assert.equal(split.minimumRatio, 440 / 1008); assert.equal(split.maximumRatio, 1 - 492 / 1008);
+    split.keyDown({ key: 'End', preventDefault() {} }); assert.equal(saved.at(-1), split.maximumRatio);
+    assert.ok((1 - split.ratio) * split.availablePaneWidth - 12 >= 480);
+    ratio = 0.7; count = 1; split.syncPreviewPanels(count, ratio); assert.equal(split.preferredRatio, 0.7);
+    split.resize(960); assert.equal(split.stacked, true); assert.equal(split.preferredRatio, 0.7);
+    split.resize(1440); assert.equal(split.ratio, 0.7); assert.equal(writes.length, 0);
+    count = 0; split.syncPreviewPanels(count, ratio); assert.equal(split.stacked, true);
+});
+
+test('Preview drag is continuous, saves once and Escape or lost capture restores preference', t => {
+    environment(t); const saved = [];
+    const split = workspaceSplit({ preview: { read: () => 2 / 3, write: value => saved.push(value), sideCount: () => 1 } }); split.restore(); split.resize(1440);
+    split.root = { getBoundingClientRect: () => ({ left: 0, width: 1440 }) };
+    const target = { setPointerCapture() {}, releasePointerCapture() {}, focus() {} }; const event = { button: 0, pointerId: 1, currentTarget: target, preventDefault() {} };
+    split.startDrag(event); for (let x = 500; x <= 800; x++) split.moveDrag({ clientX: x }); assert.equal(saved.length, 0); split.endDrag(); assert.equal(saved.length, 1);
+    const previous = split.preferredRatio; split.startDrag(event); split.moveDrag({ clientX: 900 }); split.keyDown({ key: 'Escape', preventDefault() {} }); assert.equal(split.preferredRatio, previous); assert.equal(saved.length, 1);
+    split.startDrag(event); split.moveDrag({ clientX: 900 }); split.endDrag(true); assert.equal(split.preferredRatio, previous); assert.equal(saved.length, 1);
+    split.root.direction = 'rtl'; const before = split.ratio; split.keyDown({ key: 'ArrowRight', preventDefault() {} }); assert.equal(split.ratio, before - 0.02);
+    split.keyDown({ key: 'Enter', preventDefault() {} }); assert.equal(split.preferredRatio, 2 / 3);
+});
+
+test('Preview panel matrix stacks below actual container threshold without overwriting preferred ratios', t => {
+    environment(t); const saved = [];
+    for (const count of [0,1,2]) {
+        const preferred = count === 2 ? 0.8 : 0.9;
+        const split = workspaceSplit({ preview: { read: () => preferred, write: value => saved.push(value), sideCount: () => count, track: 16, sideGap: 12 } }); split.restore();
+        for (const width of [390,768,960]) { split.resize(width); assert.equal(split.stacked, true); assert.equal(split.preferredRatio, preferred); }
+        for (const width of [1040,1440]) {
+            split.resize(width); assert.equal(split.stacked, count === 0);
+            if (count) { assert.ok(split.ratio * split.availablePaneWidth >= 440); assert.ok((1-split.ratio) * split.availablePaneWidth >= 240*count + (count === 2 ? 12 : 0) - 1e-9); }
+            assert.equal(split.preferredRatio, preferred);
+        }
+        split.destroy();
+    }
+    assert.equal(saved.length, 0);
+});

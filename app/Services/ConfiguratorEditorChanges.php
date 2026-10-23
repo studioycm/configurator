@@ -5,7 +5,6 @@ namespace App\Services;
 use App\ConditionOperator;
 use App\ConditionSource;
 use App\ConfigInputType;
-use App\DTO\ConfiguratorDefinition;
 use App\DTO\ConfiguratorEvaluationResult;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
@@ -46,83 +45,168 @@ class ConfiguratorEditorChanges
         Gate::authorize('manage-catalog');
         $payload = Arr::only($capture, ['configurator_id', 'rows']);
         if (($payload['configurator_id'] ?? null) !== $configuratorId || ! is_array($payload['rows'] ?? null)
-            || count($payload['rows']) > 500 || ! is_string($capture['signature'] ?? null)
+            || ! array_is_list($payload['rows']) || count($payload['rows']) > 500 || ! is_string($capture['signature'] ?? null)
             || ! hash_equals($this->signature($payload), $capture['signature'])) {
             throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
         }
 
+        foreach ($payload['rows'] as $row) {
+            if (! is_array($row) || ! in_array($row['type'] ?? null, ['overview', 'attribute', 'value', 'rule'], true)
+                || (! is_string($row['id'] ?? null) && ! is_int($row['id'] ?? null))
+                || ! is_array($row['before'] ?? null) || ! is_array($row['after'] ?? null)
+                || ($row['before'] !== [] && array_is_list($row['before'])) || ($row['after'] !== [] && array_is_list($row['after']))
+                || ! $this->boundedState($row['before']) || ! $this->boundedState($row['after'])) {
+                throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
+            }
+            $id = (string) $row['id'];
+            if (strlen($id) > 128 || ($row['type'] === 'overview' ? $id !== 'overview' : (! ctype_digit($id) || (int) $id < 1) && ! ($row['type'] === 'rule' && str_starts_with($id, 'new:') && strlen($id) > 4))) {
+                throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
+            }
+        }
+
         return $payload['rows'];
+    }
+
+    /** @param list<array<string, mixed>> $captures @return array{changes: list<array<string, mixed>>, errors: list<string>} */
+    public function inspect(Configurator $configurator, array $captures): array
+    {
+        Gate::authorize('manage-catalog');
+        $rows = $this->savedRows($configurator->id, $captures);
+        $data = $this->loader->draft($configurator);
+        $changes = [];
+        $errors = [];
+        foreach ($rows as $row) {
+            $type = $row['type'];
+            $id = (string) $row['id'];
+            $new = $type === 'rule' && str_starts_with($id, 'new:');
+            $path = $new ? null : $this->rowPath($data, $type, $id);
+            $current = $path === '' ? $data : ($path === null ? [] : Arr::get($data, $path));
+            $invalid = false;
+            $rowErrors = [];
+            try {
+                $before = $this->normalize($type, $row['before']);
+                $after = $this->normalize($type, $row['after']);
+            } catch (ValidationException $exception) {
+                if ($type !== 'rule') {
+                    throw $exception;
+                }
+                $invalid = true;
+                $before = $this->rawRuleState($row['before']);
+                $after = $this->rawRuleState($row['after']);
+                if (! $new) {
+                    $current = $this->rules->fromRule($current);
+                }
+                foreach ($exception->errors() as $errorPath => $messages) {
+                    foreach ($messages as $message) {
+                        $rowErrors[] = $this->errorLocation('rules.0.'.$errorPath, ['rules' => [$after]], [], []).': '.$message;
+                    }
+                }
+            }
+            $fields = $type === 'rule' && $new ? $this->newRuleFields($after) : $this->fields($type);
+            if ($invalid && array_key_exists('condition_blocks', $after)) {
+                $fields = [...array_values(array_diff($fields, ['conditions'])), 'condition_blocks'];
+            }
+            $fields = $this->differences($new ? [] : $before, $after, $fields);
+            $stale = ! $new && $type === 'rule' && ($after['kind'] ?? null) !== $current['kind'];
+            if (! $new) {
+                foreach ($fields as $field => $difference) {
+                    if (($current[$field] ?? null) == $difference['after']) {
+                        unset($fields[$field]);
+                    } elseif (($current[$field] ?? null) != $difference['before']) {
+                        $stale = true;
+                    }
+                }
+            }
+            if ($stale) {
+                $rowErrors[] = $this->label($type, $id, $current).': '.__('configurator.preview.editor_conflict');
+            }
+            if ($fields === [] && ! $invalid && ! $stale) {
+                continue;
+            }
+            $display = array_replace($current, $after);
+            if (! $new && ! $invalid) {
+                if ($path === '') {
+                    $data = array_replace($data, Arr::only($after, array_keys($fields)));
+                } else {
+                    Arr::set($data, $path, array_replace($current, Arr::only($after, array_keys($fields))));
+                }
+            }
+            $changes[] = ['type' => $type, 'id' => $id, 'label' => $new ? (is_string($after['label'] ?? null) && filled($after['label']) ? $after['label'] : __('configurator.preview.new_rule')) : $this->label($type, $id, $display), 'new' => $new, 'fields' => $fields, 'invalid' => $invalid, 'stale' => $stale, 'errors' => $rowErrors];
+            $errors = [...$errors, ...$rowErrors];
+        }
+        [$attributes, $options] = $this->loader->canonical($data);
+
+        return ['changes' => $this->describeChanges($changes, $data, $attributes, $options), 'errors' => array_values(array_unique($errors))];
+    }
+
+    /** @param list<array<string, mixed>> $captures */
+    public function captureHash(int $configuratorId, array $captures): string
+    {
+        $rows = $this->savedRows($configuratorId, $captures);
+        usort($rows, fn (array $a, array $b): int => [$a['type'], (string) $a['id']] <=> [$b['type'], (string) $b['id']]);
+
+        return hash('sha256', json_encode([$configuratorId, $rows], JSON_THROW_ON_ERROR));
     }
 
     /** @param list<array<string, mixed>> $captures @return array{data: array<string, mixed>, changes: list<array<string, mixed>>} */
     public function prepare(Configurator $configurator, array $captures): array
     {
         Gate::authorize('manage-catalog');
-        if (count($captures) > 3) {
-            throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
-        }
+        $rows = $this->savedRows($configurator->id, $captures);
         $data = $this->loader->draft($configurator);
         $changes = [];
-        $seen = [];
-        foreach ($captures as $capture) {
-            foreach ($this->verifiedRows($configurator->id, $capture) as $row) {
-                $type = $row['type'];
-                $id = (string) $row['id'];
-                $key = $type.':'.$id;
-                if (isset($seen[$key])) {
-                    throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
+        foreach ($rows as $row) {
+            $type = $row['type'];
+            $id = (string) $row['id'];
+            try {
+                $before = $this->normalize($type, $row['before']);
+                $after = $this->normalize($type, $row['after']);
+            } catch (ValidationException $exception) {
+                if ($type !== 'rule') {
+                    throw $exception;
                 }
-                $seen[$key] = true;
-                try {
-                    $before = $this->normalize($type, $row['before']);
-                    $after = $this->normalize($type, $row['after']);
-                } catch (ValidationException $exception) {
-                    if ($type !== 'rule') {
-                        throw $exception;
-                    }
-                    $errors = [];
-                    foreach ($exception->errors() as $path => $messages) {
-                        $errors[$path] = array_map(fn (string $message): string => $this->errorLocation('rules.0.'.$path, ['rules' => [$row['after']]], [], []).': '.$message, $messages);
-                    }
-                    throw ValidationException::withMessages($errors);
+                $errors = [];
+                foreach ($exception->errors() as $path => $messages) {
+                    $errors[$path] = array_map(fn (string $message): string => $this->errorLocation('rules.0.'.$path, ['rules' => [$row['after']]], [], []).': '.$message, $messages);
                 }
-                $new = $type === 'rule' && str_starts_with($id, 'new:');
-                if ($new) {
-                    $after['id'] = $id;
-                    $after['priority'] = $data['rules'] === [] ? 0 : max(array_column($data['rules'], 'priority')) + 1;
-                    $data['rules'][] = $after;
-                    $fields = array_values(array_diff(['kind', ...self::RULE_FIELDS], $after['kind'] === 'Mapping' ? ['effects'] : ['driver_configurator_attribute_id', 'target_configurator_attribute_id', 'sets']));
-                    $changes[] = ['type' => $type, 'id' => $id, 'label' => $after['label'] ?: __('configurator.preview.new_rule'), 'new' => true, 'fields' => $this->differences([], $after, $fields)];
+                throw ValidationException::withMessages($errors);
+            }
+            $new = $type === 'rule' && str_starts_with($id, 'new:');
+            if ($new) {
+                $after['id'] = $id;
+                $after['priority'] = $data['rules'] === [] ? 0 : max(array_column($data['rules'], 'priority')) + 1;
+                $data['rules'][] = $after;
+                $fields = $this->newRuleFields($after);
+                $changes[] = ['type' => $type, 'id' => $id, 'label' => $after['label'] ?: __('configurator.preview.new_rule'), 'new' => true, 'fields' => $this->differences([], $after, $fields)];
+
+                continue;
+            }
+            $path = $this->rowPath($data, $type, $id);
+            $current = $path === '' ? $data : Arr::get($data, $path);
+            if (! is_array($current) || ($type === 'rule' && ($after['kind'] ?? null) !== $current['kind'])) {
+                throw ValidationException::withMessages(['preview' => __('configurator.preview.editor_conflict')]);
+            }
+            $fields = $this->differences($before, $after, $this->fields($type));
+            foreach ($fields as $field => $difference) {
+                if (($current[$field] ?? null) == $difference['after']) {
+                    unset($fields[$field]);
 
                     continue;
                 }
-                $path = $this->rowPath($data, $type, $id);
-                $current = $path === '' ? $data : Arr::get($data, $path);
-                if (! is_array($current) || ($type === 'rule' && ($after['kind'] ?? null) !== $current['kind'])) {
+                if (($current[$field] ?? null) != $difference['before']) {
                     throw ValidationException::withMessages(['preview' => __('configurator.preview.editor_conflict')]);
                 }
-                $fields = $this->differences($before, $after, $this->fields($type));
-                foreach ($fields as $field => $difference) {
-                    if (($current[$field] ?? null) == $difference['after']) {
-                        unset($fields[$field]);
-
-                        continue;
-                    }
-                    if (($current[$field] ?? null) != $difference['before']) {
-                        throw ValidationException::withMessages(['preview' => __('configurator.preview.editor_conflict')]);
-                    }
-                    $current[$field] = $difference['after'];
-                }
-                if ($fields === []) {
-                    continue;
-                }
-                if ($path === '') {
-                    $data = $current;
-                } else {
-                    Arr::set($data, $path, $current);
-                }
-                $changes[] = ['type' => $type, 'id' => $id, 'label' => $this->label($type, $id, $current), 'new' => false, 'fields' => $fields];
+                $current[$field] = $difference['after'];
             }
+            if ($fields === []) {
+                continue;
+            }
+            if ($path === '') {
+                $data = $current;
+            } else {
+                Arr::set($data, $path, $current);
+            }
+            $changes[] = ['type' => $type, 'id' => $id, 'label' => $this->label($type, $id, $current), 'new' => false, 'fields' => $fields];
         }
         [$attributes, $options] = $this->loader->canonical($data);
         try {
@@ -134,16 +218,8 @@ class ConfiguratorEditorChanges
             }
             throw ValidationException::withMessages($errors);
         }
-        foreach ($changes as &$change) {
-            foreach ($change['fields'] as $field => &$difference) {
-                $difference['before_text'] = $this->describe($field, $difference['before'], $compiled);
-                $difference['after_text'] = $this->describe($field, $difference['after'], $compiled);
-            }
-            unset($difference);
-        }
-        unset($change);
 
-        return ['data' => $compiled->data, 'changes' => $changes];
+        return ['data' => $compiled->data, 'changes' => $this->describeChanges($changes, $compiled->data, $attributes, $options)];
     }
 
     /** @param array<string, mixed> $state @return array<string, mixed> */
@@ -221,12 +297,75 @@ class ConfiguratorEditorChanges
     /** @param list<array<string, mixed>> $captures @return list<array<string, mixed>> */
     public function savedRows(int $configuratorId, array $captures): array
     {
+        Gate::authorize('manage-catalog');
+        if (! array_is_list($captures) || count($captures) > 3) {
+            throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
+        }
         $rows = [];
+        $seen = [];
         foreach ($captures as $capture) {
-            $rows = [...$rows, ...$this->verifiedRows($configuratorId, $capture)];
+            if (! is_array($capture)) {
+                throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
+            }
+            foreach ($this->verifiedRows($configuratorId, $capture) as $row) {
+                $identity = $row['type'].':'.$row['id'];
+                if (isset($seen[$identity])) {
+                    throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
+                }
+                $seen[$identity] = true;
+                $rows[] = $row;
+            }
         }
 
         return $rows;
+    }
+
+    /** @param array<string, mixed> $state */
+    private function boundedState(array $state, int $depth = 0): bool
+    {
+        if ($depth > 12 || count($state) > 500) {
+            return false;
+        }
+        foreach ($state as $value) {
+            if (is_array($value) ? ! $this->boundedState($value, $depth + 1) : (! is_scalar($value) && $value !== null && ! $value instanceof ConfigInputType)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @param array<string, mixed> $state @return array<string, mixed> */
+    private function rawRuleState(array $state): array
+    {
+        $state = Arr::only($state, ['id', 'kind', 'priority', ...self::RULE_FIELDS, 'condition_blocks']);
+        foreach (['condition_blocks', 'conditions', 'effects', 'sets'] as $field) {
+            if (is_array($state[$field] ?? null)) {
+                $state[$field] = $this->rawRuleChildren(array_values($state[$field]));
+            }
+        }
+
+        return $state;
+    }
+
+    /** @param array<array-key, mixed> $rows @return array<array-key, mixed> */
+    private function rawRuleChildren(array $rows): array
+    {
+        $allowed = ['id', 'type', 'data', 'operator', 'conditions', 'source_kind', 'source_configurator_attribute_id', 'property_key', 'context_dimension', 'operand', 'operand_text', 'operand_list', 'option_ids', 'kind', 'target_configurator_attribute_id', 'target_scope', 'display_value', 'label', 'source_option_ids', 'target_option_ids', 'disallowed_target_behavior', 'sort_order'];
+        $filtered = [];
+        foreach ($rows as $key => $value) {
+            if (is_int($key) || in_array($key, $allowed, true)) {
+                $filtered[$key] = is_array($value) ? $this->rawRuleChildren($key === 'conditions' ? array_values($value) : $value) : $value;
+            }
+        }
+
+        return $filtered;
+    }
+
+    /** @param array<string, mixed> $rule @return list<string> */
+    private function newRuleFields(array $rule): array
+    {
+        return array_values(array_diff(['kind', ...self::RULE_FIELDS], ($rule['kind'] ?? null) === 'Mapping' ? ['effects'] : ['driver_configurator_attribute_id', 'target_configurator_attribute_id', 'sets']));
     }
 
     /** @param array<string, mixed> $current @param array<string, mixed> $tested @param array<string, mixed> $saved @return array<string, mixed> */
@@ -242,7 +381,32 @@ class ConfiguratorEditorChanges
         return $saved;
     }
 
-    private function describe(string $field, mixed $value, ConfiguratorDefinition $definition): string
+    /** @param list<array<string, mixed>> $changes @param array<string, mixed> $data @param array<int, array<string, mixed>> $canonicalAttributes @param array<int, array<string, mixed>> $canonicalOptions @return list<array<string, mixed>> */
+    private function describeChanges(array $changes, array $data, array $canonicalAttributes, array $canonicalOptions): array
+    {
+        $attributes = [];
+        $options = [];
+        foreach ($data['attributes'] as $attribute) {
+            $attributes[$attribute['id']] = $attribute['label_override'] ?: ($canonicalAttributes[$attribute['attribute_id']]['label'] ?? '—');
+            foreach ($attribute['options'] as $option) {
+                $canonical = $canonicalOptions[$option['option_id']] ?? [];
+                $options[$option['id']] = ($option['label_override'] ?: ($canonical['label'] ?? '—')).' · '.($canonical['code'] ?? '—').(filled($canonical['semantic_id'] ?? null) ? ' · '.$canonical['semantic_id'] : '');
+            }
+        }
+        foreach ($changes as &$change) {
+            foreach ($change['fields'] as $field => &$difference) {
+                $difference['before_text'] = $this->describe($field, $difference['before'], $attributes, $options);
+                $difference['after_text'] = $this->describe($field, $difference['after'], $attributes, $options);
+            }
+            unset($difference);
+        }
+        unset($change);
+
+        return $changes;
+    }
+
+    /** @param array<string, string> $attributes @param array<string, string> $options */
+    private function describe(string $field, mixed $value, array $attributes, array $options): string
     {
         if ($value === null || $value === '') {
             return '—';
@@ -264,16 +428,13 @@ class ConfiguratorEditorChanges
             }
         }
         if (str_ends_with($field, 'configurator_attribute_id') && is_scalar($value)) {
-            return $definition->attributes[(string) $value]->label ?? '—';
+            return $attributes[(string) $value] ?? '—';
         }
         if (in_array($field, ['default_configurator_option_id', 'option_ids', 'source_option_ids', 'target_option_ids'], true)) {
             $labels = [];
             foreach ((array) $value as $id) {
-                foreach ($definition->attributes as $attribute) {
-                    if (isset($attribute->options[(string) $id])) {
-                        $option = $attribute->options[(string) $id];
-                        $labels[] = $option->label.' · '.$option->code.(filled($option->semanticId) ? ' · '.$option->semanticId : '');
-                    }
+                if (is_scalar($id) && isset($options[(string) $id])) {
+                    $labels[] = $options[(string) $id];
                 }
             }
 
@@ -288,8 +449,10 @@ class ConfiguratorEditorChanges
                 if (in_array($key, ['id', 'sort_order', 'priority'], true) || $child === null || $child === '' || $child === []) {
                     continue;
                 }
-                $description = $this->describe(is_int($key) ? $field : $key, $child, $definition);
-                $lines[] = is_int($key) ? $description : __('configurator.preview.fields.'.$key).': '.$description;
+                $description = $this->describe(is_int($key) ? $field : $key, $child, $attributes, $options);
+                $translation = 'configurator.preview.fields.'.$key;
+                $label = __($translation) === $translation ? Str::headline($key) : __($translation);
+                $lines[] = is_int($key) ? $description : $label.': '.$description;
             }
 
             return implode("\n", $lines) ?: '—';
@@ -307,7 +470,7 @@ class ConfiguratorEditorChanges
             $type = array_shift($parts);
             $row = $data[$type][(int) array_shift($parts)] ?? [];
             if ($type === 'rules') {
-                $labels[] = __('configurator.preview.types.rule').' “'.($row['label'] ?? __('configurator.preview.new_rule')).'”';
+                $labels[] = __('configurator.preview.types.rule').' “'.(is_string($row['label'] ?? null) && filled($row['label']) ? $row['label'] : __('configurator.preview.new_rule')).'”';
             } else {
                 $labels[] = __('configurator.preview.types.attribute').' “'.($row['label_override'] ?: ($attributes[$row['attribute_id']]['label'] ?? '—')).'”';
                 if (($parts[0] ?? null) === 'options' && isset($parts[1])) {

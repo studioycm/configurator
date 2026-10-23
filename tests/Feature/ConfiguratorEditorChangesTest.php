@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorRuleDraft;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -360,4 +362,191 @@ test('Overview keeps a separately saved name while retaining a later description
 
     expect(array_keys($remaining['changes'][0]['fields']))->toBe(['description']);
     expect($remaining['data']['name'])->toBe('Renamed elsewhere');
+});
+
+test('inventory retains Overview and Value edits beside an incomplete new Mapping Rule without compiling or writing', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $value = $saved['attributes'][0]['options'][0];
+    $rule = fixtureMapping('incomplete-map');
+    $rule['driver_configurator_attribute_id'] = null;
+    $rule['target_configurator_attribute_id'] = null;
+    $rule['sets'] = [];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [
+        ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Pending Overview']],
+        ['type' => 'value', 'id' => $value['id'], 'before' => $value, 'after' => [...$value, 'hint' => 'Pending guidance']],
+        ['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($rule)],
+    ]);
+    DB::enableQueryLog();
+
+    $inventory = $changes->inspect($configurator, [$capture]);
+
+    expect($inventory['changes'])->toHaveCount(3);
+    expect(array_column($inventory['changes'], 'type'))->toBe(['overview', 'value', 'rule']);
+    expect($inventory['changes'][2])->toMatchArray(['id' => 'new:incomplete-map', 'label' => 'incomplete-map', 'new' => true, 'invalid' => false, 'stale' => false, 'errors' => []]);
+    expect($inventory['changes'][0]['fields']['description']['after_text'])->toBe('Pending Overview');
+    expect($inventory['errors'])->toBe([]);
+    expect(fn () => $changes->prepare($configurator, [$capture]))->toThrow(ValidationException::class, 'incomplete-map');
+    expect($changes->inspect($configurator, [$capture]))->toBe($inventory);
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+    expect(collect(DB::getQueryLog())->pluck('query')->filter(fn (string $query): bool => preg_match('/^\s*(insert|update|delete|replace|alter|create|drop)\b/i', $query) === 1)->all())->toBe([]);
+});
+
+test('inventory describes signed raw Rule fields when an incomplete condition cannot normalize', function (bool $keyed) {
+    [$configurator, $saved] = editorChangesFixture();
+    $rule = app(ConfiguratorRuleDraft::class)->fromRule(fixtureMapping('raw-rule'));
+    $rule['condition_blocks'] = [['type' => 'predicate', 'data' => ['source_kind' => 'SelectionOption', 'unsupported_display_field' => 'unexpected nested content']]];
+    if ($keyed) {
+        $rule['condition_blocks'] = ['editor-block-key' => $rule['condition_blocks'][0]];
+    }
+    $rule['unsupported_display_field'] = '<script>unexpected()</script>';
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+
+    $inventory = $changes->inspect($configurator, [$capture]);
+
+    expect($inventory['changes'])->toHaveCount(1);
+    expect($inventory['changes'][0])->toMatchArray(['id' => 'new:raw-rule', 'new' => true, 'invalid' => true, 'stale' => false]);
+    expect($inventory['changes'][0]['fields'])->toHaveKey('condition_blocks')->not->toHaveKey('unsupported_display_field');
+    expect($inventory['changes'][0]['fields']['condition_blocks']['after_text'])->toContain('Selected value')->not->toContain('configurator.preview.fields.');
+    expect($inventory['changes'][0]['fields']['condition_blocks']['after_text'])->not->toContain('unexpected nested content');
+    expect($inventory['errors'])->toBe($inventory['changes'][0]['errors']);
+    expect(implode(' ', $inventory['errors']))->toContain('raw-rule', 'Rule');
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+})->with(['indexed condition blocks' => false, 'keyed condition blocks' => true]);
+
+test('valid inventory shares preparation normalization and readable descriptions', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $a = $saved['attributes'][0];
+    $b = $saved['attributes'][1];
+    $rule = fixtureMapping('readable-map');
+    $rule['driver_configurator_attribute_id'] = $a['id'];
+    $rule['target_configurator_attribute_id'] = $b['id'];
+    $rule['sets'][0]['source_option_ids'] = [$a['options'][0]['id']];
+    $rule['sets'][0]['target_option_ids'] = [$b['options'][1]['id']];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($rule)]]);
+
+    $inventory = $changes->inspect($configurator, [$capture]);
+    $prepared = $changes->prepare($configurator, [$capture]);
+
+    expect(Arr::except($inventory['changes'][0], ['invalid', 'stale', 'errors']))->toBe($prepared['changes'][0]);
+    expect($inventory['changes'][0]['fields']['sets']['after_text'])->toContain('A0', 'B1', 'Driver values', 'Allowed values');
+});
+
+test('inventory omits normalized blanks and fields already saved with the intended value', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $value = $saved['attributes'][0]['options'][0];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [
+        ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => '']],
+        ['type' => 'value', 'id' => $value['id'], 'before' => $value, 'after' => [...$value, 'hint' => 'Already saved']],
+    ]);
+    $configurator->attributes()->firstOrFail()->options()->findOrFail($value['id'])->update(['hint' => 'Already saved']);
+
+    expect($changes->inspect($configurator->fresh(), [$capture]))->toBe(['changes' => [], 'errors' => []]);
+});
+
+test('inventory retains stale owned changes while strict preparation rejects them', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Pending description']]]);
+    $configurator->update(['description' => 'Saved by another editor']);
+
+    $inventory = $changes->inspect($configurator->fresh(), [$capture]);
+
+    expect($inventory['changes'][0])->toMatchArray(['type' => 'overview', 'invalid' => false, 'stale' => true]);
+    expect($inventory['changes'][0]['fields']['description'])->toMatchArray(['before' => null, 'after' => 'Pending description']);
+    expect($inventory['errors'])->toBe($inventory['changes'][0]['errors'])->not->toBeEmpty();
+    expect(fn () => $changes->prepare($configurator->fresh(), [$capture]))->toThrow(ValidationException::class);
+    expect($configurator->fresh()->description)->toBe('Saved by another editor');
+});
+
+test('inventory rejects the entire collection for untrusted envelopes identities and row shapes', function (string $case) {
+    [$configurator, $saved] = editorChangesFixture();
+    $changes = app(ConfiguratorEditorChanges::class);
+    $row = ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Pending description']];
+    $rows = [$row];
+    if ($case === 'unknown type') {
+        $rows[] = [...$row, 'type' => 'unsupported'];
+    } elseif ($case === 'invalid id') {
+        $rows[] = [...$row, 'type' => 'attribute', 'id' => ['bad']];
+    } elseif ($case === 'scalar row') {
+        $rows[] = 'bad';
+    } elseif ($case === 'invalid before') {
+        $rows[] = [...$row, 'type' => 'attribute', 'id' => '1', 'before' => 'bad'];
+    } elseif ($case === 'invalid after') {
+        $rows[] = [...$row, 'type' => 'attribute', 'id' => '1', 'after' => 'bad'];
+    } elseif ($case === 'list before') {
+        $rows[] = [...$row, 'type' => 'attribute', 'id' => '1', 'before' => ['bad']];
+    } elseif ($case === 'list after') {
+        $rows[] = [...$row, 'type' => 'attribute', 'id' => '1', 'after' => ['bad']];
+    } elseif ($case === 'too many state fields') {
+        $rows[0]['after'] = array_fill_keys(array_map(fn (int $index): string => 'field_'.$index, range(1, 501)), 'value');
+    } elseif ($case === 'too deep state') {
+        $nested = [];
+        for ($depth = 0; $depth < 14; $depth++) {
+            $nested = ['nested' => $nested];
+        }
+        $rows[0]['after']['nested'] = $nested;
+    } elseif ($case === 'too many rows') {
+        $rows = array_fill(0, 501, $row);
+    }
+    $capture = $changes->capture($configurator->id, $rows);
+    if ($case === 'signature') {
+        $capture['rows'][0]['after']['description'] = 'Forged';
+    } elseif ($case === 'foreign configurator') {
+        $capture = $changes->capture(Configurator::factory()->create()->id, $rows);
+    }
+    $captures = match ($case) {
+        'duplicate identity' => [$capture, $capture],
+        'too many captures' => array_fill(0, 4, $capture),
+        default => [$capture],
+    };
+
+    expect(fn () => $changes->inspect($configurator, $captures))->toThrow(ValidationException::class);
+    expect(fn () => $changes->prepare($configurator, $captures))->toThrow(ValidationException::class);
+    expect(fn () => $changes->captureHash($configurator->id, $captures))->toThrow(ValidationException::class);
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+})->with(['signature', 'foreign configurator', 'duplicate identity', 'unknown type', 'invalid id', 'scalar row', 'invalid before', 'invalid after', 'list before', 'list after', 'too many state fields', 'too deep state', 'too many captures', 'too many rows']);
+
+test('inventory rejects a foreign or deleted owner row instead of returning other valid rows', function (bool $deleted) {
+    [$configurator, $saved] = editorChangesFixture();
+    $other = Configurator::factory()->create();
+    $other->attributes()->create(Arr::except($saved['attributes'][0], ['id', 'options', 'default_configurator_option_id']));
+    $attribute = $deleted ? $saved['attributes'][0] : app(ConfiguratorDefinitionLoader::class)->draft($other)['attributes'][0];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture($configurator->id, [
+        ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Pending description']],
+        ['type' => 'attribute', 'id' => $attribute['id'], 'before' => $attribute, 'after' => [...$attribute, 'help_text' => 'Pending help']],
+    ]);
+    if ($deleted) {
+        $owned = $configurator->attributes()->findOrFail($attribute['id']);
+        $owned->update(['default_configurator_option_id' => null]);
+        $owned->options()->delete();
+        $owned->delete();
+    }
+
+    expect(fn () => $changes->inspect($configurator->fresh(), [$capture]))->toThrow(ValidationException::class);
+    expect(fn () => $changes->prepare($configurator->fresh(), [$capture]))->toThrow(ValidationException::class);
+    expect($configurator->fresh()->description)->toBeNull();
+})->with(['foreign owner' => false, 'deleted owner' => true]);
+
+test('capture hash ignores envelope grouping and row ordering while preserving nested order and new Rule identity', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $changes = app(ConfiguratorEditorChanges::class);
+    $overview = ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Pending description']];
+    $rule = fixtureMapping('hash-rule');
+    $row = ['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($rule)];
+    $hash = $changes->captureHash($configurator->id, [$changes->capture($configurator->id, [$overview, $row])]);
+
+    expect($changes->captureHash($configurator->id, [$changes->capture($configurator->id, [$row]), $changes->capture($configurator->id, [$overview])]))->toBe($hash);
+    $row['after']['sets'][0]['source_option_ids'] = ['first', 'second'];
+    $firstOrder = $changes->captureHash($configurator->id, [$changes->capture($configurator->id, [$overview, $row])]);
+    $row['after']['sets'][0]['source_option_ids'] = ['second', 'first'];
+    expect($changes->captureHash($configurator->id, [$changes->capture($configurator->id, [$overview, $row])]))->not->toBe($firstOrder);
+    $row['after']['sets'][0]['source_option_ids'] = $rule['sets'][0]['source_option_ids'];
+    $row['id'] = $row['after']['id'] = 'new:another-hash-rule';
+    expect($changes->captureHash($configurator->id, [$changes->capture($configurator->id, [$overview, $row])]))->not->toBe($hash);
+    expect($changes->captureHash($configurator->id, [$changes->capture($configurator->id, [])]))->toBe($changes->captureHash($configurator->id, []));
 });

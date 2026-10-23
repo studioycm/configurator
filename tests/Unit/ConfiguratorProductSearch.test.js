@@ -55,3 +55,32 @@ test('an unsuccessful selection retains the accepted Product code', async () => 
     assert.equal(search.failed, true);
     assert.equal(search.choosing, false);
 });
+
+test('Product clear pointer and Enter methods honor the shared workspace barrier', async () => {
+    const search = configuratorProductSearch('FIRST');
+    const calls = [];
+    search.workspace = { busy: true, request: async callback => callback() };
+    search.$wire = { chooseProduct: async id => { calls.push(id); return id; } };
+    search.options = [{ id: '7', label: 'SECOND' }];
+    search.activeIndex = 0;
+    await search.choose();
+    await search.choose(search.options[0]);
+    await search.chooseActive();
+    assert.deepEqual(calls, []);
+    assert.equal(search.selectedCode, 'FIRST');
+});
+
+test('Product choice obtains workspace admission and retains its code if admission is denied', async () => {
+    const search = configuratorProductSearch('FIRST');
+    let admitted = false;
+    let choices = 0;
+    search.workspace = { busy: false, request: async callback => { admitted = true; return callback(); } };
+    search.$wire = { chooseProduct: async id => { choices++; return Number(id); } };
+    await search.choose({ id: '7', label: 'SECOND' });
+    assert.equal(admitted, true);
+    assert.equal(search.selectedCode, 'SECOND');
+    search.workspace.request = async () => false;
+    await search.choose({ id: '9', label: 'THIRD' });
+    assert.equal(choices, 1);
+    assert.equal(search.selectedCode, 'SECOND');
+});
