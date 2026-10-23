@@ -26,7 +26,7 @@ For gated material, verify the actual body or source is readable in an authentic
 
 Check examples against current APIs, authorization/tenancy, query cost, state ownership, cache invalidation, and this application's conventions. A tutorial is an example to evaluate, not automatic authority. Map the recommended pattern to specific existing files and describe the smallest useful experiment or verification.
 
-Verify the actual PHP floor for new syntax even when the framework version matches. Separate PSR-4 autoloading from provider, listener, policy, command, Livewire and panel discovery. A Filament 4/5 badge does not convert returned `v4/` source into verified v5 code. Use [the architecture source map](references/architecture-source-map.md) for targeted Laravel Daily structure material and common contradictions to resolve.
+Verify the actual PHP floor for new syntax even when the framework version matches. Separate PSR-4 autoloading from provider, listener, policy, command, Livewire and panel discovery. Filament Examples retains `v4/` paths for its shared Filament 4/5 collection; do not reject or downgrade examples because of that name. Evaluate the code used, especially custom Livewire 4 compatibility and actual plugin/API requirements; an ordinary shared Filament pattern does not require a separate v5 project manifest. See [source and access guidance](references/sources-and-access.md#filament-examples-mcp) for the compatibility boundary and [the architecture source map](references/architecture-source-map.md) for targeted Laravel Daily structure material and common contradictions to resolve.
 
 Return a concise recommendation with:
 
