@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'notifications' => [
+        'import_finished' => 'עיבוד הייבוא הסתיים',
+        'import_results' => ':successful שורות עובדו בהצלחה (כולל שורות שדולגו); :rejected דחיות שורה נרשמו; :unconfirmed שורות ללא תוצאה מאומתת. :processed מתוך :total שורות נרשמו כמעובדות. אלו התוצאות הרשומות כעת.',
+        'import_unreconciled' => 'הספירות הרשומות אינן תואמות. יש לבדוק את המצב השמור לפני ניסיון חוזר.',
+    ],
     'rules' => [
         'import' => 'ייבוא כללים',
         'upload_step' => 'קובץ ואפשרויות',

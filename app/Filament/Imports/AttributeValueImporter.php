@@ -53,10 +53,12 @@ class AttributeValueImporter extends CatalogImporter
 
     public function saveRecord(): void
     {
+        $this->assertPlannedRecord();
         DB::transaction(function (): void {
             $this->record = app(SaveCanonicalOption::class)->handle($this->actor(), $this->record->exists ? $this->record : null,
                 $this->record->attribute_id, $this->record->value_id, $this->record->code, preserveIdentity: true);
             $this->saveStatus();
         });
+        $this->rememberImportedRecord();
     }
 }

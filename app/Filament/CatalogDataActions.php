@@ -2,6 +2,7 @@
 
 namespace App\Filament;
 
+use App\Filament\Imports\Jobs\ImportCatalogCsv;
 use App\Models\Option;
 use Filament\Actions\ExportAction;
 use Filament\Actions\Exports\Exporter;
@@ -13,7 +14,7 @@ class CatalogDataActions
     /** @param class-string<Importer> $importer */
     public static function import(string $name, string $importer): ImportAction
     {
-        return ImportAction::make($name)->importer($importer)->authorize('manage-catalog')
+        return ImportAction::make($name)->importer($importer)->job(ImportCatalogCsv::class)->authorize('manage-catalog')
             ->modelLabel($importer::getModel() === Option::class ? __('data_exchange.attribute_value') : null)
             ->pluralModelLabel($importer::getModel() === Option::class ? __('data_exchange.attribute_values') : null)
             ->label(__('data_exchange.actions.import'));

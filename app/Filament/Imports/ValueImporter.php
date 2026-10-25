@@ -39,7 +39,9 @@ class ValueImporter extends CatalogImporter
 
     public function saveRecord(): void
     {
+        $this->assertPlannedRecord();
         $this->record = app(SaveCanonicalDefinition::class)->handle($this->actor(), $this->record,
             $this->mappedData(['semantic_id', 'label', 'description', 'tags']));
+        $this->rememberImportedRecord();
     }
 }

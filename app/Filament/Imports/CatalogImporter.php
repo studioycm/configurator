@@ -3,18 +3,81 @@
 namespace App\Filament\Imports;
 
 use App\Actions\ChangeCatalogStatus;
+use App\CatalogWriteReplan;
+use App\Models\Attribute;
+use App\Models\Option;
 use App\Models\User;
+use App\Models\Value;
+use Filament\Actions\Action;
+use Filament\Actions\Imports\Downloaders\Contracts\Downloader;
+use Filament\Actions\Imports\Downloaders\CsvDownloader;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Checkbox;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Number;
+use Symfony\Component\HttpFoundation\Response;
 
 abstract class CatalogImporter extends Importer
 {
     protected static bool $shouldPreventFormulaInjection = true;
+
+    /** @var array{attributes: list<int>, values: list<int>, options: list<int>}|null */
+    private ?array $parentPlan = null;
+
+    /** @param array<string, mixed> $row @return array{data: array<string, mixed>, record: ?Model} */
+    public function projectRow(array $row): array
+    {
+        $this->originalData = $this->data = $row;
+        $this->record = null;
+        $this->remapData();
+        $this->castData();
+
+        return ['data' => $this->data, 'record' => $this->resolveRecord()];
+    }
+
+    /** @param array{attributes: list<int>, values: list<int>, options: list<int>} $parents */
+    public function useParentPlan(array $parents): void
+    {
+        $this->parentPlan = $parents;
+    }
+
+    protected function assertPlannedRecord(): void
+    {
+        if ($this->parentPlan === null) {
+            return;
+        }
+        $bucket = match (true) {
+            $this->record instanceof Attribute => 'attributes',
+            $this->record instanceof Value => 'values',
+            default => 'options',
+        };
+        $unplanned = $this->record->exists && ! in_array($this->record->id, $this->parentPlan[$bucket], true);
+        if ($this->record instanceof Option) {
+            $unplanned = $unplanned || ! in_array($this->record->attribute_id, $this->parentPlan['attributes'], true)
+                || ! in_array($this->record->value_id, $this->parentPlan['values'], true);
+        }
+        if ($unplanned) {
+            throw CatalogWriteReplan::withMessages(['definition' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
+        }
+    }
+
+    protected function rememberImportedRecord(): void
+    {
+        if ($this->parentPlan !== null) {
+            $bucket = match (true) {
+                $this->record instanceof Attribute => 'attributes',
+                $this->record instanceof Value => 'values',
+                default => 'options',
+            };
+            $this->parentPlan[$bucket][] = $this->record->id;
+        }
+    }
 
     protected static function importColumn(): ImportColumn
     {
@@ -94,9 +157,49 @@ abstract class CatalogImporter extends Importer
 
     public static function getCompletedNotificationBody(Import $import): string
     {
-        return __('data_exchange.notifications.import_completed', [
+        $import->refresh();
+        $rejected = $import->failedRows()->count();
+        $body = __('data_exchange.notifications.import_results', [
             'successful' => number_format($import->successful_rows),
-            'failed' => number_format($import->getFailedRowsCount()),
+            'rejected' => number_format($rejected),
+            'unconfirmed' => number_format(max(0, $import->total_rows - $import->processed_rows)),
+            'processed' => number_format($import->processed_rows), 'total' => number_format($import->total_rows),
         ]);
+        if ($import->processed_rows > $import->total_rows || $import->successful_rows > $import->processed_rows || $import->processed_rows - $import->successful_rows !== $rejected) {
+            $body .= ' '.__('data_exchange.notifications.import_unreconciled');
+        }
+
+        return $body;
+    }
+
+    public static function getCompletedNotificationTitle(Import $import): string
+    {
+        return __('data_exchange.notifications.import_finished');
+    }
+
+    public static function modifyCompletedNotification(Notification $notification, Import $import): Notification
+    {
+        $body = static::getCompletedNotificationBody($import);
+        $rejected = $import->failedRows()->count();
+        $actions = $rejected === 0 ? [] : collect($notification->getActions())
+            ->filter(fn ($action): bool => $action instanceof Action && $action->getName() === 'downloadFailedRowsCsv')
+            ->map(fn (Action $action): Action => $action->label(trans_choice('filament-actions::import.notifications.completed.actions.download_failed_rows_csv.label', $rejected, ['count' => Number::format($rejected)])))
+            ->values()->all();
+
+        return $notification->title(static::getCompletedNotificationTitle($import))->body($body)->actions($actions)
+            ->status($rejected > 0 || $import->processed_rows !== $import->total_rows || $import->successful_rows !== $import->processed_rows ? 'warning' : null);
+    }
+
+    public static function getFailedRowsDownloader(): Downloader
+    {
+        return new class implements Downloader
+        {
+            public function __invoke(Import $import): Response
+            {
+                abort_unless($import->failedRows()->exists(), 404);
+
+                return app(CsvDownloader::class)($import);
+            }
+        };
     }
 }

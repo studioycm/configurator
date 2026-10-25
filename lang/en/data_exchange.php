@@ -84,6 +84,9 @@ return [
         'existing_code' => 'This Attribute Value already has a different code. Existing codes cannot be changed by import.',
     ],
     'notifications' => [
+        'import_finished' => 'Import processing finished',
+        'import_results' => ':successful rows processed successfully (including skipped rows); :rejected recorded row rejections; :unconfirmed rows unconfirmed. :processed of :total rows recorded as processed. These are the currently recorded results.',
+        'import_unreconciled' => 'The recorded counts do not reconcile. Check the saved state before retrying.',
         'import_completed' => ':successful rows processed successfully, including rows skipped with import=0. :failed rows failed. Download the failed-row CSV to review errors.',
         'export_completed' => ':successful rows exported. :failed rows failed to export.',
     ],
