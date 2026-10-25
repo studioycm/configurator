@@ -32,6 +32,7 @@ class ConfiguratorRuleDataActions
             ->steps([
                 Step::make(__('data_exchange.rules.upload_step'))->schema([
                     View::make('filament.forms.validation-summary'),
+                    View::make('filament.forms.configurator-rule-import-recovery'),
                     FileUpload::make('file')->label(__('data_exchange.rules.file'))->required()
                         ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
                         ->maxSize(10240)->visibility('private')->storeFiles(false)->previewable(false)
@@ -47,10 +48,12 @@ class ConfiguratorRuleDataActions
                 ])->afterValidation(fn (Component $livewire) => $livewire->previewRuleImport()),
                 Step::make(__('data_exchange.rules.preview_step'))->schema([
                     View::make('filament.forms.validation-summary'),
+                    View::make('filament.forms.configurator-rule-import-recovery'),
                     View::make('filament.forms.configurator-rule-import-preview'),
                 ])->afterValidation(fn (Component $livewire) => $livewire->assertRuleImportPreview()),
                 Step::make(__('data_exchange.rules.confirm_step'))->schema([
                     View::make('filament.forms.validation-summary'),
+                    View::make('filament.forms.configurator-rule-import-recovery'),
                     Checkbox::make('confirm_import')->label(__('data_exchange.rules.confirm_label'))
                         ->helperText(__('data_exchange.rules.confirm_help'))->accepted()->required(),
                 ]),

@@ -5,12 +5,18 @@ use App\Filament\Pages\DataExchange;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Models\Configurator;
+use App\Models\ConfiguratorRule;
 use App\Models\RuleEffect;
 use App\Models\User;
 use App\Services\ConfiguratorRuleExchange;
+use App\Services\ConfiguratorRuleImport;
 use Filament\Actions\Testing\TestAction;
 use Filament\Schemas\Components\Wizard;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionCommitted;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use League\Csv\Writer;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -69,6 +75,14 @@ function ruleImportActionNext($component, int $index)
     $wizard = $component->instance()->getSchema($component->instance()->getMountedActionSchemaName())->getComponent(fn ($component): bool => $component instanceof Wizard);
 
     return $component->call('callSchemaComponentMethod', $wizard->getKey(), 'nextStep', [$index]);
+}
+
+class RuleImportRefreshFailurePage extends DataExchange
+{
+    protected function ruleImportApplied(array $preview): void
+    {
+        throw new RuntimeException('Injected acknowledged import refresh failure');
+    }
 }
 
 test('the native Rules wizard previews without writes then saves a confirmed Create with safe defaults', function () {
@@ -220,6 +234,120 @@ test('regenerating the Rules preview after navigating back renews the token and 
     expect($component->get('mountedActions.0.data.confirm_import'))->toBeFalse();
     $component->callMountedAction()->assertHasFormErrors(['confirm_import']);
     expect($configurator->rules()->sole()->label)->toBe('existing');
+});
+
+test('a rolled-back Rules import preserves input and retires confirmation until a fresh preview', function () {
+    [$configurator, $rule, $rows] = ruleImportActionFixture();
+    $rows[0] = array_replace($rows[0], ['import' => '1', 'rule_label' => 'Import fails']);
+    $component = Livewire::test(DataExchange::class)->mountAction(TestAction::make('importRules')->schemaComponent(true, 'content'))
+        ->fillForm(['file' => ruleImportActionFile($rows), 'configurator_ids' => [$configurator->id], 'allow_update' => true]);
+    ruleImportActionNext($component, 0)->assertHasNoFormErrors();
+    $token = $component->get('ruleImportPreviewToken');
+    $source = $component->get('mountedActions.0.data.file');
+    $pending = true;
+    Event::listen('eloquent.saving: '.ConfiguratorRule::class, function (ConfiguratorRule $record) use (&$pending): void {
+        if ($pending && $record->label === 'Import fails') {
+            throw new RuntimeException('Injected Rules import failure');
+        }
+    });
+    try {
+        $component->fillForm(['confirm_import' => true])->callMountedAction()->assertHasFormErrors(['confirm_import']);
+    } finally {
+        $pending = false;
+    }
+    expect($rule->fresh()->label)->toBe('existing');
+    expect($component->get('ruleImportPreviewToken'))->toBeNull();
+    expect($component->get('mountedActions.0.data.confirm_import'))->toBeFalse();
+    expect($component->get('mountedActions.0.data.file'))->toEqual($source);
+    expect($component->get('mountedActions.0.data.allow_update'))->toBeTrue();
+    expect(Cache::has('rules-import:'.$token))->toBeFalse();
+    $component->call('previewRuleImport')->assertHasNoErrors();
+    expect($component->get('ruleImportPreviewToken'))->not->toBe($token)->not->toBeNull();
+    expect($component->get('mountedActions.0.data.confirm_import'))->toBeFalse();
+});
+
+test('an unknown Rules import blocks new authority until the original saved scope is inspected and explicitly reviewed', function () {
+    [$configurator, $rule, $rows] = ruleImportActionFixture();
+    $other = Configurator::factory()->create(['name' => 'Not the attempted owner']);
+    $rows[0] = array_replace($rows[0], ['import' => '1', 'rule_label' => 'Imported once']);
+    $component = Livewire::test(DataExchange::class)->mountAction(TestAction::make('importRules')->schemaComponent(true, 'content'))
+        ->fillForm(['file' => ruleImportActionFile($rows), 'configurator_ids' => [$configurator->id], 'allow_update' => true]);
+    ruleImportActionNext($component, 0)->assertHasNoFormErrors();
+    $pending = true;
+    Event::listen(TransactionCommitted::class, function (TransactionCommitted $event) use (&$pending, $rule): void {
+        if ($pending && $event->connection->transactionLevel() === 1 && $rule->fresh()->label === 'Imported once') {
+            throw new RuntimeException('Injected Rules import exit failure');
+        }
+    });
+    try {
+        $component->fillForm(['confirm_import' => true])->callMountedAction()->assertHasFormErrors(['confirm_import']);
+    } finally {
+        $pending = false;
+    }
+    expect($rule->fresh()->label)->toBe('Imported once');
+    expect($component->get('ruleImportRecovery.configurator_ids'))->toBe([$configurator->id]);
+    $component->set('mountedActions.0.data.configurator_ids', [$other->id])->call('resetRuleImportPreview');
+    $component->call('previewRuleImport')->assertHasFormErrors(['confirm_import']);
+    expect($component->get('ruleImportPreviewToken'))->toBeNull();
+    $component->call('finishRuleImportReview')->assertHasFormErrors(['confirm_import']);
+    $readFailure = true;
+    Event::listen(QueryExecuted::class, function (QueryExecuted $query) use (&$readFailure): void {
+        if ($readFailure && str_starts_with($query->sql, 'select') && str_contains($query->sql, 'configurators')) {
+            $readFailure = false;
+            throw new RuntimeException('Injected saved Rules inspection failure');
+        }
+    });
+    try {
+        $component->call('inspectRuleImportOutcome')->assertHasFormErrors(['confirm_import']);
+    } finally {
+        $readFailure = false;
+    }
+    expect($component->get('ruleImportRecovery.inspected'))->toBeFalse();
+    expect($component->get('ruleImportPreviewToken'))->toBeNull();
+    $component->call('inspectRuleImportOutcome')->assertHasNoErrors();
+    expect($component->get('ruleImportRecovery.current.0.id'))->toBe($configurator->id);
+    expect($component->get('ruleImportRecovery.current.0.rules.0.label'))->toBe('Imported once');
+    $component->call('previewRuleImport')->assertHasFormErrors(['confirm_import']);
+    $component->call('finishRuleImportReview')->assertHasNoErrors();
+    expect($component->get('ruleImportRecovery'))->toBe([]);
+    expect($component->get('ruleImportPreviewToken'))->toBeNull();
+    expect($component->get('mountedActions.0.data.confirm_import'))->toBeFalse();
+    expect($configurator->rules()->count())->toBe(1);
+});
+
+test('a lost Rules import response is detected before a replacement preview or remounted wizard can authorize another Create', function () {
+    [$configurator, , $rows] = ruleImportActionFixture();
+    $rows[0] = array_replace($rows[0], ['import' => '1', 'operation' => 'Create', 'rule_key' => 'copy', 'rule_id' => '', 'expected_revision' => '', 'priority' => '1']);
+    $component = Livewire::test(DataExchange::class)->mountAction(TestAction::make('importRules')->schemaComponent(true, 'content'))
+        ->fillForm(['file' => ruleImportActionFile($rows), 'configurator_ids' => [$configurator->id]]);
+    ruleImportActionNext($component, 0)->assertHasNoFormErrors();
+    $token = $component->get('ruleImportPreviewToken');
+    app(ConfiguratorRuleImport::class)->apply(auth()->user(), $token);
+    $component->call('previewRuleImport')->assertHasFormErrors(['confirm_import']);
+    expect($component->get('ruleImportRecovery.configurator_ids'))->toBe([$configurator->id]);
+    expect($component->get('ruleImportPreviewToken'))->toBeNull();
+    $component->call('unmountAction')->mountAction(TestAction::make('importRules')->schemaComponent(true, 'content'));
+    expect($component->get('mountedActions.0.name'))->toBe('importRules');
+    expect($component->instance()->getSchema($component->instance()->getMountedActionSchemaName())->toHtml())->toContain(__('data_exchange.rules.import_inspect'));
+    $component->call('previewRuleImport')->assertHasFormErrors(['confirm_import']);
+    $actor = auth()->user();
+    $actor->update(['email' => 'revoked@example.test']);
+    $component->call('inspectRuleImportOutcome')->assertForbidden();
+    expect($configurator->rules()->count())->toBe(2);
+});
+
+test('an acknowledged Rules import clears authority before a failed workspace refresh', function () {
+    [$configurator, $rule, $rows] = ruleImportActionFixture();
+    $rows[0] = array_replace($rows[0], ['import' => '1', 'rule_label' => 'Saved before refresh']);
+    $component = Livewire::test(RuleImportRefreshFailurePage::class)->mountAction(TestAction::make('importRules')->schemaComponent(true, 'content'))
+        ->fillForm(['file' => ruleImportActionFile($rows), 'configurator_ids' => [$configurator->id], 'allow_update' => true]);
+    ruleImportActionNext($component, 0)->assertHasNoFormErrors();
+    $token = $component->get('ruleImportPreviewToken');
+    $component->fillForm(['confirm_import' => true])->callMountedAction()->assertHasNoFormErrors()->assertNotified();
+    expect($rule->fresh()->label)->toBe('Saved before refresh');
+    expect($component->get('ruleImportPreviewToken'))->toBeNull();
+    expect($component->get('ruleImportRecovery'))->toBe([]);
+    expect(Cache::has('rules-import:'.$token))->toBeFalse();
 });
 
 test('replacing the uploaded file after preview cannot apply the previous Rules file', function (string $replacementLabel) {

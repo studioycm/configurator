@@ -578,10 +578,10 @@ class RulesRelationManager extends RelationManager
         return (int) $this->owner()->id;
     }
 
-    protected function ruleImportApplied(): void
+    protected function ruleImportApplied(array $preview): void
     {
         $updatedIds = [];
-        foreach ($this->ruleImportPreview['configurators'] as $configurator) {
+        foreach ($preview['configurators'] as $configurator) {
             foreach ($configurator['changes'] as $change) {
                 if ($change['rule_id'] !== null) {
                     $updatedIds[] = $change['rule_id'];

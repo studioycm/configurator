@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Actions\SaveConfiguratorDefinition;
+use App\CatalogWriteFailure;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
+use App\Models\ConfiguratorRule;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
+use App\RuleImportPreviewUnavailable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +19,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 class ConfiguratorRuleImport
 {
@@ -52,39 +57,109 @@ class ConfiguratorRuleImport
         $key = 'rules-import:'.$token;
         $preview = Cache::lock($key.':consume', 10)->block(3, function () use ($key, $actor, $scope): array {
             $preview = Cache::get($key);
-            if (! is_array($preview) || $preview['actor'] !== $actor->id || $preview['scope'] !== $scope || $preview['expires'] <= now()->timestamp || ! $preview['can_import']) {
-                throw ValidationException::withMessages(['preview' => 'Preview is invalid, expired, already used, or belongs to another user or scope. Generate a new preview.']);
+            if (! $this->available($preview, $actor, $scope)) {
+                throw RuleImportPreviewUnavailable::withMessages(['preview' => 'Preview is invalid, expired, already used, or belongs to another user or scope. Generate a new preview.']);
             }
-            Cache::forget($key);
+            $this->forgetPreview($key);
 
             return $preview;
         });
 
-        return DB::transaction(function () use ($actor, $scope, $preview): array {
-            $ids = array_keys($preview['snapshots']);
-            sort($ids, SORT_NUMERIC);
-            $records = Configurator::whereKey($ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-            if ($records->count() !== count($ids)) {
-                throw ValidationException::withMessages(['preview' => 'A Configurator changed after preview. Generate a new preview.']);
-            }
-            $globalContext = CatalogContextSettings::current(lock: true)->choices;
-            $this->lockReferences($ids);
-            foreach ($ids as $id) {
-                $draft = $this->loader->draft($records[$id]);
-                [$attributes, $options] = $this->loader->canonical($draft, true);
-                if (! hash_equals($preview['snapshots'][$id], $this->fingerprint($draft, $attributes, $options, $globalContext))) {
-                    throw ValidationException::withMessages(['preview' => 'The definition, references or context changed after preview. Generate a new preview.']);
-                }
-            }
-            [$result, , $drafts] = $this->prepare($preview['rows'], $preview['options'], $scope);
-            if (! $result['can_import']) {
-                throw ValidationException::withMessages(['preview' => $result['errors'] ?: ['The import is no longer valid. Generate a new preview.']]);
-            }
-            foreach ($drafts as $id => $draft) {
-                $this->save->change($this->authorizedActor($actor), $records[$id], fn (array $current): array => [...$current, 'rules' => $draft['rules']]);
-            }
+        $bodyFailure = null;
+        try {
+            return DB::transaction(function () use ($actor, $scope, $preview, &$bodyFailure): array {
+                try {
+                    $ids = array_keys($preview['snapshots']);
+                    sort($ids, SORT_NUMERIC);
+                    $records = Configurator::whereKey($ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                    if ($records->count() !== count($ids)) {
+                        throw ValidationException::withMessages(['preview' => 'A Configurator changed after preview. Generate a new preview.']);
+                    }
+                    $globalContext = CatalogContextSettings::current(lock: true)->choices;
+                    $this->lockReferences($ids);
+                    foreach ($ids as $id) {
+                        $draft = $this->loader->draft($records[$id]);
+                        [$attributes, $options] = $this->loader->canonical($draft, true);
+                        if (! hash_equals($preview['snapshots'][$id], $this->fingerprint($draft, $attributes, $options, $globalContext))) {
+                            throw ValidationException::withMessages(['preview' => 'The definition, references or context changed after preview. Generate a new preview.']);
+                        }
+                    }
+                    [$result, , $drafts] = $this->prepare($preview['rows'], $preview['options'], $scope);
+                    if (! $result['can_import']) {
+                        throw ValidationException::withMessages(['preview' => $result['errors'] ?: ['The import is no longer valid. Generate a new preview.']]);
+                    }
+                    foreach ($drafts as $id => $draft) {
+                        $this->save->change($this->authorizedActor($actor), $records[$id], fn (array $current): array => [...$current, 'rules' => $draft['rules']]);
+                    }
 
-            return ['created' => $result['create_count'], 'updated' => $result['update_count'], 'configurators' => count($drafts)];
+                    return ['created' => $result['create_count'], 'updated' => $result['update_count'], 'configurators' => count($drafts)];
+                } catch (Throwable $exception) {
+                    $bodyFailure = $exception;
+                    throw $exception;
+                }
+            }, attempts: 1);
+        } catch (Throwable $exception) {
+            $rolledBack = $exception === $bodyFailure;
+            if ($rolledBack && ($exception instanceof ValidationException || $exception instanceof AuthorizationException)) {
+                throw $exception;
+            }
+            throw new CatalogWriteFailure($rolledBack, $exception);
+        }
+    }
+
+    public function previewAvailable(User $actor, string $token, ?int $scope = null): bool
+    {
+        $actor = $this->authorizedActor($actor);
+
+        return preg_match('/^[a-f0-9]{64}$/D', $token) === 1 && $this->available(Cache::get('rules-import:'.$token), $actor, $scope);
+    }
+
+    public function retirePreview(User $actor, string $token, ?int $scope = null): bool
+    {
+        $actor = $this->authorizedActor($actor);
+        if (preg_match('/^[a-f0-9]{64}$/D', $token) !== 1) {
+            return false;
+        }
+        $key = 'rules-import:'.$token;
+
+        return Cache::lock($key.':consume', 10)->block(3, function () use ($key, $actor, $scope): bool {
+            if (! $this->available(Cache::get($key), $actor, $scope)) {
+                return false;
+            }
+            $this->forgetPreview($key);
+
+            return true;
+        });
+    }
+
+    private function available(mixed $preview, User $actor, ?int $scope): bool
+    {
+        return is_array($preview) && ($preview['actor'] ?? null) === $actor->id && array_key_exists('scope', $preview)
+            && $preview['scope'] === $scope && ($preview['expires'] ?? 0) > now()->timestamp && ($preview['can_import'] ?? false);
+    }
+
+    private function forgetPreview(string $key): void
+    {
+        if (! Cache::forget($key)) {
+            throw new RuntimeException('Unable to retire Rules import approval. No import was started by this request.');
+        }
+    }
+
+    /** @param list<int> $configuratorIds @return list<array<string,mixed>> */
+    public function inspectCurrent(User $actor, array $configuratorIds, ?int $scope = null): array
+    {
+        $this->authorizedActor($actor);
+        Validator::make(['ids' => $configuratorIds], ['ids' => ['required', 'array'], 'ids.*' => ['integer', 'min:1', 'distinct']])->validate();
+        abort_if($scope !== null && $configuratorIds !== [$scope], 403);
+
+        return DB::transaction(function () use ($configuratorIds): array {
+            $records = Configurator::with(['rules.conditionGroups', 'rules.conditions.sourceAttribute.attribute', 'rules.conditions.optionReferences.configuratorOption.option', 'rules.effects.targetAttribute.attribute', 'rules.effects.optionReferences.configuratorOption.option', 'rules.mappingSets', 'rules.driverAttribute.attribute', 'rules.targetAttribute.attribute'])->whereKey($configuratorIds)->get()->keyBy('id');
+
+            return array_map(function (int $id) use ($records): array {
+                $record = $records->get($id);
+
+                return ['id' => $id, 'name' => $record?->name, 'available' => $record !== null, 'rules' => $record?->rules->sortByDesc('priority')->map(fn (ConfiguratorRule $rule): array => ['id' => (string) $rule->id, 'label' => $rule->label, 'kind' => $rule->kind, 'priority' => $rule->priority, 'summary' => $rule->workspaceSummary()])->values()->all() ?? []];
+            }, $configuratorIds);
         });
     }
 

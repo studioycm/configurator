@@ -1,5 +1,6 @@
 <?php
 
+use App\CatalogWriteFailure;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
@@ -12,10 +13,12 @@ use App\Models\RuleConditionGroup;
 use App\Models\RuleEffect;
 use App\Models\User;
 use App\Models\Value;
+use App\RuleImportPreviewUnavailable;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleExchange;
 use App\Services\ConfiguratorRuleImport;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use OpenSpout\Common\Entity\Cell\StringCell;
@@ -300,11 +303,46 @@ test('file apply rolls back earlier Configurators when a later save fails', func
         }
     });
 
-    expect(fn () => app(ConfiguratorRuleImport::class)->apply($actor, $preview['token']))->toThrow(RuntimeException::class, 'second save fails');
+    try {
+        app(ConfiguratorRuleImport::class)->apply($actor, $preview['token']);
+        $this->fail('The failed file must not report success.');
+    } catch (CatalogWriteFailure $exception) {
+        expect($exception->rolledBack)->toBeTrue();
+        expect($exception->getPrevious()->getMessage())->toBe('second save fails');
+    }
 
     expect($configurator->rules()->count())->toBe(1);
     expect($other->rules()->count())->toBe(0);
+    expect(fn () => app(ConfiguratorRuleImport::class)->apply($actor, $preview['token']))->toThrow(ValidationException::class);
 });
+
+test('retiring unused Rules preview authority prevents a racing apply without restoring the claim', function () {
+    [$configurator, , $rows] = ruleImportFixture();
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $preview = ruleImportPreview($actor, $configurator, ruleImportCreateRows($rows));
+    $service = app(ConfiguratorRuleImport::class);
+    expect($service->retirePreview($actor, $preview['token'], $configurator->id))->toBeTrue();
+    expect($service->retirePreview($actor, $preview['token'], $configurator->id))->toBeFalse();
+    expect(fn () => $service->apply($actor, $preview['token'], $configurator->id))->toThrow(RuleImportPreviewUnavailable::class);
+    expect($configurator->rules()->count())->toBe(1);
+});
+
+test('Rules approval deletion failure blocks retirement and application while retaining the original claim', function (string $operation) {
+    [$configurator, , $rows] = ruleImportFixture();
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $preview = ruleImportPreview($actor, $configurator, ruleImportCreateRows($rows));
+    $cache = Cache::getFacadeRoot();
+    $failingCache = Mockery::mock($cache);
+    $failingCache->shouldReceive('forget')->with('rules-import:'.$preview['token'])->andReturn(false);
+    Cache::swap($failingCache);
+    try {
+        expect(fn () => app(ConfiguratorRuleImport::class)->{$operation}($actor, $preview['token'], $configurator->id))->toThrow(RuntimeException::class, 'approval');
+        expect(Cache::get('rules-import:'.$preview['token']))->toBeArray();
+        expect($configurator->rules()->count())->toBe(1);
+    } finally {
+        Cache::swap($cache);
+    }
+})->with(['retirePreview', 'apply']);
 
 test('preview exposes exact old and new semantic references and explicit spreadsheet restoration', function () {
     [$configurator, $rule, $rows, $attribute, $option] = ruleImportFixture();
