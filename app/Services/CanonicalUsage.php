@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\CatalogWriteReplan;
 use App\Models\Attribute;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
@@ -11,10 +12,43 @@ use App\Models\Option;
 use App\Models\Value;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Validation\ValidationException;
 
 class CanonicalUsage
 {
+    /**
+     * @param  list<int|string>  $attributeIds
+     * @param  list<int|string>  $valueIds
+     * @param  list<int|string>  $optionIds
+     * @return list<int>
+     */
+    public function configuratorIds(array $attributeIds = [], array $valueIds = [], array $optionIds = [], bool $current = false): array
+    {
+        if ($valueIds !== []) {
+            $optionIds = [...$optionIds, ...Option::whereIn('value_id', $valueIds)->orderBy('id')->when($current, fn (Builder $query): Builder => $query->lockForUpdate())->pluck('id')->all()];
+        }
+        $localAttributeIds = $optionIds === [] ? [] : ConfiguratorOption::whereIn('option_id', $optionIds)->orderBy('id')
+            ->when($current, fn (Builder $query): Builder => $query->lockForUpdate())->pluck('configurator_attribute_id')->all();
+        if ($attributeIds === [] && $localAttributeIds === []) {
+            return [];
+        }
+
+        return ConfiguratorAttribute::where(fn (Builder $query): Builder => $query->whereIn('attribute_id', $attributeIds)->orWhereIn('id', $localAttributeIds))
+            ->orderBy('id')->when($current, fn (Builder $query): Builder => $query->lockForUpdate())->pluck('configurator_id')->unique()->sort()->values()->all();
+    }
+
+    /**
+     * @param  list<int>  $expected
+     * @param  list<int|string>  $attributeIds
+     * @param  list<int|string>  $valueIds
+     * @param  list<int|string>  $optionIds
+     */
+    public function assertConfiguratorIds(array $expected, array $attributeIds = [], array $valueIds = [], array $optionIds = []): void
+    {
+        if (array_diff($this->configuratorIds($attributeIds, $valueIds, $optionIds, current: true), $expected) !== []) {
+            throw CatalogWriteReplan::withMessages(['definition' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
+        }
+    }
+
     /**
      * @param  list<int|string>  $attributeIds
      * @param  list<int|string>  $valueIds
@@ -31,7 +65,7 @@ class CanonicalUsage
         $options = Option::whereKey($optionIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
         foreach ($options as $option) {
             if (! $attributes->has($option->attribute_id) || ! $values->has($option->value_id)) {
-                throw ValidationException::withMessages(['definition' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
+                throw CatalogWriteReplan::withMessages(['definition' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
             }
             $option->setRelation('value', $values->get($option->value_id));
         }

@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\Attribute;
+use App\Models\Configurator;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
@@ -18,12 +19,23 @@ class DeleteCanonicalDefinition
     public function handle(User $actor, Attribute|Value|Option $record): void
     {
         Gate::forUser($actor)->authorize('manage-catalog');
-        DB::transaction(function () use ($record): void {
-            $configurators = $this->usage->configurators($record)->orderBy('id')->lockForUpdate()->get();
-            $record = $record->newQuery()->whereKey($record->id)->lockForUpdate()->firstOrFail();
-            $used = $record instanceof Option ? $record->inclusions()->exists() : $record->options()->exists();
+        $attributeIds = $record instanceof Attribute ? [$record->id] : [];
+        $valueIds = $record instanceof Value ? [$record->id] : [];
+        $optionIds = $record instanceof Option ? [$record->id] : [];
+        $ownerIds = $this->usage->configuratorIds($attributeIds, $valueIds, $optionIds);
+        DB::transaction(function () use ($record, $attributeIds, $valueIds, $optionIds, $ownerIds): void {
+            $configurators = Configurator::whereKey($ownerIds)->orderBy('id')->lockForUpdate()->get();
+            $parents = $this->usage->lockParents($attributeIds, $valueIds, $optionIds);
+            $record = $parents[match (true) {
+                $record instanceof Attribute => 'attributes', $record instanceof Value => 'values', default => 'options'
+            }]->findOrFail($record->id);
+            $used = ! $record instanceof Option && $record->options()->orderBy('id')->lockForUpdate()->limit(1)->get(['id'])->isNotEmpty();
+            $this->usage->assertConfiguratorIds($ownerIds, $attributeIds, $valueIds, $optionIds);
+            if ($record instanceof Option) {
+                $used = $record->inclusions()->orderBy('id')->lockForUpdate()->limit(1)->get(['id'])->isNotEmpty();
+            }
             if ($record instanceof Attribute) {
-                $used = $used || $record->inclusions()->exists();
+                $used = $used || $record->inclusions()->orderBy('id')->lockForUpdate()->limit(1)->get(['id'])->isNotEmpty();
             }
             if ($used) {
                 $names = $configurators->take(5)->pluck('name')->implode(', ');

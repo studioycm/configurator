@@ -10,7 +10,9 @@ use App\Actions\AddConfiguratorValues;
 use App\Actions\CreateSharedAttributes;
 use App\Actions\SaveCanonicalDefinition;
 use App\Actions\SaveConfiguratorDefinition;
+use App\CatalogWriteReplan;
 use App\Models\Attribute;
+use App\Models\Configurator;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
@@ -18,6 +20,7 @@ use App\Services\ConfiguratorDefinitionLoader;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 function creationContentionRef(): string
 {
@@ -105,6 +108,106 @@ function &traceCreationLocks(): array
 
     return $locks;
 }
+
+test('a canonical edit rejects an owner added after discovery instead of acquiring that owner late', function () {
+    DB::commit();
+    $fixture = null;
+    $incoming = null;
+    $pending = false;
+    $writerName = 'canonical_new_owner_writer';
+    config(['database.connections.'.$writerName => config('database.connections.mysql')]);
+    try {
+        $fixture = creationContentionFixture();
+        $incoming = Configurator::factory()->create(['name' => 'Incoming shared owner']);
+        $attribute = Attribute::findOrFail($fixture['attributeIds'][0]);
+        $row = $fixture['saved']['attributes'][0];
+        foreach ($row['options'] as $i => &$option) {
+            $option['id'] = 'new:incoming-option-'.$i;
+        }
+        unset($option);
+        $row['id'] = 'new:incoming-attribute';
+        $row['default_configurator_option_id'] = $row['options'][0]['id'];
+        $data = [...$fixture['saved'], 'name' => $incoming->name, 'attributes' => [$row], 'rules' => []];
+        DB::connection()->beforeExecuting(function (string $sql) use (&$pending, $writerName, $fixture, $incoming, $data): void {
+            if (! $pending || ! str_contains($sql, 'from `attributes`') || ! str_contains($sql, 'for update')) {
+                return;
+            }
+            $pending = false;
+            DB::setDefaultConnection($writerName);
+            try {
+                app(SaveConfiguratorDefinition::class)->handle($fixture['actor'], $incoming, $data);
+            } finally {
+                DB::setDefaultConnection('mysql');
+            }
+        });
+        $pending = true;
+        expect(fn () => app(SaveCanonicalDefinition::class)->handle($fixture['actor'], $attribute, ['key' => $attribute->key, 'label' => 'Must replan first']))
+            ->toThrow(CatalogWriteReplan::class);
+        expect($pending)->toBeFalse()->and($attribute->fresh()->label)->toBe($attribute->label)
+            ->and($incoming->attributes()->count())->toBe(1);
+        app(SaveCanonicalDefinition::class)->handle($fixture['actor'], $attribute, ['key' => $attribute->key, 'label' => 'Fresh retry']);
+        expect($attribute->fresh()->label)->toBe('Fresh retry');
+    } finally {
+        $pending = false;
+        DB::setDefaultConnection('mysql');
+        DB::purge($writerName);
+        if ($incoming !== null) {
+            $ids = DB::table('configurator_attributes')->where('configurator_id', $incoming->id)->pluck('id');
+            DB::table('configurator_attributes')->whereIn('id', $ids)->update(['default_configurator_option_id' => null]);
+            DB::table('configurator_options')->whereIn('configurator_attribute_id', $ids)->delete();
+            DB::table('configurator_attributes')->whereIn('id', $ids)->delete();
+            DB::table('configurators')->where('id', $incoming->id)->delete();
+        }
+        if ($fixture !== null) {
+            removeCreationContentionFixture($fixture);
+        }
+        DB::beginTransaction();
+    }
+});
+
+test('a canonical key edit detects a newly committed dependency despite an earlier repeatable read', function () {
+    DB::commit();
+    $actor = null;
+    $attribute = null;
+    $value = null;
+    $pending = false;
+    $writerName = 'canonical_dependency_writer';
+    config(['database.connections.'.$writerName => config('database.connections.mysql')]);
+    $writer = DB::connection($writerName);
+    try {
+        $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+        $attribute = Attribute::factory()->create();
+        $value = Value::factory()->create();
+        $option = Option::factory()->make(['attribute_id' => $attribute->id, 'value_id' => $value->id, 'code' => 'Q9']);
+        DB::connection()->beforeExecuting(function (string $sql) use (&$pending, $writer, $option): void {
+            if (! $pending || ! str_contains($sql, 'from `attributes`') || ! str_contains($sql, 'for update')) {
+                return;
+            }
+            $pending = false;
+            $writer->table('options')->insert($option->getAttributes());
+        });
+        $pending = true;
+        expect(fn () => DB::transaction(function () use ($actor, $attribute): void {
+            Option::count();
+            app(SaveCanonicalDefinition::class)->handle($actor, $attribute, ['key' => $attribute->key.'_changed', 'label' => $attribute->label]);
+        }))->toThrow(ValidationException::class);
+        expect($pending)->toBeFalse()->and($attribute->fresh()->key)->toBe($attribute->key);
+    } finally {
+        $pending = false;
+        DB::purge($writerName);
+        if ($attribute !== null) {
+            DB::table('options')->where('attribute_id', $attribute->id)->delete();
+            DB::table('attributes')->where('id', $attribute->id)->delete();
+        }
+        if ($value !== null) {
+            DB::table('values')->where('id', $value->id)->delete();
+        }
+        if ($actor !== null) {
+            DB::table('users')->where('id', $actor->id)->delete();
+        }
+        DB::beginTransaction();
+    }
+});
 
 test('V27 a genuine late global Code race rejects its original later row and rolls back the entire losing graph', function () {
     DB::commit();

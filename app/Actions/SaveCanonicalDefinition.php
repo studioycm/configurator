@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\Attribute;
+use App\Models\Configurator;
 use App\Models\User;
 use App\Models\Value;
 use App\Services\CanonicalUsage;
@@ -21,11 +22,15 @@ class SaveCanonicalDefinition
     public function handle(User $actor, Attribute|Value $record, array $data): Attribute|Value
     {
         Gate::forUser($actor)->authorize('manage-catalog');
+        $attributeIds = $record->exists && $record instanceof Attribute ? [$record->id] : [];
+        $valueIds = $record->exists && $record instanceof Value ? [$record->id] : [];
+        $ownerIds = $this->usage->configuratorIds($attributeIds, $valueIds);
         try {
-            return DB::transaction(function () use ($record, $data): Attribute|Value {
+            return DB::transaction(function () use ($record, $data, $attributeIds, $valueIds, $ownerIds): Attribute|Value {
                 if ($record->exists) {
-                    $this->usage->configurators($record)->orderBy('id')->lockForUpdate()->get();
-                    $record = $record->newQuery()->whereKey($record->id)->lockForUpdate()->firstOrFail();
+                    Configurator::whereKey($ownerIds)->orderBy('id')->lockForUpdate()->get();
+                    $parents = $this->usage->lockParents($attributeIds, $valueIds);
+                    $record = $parents[$record instanceof Attribute ? 'attributes' : 'values']->findOrFail($record->id);
                 }
                 $rules = ['definition' => ['required', $record instanceof Attribute ? 'array:key,label' : 'array:label,semantic_id,description,tags'], 'definition.label' => ['required', 'string', 'max:255']];
                 if ($record instanceof Attribute) {
@@ -40,7 +45,12 @@ class SaveCanonicalDefinition
                     $rules['definition.tags.*'] = ['required', 'string', 'max:80', 'distinct'];
                 }
                 $validated = Validator::make(['definition' => $data], $rules)->validate()['definition'];
-                if ($record instanceof Attribute && $record->exists && $record->key !== $validated['key'] && ($record->options()->exists() || $record->inclusions()->exists())) {
+                $changingKey = $record instanceof Attribute && $record->exists && $record->key !== $validated['key'];
+                $hasOptions = $changingKey && $record->options()->orderBy('id')->lockForUpdate()->limit(1)->get(['id'])->isNotEmpty();
+                if ($record->exists) {
+                    $this->usage->assertConfiguratorIds($ownerIds, $attributeIds, $valueIds);
+                }
+                if ($changingKey && ($hasOptions || $record->inclusions()->orderBy('id')->lockForUpdate()->limit(1)->get(['id'])->isNotEmpty())) {
                     throw ValidationException::withMessages(['key' => __('catalog.validation.this_attribute_key_is_in_use_repair')]);
                 }
                 $record->fill($validated)->save();
