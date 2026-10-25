@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\CatalogIntegrity;
@@ -9,6 +10,7 @@ use App\Services\CatalogRevisions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class SaveCatalogGroup
 {
@@ -20,9 +22,15 @@ class SaveCatalogGroup
         Gate::forUser($actor)->authorize('manage-catalog');
 
         return DB::transaction(function () use ($group, $data): Group {
+            $ownerIds = array_values(array_unique(array_map('intval', array_filter([$group?->configurator_id, $data['configurator_id'] ?? null], is_scalar(...)))));
+            $ownerIds = array_values(array_filter($ownerIds, fn (int $id): bool => $id > 0));
+            Configurator::whereKey($ownerIds)->orderBy('id')->lockForUpdate()->get();
             $groups = $this->integrity->lockGroups();
             $record = $group === null ? new Group : $groups->get($group->id);
             abort_if($record === null, 404);
+            if ($record->configurator_id !== null && ! in_array($record->configurator_id, $ownerIds, true)) {
+                throw ValidationException::withMessages(['configurator_id' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
+            }
             $validated = Validator::make(['group' => $data], [
                 'group' => ['array:name,description,parent_id,sort_order,configurator_id'],
                 'group.name' => ['required', 'string', 'max:255'],

@@ -2,9 +2,11 @@
 
 namespace App\Actions;
 
+use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\Models\User;
 use App\Services\CatalogIntegrity;
+use App\Services\ConfiguratorDefinitionLoader;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -17,8 +19,11 @@ class DeleteConfigurator
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         DB::transaction(function () use ($actor, $configurator): void {
-            $this->integrity->lockGroups();
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            CatalogContextSettings::current(lock: true);
+            $loader = app(ConfiguratorDefinitionLoader::class);
+            $loader->canonical($loader->draft($record), true);
+            $this->integrity->lockGroups();
             if ($record->groups()->exists()) {
                 throw ValidationException::withMessages(['configurator' => __('configurator.validation.unassign_the_leaf_groups_before_deleting_this')]);
             }

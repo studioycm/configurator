@@ -21,6 +21,7 @@ use App\Services\ProductEditorData;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Validation\ValidationException;
 
 /** @return array<string, mixed> */
 function previewContentionFixture(): array
@@ -105,7 +106,7 @@ function startPreviewContentionWorker(Closure $operation, string $attemptTable, 
             $locks[] = $table[1];
             if (! $paused && $pauseTable !== null && $table[1] === $pauseTable) {
                 $paused = true;
-                writeCatalogContentionMessage($channel, ['phase' => 'locked', 'table' => $pauseTable]);
+                writeCatalogContentionMessage($channel, ['phase' => 'locked', 'table' => $pauseTable, 'locks' => $locks]);
                 readCatalogContentionMessage($channel);
             }
         });
@@ -115,7 +116,7 @@ function startPreviewContentionWorker(Closure $operation, string $attemptTable, 
 }
 
 /** @return array{preview: array<string, mixed>, other: array<string, mixed>, blocked: bool} */
-function overlapPreviewWriters(Closure $preview, Closure $other, string $previewPause, string $otherAttempt, string $otherPause, bool $serializeDefinition = false): array
+function overlapPreviewWriters(Closure $preview, Closure $other, string $previewPause, string $otherAttempt, string $otherPause, bool $serializeDefinition = false, string $waitTable = 'configurators'): array
 {
     if (! function_exists('pcntl_fork')) {
         throw new RuntimeException('pcntl_fork is required to execute actual independent-process contention.');
@@ -123,11 +124,15 @@ function overlapPreviewWriters(Closure $preview, Closure $other, string $preview
     DB::purge('mysql');
     $workers = [];
     try {
-        $workers['preview'] = startPreviewContentionWorker($preview, 'configurators', $serializeDefinition ? null : $previewPause, $serializeDefinition);
+        $workers['preview'] = startPreviewContentionWorker($preview, $serializeDefinition ? $waitTable : 'configurators', $serializeDefinition ? null : $previewPause, $serializeDefinition);
         $workers['other'] = startPreviewContentionWorker($other, $otherAttempt, $otherPause);
         expect($workers['preview']['connection_id'])->not->toBe($workers['other']['connection_id']);
         writeCatalogContentionMessage($workers['other']['channel'], ['phase' => 'start']);
-        expect(readCatalogContentionMessage($workers['other']['channel']))->toMatchArray(['phase' => 'locked', 'table' => $otherPause]);
+        $held = readCatalogContentionMessage($workers['other']['channel']);
+        expect($held)->toMatchArray(['phase' => 'locked', 'table' => $otherPause]);
+        if ($serializeDefinition && $waitTable === 'configurators') {
+            expect($held['locks'][0])->toBe('configurators');
+        }
         writeCatalogContentionMessage($workers['preview']['channel'], ['phase' => 'start']);
         $blocked = false;
         if ($serializeDefinition) {
@@ -135,7 +140,7 @@ function overlapPreviewWriters(Closure $preview, Closure $other, string $preview
             $deadline = microtime(true) + 5;
             do {
                 foreach (DB::select('SHOW FULL PROCESSLIST') as $process) {
-                    if ((int) $process->Id === $workers['preview']['connection_id'] && str_contains((string) $process->Info, 'from `configurators`') && str_contains((string) $process->Info, 'for update')) {
+                    if ((int) $process->Id === $workers['preview']['connection_id'] && str_contains((string) $process->Info, 'from `'.$waitTable.'`') && str_contains((string) $process->Info, 'for update')) {
                         $blocked = true;
                         break 2;
                     }
@@ -285,16 +290,56 @@ test('tested Preview waits for a canonical Value and rejects the freshly changed
     }
 });
 
-test('actual Product and tested Preview lock inversion finishes within bounded retries without partial writes', function () {
+test('tested Preview rejects a Product moved after group discovery without acquiring its new Group late', function () {
+    DB::commit();
+    $fixture = null;
+    $newGroup = null;
+    $moved = false;
+    $groupLocks = [];
+    $writerName = 'preview_group_move_writer';
+    config(['database.connections.'.$writerName => config('database.connections.mysql')]);
+    $writer = DB::connection($writerName);
+    try {
+        $fixture = previewContentionFixture();
+        $newGroup = Group::factory()->create(['configurator_id' => $fixture['configurator']->id]);
+        DB::listen(function (QueryExecuted $query) use (&$moved, &$groupLocks, $writer, $fixture, $newGroup): void {
+            if (str_contains($query->sql, 'from `groups`') && str_contains($query->sql, 'for update')) {
+                $groupLocks = [...$groupLocks, ...array_map('intval', $query->bindings)];
+            }
+            if ($moved || ! str_contains($query->sql, 'select `group_id` from `products`')) {
+                return;
+            }
+            $moved = true;
+            $writer->table('products')->where('id', $fixture['product']->id)->update(['group_id' => $newGroup->id]);
+        });
+        expect(testedPreviewWrite($fixture))->toThrow(ValidationException::class);
+        expect($moved)->toBeTrue()->and($fixture['product']->fresh()->group_id)->toBe($newGroup->id)
+            ->and($groupLocks)->toContain($fixture['group']->id)->not->toContain($newGroup->id)
+            ->and(app(ConfiguratorDefinitionLoader::class)->draft($fixture['configurator']->fresh()))->toBe($fixture['saved']);
+    } finally {
+        $moved = true;
+        DB::purge($writerName);
+        if ($fixture !== null) {
+            DB::table('products')->where('id', $fixture['product']->id)->update(['group_id' => $fixture['group']->id]);
+            if ($newGroup !== null) {
+                DB::table('groups')->where('id', $newGroup->id)->delete();
+            }
+            removePreviewContentionFixture($fixture);
+        }
+        DB::beginTransaction();
+    }
+});
+
+test('actual Product and tested Preview serialize at the Group without deadlock retries or partial writes', function () {
     DB::commit();
     $fixture = null;
     try {
         $fixture = previewContentionFixture();
-        $results = overlapPreviewWriters(testedPreviewWrite($fixture), fn (): int => app(SaveCatalogProduct::class)->handle($fixture['actor'], $fixture['product'], $fixture['productData'], $fixture['productFingerprint'], $fixture['groupFingerprint'])->id, 'products', 'groups', 'groups');
+        $results = overlapPreviewWriters(testedPreviewWrite($fixture), fn (): int => app(SaveCatalogProduct::class)->handle($fixture['actor'], $fixture['product'], $fixture['productData'], $fixture['productFingerprint'], $fixture['groupFingerprint'])->id, 'products', 'groups', 'groups', serializeDefinition: true, waitTable: 'groups');
 
         expect($results['other']['status'])->toBe('committed');
         expect($results['other']['attempts'])->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(3);
-        expect(max($results['preview']['attempts'], $results['other']['attempts']))->toBeGreaterThan(1);
+        expect($results['preview']['attempts'])->toBe(1)->and($results['other']['attempts'])->toBe(1);
         assertAtomicPreviewContentionOutcome($fixture, $results['preview']);
         expect(ProductEditorData::rawMap($fixture['product']->fresh(), 'profile_fields'))->toEqual(['Working_Pressure' => '25', 'Material' => 'Metal Shell', 'a.b' => 'literal']);
         expect((int) $fixture['group']->fresh()->catalog_revision)->toBe($fixture['revision'] + 1);
@@ -306,7 +351,7 @@ test('actual Product and tested Preview lock inversion finishes within bounded r
     }
 });
 
-test('actual assignment and tested Preview lock inversion commits or rejects completely without leaking a deadlock', function (string $entrypoint) {
+test('actual assignment and tested Preview serialize at the Configurator without deadlock retries', function (string $entrypoint) {
     DB::commit();
     $fixture = null;
     try {
@@ -319,11 +364,11 @@ test('actual assignment and tested Preview lock inversion commits or rejects com
             }
 
             return null;
-        }, 'configurators', 'groups', 'groups');
+        }, 'configurators', 'configurators', 'groups', serializeDefinition: true);
 
         expect($results['other']['status'])->toBeIn(['committed', 'rejected']);
         expect($results['other']['attempts'])->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(3);
-        expect(max($results['preview']['attempts'], $results['other']['attempts']))->toBeGreaterThan(1);
+        expect($results['preview']['attempts'])->toBe(1)->and($results['other']['attempts'])->toBe(1);
         assertAtomicPreviewContentionOutcome($fixture, $results['preview']);
         expect($fixture['group']->fresh()->configurator_id)->toBeNull();
         expect(ProductEditorData::rawMap($fixture['product']->fresh(), 'profile_fields'))->toEqual(['Working_Pressure' => '10', 'Material' => 'Metal Shell', 'a.b' => 'literal']);

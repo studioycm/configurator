@@ -10,6 +10,7 @@ use App\MappingTargetBehavior;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
+use App\Models\Group;
 use App\Models\Option;
 use App\Models\Product;
 use App\Models\User;
@@ -350,8 +351,17 @@ class ConfiguratorEditorChanges
         $context = CatalogContextSettings::current(lock: $lock)->choices;
         $data = $this->loader->draft($configurator);
         [$attributes, $options] = $this->loader->canonical($data, $lock);
-        $product = Product::whereKey($productId)->when($lock, fn ($query) => $query->lockForUpdate())->firstOrFail();
-        $group = $product->group()->when($lock, fn ($query) => $query->lockForUpdate())->firstOrFail();
+        if ($lock) {
+            $groupId = Product::whereKey($productId)->value('group_id');
+            $group = Group::whereKey($groupId)->lockForUpdate()->firstOrFail();
+            $product = Product::whereKey($productId)->lockForUpdate()->firstOrFail();
+            if ($product->group_id !== $group->id) {
+                throw ValidationException::withMessages(['preview' => __('configurator.preview.saved_conflict')]);
+            }
+        } else {
+            $product = Product::whereKey($productId)->firstOrFail();
+            $group = $product->group()->firstOrFail();
+        }
 
         return hash('sha256', json_encode([$data, $attributes, $options, $configurator->is_active, $product->getAttributes(), $group->getAttributes(), $context], JSON_THROW_ON_ERROR));
     }

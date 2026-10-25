@@ -29,8 +29,8 @@ class AssignConfiguratorGroups
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         DB::transaction(function () use ($actor, $configurator, $groupId, $assign): void {
-            $groups = $this->integrity->lockGroups();
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            $groups = $this->integrity->lockGroups();
             $ids = $groups->where('configurator_id', $record->id)->modelKeys();
             if (! $assign && ! in_array($groupId, $ids, true)) {
                 throw ValidationException::withMessages(['groups' => __('configurator.validation.this_group_is_no_longer_assigned_to')]);
@@ -47,8 +47,8 @@ class AssignConfiguratorGroups
         $ids = Validator::make(['groups' => $groupIds], ['groups' => ['present', 'array', 'list'], 'groups.*' => ['required', 'integer', 'distinct', 'min:1']])->validate()['groups'];
         $ids = array_map('intval', $ids);
         DB::transaction(function () use ($configurator, $ids, $expectedIds): void {
-            $groups = $this->integrity->lockGroups();
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            $groups = $this->integrity->lockGroups();
             if ($expectedIds !== null) {
                 $currentIds = $groups->where('configurator_id', $record->id)->modelKeys();
                 $expectedIds = array_map('intval', $expectedIds);

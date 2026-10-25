@@ -1,7 +1,9 @@
 <?php
 
+use App\Actions\SaveCatalogGroup;
 use App\Actions\SaveGroupSettings;
 use App\Filament\Resources\Groups\Pages\EditGroup;
+use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\GroupFilter;
 use App\Models\Product;
@@ -20,6 +22,17 @@ function groupSettingsInput(array $changes = []): array
 {
     return array_replace(['filters' => [], 'sub_groups' => [], 'result_settings' => CatalogPolicy::RESULT_SETTINGS], $changes);
 }
+
+test('a Group save rejects an intervening owner outside its planned lock set without changing metadata', function () {
+    $group = Group::factory()->create(['configurator_id' => null]);
+    $owner = Configurator::factory()->create();
+    Group::whereKey($group->id)->update(['configurator_id' => $owner->id]);
+    $before = $group->fresh()->getAttributes();
+
+    expect(fn () => app(SaveCatalogGroup::class)->handle($this->actor, $group, ['name' => 'Must not overwrite', 'configurator_id' => null]))
+        ->toThrow(ValidationException::class);
+    expect($group->fresh()->getAttributes())->toBe($before);
+});
 
 test('editor Properties selection keeps exact ordered keys across partial group settings saves and can return to filters', function () {
     $group = Group::factory()->create();
