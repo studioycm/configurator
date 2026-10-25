@@ -1,8 +1,10 @@
 # App consolidation execution specification
 
-**Status: approved for isolated implementation; merge and push prohibited.**
+**Status: consolidation merged into local master with user approval; push prohibited.**
 
 **Prepared:** 25 October 2026, Asia/Jerusalem. The user accepted the sixteen-step repair order, reviewed this specification and explicitly approved implementation in one dedicated consolidation worktree with checkpoint reporting. Integration into master requires a separate later approval; pushing is excluded. Earlier approval-gate language below describes that gate and must not be treated as a request to obtain the same implementation permission again.
+
+**Integration update — 25 October 2026:** the user separately approved merging the reviewed consolidation checkpoint c57c44a into local master. The fast-forward from 0567df0 retained the exact reviewed tree and all unrelated pending work. The complete merged-result PHP, MySQL, JavaScript, safety and build matrix passed. The browser CSV-upload limitation remains documented; a fresh postmerge browser smoke could not connect because the browser tool timed out. See CONSOLIDATION_CHANGELOG.md, CON-18, for evidence, preservation and the current five-workstream handoff. No push is authorized.
 
 **Goal:** repair the agreed correctness, reliability and responsibility boundaries in the existing app, preserving established behavior and other tasks' work.
 
@@ -369,7 +371,7 @@ Boost search-docs was used with the installed package context; native ImportActi
 - [x] User accepted the revised sixteen-step order.
 - [x] Agreed scope, stale-edit UX, recovery A, input preservation, one-writer rules and subagent model restrictions recorded.
 - [x] User approves this concrete execution specification and authorizes implementation (25 October 2026).
-- [ ] CP0–CP7 implementation, checks, journal and independent review complete.
-- [ ] User separately approves merging the exact verified checkpoint into master.
+- [x] CP0–CP7 implementation, automated checks, journal and independent review complete, with the documented browser CSV-upload gap retained.
+- [x] User separately approves merging the exact verified checkpoint into master (25 October 2026); local merge and merged-result checks completed.
 
 Until the implementation approval box can be completed from an explicit human instruction, remain at planning/review. No coding, test execution or integration follows merely from producing this file.
