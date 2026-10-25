@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Actions\SaveConfiguratorDefinition;
+use App\Actions\SaveGroupSettings;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorRule;
@@ -44,7 +45,7 @@ class ItemListOrdering
         Gate::forUser($actor)->authorize('manage-catalog');
         abort_if($this->column($key) === null, 403);
         if ($key === 'group-card-properties') {
-            DB::transaction(function () use ($parentId, $ids): void {
+            DB::transaction(function () use ($actor, $parentId, $ids): void {
                 $group = app(CatalogIntegrity::class)->lockGroups()->get($parentId);
                 abort_if($group === null, 404);
                 $settings = $group->result_settings ?? [];
@@ -53,10 +54,7 @@ class ItemListOrdering
                 if ($order === $expected) {
                     return;
                 }
-                $settings['card_properties'] = $order;
-                $group->result_settings = $settings;
-                $group->save();
-                app(CatalogRevisions::class)->advance([$group->id]);
+                app(SaveGroupSettings::class)->patchPresentation($actor, $group, ['card_properties' => $order]);
             }, attempts: 3);
 
             return;

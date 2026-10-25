@@ -23,6 +23,46 @@ function groupSettingsInput(array $changes = []): array
     return array_replace(['filters' => [], 'sub_groups' => [], 'result_settings' => CatalogPolicy::RESULT_SETTINGS], $changes);
 }
 
+test('presentation patches preserve omitted raw settings and exact fields with false zero empty and no-op values', function () {
+    $group = Group::factory()->create(['result_settings' => ['card_properties' => ['0', '001', '1', 'literal.field'], 'unknown_setting' => ['keep' => true]]]);
+    $action = app(SaveGroupSettings::class);
+    $before = $group->fresh()->getAttributes();
+    $action->patchPresentation($this->actor, $group, []);
+    expect($group->fresh()->getAttributes())->toBe($before);
+    $action->patchPresentation($this->actor, $group, ['card_properties' => [], 'card_show_labels' => false, 'products_debounce_ms' => '0']);
+    $expected = ['card_properties' => [], 'unknown_setting' => ['keep' => true], 'card_show_labels' => false, 'products_debounce_ms' => 0];
+    $actual = $group->fresh()->result_settings;
+    ksort($expected);
+    ksort($actual);
+    expect($actual)->toBe($expected);
+    $saved = $group->fresh()->getAttributes();
+    $action->patchPresentation($this->actor, $group, ['card_properties' => [], 'card_show_labels' => false, 'products_debounce_ms' => 0]);
+    expect($group->fresh()->getAttributes())->toBe($saved);
+    expect(fn () => $action->patchPresentation($this->actor, $group, ['unknown_setting' => []]))->toThrow(ValidationException::class);
+    expect($group->fresh()->getAttributes())->toBe($saved);
+    expect(fn () => $action->patchPresentation(User::factory()->create(), $group, ['card_show_labels' => true]))->toThrow(AuthorizationException::class);
+});
+
+test('a presentation patch checks pagination relationships only when it supplies pagination changes', function () {
+    $group = Group::factory()->create(['result_settings' => ['default_page_size' => 10, 'allow_page_size_change' => true, 'page_size_options' => [1, 2]]]);
+    $action = app(SaveGroupSettings::class);
+    $action->patchPresentation($this->actor, $group, ['cards_per_row' => 2]);
+    expect($group->fresh()->result_settings['page_size_options'])->toBe([1, 2]);
+    $before = $group->fresh()->getAttributes();
+    expect(fn () => $action->patchPresentation($this->actor, $group, ['default_page_size' => 3]))->toThrow(ValidationException::class);
+    expect($group->fresh()->getAttributes())->toBe($before);
+    $action->patchPresentation($this->actor, $group, ['default_page_size' => '2']);
+    expect($group->fresh()->result_settings['default_page_size'])->toBe(2);
+});
+
+test('a narrow patch materializing an implicit presentation default retains the existing revision behavior', function () {
+    $group = Group::factory()->create(['result_settings' => []]);
+    $revision = (string) $group->fresh()->catalog_revision;
+    app(SaveGroupSettings::class)->patchPresentation($this->actor, $group, ['card_show_labels' => false]);
+    expect($group->fresh()->result_settings)->toBe(['card_show_labels' => false]);
+    expect((string) $group->fresh()->catalog_revision)->toBe($revision);
+});
+
 test('a Group save rejects an intervening owner outside its planned lock set without changing metadata', function () {
     $group = Group::factory()->create(['configurator_id' => null]);
     $owner = Configurator::factory()->create();

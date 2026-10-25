@@ -22,6 +22,39 @@ class SaveGroupSettings
 {
     public function __construct(private CatalogIntegrity $integrity, private CatalogDiscovery $discovery, private CatalogRevisions $revisions) {}
 
+    /** @param array<string,mixed> $changes */
+    public function patchPresentation(User $actor, Group $group, array $changes): Group
+    {
+        Gate::forUser($actor)->authorize('manage-catalog');
+
+        return DB::transaction(function () use ($group, $changes): Group {
+            $record = $this->integrity->lockGroups()->get($group->id);
+            abort_if($record === null, 404);
+            if ($changes === []) {
+                return $record;
+            }
+            $validated = Validator::make(['settings' => ['result_settings' => $changes]], $this->resultRules())->validate()['settings']['result_settings'];
+            $normalized = $this->normalizeResults($validated);
+            $results = array_replace($record->result_settings ?? [], $normalized);
+            if (array_intersect(array_keys($changes), ['default_page_size', 'allow_page_size_change', 'page_size_options']) !== []) {
+                $effective = CatalogPolicy::resultSettings($results);
+                if (($results['allow_page_size_change'] ?? false) === true && ! in_array($effective['default_page_size'], $effective['page_size_options'], true)) {
+                    throw ValidationException::withMessages(['settings.result_settings.page_size_options' => __('catalog.groups.validation.include_default_page_size')]);
+                }
+            }
+            if (! $this->sameMap($record->result_settings ?? [], $results)) {
+                $settingsChanged = ! $this->sameMap(CatalogPolicy::resultSettings($record->result_settings), CatalogPolicy::resultSettings($results));
+                $record->result_settings = $results;
+                $record->save();
+                if ($settingsChanged) {
+                    $this->revisions->advance([$record->id]);
+                }
+            }
+
+            return $record;
+        }, attempts: 1);
+    }
+
     /** @param array<string, mixed> $data */
     public function handle(User $actor, Group $group, array $data): Group
     {
@@ -50,24 +83,7 @@ class SaveGroupSettings
                 'settings.sub_groups.*.property_key' => ['required', 'string', 'max:100', ProductFields::referenceRule()],
                 'settings.sub_groups.*.allowed_values' => ['required', 'array', 'list', 'min:1'],
                 'settings.sub_groups.*.allowed_values.*' => ['required', 'string'],
-                'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,editor_properties,cards_per_row,max_results,products_debounce_ms,card_only_differences,card_show_labels,card_property_layout,card_property_columns,card_padding_block,card_padding_inline'],
-                'settings.result_settings.default_page_size' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
-                'settings.result_settings.allow_page_size_change' => ['sometimes', 'required', 'boolean'],
-                'settings.result_settings.page_size_options' => ['sometimes', 'array', 'list'],
-                'settings.result_settings.page_size_options.*' => ['required', 'integer', 'distinct', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
-                'settings.result_settings.products_debounce_ms' => ['sometimes', 'required', 'integer', 'min:0', 'multiple_of:100', 'max:2147483600'],
-                'settings.result_settings.card_properties' => ['sometimes', 'array', 'list'],
-                'settings.result_settings.card_properties.*' => ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()],
-                'settings.result_settings.editor_properties' => ['sometimes', 'array', 'list'],
-                'settings.result_settings.editor_properties.*' => ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()],
-                'settings.result_settings.cards_per_row' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_CARDS_PER_ROW],
-                'settings.result_settings.max_results' => ['sometimes', 'required', Rule::in(['all', ...range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)])],
-                'settings.result_settings.card_only_differences' => ['sometimes', 'required', 'boolean'],
-                'settings.result_settings.card_show_labels' => ['sometimes', 'required', 'boolean'],
-                'settings.result_settings.card_property_layout' => ['sometimes', 'required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))],
-                'settings.result_settings.card_property_columns' => ['sometimes', 'required', 'integer', Rule::in([1, 2])],
-                'settings.result_settings.card_padding_block' => ['sometimes', 'required', 'integer', 'between:0,16'],
-                'settings.result_settings.card_padding_inline' => ['sometimes', 'required', 'integer', 'between:0,20'],
+                ...$this->resultRules(),
             ])->validate()['settings'];
             if ($validated['filters'] !== [] || $validated['sub_groups'] !== []) {
                 $this->integrity->assertLeaf($record);
@@ -97,17 +113,7 @@ class SaveGroupSettings
                 }
             }
             $results = array_replace(CatalogPolicy::resultSettings($record->result_settings), $validated['result_settings']);
-            $results['default_page_size'] = (int) $results['default_page_size'];
-            $results['allow_page_size_change'] = (bool) $results['allow_page_size_change'];
-            $results['page_size_options'] = array_map('intval', $results['page_size_options']);
-            $results['products_debounce_ms'] = (int) $results['products_debounce_ms'];
-            $results['cards_per_row'] = (int) $results['cards_per_row'];
-            $results['max_results'] = $results['max_results'] === 'all' ? 'all' : (int) $results['max_results'];
-            $results['card_only_differences'] = (bool) $results['card_only_differences'];
-            $results['card_show_labels'] = (bool) $results['card_show_labels'];
-            $results['card_property_columns'] = (int) $results['card_property_columns'];
-            $results['card_padding_block'] = (int) $results['card_padding_block'];
-            $results['card_padding_inline'] = (int) $results['card_padding_inline'];
+            $results = $this->normalizeResults($results);
             if ($results['allow_page_size_change'] && ! in_array($results['default_page_size'], $results['page_size_options'], true)) {
                 $errors['settings.result_settings.page_size_options'] = __('catalog.groups.validation.include_default_page_size');
             }
@@ -172,6 +178,47 @@ class SaveGroupSettings
 
             return $record;
         }, attempts: 3);
+    }
+
+    /** @return array<string,list<mixed>> */
+    private function resultRules(): array
+    {
+        return [
+            'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,editor_properties,cards_per_row,max_results,products_debounce_ms,card_only_differences,card_show_labels,card_property_layout,card_property_columns,card_padding_block,card_padding_inline'],
+            'settings.result_settings.default_page_size' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
+            'settings.result_settings.allow_page_size_change' => ['sometimes', 'required', 'boolean'],
+            'settings.result_settings.page_size_options' => ['sometimes', 'array', 'list'],
+            'settings.result_settings.page_size_options.*' => ['required', 'integer', 'distinct', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
+            'settings.result_settings.products_debounce_ms' => ['sometimes', 'required', 'integer', 'min:0', 'multiple_of:100', 'max:2147483600'],
+            'settings.result_settings.card_properties' => ['sometimes', 'array', 'list'],
+            'settings.result_settings.card_properties.*' => ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()],
+            'settings.result_settings.editor_properties' => ['sometimes', 'array', 'list'],
+            'settings.result_settings.editor_properties.*' => ['required', 'string', 'max:100', 'distinct:strict', ProductFields::referenceRule()],
+            'settings.result_settings.cards_per_row' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_CARDS_PER_ROW],
+            'settings.result_settings.max_results' => ['sometimes', 'required', Rule::in(['all', ...range(1, CatalogPolicy::MAX_RESULT_THRESHOLD)])],
+            'settings.result_settings.card_only_differences' => ['sometimes', 'required', 'boolean'],
+            'settings.result_settings.card_show_labels' => ['sometimes', 'required', 'boolean'],
+            'settings.result_settings.card_property_layout' => ['sometimes', 'required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))],
+            'settings.result_settings.card_property_columns' => ['sometimes', 'required', 'integer', Rule::in([1, 2])],
+            'settings.result_settings.card_padding_block' => ['sometimes', 'required', 'integer', 'between:0,16'],
+            'settings.result_settings.card_padding_inline' => ['sometimes', 'required', 'integer', 'between:0,20'],
+        ];
+    }
+
+    /** @param array<string,mixed> $changes @return array<string,mixed> */
+    private function normalizeResults(array $changes): array
+    {
+        foreach ($changes as $key => $value) {
+            $changes[$key] = match ($key) {
+                'default_page_size', 'products_debounce_ms', 'cards_per_row', 'card_property_columns', 'card_padding_block', 'card_padding_inline' => (int) $value,
+                'allow_page_size_change', 'card_only_differences', 'card_show_labels' => (bool) $value,
+                'page_size_options' => array_map('intval', $value),
+                'max_results' => $value === 'all' ? 'all' : (int) $value,
+                default => $value,
+            };
+        }
+
+        return $changes;
     }
 
     /** @param array<string|int, mixed> $first @param array<string|int, mixed> $second */

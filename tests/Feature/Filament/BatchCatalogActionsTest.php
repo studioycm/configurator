@@ -63,6 +63,23 @@ test('Group batch presentation preserves all card settings and related lists', f
     expect(fn () => $action->preview(auth()->user(), 'groups', [$group->id], $intent))->toThrow(AuthorizationException::class);
 });
 
+test('narrow Group batch presentation preserves raw settings and retained filter and preset identities with one revision', function () {
+    $group = Group::factory()->create(['result_settings' => ['card_show_labels' => true, 'card_properties' => ['0', '001', '1'], 'future_setting' => ['keep' => false]]]);
+    $filter = GroupFilter::factory()->for($group)->create(['label' => 'Custom retired values', 'value_order' => ['retired', '001'], 'value_labels' => ['retired' => 'Keep custom label']]);
+    $preset = SubGroup::factory()->for($group)->create(['allowed_values' => ['001', 'retired'], 'label' => 'Retained preset']);
+    $raw = $group->fresh()->result_settings;
+    $before = [$filter->fresh()->getAttributes(), $preset->fresh()->getAttributes()];
+    $revision = (int) $group->fresh()->catalog_revision;
+    $action = app(BatchCatalogChanges::class);
+    $intent = ['operation' => 'edit', 'changes' => [['field' => 'description', 'mode' => 'set', 'value' => 'New description'], ['field' => 'card_show_labels', 'mode' => 'set', 'value' => false]]];
+    $preview = $action->preview(auth()->user(), 'groups', [$group->id], $intent);
+    $action->apply(auth()->user(), 'groups', [$group->id], $intent, $preview['token']);
+    expect($group->fresh()->result_settings)->toBe([...$raw, 'card_show_labels' => false]);
+    expect([$filter->fresh()->getAttributes(), $preset->fresh()->getAttributes()])->toBe($before);
+    expect($group->fresh()->description)->toBe('New description');
+    expect((int) $group->fresh()->catalog_revision)->toBe($revision + 1);
+});
+
 test('the native bulk dialog previews without saving then applies the reviewed fields', function () {
     $value = Value::factory()->create(['label' => 'Original', 'description' => 'Untouched']);
     $component = Livewire::test(ListValues::class)->selectTableRecords([$value]);

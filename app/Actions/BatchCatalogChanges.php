@@ -4,7 +4,6 @@ namespace App\Actions;
 
 use App\CatalogWriteReplan;
 use App\ConfigInputType;
-use App\Filament\Resources\Groups\Schemas\GroupForm;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
@@ -145,9 +144,7 @@ class BatchCatalogChanges
                         $presentationChanges = array_filter($state, fn ($value, string $key): bool => $key !== 'description' && $value !== $before[$key], ARRAY_FILTER_USE_BOTH);
                         app(SaveCatalogGroup::class)->handle($actor, $record, [...$record->only(['name', 'parent_id', 'sort_order', 'configurator_id']), 'description' => $state['description']]);
                         if ($presentationChanges !== []) {
-                            $settings = GroupForm::settingsState($record);
-                            $settings['result_settings'] = $presentationChanges;
-                            app(SaveGroupSettings::class)->handle($actor, $record, $settings);
+                            app(SaveGroupSettings::class)->patchPresentation($actor, $record, $presentationChanges);
                         }
                     }
                 }
