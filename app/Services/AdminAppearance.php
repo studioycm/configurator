@@ -59,23 +59,26 @@ class AdminAppearance
     /** @return array<string, bool|int|string> */
     public function current(): array
     {
-        if ($this->resolved !== null) {
+        $transactional = DB::transactionLevel() > 0;
+        if ($transactional) {
+            $this->resolved = null;
+        } elseif ($this->resolved !== null) {
             return $this->resolved;
         }
         if (! Schema::hasTable('admin_appearance_settings')) {
-            return $this->resolved = $this->defaults();
+            return $transactional ? $this->defaults() : ($this->resolved = $this->defaults());
         }
         $read = fn (): array => AdminAppearanceSettings::findOrFail(1)->settings;
-        $settings = DB::transactionLevel() > 0 ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
-        $settings = array_replace($this->defaults(), $settings);
+        $settings = $transactional ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
+        $settings = $this->validate(array_replace($this->defaults(), $settings));
 
-        return $this->resolved = $this->validate($settings);
+        return $transactional ? $settings : ($this->resolved = $settings);
     }
 
     /** @param array<string, bool|int|string> $settings */
     public function rememberSaved(array $settings): void
     {
-        $this->resolved = $settings;
+        $this->resolved = DB::transactionLevel() > 0 ? null : $settings;
     }
 
     /** @param array<string, mixed>|null $draft @return array<string, string> */

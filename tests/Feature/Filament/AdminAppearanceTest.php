@@ -134,3 +134,89 @@ test('new requests read committed appearance changes and rollback does not inval
         Cache::forget(AdminAppearance::CACHE_KEY);
     }
 });
+
+function withConsolidationAppearanceConnection(Closure $check): void
+{
+    $original = DB::getDefaultConnection();
+    config(['database.connections.appearance_memo_test' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true]]);
+    DB::setDefaultConnection('appearance_memo_test');
+    DB::connection()->setTransactionManager(new DatabaseTransactionsManager);
+    Cache::forget(AdminAppearance::CACHE_KEY);
+    app()->instance(AdminAppearance::class, new AdminAppearance);
+    try {
+        (require database_path('migrations/2026_10_07_035850_create_admin_appearance_settings_table.php'))->up();
+        $check(app(AdminAppearance::class));
+    } finally {
+        while (DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
+        DB::setDefaultConnection($original);
+        DB::purge('appearance_memo_test');
+        Cache::forget(AdminAppearance::CACHE_KEY);
+    }
+}
+
+test('one appearance instance reads transactional changes without promoting rollback values', function (bool $warm) {
+    withConsolidationAppearanceConnection(function (AdminAppearance $appearance) use ($warm): void {
+        $defaults = $appearance->defaults();
+        if ($warm) {
+            expect($appearance->current())->toBe($defaults);
+        }
+        Cache::put(AdminAppearance::CACHE_KEY, $defaults, 3600);
+        DB::beginTransaction();
+        $changed = [...$defaults, 'cell_padding_block' => 4];
+        AdminAppearanceSettings::findOrFail(1)->update(['settings' => $changed]);
+        expect($appearance->current())->toBe($changed)
+            ->and(Cache::get(AdminAppearance::CACHE_KEY))->toBe($defaults);
+        DB::rollBack();
+        expect($appearance->current())->toBe($defaults);
+    });
+})->with([true, false]);
+
+test('one appearance instance follows nested saves caught rollback and outer rollback', function (bool $warm) {
+    withConsolidationAppearanceConnection(function (AdminAppearance $appearance) use ($warm): void {
+        $defaults = $appearance->defaults();
+        if ($warm) {
+            $appearance->current();
+        }
+        Cache::put(AdminAppearance::CACHE_KEY, $defaults, 3600);
+        DB::beginTransaction();
+        $changed = [...$defaults, 'cell_padding_block' => 4];
+        app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $changed);
+        expect($appearance->current())->toBe($changed);
+        try {
+            DB::transaction(function () use ($changed): void {
+                app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), [...$changed, 'workspace_gap' => 10]);
+                throw new RuntimeException('Cancel nested appearance save');
+            });
+        } catch (RuntimeException) {
+        }
+        expect($appearance->current())->toBe($changed);
+        app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), [...$changed, 'workspace_gap' => 12]);
+        expect($appearance->current()['workspace_gap'])->toBe(12)
+            ->and(Cache::get(AdminAppearance::CACHE_KEY))->toBe($defaults);
+        DB::rollBack();
+        expect($appearance->current())->toBe($defaults)
+            ->and(Cache::get(AdminAppearance::CACHE_KEY))->toBe($defaults);
+    });
+})->with([true, false]);
+
+test('appearance cache invalidation waits for physical commit and repeated saves refresh the same instance', function () {
+    withConsolidationAppearanceConnection(function (AdminAppearance $appearance): void {
+        $defaults = $appearance->current();
+        $cached = Cache::get(AdminAppearance::CACHE_KEY);
+        expect($cached)->toBeArray();
+        DB::beginTransaction();
+        $changed = [...$defaults, 'cell_padding_block' => 4];
+        app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $changed);
+        expect($appearance->current())->toBe($changed)
+            ->and(Cache::get(AdminAppearance::CACHE_KEY))->toBe($cached);
+        DB::commit();
+        expect(Cache::has(AdminAppearance::CACHE_KEY))->toBeFalse()
+            ->and($appearance->current())->toBe($changed);
+        $next = [...$changed, 'workspace_gap' => 12];
+        app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $next);
+        expect($appearance->current())->toBe($next)
+            ->and(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($next);
+    });
+});
