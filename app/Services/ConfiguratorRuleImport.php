@@ -223,8 +223,8 @@ class ConfiguratorRuleImport
         $includedAttributes = DB::table('configurator_attributes')->whereIn('configurator_id', $configuratorIds);
         Attribute::whereIn('id', (clone $includedAttributes)->select('attribute_id'))->orderBy('id')->lockForUpdate()->get();
         $includedOptions = DB::table('configurator_options')->whereIn('configurator_attribute_id', (clone $includedAttributes)->select('id'))->select('option_id');
-        Option::whereIn('id', $includedOptions)->orderBy('id')->lockForUpdate()->get();
         Value::whereIn('id', Option::whereIn('id', $includedOptions)->select('value_id'))->orderBy('id')->lockForUpdate()->get();
+        Option::whereIn('id', $includedOptions)->orderBy('id')->lockForUpdate()->get();
     }
 
     /** @param array<string, mixed> $draft @param array<int, array<string, mixed>> $attributes @param array<int, array<string, mixed>> $options @param array<string, mixed> $context */

@@ -57,12 +57,12 @@ class CanonicalUsage
      */
     public function lockParents(array $attributeIds, array $valueIds = [], array $optionIds = []): array
     {
-        $links = Option::whereKey($optionIds)->get(['id', 'attribute_id', 'value_id']);
+        $links = $optionIds === [] ? new Collection : Option::whereKey($optionIds)->get(['id', 'attribute_id', 'value_id']);
         $attributeIds = array_values(array_unique([...$attributeIds, ...$links->pluck('attribute_id')->all()]));
         $valueIds = array_values(array_unique([...$valueIds, ...$links->pluck('value_id')->all()]));
-        $attributes = Attribute::whereKey($attributeIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-        $values = Value::whereKey($valueIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-        $options = Option::whereKey($optionIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $attributes = $attributeIds === [] ? new Collection : Attribute::whereKey($attributeIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $values = $valueIds === [] ? new Collection : Value::whereKey($valueIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $options = $optionIds === [] ? new Collection : Option::whereKey($optionIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
         foreach ($options as $option) {
             if (! $attributes->has($option->attribute_id) || ! $values->has($option->value_id)) {
                 throw CatalogWriteReplan::withMessages(['definition' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);

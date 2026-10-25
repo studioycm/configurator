@@ -18,7 +18,9 @@ use App\Models\User;
 use App\Models\Value;
 use App\Services\ConfiguratorDefinitionLoader;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -202,6 +204,68 @@ test('a canonical key edit detects a newly committed dependency despite an earli
         if ($value !== null) {
             DB::table('values')->where('id', $value->id)->delete();
         }
+        if ($actor !== null) {
+            DB::table('users')->where('id', $actor->id)->delete();
+        }
+        DB::beginTransaction();
+    }
+});
+
+test('standalone multirow creation holds every existing Value before creating canonical children', function () {
+    DB::commit();
+    $actor = null;
+    $values = [];
+    $workers = [];
+    $attributeKey = 'parent_barrier_'.Str::lower(Str::random(8));
+    try {
+        $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+        $values = [Value::factory()->create(), Value::factory()->create()];
+        $rows = [['ref' => creationContentionRef(), 'label' => 'Parent barrier', 'key' => $attributeKey, 'values' => [
+            ['ref' => creationContentionRef(), 'value_id' => $values[1]->id, 'code' => 'W8'],
+            ['ref' => creationContentionRef(), 'value_id' => $values[0]->id, 'code' => 'W9'],
+        ]]];
+        DB::purge('mysql');
+        $workers[] = startCatalogContentionWorker(function (mixed $channel) use ($actor, $rows): array {
+            $created = 0;
+            $paused = false;
+            Event::listen('eloquent.created: '.Attribute::class, function () use (&$created): void {
+                $created++;
+            });
+            DB::listen(function (QueryExecuted $query) use (&$paused, &$created, $channel): void {
+                if ($paused || ! str_contains($query->sql, 'from `values`') || ! str_contains($query->sql, 'for update')) {
+                    return;
+                }
+                $paused = true;
+                writeCatalogContentionMessage($channel, ['phase' => 'parents', 'attributes_created' => $created]);
+                readCatalogContentionMessage($channel);
+            });
+
+            return catalogContentionResult(fn (): int => count(app(CreateSharedAttributes::class)->handle($actor, $rows)));
+        });
+        writeCatalogContentionMessage($workers[0]['channel'], ['phase' => 'start']);
+        $barrier = readCatalogContentionMessage($workers[0]['channel']);
+        expect($barrier['phase'])->toBe('parents');
+        DB::statement('SET SESSION innodb_lock_wait_timeout = 1');
+        expect(function () use ($values): void {
+            try {
+                DB::transaction(fn () => Value::whereKey($values[0]->id)->lockForUpdate()->firstOrFail());
+            } catch (QueryException $exception) {
+                expect((int) $exception->errorInfo[1])->toBe(1205);
+                throw $exception;
+            }
+        })->toThrow(QueryException::class);
+        expect($barrier['attributes_created'])->toBe(0);
+        writeCatalogContentionMessage($workers[0]['channel'], ['phase' => 'release']);
+        expect(readCatalogContentionMessage($workers[0]['channel'])['status'])->toBe('committed');
+        $attribute = Attribute::where('key', $attributeKey)->sole();
+        expect($attribute->options()->where('code', 'W8')->sole()->value_id)->toBe($values[1]->id)
+            ->and($attribute->options()->where('code', 'W9')->sole()->value_id)->toBe($values[0]->id);
+    } finally {
+        stopCatalogContentionWorkers($workers);
+        $ids = Attribute::where('key', $attributeKey)->pluck('id');
+        DB::table('options')->whereIn('attribute_id', $ids)->delete();
+        DB::table('attributes')->whereIn('id', $ids)->delete();
+        DB::table('values')->whereIn('id', array_map(fn (Value $value): int => $value->id, $values))->delete();
         if ($actor !== null) {
             DB::table('users')->where('id', $actor->id)->delete();
         }

@@ -2,10 +2,12 @@
 
 namespace App\Actions;
 
+use App\CatalogWriteReplan;
 use App\Models\Attribute;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
+use App\Services\CanonicalUsage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -50,13 +52,38 @@ class ImportLegacyCanonicalLibrary
             throw ValidationException::withMessages(['codes' => 'Duplicate legacy codes require review: '.$duplicates->pluck('code')->uniqueStrict()->implode(', ').'.']);
         }
         $pendingIds = $duplicates->pluck('id')->all();
+        $attributeCandidates = [];
+        $optionCandidates = [];
+        if ($apply) {
+            foreach ($data['attributes'] as $row) {
+                $attributeCandidates[$row['id']] = Attribute::where('key', $row['key'])->first();
+            }
+            foreach ($data['options'] as $row) {
+                if (! in_array($row['id'], $pendingIds)) {
+                    $optionCandidates[$row['id']] = Option::where('code', $row['code'])->first();
+                }
+            }
+        }
 
-        return DB::transaction(function () use ($actor, $data, $hash, $apply, $duplicates, $pendingIds): array {
+        return DB::transaction(function () use ($actor, $data, $hash, $apply, $duplicates, $pendingIds, $attributeCandidates, $optionCandidates): array {
+            $parents = $apply ? app(CanonicalUsage::class)->lockParents(
+                array_values(array_filter(array_map(fn (?Attribute $attribute): ?int => $attribute?->id, $attributeCandidates))),
+                [],
+                array_values(array_filter(array_map(fn (?Option $option): ?int => $option?->id, $optionCandidates))),
+            ) : [];
             $totals = ['attributes_created' => 0, 'attributes_existing' => 0, 'options_created' => 0, 'options_existing' => 0, 'values_created' => 0, 'options_pending' => count($pendingIds)];
             $attributes = [];
             $options = [];
             foreach ($data['attributes'] as $row) {
-                $attribute = Attribute::where('key', $row['key'])->when($apply, fn ($query) => $query->lockForUpdate())->first();
+                if ($apply) {
+                    $candidate = $attributeCandidates[$row['id']];
+                    $attribute = $candidate === null ? null : $parents['attributes']->get($candidate->id);
+                    if ($candidate !== null && $attribute === null) {
+                        throw CatalogWriteReplan::withMessages(['attributes' => 'Shared definitions changed while importing. Review the source and retry.']);
+                    }
+                } else {
+                    $attribute = Attribute::where('key', $row['key'])->first();
+                }
                 if ($attribute !== null && ($attribute->key !== $row['key'] || $attribute->label !== $row['label'])) {
                     throw ValidationException::withMessages(['attributes' => 'Existing Attribute '.$row['key'].' differs from the legacy definition; review it before importing.']);
                 }
@@ -67,7 +94,15 @@ class ImportLegacyCanonicalLibrary
                 if (in_array($row['id'], $pendingIds)) {
                     continue;
                 }
-                $option = Option::with('value')->where('code', $row['code'])->when($apply, fn ($query) => $query->lockForUpdate())->first();
+                if ($apply) {
+                    $candidate = $optionCandidates[$row['id']];
+                    $option = $candidate === null ? null : $parents['options']->get($candidate->id);
+                    if ($candidate !== null && ($option === null || $candidate->code !== $option->code)) {
+                        throw CatalogWriteReplan::withMessages(['options' => 'Shared definitions changed while importing. Review the source and retry.']);
+                    }
+                } else {
+                    $option = Option::with('value')->where('code', $row['code'])->first();
+                }
                 if ($option !== null && ($option->attribute_id !== $attributes[$row['attribute_id']]?->id || $option->value->label !== $row['label'])) {
                     throw ValidationException::withMessages(['options' => 'Existing code '.$row['code'].' belongs to a different Attribute or Value; nothing was imported.']);
                 }

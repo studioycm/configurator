@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Models\Attribute;
 use App\Models\User;
+use App\Services\CanonicalUsage;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -56,6 +57,7 @@ class CreateSharedAttributes
         }
 
         return DB::transaction(function () use ($actor, $attributes, $masterValues, $references): array {
+            app(CanonicalUsage::class)->lockParents([], array_values(array_filter(data_get($attributes, '*.values.*.value_id', []), fn (mixed $id): bool => is_int($id) || is_string($id))));
             $masters = $this->createMasterValues->handle($actor, $masterValues, array_values(array_unique($references)));
             $created = [];
             foreach ($attributes as $index => $row) {

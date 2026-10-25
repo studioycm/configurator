@@ -3,7 +3,9 @@
 namespace App\Actions;
 
 use App\Models\Attribute;
+use App\Models\Configurator;
 use App\Models\User;
+use App\Services\CanonicalUsage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -20,7 +22,8 @@ class AddAttributeValues
     {
         Gate::forUser($actor)->authorize('manage-catalog');
         DB::transaction(function () use ($actor, $attribute, $options): void {
-            $attribute = Attribute::whereKey($attribute->getKey())->lockForUpdate()->firstOrFail();
+            $parents = app(CanonicalUsage::class)->lockParents([$attribute->getKey()], array_values(array_filter(array_column($options, 'value_id'), fn (mixed $id): bool => is_int($id) || is_string($id))));
+            $attribute = $parents['attributes']->findOrFail($attribute->getKey());
             Validator::make(['pending_options' => $options], [
                 'pending_options' => ['array', 'list', 'max:500'],
                 'pending_options.*' => ['array:value_id,code'],
@@ -48,8 +51,17 @@ class AddAttributeValues
     public function saveDefinition(User $actor, Attribute $attribute, array $data, array $masterValues = []): Attribute
     {
         Gate::forUser($actor)->authorize('manage-catalog');
+        $attributeIds = $attribute->exists ? [$attribute->id] : [];
+        $ownerIds = app(CanonicalUsage::class)->configuratorIds(attributeIds: $attributeIds);
+        $valueIds = array_values(array_filter(data_get($data, 'pending_options.*.value_id', []), fn (mixed $id): bool => is_int($id) || is_string($id)));
 
-        return DB::transaction(function () use ($actor, $attribute, $data, $masterValues): Attribute {
+        return DB::transaction(function () use ($actor, $attribute, $data, $masterValues, $attributeIds, $valueIds, $ownerIds): Attribute {
+            Configurator::whereKey($ownerIds)->orderBy('id')->lockForUpdate()->get();
+            $parents = app(CanonicalUsage::class)->lockParents($attributeIds, $valueIds);
+            app(CanonicalUsage::class)->assertConfiguratorIds($ownerIds, attributeIds: $attributeIds);
+            if ($attribute->exists) {
+                $attribute = $parents['attributes']->findOrFail($attribute->id);
+            }
             $options = $data['pending_options'] ?? [];
             unset($data['pending_options']);
             Validator::make(['pending_options' => $options], [
