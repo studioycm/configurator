@@ -1,6 +1,6 @@
 # App consolidation execution specification
 
-**Status: consolidation merged into local master with user approval; push prohibited.**
+**Status: consolidation merged locally; original R16 reopened with corrected target. R16 application fix awaits user approval; push prohibited.**
 
 **Prepared:** 25 October 2026, Asia/Jerusalem. The user accepted the sixteen-step repair order, reviewed this specification and explicitly approved implementation in one dedicated consolidation worktree with checkpoint reporting. Integration into master requires a separate later approval; pushing is excluded. Earlier approval-gate language below describes that gate and must not be treated as a request to obtain the same implementation permission again.
 
@@ -242,13 +242,23 @@ Keep three native protocols separate: picker model/record/relationship/bound-sta
 
 **Needed tests:** Filament/AdminAppearanceTest.php with the same resolved instance before/inside/after inner save and outer rollback, caught nested rollback, repeated save and committed path. Assert both memo-visible values and shared-cache publication timing; a fresh-request rollback test alone is insufficient.
 
-### 15. Legacy JSON storage verification — N13, corrected disposition
+### 15. Legacy JSON persistence — N13 / original R16, corrected target; proposal only
 
-**Owner/files:** tests/Fixtures/Legacy/Casts/NormalizedIntArrayCast.php; located consumer tests/Fixtures/Legacy/Models/OptionRule.php. This is a legacy fixture boundary, not current Product JSON storage.
+**Status:** original R16 is OPEN. The earlier implementation target was mistaken. User authorized record correction and research on 25 October 2026 and explicitly requires approval before application code changes. This section replaces the false closure; it does not authorize implementation.
 
-**Current-source correction:** the setter already returns ?string and json_encode($normalized). The earlier report's proposed encoded-string fix is therefore not a missing implementation at this snapshot. Its stale array-return PHPDoc remains. Do not rewrite correct storage because an older audit requested it.
+**Actual owner/consumer:** app/Casts/JsonRuleCast.php::set(), used by tests/Fixtures/Legacy/Models/ConfigProfile.php::extra_rules_json. The legacy factory supplies [], its legacy textarea supplies JSON text, and its legacy migration defines a nullable JSON column. No current production model registration was located. Original FINDINGS_REGISTER R16 and the earlier pattern-domain-boundaries F6/R16 analysis already identify this cast correctly.
 
-**Contract/tests:** characterize a real one-column persistence roundtrip for nonempty, empty and null values, and current lenient malformed-read behavior. Candidate tests/Feature/LegacyNormalizedIntArrayCastTest.php; reuse existing fixture/factory conventions. Correct a demonstrated remaining defect or stale PHPDoc only; otherwise record retained/already addressed. No enum conversion, fixture relocation or Product aggregate change is implied.
+**Lineage correction:** tests/Fixtures/Legacy/Casts/NormalizedIntArrayCast.php on OptionRule is a different, already-correct cast. CON-15's six persistence characterizations and PHPDoc correction remain valid but do not close JsonRuleCast/R16. The earlier source analysis explicitly used that cast as a healthy counterexample. No approved decision separately retired the original finding.
+
+**Research evidence:** installed Laravel 13.35.0 HasAttributes::setClassCastableAttribute()/normalizeCastClassResponse() merges an array cast result into raw model attributes. JsonRuleCast::set() currently returns the payload array. A no-application-bootstrap, no-DB in-memory assignment on the actual ConfigProfile model reproduced: a `name` payload key overwrites model name while old extra_rules_json remains; list payloads add numeric attribute keys; [] and JSON text `[]` do not clear the old value. Malformed JSON text currently sets null. This proves the assignment defect; a new database persistence regression has NOT run and no production corruption event is claimed.
+
+**Smallest proposed fix, not implemented:** retain the class/location and get() behavior; make set() return ?string. Preserve null/empty string -> null, PHP arrays as accepted payloads, and existing lenient json_decode(..., true) for other inputs; malformed/scalar decoded values remain null. Encode accepted arrays with JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION. Do not use JSON_NUMERIC_CHECK. Empty arrays/JSON text `[]` write JSON `[]`, clearing old rules. Non-encodable arrays raise JsonException instead of silently storing false or clearing data. Existing decoded-array normalization remains; this is not a new lossless JSON text codec or schema/validation policy.
+
+**Alternatives rejected:** a native array cast changes JSON-text input, scalar and lenient-read behavior. An explicitly keyed encoded attribute map is valid but unnecessary for this single-column cast. Moving legacy support, changing NormalizedIntArrayCast again, migrations, model/factory changes, and current Product JSON refactors are outside this fix.
+
+**Needed tests after approval:** proposed tests/Feature/LegacyJsonRuleCastTest.php using the real legacy ConfigProfile factory, its extra_rules_json column and existing LoadsLegacyFixtures isolated SQLite-memory setup. Prove nonempty map/list persistence from PHP arrays and JSON text; payload keys such as name cannot change unrelated model attributes or create stray columns; nested strings `001`, Unicode, false/null and float 1.0 roundtrip strictly; empty array/JSON empty array clears existing rules; null/empty/malformed/scalar inputs retain null-write behavior; malformed/scalar/null raw reads remain []; encoding failure leaves model attributes/persisted data unchanged. Preserve existing legacy tests and the valid NormalizedIntArrayCast coverage.
+
+**Verification plan after approval:** demonstrate the actual consumer regression red, implement the bounded setter change, rerun its focused file and tests/Feature/ModelRelationshipsTest.php plus tests/Feature/Filament/ConfigEngineDemoInteractionTest.php, run Pint for changed PHP, and run the complete guarded default PHP suite before integration. Legacy fixtures are restricted to SQLite memory; no MySQL-copy schema changes/resets, JS/build/browser expansion or deployment is needed for this pure cast correction. Record results honestly; current earlier suite counts do not establish this missing persistence contract.
 
 ### 16. Presentation responsibilities and data loading — N14
 
@@ -345,7 +355,8 @@ Planning inputs: /private/tmp/ari-solution-research/CURRENT_SCOPE.md, EXECUTION_
 | R11 | Retain valid StatusActions review orchestration; its lock participation is covered in 5. |
 | R12 | Superseded importer-as-field-authority advice; retain current ProductFields and literal-key authority. |
 | R13 | Retain live CatalogDiscovery vocabulary and distinct prepare callers; no inferred deletion. |
-| R14 / R15 / R16 / R17 | Steps 16 / 14 / 15 / 13 respectively. R16's missing encoded-return claim is corrected against current source; verify/retain rather than blindly repair. |
+| R14 / R15 / R17 | Steps 16 / 14 / 13 respectively; retain the presentation boundary, repair scoped memo consistency and startup registration. |
+| R16 | OPEN: actual JsonRuleCast single-column persistence contract. Step 15 previously tested the healthy NormalizedIntArrayCast counterexample; those results do not close R16. Corrected proposal and actual-consumer tests await separate user approval. |
 | O01–05 | Retain valid factories, existing Actions/Services/enums/policy naming and serialization. No mass reorganization. |
 | O06–08 | Preserve wiring/lifetimes and actual package consumers in 13; explicit actor in 3. No package purge or compulsory provider split. |
 | O09 / V02 / INT-01 | Step 1; optional test reclassification must preserve its real lifecycle and is not the safety fix. |
@@ -371,7 +382,9 @@ Boost search-docs was used with the installed package context; native ImportActi
 - [x] User accepted the revised sixteen-step order.
 - [x] Agreed scope, stale-edit UX, recovery A, input preservation, one-writer rules and subagent model restrictions recorded.
 - [x] User approves this concrete execution specification and authorizes implementation (25 October 2026).
-- [x] CP0–CP7 implementation, automated checks, journal and independent review complete, with the documented browser CSV-upload gap retained.
+- [x] Original approved CP0–CP7 implementation, automated checks, journal and independent review completed, with the browser CSV-upload gap retained. The newly corrected original R16 target remains OPEN; prior step 15 evidence is not its closure.
 - [x] User separately approves merging the exact verified checkpoint into master (25 October 2026); local merge and merged-result checks completed.
+- [ ] User approves the corrected JsonRuleCast/R16 fix and actual ConfigProfile regression tests proposed in step 15.
+- [ ] Corrected R16 implementation and actual-consumer persistence verification completed.
 
 Until the implementation approval box can be completed from an explicit human instruction, remain at planning/review. No coding, test execution or integration follows merely from producing this file.
