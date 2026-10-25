@@ -71,6 +71,9 @@ export function configuratorPreviewWorkspace(configuratorId) {
         requestPromise: null,
         saveQueued: false,
         submitted: false,
+        submittedCaptures: null,
+        savePermissionDenied: false,
+        outcomeInspectionFailed: false,
         ownUnmount: false,
         closeQueued: false,
         destroyed: false,
@@ -241,6 +244,8 @@ export function configuratorPreviewWorkspace(configuratorId) {
         async save() {
             if (this.saveQueued || this.receipt || (this.busy && !(this.phase === 'request' && this.requestPromise))) return;
             this.saveQueued = true;
+            this.savePermissionDenied = false;
+            this.outcomeInspectionFailed = false;
             const generation = this.generation;
             try {
                 if (this.requestPromise) await this.requestPromise.catch(() => {});
@@ -254,9 +259,11 @@ export function configuratorPreviewWorkspace(configuratorId) {
                 if (generation !== this.generation || this.destroyed) return;
                 this.phase = 'request';
                 this.submitted = true;
-                const result = await this.$wire.saveChanges(captures, this.collectedEditors);
-                if (result?.status === 'rejected') {
+                this.submittedCaptures = JSON.parse(JSON.stringify(captures));
+                const result = await this.$wire.saveChanges(this.submittedCaptures, this.collectedEditors);
+                if (['rejected', 'rolled_back'].includes(result?.status)) {
                     this.submitted = false;
+                    this.submittedCaptures = null;
                     return;
                 }
                 if (result?.status !== 'committed' || !result.receipt?.operation_id) throw new Error('Save outcome is unavailable');
@@ -266,8 +273,13 @@ export function configuratorPreviewWorkspace(configuratorId) {
                 this.earlyAcknowledgments.splice(0).forEach(detail => this.acknowledgeEditor(detail));
                 await this.waitForAcknowledgments();
                 await this.completeReconciliation();
-            } catch {
+            } catch (error) {
                 if (this.receipt) this.phase = 'reconcile_failed';
+                else if ([401, 403].includes(error?.status)) {
+                    this.submitted = false;
+                    this.submittedCaptures = null;
+                    this.savePermissionDenied = true;
+                }
                 else if (this.submitted) this.phase = 'outcome_unknown';
                 else this.collectionFailed = true;
             } finally {
@@ -306,6 +318,7 @@ export function configuratorPreviewWorkspace(configuratorId) {
             this.receipt = null;
             this.pendingEditors = [];
             this.submitted = false;
+            this.submittedCaptures = null;
         },
         async retryReconciliation() {
             if (this.phase !== 'reconcile_failed' || !this.receipt) return;
@@ -322,6 +335,41 @@ export function configuratorPreviewWorkspace(configuratorId) {
                 await this.release();
             } catch {
                 this.phase = 'reconcile_failed';
+            }
+        },
+        async inspectUnknownOutcome() {
+            if (!['outcome_unknown', 'outcome_review'].includes(this.phase) || !this.submittedCaptures || this.destroyed) return;
+            this.phase = 'inspecting_outcome';
+            this.outcomeInspectionFailed = false;
+            try {
+                const result = await this.$wire.inspectSaveOutcome(this.submittedCaptures);
+                if (result?.status === 'committed' && result.receipt?.operation_id) {
+                    this.receipt = result.receipt;
+                    this.pendingEditors = [...result.receipt.editor_ids];
+                    this.phase = 'reconcile_failed';
+                    await this.retryReconciliation();
+                    return;
+                }
+                if (result?.status !== 'review') throw new Error('Current saved state is unavailable');
+                this.phase = 'outcome_review';
+            } catch {
+                this.phase = 'outcome_unknown';
+                this.outcomeInspectionFailed = true;
+            }
+        },
+        async finishUnknownReview() {
+            if (this.phase !== 'outcome_review' || this.destroyed) return;
+            this.phase = 'inspecting_outcome';
+            try {
+                await this.$wire.finishSaveOutcomeReview();
+                const captures = await this.collect();
+                await this.$wire.refreshEditorInventory(captures);
+                this.submitted = false;
+                this.submittedCaptures = null;
+                await this.release();
+            } catch {
+                this.phase = 'outcome_unknown';
+                this.outcomeInspectionFailed = true;
             }
         },
         refreshSavedPreview() {

@@ -370,6 +370,61 @@ test('ambiguous submitted transport failure holds outcome_unknown and never retr
     preview.destroy();
 });
 
+test('unknown Save inspection keeps submitted captures and later typing until explicit review completion', async () => {
+    const { preview, calls } = receiptWorkspace([]);
+    const reactiveCaptures = new Proxy([{ rows: ['current'] }], {});
+    preview.collect = async () => { calls.push('collect'); return reactiveCaptures; };
+    preview.$wire.saveChanges = async () => { calls.push('write'); throw new Error('Response lost'); };
+    preview.$wire.inspectSaveOutcome = async captures => { calls.push(['read', captures]); return { status: 'review' }; };
+    preview.$wire.finishSaveOutcomeReview = async () => calls.push('reviewed');
+    await preview.save();
+    reactiveCaptures[0].rows[0] = 'later local mutation';
+    preview.collect = async () => { calls.push('later collect'); return [{ rows: ['later typing'] }]; };
+    await preview.inspectUnknownOutcome();
+    assert.equal(preview.phase, 'outcome_review');
+    assert.deepEqual(calls[2], ['read', [{ rows: ['current'] }]]);
+    await preview.save();
+    assert.equal(calls.filter(call => call === 'write').length, 1);
+    await preview.finishUnknownReview();
+    assert.equal(preview.phase, 'idle');
+    assert.equal(preview.receipt, null);
+    assert.deepEqual(calls.slice(3), ['reviewed', 'later collect', 'inventory']);
+    preview.destroy();
+});
+
+test('unknown Save inspection failure preserves the barrier and never invokes a writer or acknowledgment', async () => {
+    const { preview, calls } = receiptWorkspace([]);
+    preview.$wire.saveChanges = async () => { calls.push('write'); throw new Error('Response lost'); };
+    preview.$wire.inspectSaveOutcome = async () => { calls.push('read'); throw new Error('Still unavailable'); };
+    await preview.save();
+    await preview.inspectUnknownOutcome();
+    assert.equal(preview.phase, 'outcome_unknown');
+    assert.equal(preview.outcomeInspectionFailed, true);
+    assert.deepEqual(calls, ['collect', 'write', 'read']);
+    preview.destroy();
+});
+
+test('an HTTP permission rejection preserves input without claiming an unknown save', async () => {
+    const { preview, calls } = receiptWorkspace([]);
+    preview.$wire.saveChanges = async () => { calls.push('write'); throw { status: 403 }; };
+    await preview.save();
+    assert.equal(preview.phase, 'idle');
+    assert.equal(preview.savePermissionDenied, true);
+    assert.deepEqual(calls, ['collect', 'write']);
+    preview.destroy();
+});
+
+test('an established rollback releases the Save barrier without an automatic second write', async () => {
+    const { preview, calls } = receiptWorkspace([]);
+    preview.$wire.saveChanges = async () => { calls.push('write'); return { status: 'rolled_back' }; };
+    await preview.save();
+    assert.equal(preview.phase, 'idle');
+    assert.equal(preview.receipt, null);
+    assert.equal(preview.submittedCaptures, null);
+    assert.deepEqual(calls, ['collect', 'write']);
+    preview.destroy();
+});
+
 test('collection blocks competing source navigation inspection and Value requests', async () => {
     const { preview, calls } = receiptWorkspace([]);
     let finish;

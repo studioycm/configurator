@@ -7,6 +7,7 @@ use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Livewire\Catalog\ConfiguratorPreview;
+use App\Models\Configurator;
 use App\Models\ConfiguratorOption;
 use App\Models\Group;
 use App\Models\Option;
@@ -15,6 +16,8 @@ use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorEngine;
+use Illuminate\Database\Events\TransactionCommitted;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 
 require_once dirname(__DIR__).'/ConfiguratorFixtures.php';
@@ -32,6 +35,80 @@ function previewSnapshotFixture(): array
 
     return [$configurator, $product, $saved, $capture];
 }
+
+test('an established Preview write rollback keeps the captured draft and reports a retryable editing state', function () {
+    [$configurator, $product, $saved, $capture] = previewSnapshotFixture();
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    $pending = true;
+    Event::listen('eloquent.saved: '.Configurator::class, function () use (&$pending): void {
+        if ($pending) {
+            throw new RuntimeException('Injected write failure after SQL');
+        }
+    });
+    try {
+        $preview->call('saveChanges', [$capture])->assertReturned(fn (array $result): bool => $result['status'] === 'rolled_back')
+            ->assertSet('saveReceipt', null)->assertSet('previewCaptures', [$capture])->assertNotDispatched('configurator-preview-saved');
+        expect($configurator->fresh()->description)->toBeNull();
+    } finally {
+        $pending = false;
+    }
+});
+
+test('a Preview transaction exit failure is unknown and current-state inspection does not fabricate a receipt', function () {
+    [$configurator, $product, $saved, $capture] = previewSnapshotFixture();
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
+    $pending = true;
+    Event::listen(TransactionCommitted::class, function (TransactionCommitted $event) use (&$pending, $configurator): void {
+        if ($pending && $event->connection->transactionLevel() === 1 && $configurator->fresh()->description === 'Current snapshot description') {
+            throw new RuntimeException('Injected transaction exit failure');
+        }
+    });
+    try {
+        $preview->call('saveChanges', [$capture])->assertReturned(fn (array $result): bool => $result['status'] === 'unknown')
+            ->assertSet('saveReceipt', null)->assertNotDispatched('configurator-preview-saved');
+        expect($configurator->fresh()->description)->toBe('Current snapshot description');
+    } finally {
+        $pending = false;
+    }
+    $preview->call('inspectSaveOutcome', [$capture])->assertReturned(fn (array $result): bool => $result['status'] === 'review')
+        ->assertSet('saveOutcomeReview.changes', [])->assertSet('saveReceipt', null)->assertSet('testedFingerprint', null)
+        ->assertNotDispatched('configurator-preview-saved');
+    $preview->call('finishSaveOutcomeReview')->assertSet('saveOutcomeReview', null)->assertSet('testedFingerprint', null);
+    expect($configurator->fresh()->description)->toBe('Current snapshot description');
+});
+
+test('unknown new Rule inspection lists current saved Rules without identifying or acknowledging the staged Rule', function () {
+    [$configurator, $product, $saved] = previewSnapshotFixture();
+    $rule = fixtureMapping('unconfirmed');
+    $rule['driver_configurator_attribute_id'] = $saved['attributes'][0]['id'];
+    $rule['target_configurator_attribute_id'] = $saved['attributes'][1]['id'];
+    $rule['sets'][0]['source_option_ids'] = [$saved['attributes'][0]['options'][0]['id']];
+    $rule['sets'][0]['target_option_ids'] = [$saved['attributes'][1]['options'][1]['id']];
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, [...$saved, 'rules' => [$rule]]);
+    $persisted = $configurator->rules()->sole();
+    $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->call('inspectSaveOutcome', [$capture])->assertSet('saveOutcomeReview.new_rules', true)
+        ->assertSet('saveOutcomeReview.changes.0.new', true)->assertSet('saveOutcomeReview.matches', false)
+        ->assertSet('saveOutcomeReview.saved_rules.0.id', (string) $persisted->id)->assertSet('saveReceipt', null)
+        ->assertSee(__('configurator.preview.unknown_new_rule_help'))->assertNotDispatched('configurator-preview-saved');
+    $preview->call('finishSaveOutcomeReview')->assertSet('testedFingerprint', null);
+    expect($configurator->rules()->count())->toBe(1);
+});
+
+test('unknown inspection reports a removed Rule without converting its draft into a new Rule', function () {
+    [$configurator, $product, $saved] = previewSnapshotFixture();
+    $rule = fixtureAdvanced('removed', [], 'C', 'SetHint', [], 'Old hint');
+    $rule['effects'][0]['target_configurator_attribute_id'] = $saved['attributes'][2]['id'];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, [...$saved, 'rules' => [$rule]]);
+    $current = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['rules'][0];
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $current['id'], 'before' => $current, 'after' => [...$current, 'label' => 'My retained draft']]]);
+    $configurator->rules()->delete();
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('inspectSaveOutcome', [$capture])
+        ->assertSet('saveOutcomeReview.unavailable', [['type' => 'rule', 'id' => $current['id']]])
+        ->assertSet('saveOutcomeReview.new_rules', false)->assertSet('saveReceipt', null)->assertSee(__('configurator.preview.outcome_unavailable'));
+    expect($configurator->rules()->count())->toBe(0);
+});
 
 test('an exact numeric-looking operand reaches Preview saving and engine evaluation unchanged', function () {
     [$configurator, $product, $saved] = previewSnapshotFixture();

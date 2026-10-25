@@ -3,6 +3,7 @@
 namespace App\Livewire\Catalog;
 
 use App\Actions\SaveTestedConfiguratorChanges;
+use App\CatalogWriteFailure;
 use App\DTO\ConfiguratorDefinition;
 use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorEvaluationResult;
@@ -102,6 +103,10 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
     /** @var array<string,mixed>|null */
     #[Locked]
     public ?array $saveReceipt = null;
+
+    /** @var array<string,mixed>|null */
+    #[Locked]
+    public ?array $saveOutcomeReview = null;
 
     protected ?ConfiguratorDefinition $evaluationDefinition = null;
 
@@ -256,6 +261,9 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
         if (($this->saveReceipt['status'] ?? null) === 'reconcile_pending') {
             return ['status' => 'committed', 'receipt' => $this->saveReceipt];
         }
+        if ($this->saveOutcomeReview !== null) {
+            return ['status' => 'unknown'];
+        }
         abort_if(count($editorIds) > 3 || array_filter($editorIds, fn ($id): bool => ! is_string($id) || strlen($id) > 100) !== [], 422);
         if (! $this->rebuildPreview($captures, 'unsaved') || ! $this->canSaveEvaluatedChanges()) {
             return ['status' => 'rejected', 'errors' => [...$this->inventoryErrors, ...$this->previewErrors, ...($this->previewView['blocking_issues'] ?? [])]];
@@ -266,23 +274,53 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
             $this->previewErrors = array_values(array_unique(Arr::flatten($exception->errors())));
 
             return ['status' => 'rejected', 'errors' => $this->previewErrors];
+        } catch (CatalogWriteFailure $exception) {
+            report($exception);
+            $this->testedFingerprint = null;
+            $this->previewErrors = [__($exception->rolledBack ? 'configurator.preview.save_rolled_back' : 'configurator.preview.outcome_unknown_help')];
+
+            return ['status' => $exception->rolledBack ? 'rolled_back' : 'unknown', 'errors' => $this->previewErrors];
         }
         $this->saveReceipt = ['operation_id' => (string) Str::uuid(), 'status' => 'reconcile_pending', 'captures' => $this->previewCaptures,
             'newRules' => $newRules, 'editor_ids' => array_values(array_unique($editorIds)), 'refresh_error' => null];
-        $this->dispatch('configurator-preview-saved', configuratorId: $this->configuratorId, captures: $this->previewCaptures, newRules: $newRules, operationId: $this->saveReceipt['operation_id']);
-        $this->dispatch('configurator-updated')->to(EditConfigurator::class);
         try {
+            $this->dispatch('configurator-preview-saved', configuratorId: $this->configuratorId, captures: $this->previewCaptures, newRules: $newRules, operationId: $this->saveReceipt['operation_id']);
+            $this->dispatch('configurator-updated')->to(EditConfigurator::class);
             $this->refreshSavedPreview();
+            if ($this->getMountedAction()?->getName() === 'reviewChanges') {
+                $this->unmountAction();
+            }
+            Notification::make()->title(__('configurator.preview.changes_saved'))->success()->send();
         } catch (Throwable $exception) {
             report($exception);
             $this->saveReceipt['refresh_error'] = __('configurator.preview.saved_refresh_failed');
         }
-        if ($this->getMountedAction()?->getName() === 'reviewChanges') {
-            $this->unmountAction();
-        }
-        Notification::make()->title(__('configurator.preview.changes_saved'))->success()->send();
 
         return ['status' => 'committed', 'receipt' => $this->saveReceipt];
+    }
+
+    /** @param list<array<string,mixed>> $captures @return array<string,mixed> */
+    public function inspectSaveOutcome(array $captures): array
+    {
+        Gate::authorize('manage-catalog');
+        if (($this->saveReceipt['status'] ?? null) === 'reconcile_pending') {
+            return ['status' => 'committed', 'receipt' => $this->saveReceipt];
+        }
+        $this->saveOutcomeReview = app(ConfiguratorEditorChanges::class)->compareSaved(auth()->user(), $this->configuratorId, $captures);
+        $this->testedFingerprint = null;
+
+        return ['status' => 'review'];
+    }
+
+    public function finishSaveOutcomeReview(): void
+    {
+        Gate::authorize('manage-catalog');
+        abort_unless($this->saveOutcomeReview !== null, 422);
+        $this->saveOutcomeReview = null;
+        $this->previewErrors = [];
+        $this->testedFingerprint = null;
+        $this->definitionStale = true;
+        $this->editorPreviewStale = true;
     }
 
     private function canSaveEvaluatedChanges(): bool

@@ -2,17 +2,21 @@
     <div wire:key="preview-display-owner" x-data="configuratorPreviewDisplay({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'componentId' => $this->getId(), 'configuratorId' => $configuratorId]) }})" x-bind:style="displayStyle" x-bind:data-preview-compact="String(settings.compact)">
         @php($notices = $notices ?? $this->notices())
         @php($headline = $notices[0] ?? ['type' => 'neutral', 'title' => __('configurator.preview.ready'), 'message' => __('configurator.preview.tested_only_this_case')])
-        <div class="catalog-preview-notice" data-tone="{{ $headline['type'] }}" x-bind:data-tone="collectionFailed || navigationFailed || phase === 'reconcile_failed' || phase === 'outcome_unknown' ? 'error' : '{{ $headline['type'] }}'" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" aria-live="polite" wire:key="preview-notice-slot">
+        <div class="catalog-preview-notice" data-tone="{{ $headline['type'] }}" x-bind:data-tone="collectionFailed || navigationFailed || savePermissionDenied || phase === 'reconcile_failed' || phase === 'outcome_unknown' ? 'error' : '{{ $headline['type'] }}'" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" aria-live="polite" wire:key="preview-notice-slot">
             <x-filament::icon icon="heroicon-o-information-circle" />
             <div class="min-w-0">
                 <div x-cloak x-show="collectionFailed || navigationFailed" role="alert"><h3>{{ __('configurator.preview.operation_failed') }}</h3><p x-text="collectionFailed ? {{ \Illuminate\Support\Js::from(__('configurator.preview.collection_failed')) }} : {{ \Illuminate\Support\Js::from(__('configurator.preview.source_unavailable')) }}"></p></div>
                 <div x-cloak x-show="!collectionFailed && !navigationFailed && phase === 'reconcile_failed'" role="alert"><h3>{{ __('configurator.preview.reconcile_failed') }}</h3><p>{{ __('configurator.preview.reconcile_help') }}</p></div>
-                <div x-cloak x-show="!collectionFailed && !navigationFailed && phase === 'outcome_unknown'" role="alert"><h3>{{ __('configurator.preview.outcome_unknown') }}</h3><p>{{ __('configurator.preview.outcome_unknown_help') }}</p></div>
-                <div x-cloak x-show="!collectionFailed && !navigationFailed && !['reconcile_failed','outcome_unknown'].includes(phase) && busy"><h3>{{ __('configurator.preview.working') }}</h3><p>{{ __('configurator.preview.collecting') }}</p></div>
-                <div x-show="!collectionFailed && !navigationFailed && !['reconcile_failed','outcome_unknown'].includes(phase) && !busy"><h3>{{ $headline['title'] }}</h3><p>{{ $headline['message'] ?? '' }}</p></div>
+                <div x-cloak x-show="!collectionFailed && !navigationFailed && phase === 'outcome_unknown'" role="alert"><h3>{{ __('configurator.preview.outcome_unknown') }}</h3><p>{{ __('configurator.preview.outcome_unknown_help') }}</p><p x-show="outcomeInspectionFailed">{{ __('configurator.preview.outcome_inspection_failed') }}</p></div>
+                <div x-cloak x-show="savePermissionDenied" role="alert"><h3>{{ __('configurator.preview.save_permission_denied') }}</h3><p>{{ __('configurator.preview.permission_draft_kept') }}</p></div>
+                <div x-cloak x-show="phase === 'outcome_review'" role="status"><h3>{{ __('configurator.preview.review_saved_state') }}</h3><p>{{ __('configurator.preview.outcome_review_help') }}</p></div>
+                <div x-cloak x-show="!collectionFailed && !navigationFailed && !['reconcile_failed','outcome_unknown','outcome_review'].includes(phase) && busy"><h3>{{ __('configurator.preview.working') }}</h3><p>{{ __('configurator.preview.collecting') }}</p></div>
+                <div x-show="!collectionFailed && !navigationFailed && !savePermissionDenied && !['reconcile_failed','outcome_unknown','outcome_review'].includes(phase) && !busy"><h3>{{ $headline['title'] }}</h3><p>{{ $headline['message'] ?? '' }}</p></div>
             </div>
             <div class="catalog-preview-notice-actions">
                 <button type="button" class="catalog-preview-text-action" x-cloak x-show="phase === 'reconcile_failed'" x-on:click="retryReconciliation()">{{ __('configurator.preview.retry_editor_refresh') }}</button>
+                <button type="button" class="catalog-preview-text-action" x-cloak x-show="['outcome_unknown','outcome_review'].includes(phase)" x-on:click="inspectUnknownOutcome()">{{ __('configurator.preview.check_saved_state') }}</button>
+                <button type="button" class="catalog-preview-text-action" x-cloak x-show="phase === 'outcome_review'" x-on:click="finishUnknownReview()">{{ __('configurator.preview.finish_outcome_review') }}</button>
                 @if (($saveReceipt['refresh_error'] ?? null) !== null)
                     <button type="button" class="catalog-preview-text-action" x-on:click="refreshSavedPreview()" x-bind:disabled="busy">{{ __('configurator.preview.retry_preview_refresh') }}</button>
                 @endif
@@ -26,6 +30,20 @@
                 @if ($notices !== [])<button type="button" class="catalog-preview-text-action" x-on:click="notices()" x-bind:disabled="busy">{{ __('configurator.preview.all_notices') }}@if (count($notices) > 1) ({{ count($notices) }})@endif</button>@endif
             </div>
         </div>
+        @if ($saveOutcomeReview !== null)
+            <section x-cloak x-show="phase === 'outcome_review'" class="space-y-4" aria-label="{{ __('configurator.preview.review_saved_state') }}">
+                @if ($saveOutcomeReview['new_rules'])
+                    <p role="alert">{{ __('configurator.preview.unknown_new_rule_help') }}</p>
+                    <h3>{{ __('configurator.preview.current_saved_rules') }}</h3>
+                    <ul>@foreach ($saveOutcomeReview['saved_rules'] as $rule)<li>{{ $rule['label'] }} · {{ $rule['kind'] }} (#{{ $rule['id'] }})</li>@endforeach</ul>
+                @endif
+                @if ($saveOutcomeReview['unavailable'] !== [])
+                    <p role="alert">{{ __('configurator.preview.outcome_unavailable') }}</p>
+                    <ul>@foreach ($saveOutcomeReview['unavailable'] as $row)<li>{{ __('configurator.preview.types.'.$row['type']) }} #{{ $row['id'] }}</li>@endforeach</ul>
+                @endif
+                @include('livewire.catalog.configurator-preview-changes', ['changes' => $saveOutcomeReview['changes'], 'tested' => [], 'inventoryErrors' => $saveOutcomeReview['errors'], 'previewErrors' => [], 'recovery' => true])
+            </section>
+        @endif
         @include('livewire.catalog.configurator-preview-controls')
         <div class="catalog-preview-panels" wire:key="preview-primary-split" x-data="workspaceSplit({ preview: { read: () => splitRatio, write: value => setSplitRatio(value), sideCount: () => visibleSideCount, threshold: 1040, primaryMinimum: 440, sideMinimum: 240, track: 16, gap: 0, sideGap: 12 } })" x-effect="syncPreviewPanels(visibleSideCount, splitRatio)" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
             <section id="preview-choices-{{ $this->getId() }}" class="catalog-preview-configuration" aria-labelledby="preview-configuration-heading-{{ $this->getId() }}">

@@ -17,6 +17,7 @@ use App\Models\User;
 use App\RuleEffectKind;
 use App\RuleTargetScope;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -78,6 +79,42 @@ class ConfiguratorEditorChanges
         }
 
         return $payload['rows'];
+    }
+
+    /** @param list<array<string, mixed>> $captures @return array{changes: array, errors: list<string>, unavailable: list<array{type:string,id:string}>, new_rules: bool, saved_rules: array, matches: bool} */
+    public function compareSaved(User $actor, int $configuratorId, array $captures): array
+    {
+        Gate::forUser($actor)->authorize('manage-catalog');
+
+        return DB::transaction(function () use ($actor, $configuratorId, $captures): array {
+            $rows = $this->savedRows($actor, $configuratorId, $captures);
+            $configurator = Configurator::findOrFail($configuratorId);
+            $current = $this->loader->draft($configurator);
+            $comparison = $unavailable = [];
+            $newRules = false;
+            foreach ($rows as $row) {
+                $id = (string) $row['id'];
+                if ($row['type'] === 'rule' && str_starts_with($id, 'new:')) {
+                    $newRules = true;
+                } else {
+                    try {
+                        $path = $this->rowPath($current, $row['type'], $id);
+                    } catch (ValidationException) {
+                        $unavailable[] = ['type' => $row['type'], 'id' => $id];
+
+                        continue;
+                    }
+                    $row['before'] = $path === '' ? $current : Arr::get($current, $path);
+                }
+                $comparison[] = $row;
+            }
+            $currentCaptures = collect($comparison)->chunk(500)->map(fn ($chunk): array => $this->capture($actor, $configuratorId, $chunk->values()->all()))->values()->all();
+            $inspection = $this->inspect($actor, $configurator, $currentCaptures);
+
+            return [...$inspection, 'unavailable' => $unavailable, 'new_rules' => $newRules,
+                'saved_rules' => $newRules ? array_map(fn (array $rule): array => Arr::only($rule, ['id', 'label', 'kind']), $current['rules']) : [],
+                'matches' => $inspection['changes'] === [] && $unavailable === [] && ! $newRules];
+        });
     }
 
     /** @param list<array<string, mixed>> $captures @return array{changes: list<array<string, mixed>>, errors: list<string>} */
