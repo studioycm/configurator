@@ -2,9 +2,11 @@
 
 namespace App\Actions;
 
+use App\CatalogWriteReplan;
 use App\ConfigInputType;
 use App\Filament\Resources\Groups\Schemas\GroupForm;
 use App\Models\Attribute;
+use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorOption;
@@ -96,25 +98,29 @@ class BatchCatalogChanges
     public function apply(User $actor, string $table, array $ids, array $intent, string $token, ?int $ownerId = null): void
     {
         Gate::forUser($actor)->authorize('manage-catalog');
-        DB::transaction(function () use ($actor, $table, $ids, $intent, $token, $ownerId): void {
-            app(CatalogRevisions::class)->batch(function () use ($actor, $table, $ids, $intent, $token, $ownerId): void {
-                if (in_array($table, ['groups', 'configurators'], true)) {
-                    app(CatalogIntegrity::class)->lockGroups();
-                }
-                $initial = $this->records($table, $ids, $ownerId);
-                $owners = [];
-                foreach ($initial as $record) {
-                    $owners = [...$owners, ...$this->ownerIds($record)];
-                }
-                Configurator::whereIn('id', array_unique($owners))->orderBy('id')->lockForUpdate()->get();
+        $initial = $this->records($table, $ids, $ownerId);
+        $ownerIds = [];
+        foreach ($initial as $record) {
+            $ownerIds = [...$ownerIds, ...($record instanceof Group && $record->configurator_id !== null ? [$record->configurator_id] : $this->ownerIds($record))];
+        }
+        $ownerIds = array_values(array_unique($ownerIds));
+        DB::transaction(function () use ($actor, $table, $ids, $intent, $token, $ownerId, $initial, $ownerIds): void {
+            app(CatalogRevisions::class)->batch(function () use ($actor, $table, $ids, $intent, $token, $ownerId, $initial, $ownerIds): void {
+                $this->lockSelection($table, $initial, $ownerIds);
                 $records = $this->records($table, $ids, $ownerId, lock: true);
-                if (! hash_equals($this->token($actor, $table, $records, $intent, $ownerId), $token)) {
+                foreach ($records as $record) {
+                    $currentOwners = $record instanceof Group && $record->configurator_id !== null ? [$record->configurator_id] : $this->ownerIds($record);
+                    if (array_diff($currentOwners, $ownerIds) !== []) {
+                        throw CatalogWriteReplan::withMessages(['preview' => __('admin.batch.validation.selected_records_changed_or_your_operation_changed')]);
+                    }
+                }
+                if (! hash_equals($this->token($actor, $table, $records, $intent, $ownerId, locked: true), $token)) {
                     throw ValidationException::withMessages(['preview' => __('admin.batch.validation.selected_records_changed_or_your_operation_changed')]);
                 }
                 $after = [];
                 foreach ($records as $record) {
                     $after[$record->id] = $this->transform($table, $record, $intent);
-                    if (($intent['operation'] ?? '') === 'remove' && $this->removalBlockers($record) !== []) {
+                    if (($intent['operation'] ?? '') === 'remove' && $this->removalBlockers($record, current: true) !== []) {
                         throw ValidationException::withMessages(['preview' => __('admin.batch.validation.dependencies_block_this_selection_open_the_blocking')]);
                     }
                 }
@@ -149,6 +155,37 @@ class BatchCatalogChanges
         }, attempts: 3);
     }
 
+    /** @param Collection<int, Model> $records @param list<int> $ownerIds */
+    private function lockSelection(string $table, Collection $records, array $ownerIds): void
+    {
+        $owners = Configurator::whereKey($ownerIds)->orderBy('id')->lockForUpdate()->get();
+        $attributeIds = $records->filter(fn (Model $record): bool => $record instanceof Attribute)->modelKeys();
+        $valueIds = $records->filter(fn (Model $record): bool => $record instanceof Value)->modelKeys();
+        $optionIds = $records->filter(fn (Model $record): bool => $record instanceof Option)->modelKeys();
+        $sharedAttributeIds = $attributeIds;
+        if ($table === 'configurators' || str_starts_with($table, 'configurator-')) {
+            CatalogContextSettings::current(lock: true);
+            $loader = app(ConfiguratorDefinitionLoader::class);
+            foreach ($owners as $owner) {
+                $references = $loader->canonicalReferences($loader->draft($owner));
+                $attributeIds = [...$attributeIds, ...$references['attribute_ids']];
+                $optionIds = [...$optionIds, ...$references['option_ids']];
+            }
+        }
+        $usage = app(CanonicalUsage::class);
+        $usage->lockParents($attributeIds, $valueIds, $optionIds);
+        if ($sharedAttributeIds !== [] || $valueIds !== []) {
+            Option::where(fn (Builder $query): Builder => $query->whereIn('attribute_id', $sharedAttributeIds)->orWhereIn('value_id', $valueIds))
+                ->orderBy('id')->lockForUpdate()->get();
+        }
+        if (in_array($table, ['attributes', 'values', 'options', 'attribute-options'], true)) {
+            $usage->assertConfiguratorIds($ownerIds, $sharedAttributeIds, $valueIds, $optionIds);
+        }
+        if (in_array($table, ['groups', 'configurators'], true)) {
+            app(CatalogIntegrity::class)->lockGroups();
+        }
+    }
+
     /** @param array<int, array<string, mixed>> $states */
     private function validateSelectedCodes(string $table, array $states): void
     {
@@ -162,7 +199,7 @@ class BatchCatalogChanges
     }
 
     /** @return list<array{category: string, count: int, parent_id: int, name: string, list_key: string}> */
-    private function removalBlockers(Model $record): array
+    private function removalBlockers(Model $record, bool $current = false): array
     {
         $name = $this->recordName($record);
         $keys = [];
@@ -170,7 +207,7 @@ class BatchCatalogChanges
             $type = match (true) {
                 $record instanceof Attribute => 'attribute', $record instanceof Value => 'value', default => 'option'
             };
-            foreach (app(CanonicalUsage::class)->counts($record) as $category => $count) {
+            foreach (app(CanonicalUsage::class)->counts($record, $current) as $category => $count) {
                 if (! ($record instanceof Option && $category === 'options')) {
                     $keys[$category] = ['canonical-'.$type.'-'.$category, $count];
                 }
@@ -346,13 +383,13 @@ class BatchCatalogChanges
     }
 
     /** @param array<string, mixed> $intent */
-    private function token(User $actor, string $table, Collection $records, array $intent, ?int $ownerId): string
+    private function token(User $actor, string $table, Collection $records, array $intent, ?int $ownerId, bool $locked = false): string
     {
         $ownerDrafts = [];
-        $states = $records->map(function (Model $record) use (&$ownerDrafts): array {
+        $states = $records->map(function (Model $record) use (&$ownerDrafts, $locked): array {
             $related = match (true) {
                 $record instanceof Group => [$record->filters()->orderBy('id')->get()->toArray(), $record->subGroups()->orderBy('id')->get()->toArray()],
-                $record instanceof Attribute, $record instanceof Value, $record instanceof Option => app(CanonicalUsage::class)->counts($record),
+                $record instanceof Attribute, $record instanceof Value, $record instanceof Option => app(CanonicalUsage::class)->counts($record, current: $locked),
                 default => [],
             };
             $drafts = [];
