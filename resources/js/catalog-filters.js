@@ -1,7 +1,7 @@
 import { createFilterEngine, readDiscovery, discoveryUrl } from './catalog-filter-engine.js';
 import { requireLabels } from './ui-wording.js';
 
-function catalogFilters() {
+export function catalogFilters() {
     // Dataset rows, indexes, timers and transport identities never enter Alpine's proxy.
     let snapshot;
     let labels;
@@ -385,5 +385,3 @@ function catalogFilters() {
         },
     };
 }
-
-document.addEventListener('alpine:init', () => window.Alpine.data('catalogFilters', catalogFilters), {once:true});

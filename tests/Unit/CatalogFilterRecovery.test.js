@@ -22,8 +22,7 @@ async function harness(t, payload, initial = snapshot) {
     const source = {textContent:JSON.stringify(initial),remove() {}};
     const root = {dataset:{catalogLabels:payload,datasetUrl:'/dataset',groupId:'1'},
         querySelector: selector => selector === '[data-catalog-snapshot]' ? source : selector === '[data-catalog-recovery]' ? {textContent:'Localized recovery — reload'} : null};
-    await import(`../../resources/js/catalog-filters.js?recovery-${++moduleId}`);
-    document.dispatchEvent(new Event('alpine:init'));
+    window.Alpine.data('catalogFilters', (await import(`../../resources/js/catalog-filters.js?recovery-${++moduleId}`)).catalogFilters);
     component.$el = root;
     component.$nextTick = () => {};
     component.$wire = {loadCards:async () => ({})};

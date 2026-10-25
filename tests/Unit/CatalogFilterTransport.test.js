@@ -13,8 +13,7 @@ test('freshness uses the initialized component root after a child button owns th
         globalThis.cancelAnimationFrame = () => {};
         window.Alpine = {data: (_name, factory) => { component = factory(); }};
         globalThis.fetch = async url => { requested.push(url); return {status:503, ok:false}; };
-        await import('../../resources/js/catalog-filters.js');
-        document.dispatchEvent(new Event('alpine:init'));
+        window.Alpine.data('catalogFilters', (await import('../../resources/js/catalog-filters.js')).catalogFilters);
         component.$el = {dataset:{catalogLabels, datasetUrl:'/dashboard/catalog/groups/1/dataset',groupId:'1'}, querySelector:()=>null};
         component.init();
         // Alpine resolves $el to the element whose expression invokes a method.
@@ -71,8 +70,7 @@ test('only current cards can publish a properties notice and criteria, retry and
             replaceState(_state, _title, url) { location.href = String(url); }};
         globalThis.requestAnimationFrame = callback => { frames.set(++nextFrame, callback); return nextFrame; };
         globalThis.cancelAnimationFrame = id => frames.delete(id);
-        await import('../../resources/js/catalog-filters.js?card-notice-test');
-        document.dispatchEvent(new Event('alpine:init'));
+        window.Alpine.data('catalogFilters', (await import('../../resources/js/catalog-filters.js?card-notice-test')).catalogFilters);
         component.$el = root;
         component.$nextTick = callback => queueMicrotask(callback);
         component.$wire = {loadCards(_state, _revision, id) {

@@ -5,7 +5,7 @@ import { masterValueBatch, catalogDraftGuard, attributeDraftIsDirty } from './ma
 import { workspaceTableSelection } from './workspace-table-selection';
 import { interpolate } from './ui-wording';
 import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
-import './catalog-filters';
+import { catalogFilters } from './catalog-filters';
 import { catalogShell } from './catalog-shell';
 import { itemCountPreview } from './item-count-preview';
 import { workspaceDialog, workspaceColumnManager } from './workspace-dialogs';
@@ -27,43 +27,31 @@ window.editorDrafts = editorDrafts;
 window.configuratorDrafts = configuratorDrafts;
 window.sameEditorMeaning = sameEditorMeaning;
 
-document.addEventListener('alpine:init', () => {
-    window.Alpine.data('suggestedIdentifier', suggestedIdentifier);
-    window.Alpine.data('masterValueBatch', masterValueBatch);
-    window.Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));
-    window.Alpine.data('configuratorCreationGuard', configuratorCreationGuard);
-    window.Alpine.data('workspaceTableSelection', workspaceTableSelection);
-    window.Alpine.data('configuratorProductSearch', configuratorProductSearch);
-    window.Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
-    window.Alpine.data('catalogShell', catalogShell);
-    window.Alpine.data('itemCountPreview', itemCountPreview);
-    window.Alpine.data('workspaceDialog', workspaceDialog);
-    window.Alpine.data('tableColumnWidths', tableColumnWidths);
-    window.Alpine.data('workspaceSplit', workspaceSplit);
-    window.Alpine.data('tablePagination', tablePagination);
-    window.Alpine.data('localTableProfile', localTableProfile);
-    window.Alpine.data('adminBrowserProfile', adminBrowserProfile);
-    window.Alpine.data('configuratorPreviewDisplay', configuratorPreviewDisplay);
-    window.Alpine.data('localSectionProfile', localSectionProfile);
-    window.Alpine.data('localOrderProfile', localOrderProfile);
-}, { once: true });
+const registeredAlpine = new WeakSet();
 
-if (window.Alpine) {
-    window.Alpine.data('suggestedIdentifier', suggestedIdentifier);
-    window.Alpine.data('masterValueBatch', masterValueBatch);
-    window.Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));
-    window.Alpine.data('configuratorCreationGuard', configuratorCreationGuard);
-    window.Alpine.data('workspaceTableSelection', workspaceTableSelection);
-    window.Alpine.data('configuratorProductSearch', configuratorProductSearch);
-    window.Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
-    window.Alpine.data('itemCountPreview', itemCountPreview);
-    window.Alpine.data('workspaceDialog', workspaceDialog);
-    window.Alpine.data('tableColumnWidths', tableColumnWidths);
-    window.Alpine.data('workspaceSplit', workspaceSplit);
-    window.Alpine.data('tablePagination', tablePagination);
-    window.Alpine.data('localTableProfile', localTableProfile);
-    window.Alpine.data('adminBrowserProfile', adminBrowserProfile);
-    window.Alpine.data('configuratorPreviewDisplay', configuratorPreviewDisplay);
-    window.Alpine.data('localSectionProfile', localSectionProfile);
-    window.Alpine.data('localOrderProfile', localOrderProfile);
+function registerComponents(Alpine) {
+    if (!Alpine || registeredAlpine.has(Alpine)) return;
+    Alpine.data('suggestedIdentifier', suggestedIdentifier);
+    Alpine.data('masterValueBatch', masterValueBatch);
+    Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));
+    Alpine.data('configuratorCreationGuard', configuratorCreationGuard);
+    Alpine.data('workspaceTableSelection', workspaceTableSelection);
+    Alpine.data('configuratorProductSearch', configuratorProductSearch);
+    Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
+    Alpine.data('catalogShell', catalogShell);
+    Alpine.data('itemCountPreview', itemCountPreview);
+    Alpine.data('workspaceDialog', workspaceDialog);
+    Alpine.data('tableColumnWidths', tableColumnWidths);
+    Alpine.data('workspaceSplit', workspaceSplit);
+    Alpine.data('tablePagination', tablePagination);
+    Alpine.data('localTableProfile', localTableProfile);
+    Alpine.data('adminBrowserProfile', adminBrowserProfile);
+    Alpine.data('configuratorPreviewDisplay', configuratorPreviewDisplay);
+    Alpine.data('localSectionProfile', localSectionProfile);
+    Alpine.data('localOrderProfile', localOrderProfile);
+    Alpine.data('catalogFilters', catalogFilters);
+    registeredAlpine.add(Alpine);
 }
+
+document.addEventListener('alpine:init', () => registerComponents(window.Alpine), { once: true });
+registerComponents(window.Alpine);
