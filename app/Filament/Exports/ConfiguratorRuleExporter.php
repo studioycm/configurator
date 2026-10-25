@@ -2,6 +2,7 @@
 
 namespace App\Filament\Exports;
 
+use App\Filament\Exports\Downloaders\ConfiguratorRulesCsvDownloader;
 use App\Filament\Exports\Downloaders\ConfiguratorRulesXlsxDownloader;
 use App\Models\Configurator;
 use App\Models\ConfiguratorRule;
@@ -13,6 +14,7 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Facades\Gate;
@@ -167,11 +169,28 @@ class ConfiguratorRuleExporter extends CatalogExporter
 
     public static function getDownloader(ExportFormatInterface $format): Downloader
     {
-        return $format === ExportFormat::Xlsx ? app(ConfiguratorRulesXlsxDownloader::class) : parent::getDownloader($format);
+        return match ($format) {
+            ExportFormat::Csv => app(ConfiguratorRulesCsvDownloader::class),
+            ExportFormat::Xlsx => app(ConfiguratorRulesXlsxDownloader::class),
+            default => parent::getDownloader($format),
+        };
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
+        if (! (new ConfiguratorRuleExportFiles($export))->ready()) {
+            return __('data_exchange.rules.export_pending');
+        }
+
         return __('data_exchange.rules.completed', ['successful' => number_format($export->successful_rows), 'failed' => number_format($export->getFailedRowsCount())]);
+    }
+
+    public static function modifyCompletedNotification(Notification $notification, Export $export): Notification
+    {
+        if (! (new ConfiguratorRuleExportFiles($export))->ready()) {
+            return $notification->title(__('data_exchange.rules.export_finished'))->body(__('data_exchange.rules.export_pending'))->warning();
+        }
+
+        return $notification;
     }
 }

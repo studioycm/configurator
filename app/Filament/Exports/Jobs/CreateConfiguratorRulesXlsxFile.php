@@ -2,6 +2,7 @@
 
 namespace App\Filament\Exports\Jobs;
 
+use App\Filament\Exports\ConfiguratorRuleExportFiles;
 use Filament\Actions\Exports\Jobs\CreateXlsxFile;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\File;
@@ -14,6 +15,9 @@ class CreateConfiguratorRulesXlsxFile extends CreateXlsxFile
 {
     public function handle(): void
     {
+        if (! (new ConfiguratorRuleExportFiles($this->export))->ready()) {
+            throw new RuntimeException('The Rules export pages are not ready for workbook generation.');
+        }
         $temporaryFile = tempnam(sys_get_temp_dir(), $this->export->file_name);
         if ($temporaryFile === false) {
             throw new RuntimeException('Unable to create the temporary Rules workbook.');

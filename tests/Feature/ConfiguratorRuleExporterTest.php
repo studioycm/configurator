@@ -19,11 +19,15 @@ use Filament\Actions\ExportAction;
 use Filament\Actions\Exports\Jobs\CreateXlsxFile;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Actions\Testing\TestAction;
+use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Events\TransactionCommitted;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use League\Csv\Reader;
+use League\Csv\Writer;
 use Livewire\Livewire;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 
@@ -42,6 +46,50 @@ function ruleExportRecord(User $actor, int $total = 1): Export
 {
     return Export::create(['user_id' => $actor->id, 'exporter' => ConfiguratorRuleExporter::class, 'total_rows' => $total, 'processed_rows' => 0, 'successful_rows' => 0, 'file_disk' => 'local', 'file_name' => 'rules']);
 }
+
+test('replaying a Rules export page preserves its captured bytes and accounts for it only once', function () {
+    $disk = Storage::fake('local');
+    $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
+    $rule = ruleExportFixture();
+    $export = ruleExportRecord($actor, 2);
+    $job = new ExportConfiguratorRulesCsv($export, EloquentSerializeFacade::serialize(ConfiguratorRule::query()), [$rule->id], 1, [], ['preset' => 'import']);
+    $job->handle();
+    $path = $export->getFileDirectory().'/0000000000000001.csv';
+    $captured = $disk->get($path);
+    $rule->update(['label' => 'Changed after captured export']);
+    $job->handle();
+    expect($export->fresh()->only(['processed_rows', 'successful_rows']))->toBe(['processed_rows' => 1, 'successful_rows' => 1])
+        ->and($disk->get($path))->toBe($captured);
+});
+
+test('a post-savepoint export callback failure retains its valid page and retry does not add accounting', function () {
+    $disk = Storage::fake('local');
+    $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
+    $this->actingAs($actor);
+    $rule = ruleExportFixture();
+    $export = ruleExportRecord($actor);
+    $disk->put($export->getFileDirectory().'/headers.csv', implode(',', ConfiguratorRuleExchange::COLUMNS)."\n");
+    $job = new ExportConfiguratorRulesCsv($export, EloquentSerializeFacade::serialize(ConfiguratorRule::query()), [$rule->id], 1, [], ['preset' => 'import']);
+    $pending = true;
+    Event::listen(TransactionCommitted::class, function (TransactionCommitted $event) use (&$pending, $export): void {
+        if ($pending && $event->connection->transactionLevel() === 1 && $export->fresh()->processed_rows === 1) {
+            throw new RuntimeException('Injected export committed callback failure');
+        }
+    });
+    try {
+        expect($job->handle(...))->toThrow(RuntimeException::class, 'committed callback failure');
+    } finally {
+        $pending = false;
+    }
+    $path = $export->getFileDirectory().'/0000000000000001.csv';
+    $disk->assertExists($path);
+    $captured = $disk->get($path);
+    $job->handle();
+    expect($export->fresh()->only(['processed_rows', 'successful_rows']))->toBe(['processed_rows' => 1, 'successful_rows' => 1])
+        ->and($disk->get($path))->toBe($captured);
+    $url = URL::signedRoute('filament.exports.download', ['authGuard' => 'web', 'export' => $export, 'format' => 'csv']);
+    $this->get($url)->assertDownload('rules.csv');
+});
 
 test('the real native export pipeline writes fixed core Rules and optional helper and snapshot lookup sheets', function () {
     Storage::fake('local');
@@ -131,11 +179,14 @@ test('XLSX rejects oversized cells explicitly while CSV retains their complete t
     Storage::fake('local');
     $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
     $rule = ruleExportFixture();
-    $rule->effects()->first()->update(['display_value' => str_repeat('א', 32768)]);
     $export = ruleExportRecord($actor);
     $exporter = new ConfiguratorRuleExporter($export, [], ['preset' => 'import']);
-    (new ExportConfiguratorRulesCsv($export, EloquentSerializeFacade::serialize(ConfiguratorRule::query()), [$rule->id], 1, [], ['preset' => 'import']))->handle();
-    $rows = iterator_to_array(Reader::fromString(Storage::disk('local')->get($export->getFileDirectory().'/0000000000000001.csv'))->getRecords(), false);
+    $snapshot = app(ConfiguratorRuleExchange::class)->snapshot($rule);
+    $snapshot['rows'][1]['display_value'] = str_repeat('א', 32768);
+    $csv = Writer::fromString();
+    $csv->setEscape('');
+    $csv->insertAll($exporter->formatRows($snapshot));
+    $rows = iterator_to_array(Reader::fromString($csv->toString())->getRecords(), false);
 
     expect(mb_strlen($rows[1][24]))->toBe(32768);
     expect(fn () => $exporter->makeXlsxRow($rows[1]))->toThrow(RuntimeException::class, '32,767');
@@ -323,23 +374,85 @@ test('failed JSON publication leaves no downloadable chunk or counters', functio
     expect($export->fresh()->only(['processed_rows', 'successful_rows']))->toBe(['processed_rows' => 0, 'successful_rows' => 0]);
 })->with(['false return' => false, 'exception' => true]);
 
-test('a database save failure removes published chunk files as its transaction rolls back', function () {
+test('a database save failure retains private preparation for reconciliation without exposing a partial export', function () {
     $disk = Storage::fake('local');
     $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
     $rule = ruleExportFixture();
     $export = ruleExportRecord($actor);
+    $job = new ExportConfiguratorRulesCsv($export, EloquentSerializeFacade::serialize(ConfiguratorRule::query()), [$rule->id], 1, []);
     Export::saving(function (): void {
         throw new RuntimeException('Simulated export accounting failure.');
     });
 
     try {
-        expect(fn () => (new ExportConfiguratorRulesCsv($export, EloquentSerializeFacade::serialize(ConfiguratorRule::query()), [$rule->id], 1, []))->handle())->toThrow(RuntimeException::class, 'accounting failure');
+        expect($job->handle(...))->toThrow(RuntimeException::class, 'accounting failure');
     } finally {
         Export::flushEventListeners();
     }
 
-    expect($disk->allFiles())->toBe([]);
+    $base = $export->getFileDirectory().'/0000000000000001';
+    $disk->assertExists($base.'.json');
+    $disk->assertMissing($base.'.csv');
     expect($export->fresh()->only(['processed_rows', 'successful_rows']))->toBe(['processed_rows' => 0, 'successful_rows' => 0]);
+    $rule->update(['label' => 'Changed after failed accounting']);
+    $job->handle();
+    $disk->assertExists($base.'.csv');
+    expect($disk->get($base.'.csv'))->not->toContain('Changed after failed accounting')
+        ->and($export->fresh()->only(['processed_rows', 'successful_rows']))->toBe(['processed_rows' => 1, 'successful_rows' => 1]);
+});
+
+test('a failed page publication stays unavailable and replay reconciles all pages without recapturing source Rules', function () {
+    $disk = Storage::fake('local');
+    $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
+    $this->actingAs($actor);
+    $first = ruleExportFixture();
+    $second = ruleExportFixture();
+    $export = ruleExportRecord($actor, 2);
+    $disk->put($export->getFileDirectory().'/headers.csv', implode(',', ConfiguratorRuleExchange::COLUMNS)."\n");
+    $failingDisk = Mockery::mock($disk);
+    $fail = true;
+    $failingDisk->shouldReceive('move')->andReturnUsing(function (string $from, string $to) use ($disk, &$fail): bool {
+        return $fail && str_ends_with($to, '.csv') ? false : $disk->move($from, $to);
+    });
+    Storage::shouldReceive('disk')->with('local')->andReturn($failingDisk);
+    $query = EloquentSerializeFacade::serialize(ConfiguratorRule::query());
+    $job = new ExportConfiguratorRulesCsv($export, $query, [$first->id], 1, [], ['preset' => 'import']);
+    expect($job->handle(...))->toThrow(RuntimeException::class, 'publish');
+    $url = URL::signedRoute('filament.exports.download', ['authGuard' => 'web', 'export' => $export, 'format' => 'csv']);
+    $this->get($url)->assertStatus(409)->assertHeader('Retry-After', '5');
+    $notification = ConfiguratorRuleExporter::modifyCompletedNotification(Notification::make()->success(), $export->fresh())->toArray();
+    expect($notification['status'])->toBe('warning');
+    expect(ConfiguratorRuleExporter::getCompletedNotificationBody($export->fresh()))->toContain('not available');
+    expect(fn () => (new CreateConfiguratorRulesXlsxFile($export, [], ['preset' => 'import']))->handle())->toThrow(RuntimeException::class, 'not ready');
+    $fail = false;
+    (new ExportConfiguratorRulesCsv($export, $query, [$second->id], 2, [], ['preset' => 'import']))->handle();
+    $this->get($url)->assertStatus(409);
+    $first->update(['label' => 'Must not enter captured export']);
+    $job->handle();
+    expect($export->fresh()->only(['processed_rows', 'successful_rows']))->toBe(['processed_rows' => 2, 'successful_rows' => 2]);
+    $response = $this->get($url)->assertDownload('rules.csv');
+    expect($response->streamedContent())->not->toContain('Must not enter captured export');
+    $disk->put($export->getFileDirectory().'/headers.csv', 'wrong headers');
+    $this->get($url)->assertStatus(409);
+});
+
+test('completed legacy Rules export pages remain downloadable but cannot be blindly replayed', function () {
+    $disk = Storage::fake('local');
+    $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
+    $this->actingAs($actor);
+    $rule = ruleExportFixture();
+    $export = ruleExportRecord($actor);
+    $disk->put($export->getFileDirectory().'/headers.csv', implode(',', ConfiguratorRuleExchange::COLUMNS)."\n");
+    $job = new ExportConfiguratorRulesCsv($export, EloquentSerializeFacade::serialize(ConfiguratorRule::query()), [$rule->id], 1, [], ['preset' => 'import']);
+    $job->handle();
+    $path = $export->getFileDirectory().'/0000000000000001.json';
+    $metadata = json_decode($disk->get($path), true, flags: JSON_THROW_ON_ERROR);
+    unset($metadata['recovery']);
+    $disk->put($path, json_encode($metadata, JSON_THROW_ON_ERROR));
+    $url = URL::signedRoute('filament.exports.download', ['authGuard' => 'web', 'export' => $export, 'format' => 'csv']);
+    $this->get($url)->assertDownload('rules.csv');
+    expect($job->handle(...))->toThrow(RuntimeException::class, 'older inputs');
+    expect($export->fresh()->processed_rows)->toBe(1);
 });
 
 test('signed Rules XLSX downloads return a retry message until the generated workbook is available', function () {

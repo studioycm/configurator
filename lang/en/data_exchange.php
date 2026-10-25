@@ -45,6 +45,8 @@ return [
         'format' => 'File format',
         'lookups' => 'Include XLSX Lookups sheet',
         'workbook_pending' => 'Workbook not available yet. Use CSV or retry after generation.',
+        'export_pending' => 'Export not available yet. Its captured pages need reconciliation or publication. Retry later or create a new export.',
+        'export_finished' => 'Export processing finished',
         'lookup_help' => 'XLSX only. Saved reference snapshot; the helper copy does not recalculate when Rules is edited.',
         'configurators' => 'Configurators',
         'all_configurators' => 'Leave empty to export rules from every Configurator.',
