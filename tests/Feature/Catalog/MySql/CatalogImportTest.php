@@ -38,6 +38,7 @@ test('a separate process cannot apply while the shared import lock is held', fun
     require 'vendor/autoload.php';
     require 'tests/bootstrap-mysql.php';
     $app = require 'bootstrap/app.php';
+    Tests\TestDatabaseSafety::register($app, true);
     $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
     assertCatalogMySqlSafety($app);
     $actor = new App\Models\User(['email' => 'ycm@data4.work']);

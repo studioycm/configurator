@@ -9,14 +9,12 @@ trait CreatesApplication
 {
     public function createApplication(): Application
     {
+        $mysqlRun = defined('CATALOG_MYSQL_TEST_RUN');
+        TestDatabaseSafety::assertBeforeBootstrap($mysqlRun);
         $app = require __DIR__.'/../bootstrap/app.php';
-
+        TestDatabaseSafety::register($app, $mysqlRun);
         $app->make(Kernel::class)->bootstrap();
-
-        if (defined('CATALOG_MYSQL_TEST_RUN') || $app['config']->get('database.default') === 'mysql') {
-            require_once __DIR__.'/bootstrap-mysql.php';
-            assertCatalogMySqlSafety($app);
-        }
+        TestDatabaseSafety::assertApplication($app, $mysqlRun);
 
         return $app;
     }

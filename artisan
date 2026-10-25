@@ -9,10 +9,21 @@ define('LARAVEL_START', microtime(true));
 // Register the Composer autoloader...
 require __DIR__.'/vendor/autoload.php';
 
+$input = new ArgvInput;
+$isTestCommand = $input->getFirstArgument() === 'test';
+if ($isTestCommand) {
+    require_once __DIR__.'/tests/TestDatabaseSafety.php';
+    Tests\TestDatabaseSafety::assertBeforeBootstrap();
+}
+
 // Bootstrap Laravel and handle the command...
 /** @var Application $app */
 $app = require_once __DIR__.'/bootstrap/app.php';
 
-$status = $app->handleCommand(new ArgvInput);
+if ($isTestCommand) {
+    Tests\TestDatabaseSafety::register($app);
+}
+
+$status = $app->handleCommand($input);
 
 exit($status);
