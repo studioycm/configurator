@@ -87,9 +87,10 @@ class StatusActions
             ->action(function (Action $action, array $data, $livewire): void {
                 Validator::make($data, ['is_active' => ['required', 'boolean'], 'visibility' => ['sometimes', Rule::in(['unchanged', 'visible', 'hidden'])]])->validate();
                 $selection = self::selection($action)->sortBy('id');
-                ConfiguratorFormErrors::run(fn () => DB::transaction(function () use ($selection, $data): void {
-                    app(CatalogRevisions::class)->batch(function () use ($selection, $data): void {
-                        $locked = app(ChangeCatalogStatus::class)->lockForReview($selection);
+                $ownerIds = app(ChangeCatalogStatus::class)->reviewOwnerIds($selection);
+                ConfiguratorFormErrors::run(fn () => DB::transaction(function () use ($selection, $data, $ownerIds): void {
+                    app(CatalogRevisions::class)->batch(function () use ($selection, $data, $ownerIds): void {
+                        $locked = app(ChangeCatalogStatus::class)->lockForReview($selection, $ownerIds);
                         if ($locked->count() !== $selection->count() || ! hash_equals(self::reviewToken($locked, locked: true), $data['review_token'] ?? '')) {
                             throw ValidationException::withMessages(['is_active' => __('admin.status.validation.these_records_or_their_assignments_changed_close')]);
                         }
@@ -120,14 +121,16 @@ class StatusActions
             if ($fresh === null) {
                 return [$record::class, $record->id, null];
             }
-            $related = match (true) {
-                $fresh instanceof Configurator => [
-                    'groups' => $fresh->groups()->orderBy('id')->get(['id', 'is_active', 'configurator_id', 'catalog_revision'])->toArray(),
-                    'products' => Product::whereIn('group_id', $fresh->groups()->select('id'))->orderBy('id')->get(['id', 'group_id', 'is_active', 'updated_at'])->toArray(),
-                ],
-                $fresh instanceof Attribute, $fresh instanceof Option => app(CanonicalUsage::class)->counts($fresh),
-                default => [],
-            };
+            $related = [];
+            if ($fresh instanceof Configurator) {
+                $groups = $fresh->groups()->orderBy('id')->when($locked, fn ($query) => $query->lockForUpdate())->get(['id', 'is_active', 'configurator_id', 'catalog_revision']);
+                $related = [
+                    'groups' => $groups->toArray(),
+                    'products' => Product::whereIn('group_id', $groups->modelKeys())->orderBy('id')->when($locked, fn ($query) => $query->lockForUpdate())->get(['id', 'group_id', 'is_active', 'updated_at'])->toArray(),
+                ];
+            } elseif ($fresh instanceof Attribute || $fresh instanceof Option) {
+                $related = app(CanonicalUsage::class)->counts($fresh, current: $locked);
+            }
 
             return [$fresh::class, $fresh->getAttributes(), $related];
         })->values()->all();

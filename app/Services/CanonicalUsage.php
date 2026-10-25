@@ -136,9 +136,11 @@ class CanonicalUsage
     }
 
     /** @return array{options: int, inclusions: int, defaults: int, rules: int} */
-    public function counts(Attribute|Value|Option $record): array
+    public function counts(Attribute|Value|Option $record, bool $current = false): array
     {
-        return ['options' => $this->options($record)->count(), 'inclusions' => $this->inclusions($record)->count(), 'defaults' => $this->defaults($record)->count(), 'rules' => $this->rules($record)->count()];
+        $options = $current ? $this->options($record)->orderBy('id')->lockForUpdate()->get(['id'])->count() : $this->options($record)->count();
+
+        return ['options' => $options, 'inclusions' => $this->inclusions($record)->count(), 'defaults' => $this->defaults($record)->count(), 'rules' => $this->rules($record)->count()];
     }
 
     /** @return array{configurators: list<array<string, mixed>>, configurator_count: int, options: list<array<string, mixed>>, defaults: list<array<string, mixed>>, rules: list<array<string, mixed>>, counts: array{options: int, inclusions: int, defaults: int, rules: int}} */

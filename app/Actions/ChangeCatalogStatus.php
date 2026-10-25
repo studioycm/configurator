@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\Attribute;
+use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\Models\ConfiguratorAttribute;
 use App\Models\ConfiguratorRule;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\CanonicalUsage;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogRevisions;
+use App\Services\ConfiguratorDefinitionLoader;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,9 +27,12 @@ class ChangeCatalogStatus
     public function handleSelection(User $actor, Collection $records, bool $active, ?string $groupBehavior = null, ?bool $hidden = null): void
     {
         Gate::forUser($actor)->authorize('manage-catalog');
+        $ownerIds = $this->reviewOwnerIds($records);
         if (! $records->first() instanceof ConfiguratorAttribute && ! $records->first() instanceof ConfiguratorRule) {
-            DB::transaction(function () use ($actor, $records, $active, $groupBehavior, $hidden): void {
-                foreach ($records as $record) {
+            DB::transaction(function () use ($actor, $records, $active, $groupBehavior, $hidden, $ownerIds): void {
+                $locked = $this->lockForReview($records, $ownerIds);
+                abort_unless($locked->count() === $records->count(), 404);
+                foreach ($locked as $record) {
                     $this->handle($actor, $record, $active, $groupBehavior, $hidden);
                 }
             }, attempts: 3);
@@ -37,8 +42,8 @@ class ChangeCatalogStatus
         if ($hidden !== null) {
             throw ValidationException::withMessages(['hidden' => __('admin.status.validation.only_shared_attribute_values_support_hidden_status')]);
         }
-        DB::transaction(function () use ($actor, $records, $active): void {
-            $locked = $this->lockForReview($records);
+        DB::transaction(function () use ($actor, $records, $active, $ownerIds): void {
+            $locked = $this->lockForReview($records, $ownerIds);
             abort_unless($locked->count() === $records->count(), 404);
             foreach ($locked as $record) {
                 abort_unless($record->configurator_id === $records->firstWhere('id', $record->id)->configurator_id, 404);
@@ -61,28 +66,55 @@ class ChangeCatalogStatus
         }, attempts: 3);
     }
 
-    /** @param Collection<int, Model> $records @return Collection<int, Model> */
-    public function lockForReview(Collection $records): Collection
+    /** @param Collection<int, Model> $records @return list<int> */
+    public function reviewOwnerIds(Collection $records): array
     {
         if ($records->isEmpty() || $records->contains(fn (Model $record): bool => $record::class !== $records->first()::class)) {
             throw ValidationException::withMessages(['is_active' => __('admin.status.validation.choose_records_from_one_status_table')]);
         }
-        app(CatalogIntegrity::class)->lockGroups();
         $ownerIds = [];
         foreach ($records as $record) {
-            $ownerIds = [...$ownerIds, ...$this->ownerIds($record, lock: true)];
+            $ownerIds = [...$ownerIds, ...$this->ownerIds($record)];
         }
-        Configurator::whereKey(array_unique($ownerIds))->orderBy('id')->lockForUpdate()->get();
+        sort($ownerIds, SORT_NUMERIC);
+
+        return array_values(array_unique($ownerIds));
+    }
+
+    /** @param Collection<int, Model> $records @param list<int> $ownerIds @return Collection<int, Model> */
+    public function lockForReview(Collection $records, array $ownerIds): Collection
+    {
+        $owners = Configurator::whereKey($ownerIds)->orderBy('id')->lockForUpdate()->get();
         $class = $records->first()::class;
+        $attributeIds = $class === Attribute::class ? $records->pluck('id')->all() : [];
+        $optionIds = $class === Option::class ? $records->pluck('id')->all() : [];
+        if (in_array($class, [ConfiguratorAttribute::class, ConfiguratorRule::class], true)) {
+            CatalogContextSettings::current(lock: true);
+            $loader = app(ConfiguratorDefinitionLoader::class);
+            foreach ($owners as $owner) {
+                $references = $loader->canonicalReferences($loader->draft($owner));
+                $attributeIds = [...$attributeIds, ...$references['attribute_ids']];
+                $optionIds = [...$optionIds, ...$references['option_ids']];
+            }
+        }
+        app(CanonicalUsage::class)->lockParents($attributeIds, [], $optionIds);
+        if ($class === Attribute::class) {
+            Option::whereIn('attribute_id', $attributeIds)->orderBy('id')->lockForUpdate()->get();
+        }
+        if (in_array($class, [Attribute::class, Option::class], true)) {
+            app(CanonicalUsage::class)->assertConfiguratorIds($ownerIds, attributeIds: $class === Attribute::class ? $attributeIds : [], optionIds: $class === Option::class ? $optionIds : []);
+        }
+        app(CatalogIntegrity::class)->lockGroups();
 
         return $class::whereKey($records->pluck('id'))->orderBy('id')->lockForUpdate()->get();
     }
 
     /** @return list<int> */
-    private function ownerIds(Model $record, bool $lock = false): array
+    private function ownerIds(Model $record): array
     {
         return match (true) {
-            $record instanceof Attribute, $record instanceof Option => app(CanonicalUsage::class)->configurators($record)->orderBy('id')->when($lock, fn ($query) => $query->lockForUpdate())->pluck('id')->all(),
+            $record instanceof Attribute => app(CanonicalUsage::class)->configuratorIds(attributeIds: [$record->id]),
+            $record instanceof Option => app(CanonicalUsage::class)->configuratorIds(optionIds: [$record->id]),
             $record instanceof ConfiguratorAttribute, $record instanceof ConfiguratorRule => [$record->configurator_id],
             $record instanceof Configurator => [$record->id],
             default => [],
@@ -101,8 +133,9 @@ class ChangeCatalogStatus
         if ($hidden !== null && ! $record instanceof Option) {
             throw ValidationException::withMessages(['hidden' => __('admin.status.validation.only_shared_attribute_values_support_hidden_status')]);
         }
-        DB::transaction(function () use ($actor, $record, $active, $groupBehavior, $hidden): void {
-            $fresh = $this->lockForReview(collect([$record]))->firstOrFail();
+        $ownerIds = $this->reviewOwnerIds(collect([$record]));
+        DB::transaction(function () use ($actor, $record, $active, $groupBehavior, $hidden, $ownerIds): void {
+            $fresh = $this->lockForReview(collect([$record]), $ownerIds)->firstOrFail();
             $ownerIds = $this->ownerIds($fresh);
             $groupIds = Group::whereIn('configurator_id', $ownerIds)->pluck('id')->all();
             if ($fresh instanceof ConfiguratorAttribute || $fresh instanceof ConfiguratorRule) {
