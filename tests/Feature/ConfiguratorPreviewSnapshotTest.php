@@ -26,7 +26,7 @@ function previewSnapshotFixture(): array
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $data);
     $product = Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
     $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [
         ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Current snapshot description']],
     ]);
 
@@ -52,7 +52,7 @@ test('an exact numeric-looking operand reaches Preview saving and engine evaluat
     $manager->fillForm(['condition_blocks' => $blocks], 'editorForm');
     $capture = $manager->instance()->exportPreviewChanges();
     expect($capture['rows'])->toHaveCount(1);
-    expect(app(ConfiguratorEditorChanges::class)->prepare($configurator, [$capture])['data']['rules'][0]['conditions'][0]['operand'])->toBe('1');
+    expect(app(ConfiguratorEditorChanges::class)->prepare(auth()->user(), $configurator, [$capture])['data']['rules'][0]['conditions'][0]['operand'])->toBe('1');
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('saveChanges', [$capture])->assertHasNoErrors()->assertReturned(fn (array $result): bool => $result['status'] === 'committed');
 
@@ -84,7 +84,7 @@ test('an invalid current Rule remains reviewable alongside every other unsaved e
     [$configurator, $product, $saved, $capture] = previewSnapshotFixture();
     $rule = fixtureAdvanced('incomplete', [], 'B', 'SetHint', [], '');
     $rule['effects'][0]['target_configurator_attribute_id'] = $saved['attributes'][1]['id'];
-    $invalid = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    $invalid = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
 
     $preview->call('rebuildPreview', [$capture, $invalid], 'unsaved')->assertReturned(false)
@@ -115,7 +115,7 @@ test('save validates immediately and retains a receipt that prevents a second wr
 test('choices keep the evaluated capture identity after newer edits are collected by Review', function () {
     [$configurator, $product, $saved, $capture] = previewSnapshotFixture();
     $changes = app(ConfiguratorEditorChanges::class);
-    $newer = $changes->capture($configurator->id, [['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Newer untested description']]]);
+    $newer = $changes->capture(auth()->user(), $configurator->id, [['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Newer untested description']]]);
     $attribute = $saved['attributes'][0];
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('rebuildPreview', [$capture], 'unsaved');
     $oldHash = $preview->get('previewView')['inventory_hash'];
@@ -198,7 +198,7 @@ test('a legal saved test cannot authorize conflicting current edits to save', fu
     $attribute = $saved['attributes'][1];
     $rule = fixtureAdvanced('block-every-value', [], 'B', 'HideOptions', array_column($attribute['options'], 'id'));
     $rule['effects'][0]['target_configurator_attribute_id'] = $attribute['id'];
-    $conflict = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    $conflict = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
     expect($preview->get('previewView')['is_complete'])->toBeTrue();
 
@@ -228,7 +228,7 @@ test('Review footer retains a complete save event handler in the rendered button
 
 test('a tested invalid Overview is current error state rather than a stale retryable preview', function () {
     [$configurator, $product, $saved] = previewSnapshotFixture();
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'name' => '']]]);
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'name' => '']]]);
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('rebuildPreview', [$capture], 'unsaved')->assertReturned(false);
     expect($preview->get('previewErrors'))->not->toBeEmpty();
     expect($preview->instance()->canAttemptSave())->toBeFalse();
@@ -272,7 +272,7 @@ test('V25 Preview tested changes persist subtitle intent once with immutable sig
     [$configurator, $product, $saved] = previewSnapshotFixture();
     $option = $saved['attributes'][0]['options'][0];
     $changes = app(ConfiguratorEditorChanges::class);
-    $capture = $changes->capture($configurator->id, [['type' => 'value', 'id' => $option['id'], 'before' => $option, 'after' => [...$option, 'label_override' => 'Local main', 'subtitle_mode' => 'master', 'display_value_override' => null]]]);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'value', 'id' => $option['id'], 'before' => $option, 'after' => [...$option, 'label_override' => 'Local main', 'subtitle_mode' => 'master', 'display_value_override' => null]]]);
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('rebuildPreview', [$capture], 'unsaved');
     $tested = $preview->get('previewCaptures');
     $preview->call('saveChanges', [$capture])->assertHasNoErrors();

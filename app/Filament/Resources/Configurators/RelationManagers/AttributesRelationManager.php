@@ -252,7 +252,7 @@ class AttributesRelationManager extends RelationManager
             return;
         }
         $changes = app(ConfiguratorEditorChanges::class);
-        foreach ($changes->savedRows($configuratorId, $captures) as $row) {
+        foreach ($changes->savedRows(auth()->user(), $configuratorId, $captures) as $row) {
             $id = (int) $row['id'];
             if ($row['type'] === 'attribute') {
                 $current = $this->selectedAttributeId === $id ? $this->editorData : ($this->editorDrafts[$id] ?? null);
@@ -323,7 +323,7 @@ class AttributesRelationManager extends RelationManager
             }
         }
 
-        return app(ConfiguratorEditorChanges::class)->capture($this->owner()->id, $rows);
+        return app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $this->owner()->id, $rows);
     }
 
     public function editorForm(Schema $schema): Schema

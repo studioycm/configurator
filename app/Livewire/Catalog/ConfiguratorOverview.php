@@ -56,7 +56,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
             return;
         }
         $changes = app(ConfiguratorEditorChanges::class);
-        foreach ($changes->savedRows($configuratorId, $captures) as $row) {
+        foreach ($changes->savedRows(auth()->user(), $configuratorId, $captures) as $row) {
             if ($row['type'] !== 'overview') {
                 continue;
             }
@@ -83,7 +83,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
         Gate::authorize('manage-catalog');
         $rows = app(ConfiguratorEditorChanges::class)->sameMeaning('overview', $this->data, $this->previewOriginal) ? [] : [['type' => 'overview', 'id' => 'overview', 'before' => $this->previewOriginal, 'after' => $this->data]];
 
-        return app(ConfiguratorEditorChanges::class)->capture($this->configuratorId, $rows);
+        return app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $this->configuratorId, $rows);
     }
 
     public function form(Schema $schema): Schema

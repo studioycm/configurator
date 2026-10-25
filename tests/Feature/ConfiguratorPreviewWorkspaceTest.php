@@ -25,7 +25,7 @@ function previewWorkspaceFixture(): array
     $product = Product::factory()->for(Group::factory()->create(['configurator_id' => $configurator->id]))->create();
     $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     $attribute = $saved['attributes'][0];
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [
         ['type' => 'attribute', 'id' => $attribute['id'], 'before' => $attribute, 'after' => [...$attribute, 'label_override' => 'Tested temporary label']],
         ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Tested description']],
     ]);
@@ -60,7 +60,7 @@ test('preview modes retain independent test selections', function () {
 test('invalid unsaved edits show errors without silently displaying saved configuration', function () {
     [$configurator, $product, $saved] = previewWorkspaceFixture();
     $rule = app(ConfiguratorRuleDraft::class)->fromRule(fixtureMapping('invalid'));
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
 
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('rebuildPreview', [$capture], 'unsaved')->assertReturned(false)->assertDontSee('A0-B0-C0')
@@ -86,7 +86,7 @@ test('Preview validation identifies the Rule and nested field that needs correct
     $rule = fixtureAdvanced('seat-guidance', [], 'B', 'SetHint', [], '');
     $rule['label'] = 'Seat guidance';
     $rule['effects'][0]['target_configurator_attribute_id'] = $saved['attributes'][1]['id'];
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
 
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('rebuildPreview', [$capture], 'unsaved')->assertReturned(false)
@@ -108,7 +108,7 @@ test('invalid Mapping editor data includes the Rule and set before definition co
     $rule = app(ConfiguratorRuleDraft::class)->fromRule(fixtureMapping('territory-mapping'));
     $rule['label'] = 'Territory mapping';
     $rule['sets'][0]['disallowed_target_behavior'] = 'Invalid';
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
 
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('rebuildPreview', [$capture], 'unsaved')->assertReturned(false)
@@ -144,14 +144,14 @@ test('Preview blocks incomplete configurations while allowing expected replaceme
     $changes = app(ConfiguratorEditorChanges::class);
     $block = fixtureAdvanced('block-all', [], 'B', 'DisableOptions', array_column($b['options'], 'id'));
     $block['effects'][0]['target_configurator_attribute_id'] = $b['id'];
-    $capture = $changes->capture($configurator->id, [['type' => 'rule', 'id' => $block['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($block)]]);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $block['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($block)]]);
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id]);
 
     $preview->call('reviewChanges', [$capture])->assertActionMounted('reviewChanges')->call('saveChanges', [$capture])->assertReturned(fn (array $outcome): bool => $outcome['status'] === 'rejected');
     expect($configurator->rules()->count())->toBe(0);
 
     $block['effects'][0]['option_ids'] = [$b['options'][0]['id']];
-    $capture = $changes->capture($configurator->id, [['type' => 'rule', 'id' => $block['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($block)]]);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $block['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($block)]]);
     $preview->call('saveChanges', [$capture])->assertHasNoErrors();
     expect($configurator->rules()->count())->toBe(1);
 });

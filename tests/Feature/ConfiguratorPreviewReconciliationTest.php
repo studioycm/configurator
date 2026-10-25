@@ -46,7 +46,7 @@ test('editor acknowledgment is scoped and repeated successful receipts preserve 
 
         return true;
     });
-    $prepared = app(ConfiguratorEditorChanges::class)->prepare($configurator->fresh(), [$capture]);
+    $prepared = app(ConfiguratorEditorChanges::class)->prepare(auth()->user(), $configurator->fresh(), [$capture]);
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
     $newRules = $editor === 'rules' ? [$capture['rows'][0]['id'] => ['id' => (string) $configurator->rules()->sole()->id]] : [];
     $manager->fillForm([$field => 'Later text'], $schema);
@@ -107,7 +107,7 @@ test('V25 subtitle reconciliation preserves later custom edits through repeat-sa
 
         return true;
     });
-    $prepared = app(ConfiguratorEditorChanges::class)->prepare($configurator, [$capture]);
+    $prepared = app(ConfiguratorEditorChanges::class)->prepare(auth()->user(), $configurator, [$capture]);
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
     $manager->callAction(TestAction::make('unlinkSubtitle')->schemaComponent('_subtitle_text', 'optionEditorForm'))
         ->fillForm(['_subtitle_text' => 'Later custom'], 'optionEditorForm')
@@ -143,13 +143,13 @@ test('V20 tested settings captures preserve a newer table default and repeat-saf
     $preview = Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])->call('rebuildPreview', [$capture], 'unsaved')->assertReturned(true);
     $view = $preview->get('previewView');
     $evaluatedCaptures = $preview->get('previewCaptures');
-    $hash = app(ConfiguratorEditorChanges::class)->captureHash($configurator->id, [$capture]);
+    $hash = app(ConfiguratorEditorChanges::class)->captureHash(auth()->user(), $configurator->id, [$capture]);
 
     Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class])
         ->callAction(TestAction::make('setDefault')->table($options[1]))->assertHasNoErrors();
     $preview->dispatch('configurator-updated')->assertSet('definitionStale', true)->assertSet('testedFingerprint', null)
         ->assertSet('previewView', $view)->assertSet('previewCaptures', $evaluatedCaptures);
-    expect(app(ConfiguratorEditorChanges::class)->captureHash($configurator->id, [$capture]))->toBe($hash);
+    expect(app(ConfiguratorEditorChanges::class)->captureHash(auth()->user(), $configurator->id, [$capture]))->toBe($hash);
     $editor->fillForm(['help_text' => 'Later Attribute help'], 'editorForm')->fillForm(['label_override' => 'Later Value name'], 'optionEditorForm');
     if ($stash) {
         $editor->call('selectAttribute', $attributes[1]->id)->fillForm(['help_text' => 'Unrelated later help'], 'editorForm');
@@ -182,19 +182,19 @@ test('V20 legacy default-changing captures retain stale conflicts after a newer 
     $attribute = $configurator->attributes()->findOrFail($row['id']);
     $options = $attribute->options()->orderBy('display_order')->get();
     $changes = app(ConfiguratorEditorChanges::class);
-    $capture = $changes->capture($configurator->id, [['type' => 'attribute', 'id' => $row['id'], 'before' => $row, 'after' => [...$row, 'default_configurator_option_id' => (string) $options[1]->id]]]);
-    expect($changes->prepare($configurator->fresh(), [$capture])['data']['attributes'][0]['default_configurator_option_id'])->toBe((string) $options[1]->id);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'attribute', 'id' => $row['id'], 'before' => $row, 'after' => [...$row, 'default_configurator_option_id' => (string) $options[1]->id]]]);
+    expect($changes->prepare(auth()->user(), $configurator->fresh(), [$capture])['data']['attributes'][0]['default_configurator_option_id'])->toBe((string) $options[1]->id);
 
     Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class])
         ->callAction(TestAction::make('setDefault')->table($options[2]))->assertHasNoErrors();
 
-    $inspection = $changes->inspect($configurator->fresh(), [$capture]);
+    $inspection = $changes->inspect(auth()->user(), $configurator->fresh(), [$capture]);
     expect($inspection['errors'])->not->toBe([]);
-    expect(fn () => $changes->prepare($configurator->fresh(), [$capture]))->toThrow(ValidationException::class);
+    expect(fn () => $changes->prepare(auth()->user(), $configurator->fresh(), [$capture]))->toThrow(ValidationException::class);
     Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
         ->call('saveChanges', [$capture])->assertReturned(fn (array $result): bool => $result['status'] === 'rejected')->assertNotDispatched('configurator-preview-saved');
     expect($attribute->fresh()->default_configurator_option_id)->toBe($options[2]->id);
-    expect($changes->savedRows($configurator->id, [$capture])[0])->toBe($capture['rows'][0]);
+    expect($changes->savedRows(auth()->user(), $configurator->id, [$capture])[0])->toBe($capture['rows'][0]);
 });
 
 test('V20 legacy full receipts cannot restore a workspace default field or discard later settings', function () {
@@ -204,8 +204,8 @@ test('V20 legacy full receipts cannot restore a workspace default field or disca
     $attribute = $configurator->attributes()->orderBy('display_order')->first();
     $editor = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectAttribute', $attribute->id);
     $row = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['attributes'][0];
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [['type' => 'attribute', 'id' => $row['id'], 'before' => $row, 'after' => [...$row, 'help_text' => 'Saved legacy help']]]);
-    $prepared = app(ConfiguratorEditorChanges::class)->prepare($configurator->fresh(), [$capture]);
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [['type' => 'attribute', 'id' => $row['id'], 'before' => $row, 'after' => [...$row, 'help_text' => 'Saved legacy help']]]);
+    $prepared = app(ConfiguratorEditorChanges::class)->prepare(auth()->user(), $configurator->fresh(), [$capture]);
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
 
     $editor->fillForm(['help_text' => 'Later help'], 'editorForm')->call('acceptPreviewSave', $configurator->id, [$capture], [], 'legacy-operation');

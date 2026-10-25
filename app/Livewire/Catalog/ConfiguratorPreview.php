@@ -126,8 +126,8 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
         Gate::authorize('manage-catalog');
         $changes = app(ConfiguratorEditorChanges::class);
         $configurator = Configurator::findOrFail($this->configuratorId);
-        $inventory = $changes->inspect($configurator, $captures);
-        $hash = $changes->captureHash($this->configuratorId, $captures);
+        $inventory = $changes->inspect(auth()->user(), $configurator, $captures);
+        $hash = $changes->captureHash(auth()->user(), $this->configuratorId, $captures);
         $this->previewCaptures = $captures;
         $this->previewChanges = $inventory['changes'];
         $this->inventoryErrors = $inventory['errors'];
@@ -170,7 +170,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
             $this->refreshEditorInventory($captures);
             DB::transaction(function (): void {
                 if ($this->previewSource === 'unsaved') {
-                    $prepared = app(ConfiguratorEditorChanges::class)->prepare(Configurator::findOrFail($this->configuratorId), $this->previewCaptures);
+                    $prepared = app(ConfiguratorEditorChanges::class)->prepare(auth()->user(), Configurator::findOrFail($this->configuratorId), $this->previewCaptures);
                     $this->previewData = $prepared['data'];
                     $this->evaluationInventoryHash = $this->inventoryHash;
                 }
@@ -300,7 +300,7 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
         $this->previewCaptures = [];
         $this->previewChanges = [];
         $this->inventoryErrors = [];
-        $this->inventoryHash = app(ConfiguratorEditorChanges::class)->captureHash($this->configuratorId, []);
+        $this->inventoryHash = app(ConfiguratorEditorChanges::class)->captureHash(auth()->user(), $this->configuratorId, []);
     }
 
     public function refreshSavedPreview(): void

@@ -33,7 +33,7 @@ function previewContentionFixture(): array
     $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
     $rule = fixtureAdvanced('contention-rule', [], 'B', 'SetHint', [], 'Saved exactly once');
     $rule['effects'][0]['target_configurator_attribute_id'] = $saved['attributes'][1]['id'];
-    $capture = app(ConfiguratorEditorChanges::class)->capture($configurator->id, [
+    $capture = app(ConfiguratorEditorChanges::class)->capture(auth()->user(), $configurator->id, [
         ['type' => 'overview', 'id' => 'overview', 'before' => $saved, 'after' => [...$saved, 'description' => 'Preview committed']],
         ['type' => 'attribute', 'id' => $saved['attributes'][0]['id'], 'before' => $saved['attributes'][0], 'after' => [...$saved['attributes'][0], 'label_override' => 'Preview attribute']],
         ['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($rule)],

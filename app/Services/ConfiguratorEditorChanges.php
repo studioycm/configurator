@@ -12,6 +12,7 @@ use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
 use App\Models\Option;
 use App\Models\Product;
+use App\Models\User;
 use App\RuleEffectKind;
 use App\RuleTargetScope;
 use Illuminate\Support\Arr;
@@ -32,9 +33,9 @@ class ConfiguratorEditorChanges
     public function __construct(private ConfiguratorDefinitionLoader $loader, private ConfiguratorDefinitionCompiler $compiler, private ConfiguratorRuleDraft $rules) {}
 
     /** @param list<array<string, mixed>> $rows @return array<string, mixed> */
-    public function capture(int $configuratorId, array $rows): array
+    public function capture(User $actor, int $configuratorId, array $rows): array
     {
-        Gate::authorize('manage-catalog');
+        Gate::forUser($actor)->authorize('manage-catalog');
         foreach ($rows as &$row) {
             if (($row['type'] ?? null) === 'value') {
                 foreach (['before', 'after'] as $side) {
@@ -47,17 +48,17 @@ class ConfiguratorEditorChanges
         unset($row);
         $payload = ['configurator_id' => $configuratorId, 'rows' => $rows];
 
-        return [...$payload, 'signature' => $this->signature($payload)];
+        return [...$payload, 'signature' => $this->signature($actor, $payload)];
     }
 
     /** @param array<string, mixed> $capture @return list<array<string, mixed>> */
-    public function verifiedRows(int $configuratorId, array $capture): array
+    public function verifiedRows(User $actor, int $configuratorId, array $capture): array
     {
-        Gate::authorize('manage-catalog');
+        Gate::forUser($actor)->authorize('manage-catalog');
         $payload = Arr::only($capture, ['configurator_id', 'rows']);
         if (($payload['configurator_id'] ?? null) !== $configuratorId || ! is_array($payload['rows'] ?? null)
             || ! array_is_list($payload['rows']) || count($payload['rows']) > 500 || ! is_string($capture['signature'] ?? null)
-            || ! hash_equals($this->signature($payload), $capture['signature'])) {
+            || ! hash_equals($this->signature($actor, $payload), $capture['signature'])) {
             throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
         }
 
@@ -79,10 +80,10 @@ class ConfiguratorEditorChanges
     }
 
     /** @param list<array<string, mixed>> $captures @return array{changes: list<array<string, mixed>>, errors: list<string>} */
-    public function inspect(Configurator $configurator, array $captures): array
+    public function inspect(User $actor, Configurator $configurator, array $captures): array
     {
-        Gate::authorize('manage-catalog');
-        $rows = $this->savedRows($configurator->id, $captures);
+        Gate::forUser($actor)->authorize('manage-catalog');
+        $rows = $this->savedRows($actor, $configurator->id, $captures);
         $data = $this->loader->draft($configurator);
         $changes = [];
         $errors = [];
@@ -151,19 +152,19 @@ class ConfiguratorEditorChanges
     }
 
     /** @param list<array<string, mixed>> $captures */
-    public function captureHash(int $configuratorId, array $captures): string
+    public function captureHash(User $actor, int $configuratorId, array $captures): string
     {
-        $rows = $this->savedRows($configuratorId, $captures);
+        $rows = $this->savedRows($actor, $configuratorId, $captures);
         usort($rows, fn (array $a, array $b): int => [$a['type'], (string) $a['id']] <=> [$b['type'], (string) $b['id']]);
 
         return hash('sha256', json_encode([$configuratorId, $rows], JSON_THROW_ON_ERROR));
     }
 
     /** @param list<array<string, mixed>> $captures @return array{data: array<string, mixed>, changes: list<array<string, mixed>>} */
-    public function prepare(Configurator $configurator, array $captures): array
+    public function prepare(User $actor, Configurator $configurator, array $captures): array
     {
-        Gate::authorize('manage-catalog');
-        $rows = $this->savedRows($configurator->id, $captures);
+        Gate::forUser($actor)->authorize('manage-catalog');
+        $rows = $this->savedRows($actor, $configurator->id, $captures);
         $data = $this->loader->draft($configurator);
         $changes = [];
         foreach ($rows as $row) {
@@ -388,9 +389,9 @@ class ConfiguratorEditorChanges
     }
 
     /** @param list<array<string, mixed>> $captures @return list<array<string, mixed>> */
-    public function savedRows(int $configuratorId, array $captures): array
+    public function savedRows(User $actor, int $configuratorId, array $captures): array
     {
-        Gate::authorize('manage-catalog');
+        Gate::forUser($actor)->authorize('manage-catalog');
         if (! array_is_list($captures) || count($captures) > 3) {
             throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
         }
@@ -400,7 +401,7 @@ class ConfiguratorEditorChanges
             if (! is_array($capture)) {
                 throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
             }
-            foreach ($this->verifiedRows($configuratorId, $capture) as $row) {
+            foreach ($this->verifiedRows($actor, $configuratorId, $capture) as $row) {
                 $identity = $row['type'].':'.$row['id'];
                 if (isset($seen[$identity])) {
                     throw ValidationException::withMessages(['preview' => __('configurator.preview.capture_expired')]);
@@ -638,8 +639,8 @@ class ConfiguratorEditorChanges
     }
 
     /** @param array<string, mixed> $payload */
-    private function signature(array $payload): string
+    private function signature(User $actor, array $payload): string
     {
-        return hash_hmac('sha256', json_encode([auth()->id(), $payload], JSON_THROW_ON_ERROR), config('app.key'));
+        return hash_hmac('sha256', json_encode([$actor->getAuthIdentifier(), $payload], JSON_THROW_ON_ERROR), config('app.key'));
     }
 }

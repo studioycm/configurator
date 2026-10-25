@@ -25,7 +25,7 @@ class SaveTestedConfiguratorChanges
             if (! hash_equals($fingerprint, $changes->fingerprint($configurator, $productId, lock: true))) {
                 throw ValidationException::withMessages(['preview' => __('configurator.preview.saved_conflict')]);
             }
-            $prepared = $changes->prepare($configurator, $captures);
+            $prepared = $changes->prepare($actor, $configurator, $captures);
             if ($prepared['changes'] === []) {
                 throw ValidationException::withMessages(['preview' => __('configurator.preview.no_unsaved')]);
             }
