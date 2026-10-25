@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Values\Tables\ValuesTable;
+use App\Models\Value;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
@@ -12,7 +12,7 @@ class ValueTagFilter
 {
     public static function make(string $relationship = ''): Filter
     {
-        return Filter::make('tags')->label(__('catalog.fields.tags'))->schema(fn (): array => [Hidden::make('operator')->default('or'), ValuesTable::tagFilterField()])
+        return Filter::make('tags')->label(__('catalog.fields.tags'))->schema(fn (): array => [Hidden::make('operator')->default('or'), ValueTagField::make(fn ($livewire): array => ValueTagField::options(Value::tagVocabulary(), $livewire->tableFilters['tags']['values'] ?? []))])
             ->query(function (Builder $query, array $data) use ($relationship): Builder {
                 $tags = array_values(array_filter($data['values'] ?? [], 'is_string'));
                 if ($tags === []) {

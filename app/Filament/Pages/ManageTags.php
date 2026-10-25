@@ -62,7 +62,7 @@ class ManageTags extends Page implements HasTable
             Gate::authorize('manage-catalog');
             $counts = [];
             foreach (Value::query()->whereNotNull('tags')->pluck('tags') as $tags) {
-                foreach (array_unique($tags) as $tag) {
+                foreach (array_unique(is_array($tags) ? array_filter($tags, is_string(...)) : [], SORT_STRING) as $tag) {
                     $key = hash('sha256', $tag);
                     $counts[$key] ??= ['tag' => $tag, 'usage' => 0];
                     $counts[$key]['usage']++;

@@ -42,7 +42,7 @@ class SaveCanonicalDefinition
                     $rules['definition.semantic_id'] = ['required', 'string', 'max:100', 'regex:/\A[a-z0-9]+(?:_[a-z0-9]+)*\z/D', Rule::unique('values', 'semantic_id')->ignore($record->id)];
                     $rules['definition.description'] = ['nullable', 'string', 'max:5000'];
                     $rules['definition.tags'] = ['sometimes', 'array', 'list', 'max:30'];
-                    $rules['definition.tags.*'] = ['required', 'string', 'max:80', 'distinct'];
+                    $rules['definition.tags.*'] = ['required', 'string', 'max:80', 'distinct:strict'];
                 }
                 $validated = Validator::make(['definition' => $data], $rules)->validate()['definition'];
                 $changingKey = $record instanceof Attribute && $record->exists && $record->key !== $validated['key'];

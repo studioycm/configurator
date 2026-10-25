@@ -44,6 +44,12 @@ test('Value imports use semantic identities and preserve labels and JSON tags', 
     $this->assertDatabaseCount('values', 2);
 });
 
+test('native Value import accepts distinct numeric-looking tag strings without changing exact source whitespace', function () {
+    $tags = ['0', '001', '1', 'Case', 'case', ' spaced '];
+    $record = ValueImporter::test(import: $this->import)->import(['semantic_id' => 'exact_tags', 'label' => 'Exact tags', 'tags' => json_encode($tags, JSON_THROW_ON_ERROR)])->assertImported()->getRecord();
+    expect($record->fresh()->tags)->toBe($tags);
+});
+
 test('existing Values require an explicit update and unmapped metadata stays unchanged', function () {
     $value = Value::factory()->create(['semantic_id' => 'viton', 'label' => 'Viton', 'description' => 'Keep this', 'tags' => ['seal']]);
     $option = Option::factory()->for($value)->create(['code' => 'Vt']);

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\ManageValueTags;
+use App\Actions\SaveCanonicalDefinition;
 use App\Filament\Pages\ManageTags;
 use App\Filament\Resources\Values\Pages\ListValues;
 use App\Livewire\Catalog\TagValues;
@@ -15,6 +16,20 @@ use Livewire\Livewire;
 beforeEach(function () {
     $this->actor = User::factory()->create(['email' => 'ycm@data4.work']);
     $this->actingAs($this->actor);
+});
+
+test('tag vocabulary preserves exact numeric-looking case and spaced identities and counts one use per Value', function () {
+    Value::factory()->create(['tags' => ['0', '001', '1', 'Case', 'case', ' spaced ', '1']]);
+    Value::factory()->create(['tags' => ['1']]);
+    Value::factory()->create(['tags' => [0, ['nested invalid tag'], ['object' => 'invalid tag']]]);
+    expect(array_values(Value::tagOptions()))->toContain('0', '001', '1', 'Case', 'case', ' spaced ');
+    expect(Value::tagVocabulary())->not->toContain('nested invalid tag', 'invalid tag');
+    $records = collect(Livewire::test(ManageTags::class)->instance()->getTableRecords());
+    expect($records->first(fn (array $row): bool => $row['tag'] === '1')['usage'])->toBe(2);
+    expect($records->first(fn (array $row): bool => $row['tag'] === '001')['usage'])->toBe(1);
+    expect($records->first(fn (array $row): bool => $row['tag'] === '0')['usage'])->toBe(1);
+    $value = app(SaveCanonicalDefinition::class)->handle($this->actor, new Value, ['label' => 'Exact tags', 'semantic_id' => 'exact_tags', 'tags' => ['0', '001', '1', 'Case', 'case', ' spaced ']]);
+    expect($value->fresh()->tags)->toBe(['0', '001', '1', 'Case', 'case', ' spaced ']);
 });
 
 test('global rename previews all affected Values and preserves other metadata and tags', function () {

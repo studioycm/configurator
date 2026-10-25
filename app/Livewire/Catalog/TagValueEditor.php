@@ -46,7 +46,7 @@ class TagValueEditor extends Component implements HasSchemas
     {
         return $schema->statePath('data')->components([
             TagsInput::make('tags')->id('tag-value-'.$this->getId())->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->hiddenLabel()->trim()->default([])
-                ->suggestions(fn (): array => array_keys(Value::tagOptions()))
+                ->suggestions(fn (): array => Value::tagVocabulary())
                 ->rules(['array', 'list', 'max:30'])->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct:strict']),
         ]);
     }

@@ -30,7 +30,7 @@ class AttributeForm
     public static function configure(Schema $schema): Schema
     {
         Gate::authorize('manage-catalog');
-        $tagOptions = array_values(Value::tagOptions());
+        $tagOptions = Value::tagVocabulary();
         $attribute = $schema->getRecord();
 
         return $schema->columns(1)->components([Hidden::make('_workspace_owner')->default(fn (): string => 'new:'.Str::uuid())->dehydrated(false), Hidden::make('_active_owner')->default('')->dehydrated(false), AttributeBatchForm::masterPool(fn (): string => $schema->getStatePath()), Section::make()->key(fn (Section $component): string => 'shared-attribute::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(2)->extraAttributes(['class' => 'catalog-simple-form'])->schema([

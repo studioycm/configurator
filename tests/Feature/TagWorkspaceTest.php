@@ -16,6 +16,39 @@ beforeEach(function () {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
 });
 
+test('tag suggestions and row edits retain exact numeric-looking strings and selected removed fallback', function () {
+    $value = Value::factory()->create(['tags' => ['0', '001', '1', 'Case', 'case', ' spaced ']]);
+    $editor = Livewire::test(TagValueEditor::class, ['valueId' => $value->id, 'tag' => '0']);
+    $suggestions = $editor->instance()->form->getFlatFields()['tags']->getSuggestions();
+    expect($suggestions)->toContain('0', '001', '1', 'Case', 'case', ' spaced ');
+    expect(array_all($suggestions, fn (mixed $suggestion): bool => is_string($suggestion)))->toBeTrue();
+    $editor->fillForm(['tags' => ['0', '001', '1', 'Case', 'case', ' new ']])->call('save')->assertHasNoErrors();
+    expect($value->fresh()->tags)->toBe(['0', '001', '1', 'Case', 'case', 'new']);
+    $page = Livewire::test(ListValues::class)->set('tableFilters.tags.values', ['removed', '0']);
+    $options = $page->instance()->inlineTagsForm->getFlatFields()['values']->getOptions();
+    expect($options['removed'])->toBe(__('tags.unused_filter', ['tag' => 'removed']));
+    expect($options['0'])->toBe('0');
+    expect($page->get('tableFilters.tags.values'))->toBe(['removed', '0']);
+});
+
+test('native tag filtering separates JSON strings from numbers and preserves case whitespace and AND OR identity', function () {
+    $tags = ['0', '001', '1', 'Case', 'case', ' spaced '];
+    $values = [];
+    foreach ($tags as $tag) {
+        $values[] = Value::factory()->create(['tags' => [$tag]]);
+    }
+    $numeric = Value::factory()->create(['tags' => [0]]);
+    $both = Value::factory()->create(['tags' => ['0', '001']]);
+    $page = Livewire::test(ListValues::class);
+    foreach ($tags as $index => $tag) {
+        $expected = [$values[$index], ...($index < 2 ? [$both] : [])];
+        $excluded = [...array_values(array_filter($values, fn (Value $value): bool => $value->id !== $values[$index]->id)), $numeric];
+        $page->set('tableFilters.tags.values', [$tag])->assertCanSeeTableRecords($expected)->assertCanNotSeeTableRecords($excluded);
+    }
+    $page->set('tableFilters.tags.values', ['0', '001'])->call('toggleTagFilterOperator')->assertSet('tableFilters.tags.operator', 'and')
+        ->assertCanSeeTableRecords([$both])->assertCanNotSeeTableRecords([...$values, $numeric]);
+});
+
 test('tag operators match any or all tags without changing the selected tags', function (string $surface) {
     $both = Value::factory()->create(['tags' => ['metal', 'standard']]);
     $one = Value::factory()->create(['tags' => ['metal']]);

@@ -29,7 +29,7 @@ class CreateAttributesAction
                 Gate::authorize('manage-catalog');
 
                 return $schema->columns(1)->components([
-                    Group::make(AttributeBatchForm::components(fn (): string => $schema->getStatePath(), array_values(Value::tagOptions())))->columnSpanFull()
+                    Group::make(AttributeBatchForm::components(fn (): string => $schema->getStatePath(), Value::tagVocabulary()))->columnSpanFull()
                         ->extraAttributes(fn (): array => ['data-catalog-draft-guard' => true, 'x-data' => 'attributeCreationGuard('.Js::from(['path' => $schema->getStatePath(), 'discardMessage' => __('catalog.creation.discard_heading')]).')']),
                 ]);
             })

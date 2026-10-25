@@ -58,7 +58,7 @@ function measureCreationQueries(string $name, Closure $operation, array &$measur
         $sql = str_replace('`', '"', $query->sql);
         if (preg_match('/^select "tags" from "values" where "tags" is not null/i', $sql) === 1) {
             $counts['tag_vocabulary']++;
-            $caller = array_find($trace, fn (array $frame): bool => ($frame['class'] ?? null) === Value::class && ($frame['function'] ?? null) === 'tagOptions');
+            $caller = array_find($trace, fn (array $frame): bool => ($frame['class'] ?? null) === Value::class && ($frame['function'] ?? null) === 'tagVocabulary');
             $site = isset($caller['file'], $caller['line']) ? str_replace(base_path().'/', '', $caller['file']).':'.$caller['line'] : 'unknown';
             $counts['tag_callers'][$site] = ($counts['tag_callers'][$site] ?? 0) + 1;
             if ($inRequest) {

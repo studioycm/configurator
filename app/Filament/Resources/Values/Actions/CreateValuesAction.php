@@ -22,7 +22,7 @@ class CreateValuesAction
             ->schema(function (Schema $schema): Schema {
                 Gate::authorize('manage-catalog');
 
-                return $schema->columns(1)->components([ValueForm::batch('master_values', tagOptions: array_values(Value::tagOptions()))]);
+                return $schema->columns(1)->components([ValueForm::batch('master_values', tagOptions: Value::tagVocabulary())]);
             })
             ->extraModalFooterActions(fn (Action $action): array => [Action::make('discardDraft')->label(__('catalog.creation.cancel'))->color('gray')
                 ->requiresConfirmation(fn (): bool => array_any($action->getLivewire()->getSchema('mountedActionSchema'.$action->getNestingIndex())->getRawState()['master_values'] ?? [], CreateMasterValues::isPopulated(...)))

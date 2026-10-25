@@ -42,10 +42,20 @@ class Value extends Model
         return ($label ?? $this->label).' - '.$this->semantic_id;
     }
 
-    /** @return array<string, string> */
+    /** @return list<string> */
+    public static function tagVocabulary(): array
+    {
+        return static::query()->whereNotNull('tags')->pluck('tags')
+            ->flatMap(fn (mixed $tags): array => is_array($tags) ? array_values(array_filter($tags, is_string(...))) : [])
+            ->uniqueStrict()->sort()->values()->all();
+    }
+
+    /** @return array<int|string, string> */
     public static function tagOptions(): array
     {
-        return static::query()->whereNotNull('tags')->pluck('tags')->flatten()->unique()->sort()->mapWithKeys(fn (string $tag): array => [$tag => $tag])->all();
+        $tags = static::tagVocabulary();
+
+        return array_combine($tags, $tags);
     }
 
     public function options(): HasMany

@@ -42,6 +42,48 @@ test('mixed batch edits preserve untouched fields and reject a stale preview', f
     expect($first->fresh()->label)->toBe('First')->and($second->fresh()->label)->toBe('Second')->and($first->fresh()->description)->toBeNull()->and($second->fresh()->description)->toBeNull();
 });
 
+test('tag batches keep numeric-looking strings distinct while retaining destination trimming', function () {
+    $value = Value::factory()->create(['tags' => ['old']]);
+    $action = app(BatchCatalogChanges::class);
+    $intent = ['operation' => 'edit', 'changes' => [['field' => 'tags', 'mode' => 'set', 'value' => ['0', '001', '1', 'Case', 'case', ' new ']]]];
+    $preview = $action->preview(auth()->user(), 'values', [$value->id], $intent);
+    $action->apply(auth()->user(), 'values', [$value->id], $intent, $preview['token']);
+    expect($value->fresh()->tags)->toBe(['0', '001', '1', 'Case', 'case', 'new']);
+});
+
+test('a batch preserves retained tag identity while trimming only newly admitted destinations', function () {
+    $value = Value::factory()->create(['tags' => [' spaced ', '001', '1']]);
+    $action = app(BatchCatalogChanges::class);
+    $invalid = ['operation' => 'edit', 'changes' => [['field' => 'tags', 'mode' => 'add', 'value' => [1]]]];
+    expect(fn () => $action->preview(auth()->user(), 'values', [$value->id], $invalid))->toThrow(ValidationException::class);
+    foreach ([
+        ['field' => 'description', 'mode' => 'set', 'value' => 'Metadata only'],
+        ['field' => 'tags', 'mode' => 'add', 'value' => [' new ']],
+        ['field' => 'tags', 'mode' => 'remove', 'value' => ['1']],
+    ] as $index => $change) {
+        $intent = ['operation' => 'edit', 'changes' => [$change]];
+        $preview = $action->preview(auth()->user(), 'values', [$value->id], $intent);
+        $action->apply(auth()->user(), 'values', [$value->id], $intent, $preview['token']);
+        expect($value->fresh()->tags)->toBe(match ($index) {
+            0 => [' spaced ', '001', '1'],
+            1 => [' spaced ', '001', '1', 'new'],
+            2 => [' spaced ', '001', 'new'],
+        });
+    }
+});
+
+test('batch tag type checks preserve admission after destination trimming and removal of an overlong legacy source', function (string $mode, array $stored, string $input, array $expected) {
+    $value = Value::factory()->create(['tags' => $stored]);
+    $action = app(BatchCatalogChanges::class);
+    $intent = ['operation' => 'edit', 'changes' => [['field' => 'tags', 'mode' => $mode, 'value' => [$input]]]];
+    $preview = $action->preview(auth()->user(), 'values', [$value->id], $intent);
+    $action->apply(auth()->user(), 'values', [$value->id], $intent, $preview['token']);
+    expect($value->fresh()->tags)->toBe($expected);
+})->with([
+    'trim before destination limit' => ['add', [], ' '.str_repeat('x', 80).' ', [str_repeat('x', 80)]],
+    'remove existing overlong source' => ['remove', [str_repeat('x', 81)], str_repeat('x', 81), []],
+]);
+
 test('invalid later row blocks the whole selected set and unknown fields are rejected', function () {
     $first = Attribute::factory()->create(['label' => 'A']);
     $second = Attribute::factory()->create(['label' => str_repeat('Z', 255)]);

@@ -332,9 +332,15 @@ class BatchCatalogChanges
                         throw ValidationException::withMessages(['changes' => __('admin.batch.validation.addremove_applies_to_tags_only')]);
                     }
                     $tags = $state[$field] ?? [];
-                    $state[$field] = $mode === 'add' ? array_values(array_unique([...$tags, ...$change['value']])) : array_values(array_diff($tags, $change['value']));
+                    Validator::make(['tags' => $change['value']], ['tags' => ['array'], 'tags.*' => ['string']])->validate();
+                    $state[$field] = $mode === 'add'
+                        ? array_map(fn (mixed $tag): mixed => is_string($tag) && ! in_array($tag, $tags, true) ? trim($tag) : $tag, array_values(array_unique([...$tags, ...$change['value']], SORT_STRING)))
+                        : array_values(array_diff($tags, $change['value']));
                 } else {
                     $state[$field] = $change['value'] ?? null;
+                    if ($fields[$field]['type'] === 'tags' && is_array($state[$field])) {
+                        $state[$field] = array_map(fn (mixed $tag): mixed => is_string($tag) ? trim($tag) : $tag, $state[$field]);
+                    }
                 }
             }
         } else {
@@ -347,8 +353,8 @@ class BatchCatalogChanges
         foreach ($fields as $key => $field) {
             $rules[$key] = $field['rules'];
             if ($field['type'] === 'tags') {
-                $state[$key] = array_map(fn ($tag) => is_string($tag) ? trim($tag) : $tag, $state[$key] ?? []);
-                $rules[$key.'.*'] = ['required', 'string', 'max:80', 'distinct'];
+                $state[$key] ??= [];
+                $rules[$key.'.*'] = ['required', 'string', 'max:80', 'distinct:strict'];
             }
             if ($field['type'] === 'multiple') {
                 $rules[$key.'.*'] = $table === 'groups' && $key === 'card_properties'

@@ -32,7 +32,7 @@ class ValueForm
     {
         Gate::authorize('manage-catalog');
 
-        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'master-value::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(['default' => 1, 'md' => 2])->extraAttributes(['class' => 'catalog-simple-form'])->schema(self::fields(tagOptions: array_values(Value::tagOptions())))]);
+        return $schema->columns(1)->components([Section::make()->key(fn (Section $component): string => 'master-value::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->contained(false)->compact()->columns(['default' => 1, 'md' => 2])->extraAttributes(['class' => 'catalog-simple-form'])->schema(self::fields(tagOptions: Value::tagVocabulary()))]);
     }
 
     /**
@@ -50,7 +50,7 @@ class ValueForm
                     ->hintAction(FormHints::make(__('catalog.master_values.help.semantic_id'))),
                 Value::suggestSemanticId(...), $reservedIdentifiers,
             ),
-            TagsInput::make('tags')->columnSpanFull()->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->default([])->trim()->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct'])->rules(['array', 'list', 'max:30'])->suggestions($tagOptions)->hintAction(FormHints::make(__('catalog.master_values.hints.press_enter_after_each_tag_tags_help'))),
+            TagsInput::make('tags')->columnSpanFull()->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->default([])->trim()->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct:strict'])->rules(['array', 'list', 'max:30'])->suggestions($tagOptions)->hintAction(FormHints::make(__('catalog.master_values.hints.press_enter_after_each_tag_tags_help'))),
             Textarea::make('description')->label(__('catalog.fields.specification'))->rows(3)->maxLength(5000)->columnSpanFull(),
         ];
     }

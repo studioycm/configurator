@@ -41,6 +41,15 @@ test('V01 ten exact Master rows are created atomically with trimmed tags', funct
     }
 });
 
+test('Master creation accepts distinct numeric-looking tags while trimming newly admitted tags', function () {
+    $row = masterCreationRow(['tags' => ['0', '001', '1', 'Case', 'case', ' new ']]);
+    $created = app(CreateMasterValues::class)->handle($this->actor, [$row]);
+    expect($created[$row['ref']]->fresh()->tags)->toBe(['0', '001', '1', 'Case', 'case', 'new']);
+    $native = masterCreationRow(['semantic_id' => 'native_exact_tags', 'tags' => ['0', '001', '1', ' new ']]);
+    Livewire::test(ListValues::class)->callAction(TestAction::make('createMany')->table(), ['master_values' => [$native]])->assertHasNoFormErrors();
+    expect(Value::where('semantic_id', 'native_exact_tags')->sole()->tags)->toBe(['0', '001', '1', 'new']);
+});
+
 test('V01 V06 a later canonical error rolls back and keeps original blank row positions', function () {
     $rows = [masterCreationRow(['label' => '', 'semantic_id' => '']), masterCreationRow(['semantic_id' => 'first']), masterCreationRow(['label' => '', 'semantic_id' => '']), masterCreationRow(['semantic_id' => 'first'])];
     try {

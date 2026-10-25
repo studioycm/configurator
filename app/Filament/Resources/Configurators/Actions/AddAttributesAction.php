@@ -32,7 +32,7 @@ class AddAttributesAction
             })
             ->schema(function (Schema $schema) use ($owner): Schema {
                 Gate::authorize('manage-catalog');
-                ConfiguratorAttributeCreationForm::configure($schema, $owner, array_values(Value::tagOptions()));
+                ConfiguratorAttributeCreationForm::configure($schema, $owner, Value::tagVocabulary());
                 $components = $schema->getComponents();
 
                 return $schema->components([Group::make($components)->columnSpanFull()->extraAttributes(fn (): array => ['data-catalog-draft-guard' => true, 'x-data' => 'configuratorCreationGuard('.Js::from(['path' => $schema->getStatePath(), 'kind' => 'attributes', 'discardMessage' => __('catalog.creation.discard_heading')]).')'])]);

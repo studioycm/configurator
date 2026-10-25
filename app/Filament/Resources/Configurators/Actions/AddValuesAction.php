@@ -50,7 +50,7 @@ class AddValuesAction
                             WorkspaceTableSelect::make('existing_option_ids')->label(__('catalog.attribute_values.headings.shared_plural'))->multiple()->default([])->live()->selectRowsByClick()->tableConfiguration(OptionSelectionTable::class)->tableArguments(['owner_id' => $owner->id]),
                         ]),
                         'create' => Tab::make(__('configurator.creation.new_values'))->schema([
-                            AttributeValueWorkspace::make('new_values', $root, fn (Get $get): string => 'inclusion:'.$owner->id, $owner->attribute, array_values(Value::tagOptions()))->description(__('configurator.creation.shared_values_help')),
+                            AttributeValueWorkspace::make('new_values', $root, fn (Get $get): string => 'inclusion:'.$owner->id, $owner->attribute, Value::tagVocabulary())->description(__('configurator.creation.shared_values_help')),
                         ]),
                     ]),
                 ])->columnSpanFull()->extraAttributes(fn (): array => ['data-catalog-draft-guard' => true, 'x-data' => 'configuratorCreationGuard('.Js::from(['path' => $schema->getStatePath(), 'kind' => 'values', 'discardMessage' => __('catalog.creation.discard_heading')]).')'])]);

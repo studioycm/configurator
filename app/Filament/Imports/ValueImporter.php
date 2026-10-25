@@ -24,7 +24,7 @@ class ValueImporter extends CatalogImporter
                 ->helperText(__('data_exchange.help.tags'))
                 ->castStateUsing(fn (mixed $state): mixed => blank($state) ? [] : (is_string($state) ? (json_decode($state, true) ?? $state) : $state))
                 ->rules(['array', 'list', 'max:30'])
-                ->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct']),
+                ->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct:strict']),
         ];
     }
 

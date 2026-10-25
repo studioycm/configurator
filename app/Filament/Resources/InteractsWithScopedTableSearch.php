@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Values\Tables\ValuesTable;
 use App\Models\Value;
 use App\Services\ItemLists;
 use Filament\Forms\Components\Hidden;
@@ -27,23 +26,17 @@ trait InteractsWithScopedTableSearch
         ] : [];
     }
 
-    /** @return array<string, string> */
+    /** @return array<int|string, string> */
     public function tagFilterOptions(): array
     {
-        $options = Value::tagOptions();
-        $active = array_values(array_filter($this->tableFilters['tags']['values'] ?? [], 'is_string'));
-        foreach ($active as $tag) {
-            $options[$tag] ??= __('tags.unused_filter', ['tag' => $tag]);
-        }
-
-        return $options;
+        return ValueTagField::options(Value::tagVocabulary(), $this->tableFilters['tags']['values'] ?? []);
     }
 
     public function inlineTagsForm(Schema $schema): Schema
     {
         return $schema->statePath('tableFilters.tags')->live()->components([
             Hidden::make('operator')->default('or'),
-            ValuesTable::tagFilterField()->id('table-tags-'.$this->getId())->options(fn (): array => $this->tagFilterOptions())->hiddenLabel(),
+            ValueTagField::make(fn (): array => $this->tagFilterOptions())->id('table-tags-'.$this->getId())->hiddenLabel(),
         ]);
     }
 

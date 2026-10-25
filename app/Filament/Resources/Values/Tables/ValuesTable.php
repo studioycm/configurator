@@ -6,6 +6,7 @@ use App\Filament\Resources\BatchEditActions;
 use App\Filament\Resources\ItemCountColumn;
 use App\Filament\Resources\TablePresentation;
 use App\Filament\Resources\Values\ValueResource;
+use App\Filament\Resources\ValueTagField;
 use App\Filament\Resources\ValueTagFilter;
 use App\Models\Value;
 use Filament\Actions\Action;
@@ -46,23 +47,13 @@ class ValuesTable
                 Hidden::make('operation')->default('edit'),
                 Hidden::make('changes.0.field')->default('tags'),
                 Select::make('changes.0.mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])->default('add')->required(),
-                TagsInput::make('changes.0.value')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->suggestions(fn (): array => array_keys(Value::tagOptions()))->default([]),
+                TagsInput::make('changes.0.value')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->suggestions(fn (): array => Value::tagVocabulary())->default([]),
                 View::make('filament.resources.batch-preview'),
             ]);
     }
 
     public static function tagFilterField(): ToggleButtons
     {
-        return ToggleButtons::make('values')->inline()->extraAttributes(['class' => 'catalog-tag-filters'])
-            ->label(__('catalog.master_values.labels.filter_by_tags'))->multiple()->options(function ($livewire): array {
-                $options = Value::tagOptions();
-                foreach ($livewire->tableFilters['tags']['values'] ?? [] as $tag) {
-                    if (is_string($tag) && ! isset($options[$tag])) {
-                        $options[$tag] = __('tags.unused_filter', ['tag' => $tag]);
-                    }
-                }
-
-                return $options;
-            })->default([]);
+        return ValueTagField::make(fn ($livewire): array => ValueTagField::options(Value::tagVocabulary(), $livewire->tableFilters['tags']['values'] ?? []));
     }
 }
