@@ -2,6 +2,15 @@
 
 Specification: APP_CONSOLIDATION_EXECUTION_SPEC.md. User approved implementation on 25 October 2026; merge and push remain prohibited.
 
+## Current handoff — 25 October 2026
+
+- All 16 ordered steps have an implementation or an evidenced retain/corrected disposition. CP0–CP6 are complete for the selected contracts. Earlier entries below record their state at that time.
+- CP7 automated and independent-source checks are complete on tested commit 0860b44357dc2e1da11aac6563bfae5dfa9acb1f. Final default PHP: **1366 passed / 9020 assertions** (105.68s); dedicated MySQL: **62 / 460**; inert safety: **24 / 49**; JS: **253 passed**; build, Pint, FilaCheck and diff checks passed. No application or JavaScript changes followed those runs; this handoff update changes documentation only.
+- Representative browser checks used the isolated MySQL copy, including two-tab stale Rule reconciliation, export completion/import-dialog cancellation, SQL/array tables, selection/reopening/append focus, profile restore/reset, and trusted HTTPS startup/navigation. **Browser CSV upload remains unverified:** the Chrome extension lacks file-URL access and its native-picker fallback did not expose a picker. No extension/security setting was changed. Actual native dispatcher/chunk/import/download behavior is covered by application and MySQL tests. CP7 is therefore recorded with that visible manual verification gap, not an unrestricted all-clear.
+- The independent architecture/integrity reviews found no concrete remaining application blocker in the approved selected graph. The native width-timing regression, tag admission regressions, weak cached-record proof and sequence-dependent fixture encountered during execution are corrected and recorded below.
+- Master remains 0567df0; eight protected primary-file hashes match. All work remains on codex/app-consolidation in this dedicated worktree. **CP8 merge/integration has not started; no push.** Before any later integration, reconcile current master and pending Images/Rules/catalog contracts using this journal and the approved spec; verify the actual merged result after separate approval.
+- Deferred by agreement: feature completion, CI/security-dependency work, reload-surviving drafts, durable operation receipts and history. Hardware IME/exhaustive interaction coverage were not justified by changed paths and are not added as automatic gates.
+
 ## CP0 — isolated entry
 
 - Status: verified entry; step 1 in progress.
@@ -234,3 +243,5 @@ Specification: APP_CONSOLIDATION_EXECUTION_SPEC.md. User approved implementation
 - Full dedicated MySQL suite passes 62 / 460, full JS passes 253, inert safety suite passes 24 / 49, and production build passes. No application/JS changes followed those runs. Vite output is app-CKSm9g7E.js, app-DASSRD6y.css and theme-ml6HL_zH.css. The default suite uses guarded Pest directly: Artisan preboot reads the runtime environment and correctly refuses an ambiguous reset target; no guard bypass or copy reset is used.
 - Three independent Sol 6.1 high source audits gave qualified passes for steps 1–8, steps 9–16, and integration/safety/preservation respectively. Their only outstanding proof issue was the cached-record characterization above, now corrected. They ran no tests/runtime writes. No concrete application blocker was identified within the selected caller graph. Physical index/gap contention, process-loss delivery and uncertain callback delivery remain the documented concurrency bounds, without an exhaustive or exactly-once claim.
 - Copy runtime remains restricted to configurator_consolidation_copy_20261025. Trusted HTTPS normal load/navigation initializes catalog filters and real 501-profile data without new browser warnings/errors. Non-invalidating leaf Group 1 snapshot returns revision 24, 501 Products, diagnostics [], one SQL query on the warm cache. Master remains 0567df0; all eight protected primary hashes match. No merge or push.
+
+- Final PHP rerun at 0860b44 passes 1366 / 9020 (105.68s), exit 0. No further code/test edits. Final worktree and preservation checks are clean; only this journal handoff is committed afterward. CP7 automated/source review is closed with the browser CSV-upload gap explicitly retained above; CP8 remains prohibited without separate approval.
