@@ -6,6 +6,7 @@ use App\ConditionOperator;
 use App\ConditionSource;
 use App\ConfigInputType;
 use App\DTO\ConfiguratorEvaluationResult;
+use App\MappingTargetBehavior;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
@@ -116,13 +117,13 @@ class ConfiguratorEditorChanges
             if ($invalid && array_key_exists('condition_blocks', $after)) {
                 $fields = [...array_values(array_diff($fields, ['conditions'])), 'condition_blocks'];
             }
-            $fields = $this->differences($new ? [] : $before, $after, $fields);
+            $fields = $this->differences($type, $new ? [] : $before, $after, $fields);
             $stale = ! $new && $type === 'rule' && ($after['kind'] ?? null) !== $current['kind'];
             if (! $new) {
                 foreach ($fields as $field => $difference) {
-                    if (($current[$field] ?? null) == $difference['after']) {
+                    if ($this->sameMeaning($type, Arr::only($current, [$field]), Arr::only($after, [$field]))) {
                         unset($fields[$field]);
-                    } elseif (($current[$field] ?? null) != $difference['before']) {
+                    } elseif (! $this->sameMeaning($type, Arr::only($current, [$field]), Arr::only($before, [$field]))) {
                         $stale = true;
                     }
                 }
@@ -187,7 +188,7 @@ class ConfiguratorEditorChanges
                 $after['priority'] = $data['rules'] === [] ? 0 : max(array_column($data['rules'], 'priority')) + 1;
                 $data['rules'][] = $after;
                 $fields = $this->newRuleFields($after);
-                $changes[] = ['type' => $type, 'id' => $id, 'label' => $after['label'] ?: __('configurator.preview.new_rule'), 'new' => true, 'fields' => $this->differences([], $after, $fields)];
+                $changes[] = ['type' => $type, 'id' => $id, 'label' => $after['label'] ?: __('configurator.preview.new_rule'), 'new' => true, 'fields' => $this->differences($type, [], $after, $fields)];
 
                 continue;
             }
@@ -196,14 +197,14 @@ class ConfiguratorEditorChanges
             if (! is_array($current) || ($type === 'rule' && ($after['kind'] ?? null) !== $current['kind'])) {
                 throw ValidationException::withMessages(['preview' => __('configurator.preview.editor_conflict')]);
             }
-            $fields = $this->differences($before, $after, $this->fields($type));
+            $fields = $this->differences($type, $before, $after, $this->fields($type));
             foreach ($fields as $field => $difference) {
-                if (($current[$field] ?? null) == $difference['after']) {
+                if ($this->sameMeaning($type, Arr::only($current, [$field]), Arr::only($after, [$field]))) {
                     unset($fields[$field]);
 
                     continue;
                 }
-                if (($current[$field] ?? null) != $difference['before']) {
+                if (! $this->sameMeaning($type, Arr::only($current, [$field]), Arr::only($before, [$field]))) {
                     throw ValidationException::withMessages(['preview' => __('configurator.preview.editor_conflict')]);
                 }
                 $current[$field] = $difference['after'];
@@ -264,6 +265,85 @@ class ConfiguratorEditorChanges
         return $state;
     }
 
+    /** @param array<string, mixed> $left @param array<string, mixed> $right */
+    public function sameMeaning(string $type, array $left, array $right): bool
+    {
+        return $this->comparisonState($type, $left) === $this->comparisonState($type, $right);
+    }
+
+    /** @param array<string, mixed> $state @return array<string, mixed> */
+    public function comparisonState(string $type, array $state): array
+    {
+        if ($type === 'rule') {
+            if (isset($state['conditions']) && is_array($state['conditions']) && ! array_key_exists('condition_blocks', $state)) {
+                $hadSets = array_key_exists('sets', $state);
+                $state = $this->rules->fromRule([...$state, 'sets' => $state['sets'] ?? []]);
+                if (! $hadSets) {
+                    unset($state['sets']);
+                }
+            }
+            $state = $this->rawRuleState($state);
+            foreach ($state['sets'] ?? [] as $key => $set) {
+                if (is_array($set)) {
+                    unset($set['sort_order']);
+                    if (! array_key_exists('disallowed_target_behavior', $set)) {
+                        $set['disallowed_target_behavior'] = MappingTargetBehavior::Disable->value;
+                    }
+                    if (($set['label'] ?? null) === '') {
+                        $set['label'] = null;
+                    }
+                    $state['sets'][$key] = $set;
+                }
+            }
+            foreach ($state['effects'] ?? [] as $key => $effect) {
+                if (is_array($effect) && ($effect['display_value'] ?? null) === '') {
+                    $state['effects'][$key]['display_value'] = null;
+                }
+            }
+        } else {
+            try {
+                $state = $this->normalize($type, $state);
+            } catch (ValidationException) {
+                $state = Arr::only($state, $this->fields($type));
+            }
+        }
+
+        return $this->comparisonValue($state);
+    }
+
+    /** @param array<string, mixed> $state */
+    public function comparisonHash(string $type, array $state): string
+    {
+        return hash('sha256', json_encode($this->comparisonState($type, $state), JSON_THROW_ON_ERROR));
+    }
+
+    private function comparisonValue(mixed $value, string $field = '', bool $literal = false): mixed
+    {
+        $literal = $literal || in_array($field, ['operand', 'operand_text', 'operand_list', 'context_schema', 'hidden_context_options'], true);
+        if (is_array($value)) {
+            $ids = ! $literal && in_array($field, ['option_ids', 'source_option_ids', 'target_option_ids'], true);
+            $result = [];
+            foreach ($value as $key => $child) {
+                $result[$key] = $this->comparisonValue($child, $ids ? 'id' : (string) $key, $literal);
+            }
+            if (! array_is_list($result)) {
+                ksort($result, SORT_STRING);
+            }
+
+            return $result;
+        }
+        if (! $literal && ($field === 'id' || str_ends_with($field, '_id') || in_array($field, ['priority', 'sort_order'], true))
+            && (is_int($value) || (is_string($value) && ctype_digit($value)))) {
+            return ltrim((string) $value, '0') ?: '0';
+        }
+        if (! $literal && in_array($field, ['is_active', 'hidden_by_default', 'disabled_by_default'], true)
+            && in_array($value, [true, false, 0, 1, '0', '1'], true)) {
+            return (bool) $value;
+        }
+
+        return $value;
+    }
+
     public function fingerprint(Configurator $configurator, int $productId, bool $lock = false): string
     {
         $data = $this->loader->draft($configurator);
@@ -295,11 +375,11 @@ class ConfiguratorEditorChanges
     }
 
     /** @param array<string, mixed> $before @param array<string, mixed> $after @param list<string> $fields @return array<string, array{before: mixed, after: mixed}> */
-    private function differences(array $before, array $after, array $fields): array
+    private function differences(string $type, array $before, array $after, array $fields): array
     {
         $changes = [];
         foreach ($fields as $field) {
-            if (array_key_exists($field, $after) && (! array_key_exists($field, $before) || $before[$field] != $after[$field])) {
+            if (array_key_exists($field, $after) && ! $this->sameMeaning($type, Arr::only($before, [$field]), Arr::only($after, [$field]))) {
                 $changes[$field] = ['before' => $before[$field] ?? null, 'after' => $after[$field]];
             }
         }
@@ -386,7 +466,7 @@ class ConfiguratorEditorChanges
     {
         $fields = $type === 'rule' ? array_diff([...self::RULE_FIELDS, 'condition_blocks'], ['conditions']) : $this->fields($type);
         foreach ($fields as $field) {
-            if (array_key_exists($field, $current) && ($current[$field] ?? null) != ($tested[$field] ?? null)) {
+            if (array_key_exists($field, $current) && ! $this->sameMeaning($type, Arr::only($current, [$field]), Arr::only($tested, [$field]))) {
                 $saved[$field] = $current[$field];
             }
         }

@@ -11,7 +11,7 @@ import { itemCountPreview } from './item-count-preview';
 import { workspaceDialog, workspaceColumnManager } from './workspace-dialogs';
 import { tableColumnWidths } from './table-column-widths';
 import { workspaceSplit } from './workspace-split';
-import { editorDrafts, configuratorDrafts } from './editor-drafts';
+import { editorDrafts, configuratorDrafts, sameEditorMeaning } from './editor-drafts';
 import { tablePagination } from './table-pagination';
 import { configuratorProductSearch } from './configurator-product-search';
 import { configuratorPreviewWorkspace } from './configurator-preview-workspace';
@@ -25,6 +25,7 @@ window.attributeEditorDraft = attributeEditorDraft;
 window.nextIdentifierIntent = nextIdentifierIntent;
 window.editorDrafts = editorDrafts;
 window.configuratorDrafts = configuratorDrafts;
+window.sameEditorMeaning = sameEditorMeaning;
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('suggestedIdentifier', suggestedIdentifier);

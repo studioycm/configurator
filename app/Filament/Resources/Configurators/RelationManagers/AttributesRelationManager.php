@@ -160,7 +160,7 @@ class AttributesRelationManager extends RelationManager
         $this->resetValidation();
         $this->cacheSchema('optionEditorForm')->fill($this->optionEditorDrafts[$attributeId][$optionId] ?? $option->only(SaveConfiguratorOption::FIELDS));
         if ($reload || ! isset($this->optionEditorOriginals[$attributeId][$optionId])) {
-            $this->optionEditorOriginals[$attributeId][$optionId] = hash('sha256', json_encode($this->optionEditorState($this->optionEditorData), JSON_THROW_ON_ERROR));
+            $this->optionEditorOriginals[$attributeId][$optionId] = app(ConfiguratorEditorChanges::class)->comparisonHash('value', $this->optionEditorState($this->optionEditorData));
             $this->previewOriginals['value:'.$optionId] = $this->optionEditorState($this->optionEditorData);
         }
         $this->dispatch('configurator-option-editor-filled');
@@ -196,7 +196,7 @@ class AttributesRelationManager extends RelationManager
         if ($this->selectedAttributeId === null || $this->selectedOptionId === null) {
             return;
         }
-        if (hash('sha256', json_encode($this->optionEditorState($this->optionEditorData), JSON_THROW_ON_ERROR)) !== ($this->optionEditorOriginals[$this->selectedAttributeId][$this->selectedOptionId] ?? '') || filled($this->optionEditorData['_subtitle_custom_draft'] ?? null)) {
+        if (app(ConfiguratorEditorChanges::class)->comparisonHash('value', $this->optionEditorState($this->optionEditorData)) !== ($this->optionEditorOriginals[$this->selectedAttributeId][$this->selectedOptionId] ?? '') || filled($this->optionEditorData['_subtitle_custom_draft'] ?? null)) {
             $this->optionEditorDrafts[$this->selectedAttributeId][$this->selectedOptionId] = $this->optionEditorData;
         } else {
             unset($this->optionEditorDrafts[$this->selectedAttributeId][$this->selectedOptionId]);
@@ -258,8 +258,8 @@ class AttributesRelationManager extends RelationManager
                 $current = $this->selectedAttributeId === $id ? $this->editorData : ($this->editorDrafts[$id] ?? null);
                 $savedState = $this->attributeEditorState([...($this->previewOriginals['attribute:'.$id] ?? []), ...$row['after']]);
                 $this->previewOriginals['attribute:'.$id] = $savedState;
-                $this->editorOriginals[$id] = hash('sha256', json_encode($savedState, JSON_THROW_ON_ERROR));
-                if ($current !== null && $changes->normalize('attribute', $this->attributeEditorState($current)) == $changes->normalize('attribute', $savedState)) {
+                $this->editorOriginals[$id] = app(ConfiguratorEditorChanges::class)->comparisonHash('attribute', $savedState);
+                if ($current !== null && $changes->sameMeaning('attribute', $this->attributeEditorState($current), $savedState)) {
                     unset($this->editorDrafts[$id], $this->editorStaleRows[$id]);
                     if ($this->selectedAttributeId === $id) {
                         $this->selectAttribute($id, reload: true);
@@ -271,8 +271,8 @@ class AttributesRelationManager extends RelationManager
                 $current = $this->selectedOptionId === $id ? $this->optionEditorData : ($this->optionEditorDrafts[$attributeId][$id] ?? null);
                 $savedState = $this->optionEditorState($value->only(ConfiguratorEditorChanges::VALUE_FIELDS));
                 $this->previewOriginals['value:'.$id] = $savedState;
-                $this->optionEditorOriginals[$attributeId][$id] = hash('sha256', json_encode($savedState, JSON_THROW_ON_ERROR));
-                if ($current !== null && $changes->normalize('value', $current) == $changes->normalize('value', $savedState)) {
+                $this->optionEditorOriginals[$attributeId][$id] = app(ConfiguratorEditorChanges::class)->comparisonHash('value', $savedState);
+                if ($current !== null && $changes->sameMeaning('value', $current, $savedState)) {
                     unset($this->optionEditorDrafts[$attributeId][$id], $this->optionEditorStaleRows[$id]);
                     $customDraft = $current['_subtitle_custom_draft'] ?? null;
                     if ($this->selectedOptionId === $id) {
@@ -309,7 +309,7 @@ class AttributesRelationManager extends RelationManager
         foreach ($attributes as $id => $state) {
             $state = $this->attributeEditorState($state);
             $before = $this->attributeEditorState($this->previewOriginals['attribute:'.$id] ?? $state);
-            if ($state != $before) {
+            if (! app(ConfiguratorEditorChanges::class)->sameMeaning('attribute', $state, $before)) {
                 $rows[] = ['type' => 'attribute', 'id' => (string) $id, 'before' => $before, 'after' => $state];
             }
         }
@@ -317,7 +317,7 @@ class AttributesRelationManager extends RelationManager
             foreach ($attributeValues as $id => $state) {
                 $state = $this->optionEditorState($state);
                 $before = $this->optionEditorState($this->previewOriginals['value:'.$id] ?? $state);
-                if ($state != $before) {
+                if (! app(ConfiguratorEditorChanges::class)->sameMeaning('value', $state, $before)) {
                     $rows[] = ['type' => 'value', 'id' => (string) $id, 'before' => $before, 'after' => $state];
                 }
             }
@@ -346,7 +346,7 @@ class AttributesRelationManager extends RelationManager
             $this->optionEditorData = [];
         }
         if (! $reload && $this->selectedAttributeId !== null) {
-            if (hash('sha256', json_encode($this->attributeEditorState($this->editorData), JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$this->selectedAttributeId] ?? '')) {
+            if (app(ConfiguratorEditorChanges::class)->comparisonHash('attribute', $this->attributeEditorState($this->editorData)) !== ($this->editorOriginals[$this->selectedAttributeId] ?? '')) {
                 $this->editorDrafts[$this->selectedAttributeId] = $this->attributeEditorState($this->editorData);
             } else {
                 unset($this->editorDrafts[$this->selectedAttributeId]);
@@ -360,7 +360,7 @@ class AttributesRelationManager extends RelationManager
         $data = $this->attributeEditorState($this->editorDrafts[$id] ?? $this->inclusionDraft($id));
         $this->cacheSchema('editorForm')->fill($data);
         if ($reload || ! isset($this->editorOriginals[$id])) {
-            $this->editorOriginals[$id] = hash('sha256', json_encode($this->attributeEditorState($this->editorData), JSON_THROW_ON_ERROR));
+            $this->editorOriginals[$id] = app(ConfiguratorEditorChanges::class)->comparisonHash('attribute', $this->attributeEditorState($this->editorData));
             $this->previewOriginals['attribute:'.$id] = $this->attributeEditorState($this->editorData);
         }
         $this->dispatch('configurator-editor-filled');
@@ -429,7 +429,7 @@ class AttributesRelationManager extends RelationManager
                     $this->resetValidation();
                     $this->dispatch('configurator-editor-filled');
                 }
-            } elseif (isset($this->editorDrafts[$id]) || ($this->selectedAttributeId === $id && hash('sha256', json_encode($this->attributeEditorState($this->editorData), JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$id] ?? ''))) {
+            } elseif (isset($this->editorDrafts[$id]) || ($this->selectedAttributeId === $id && app(ConfiguratorEditorChanges::class)->comparisonHash('attribute', $this->attributeEditorState($this->editorData)) !== ($this->editorOriginals[$id] ?? ''))) {
                 $this->editorStaleRows[$id] = true;
             } elseif ($this->selectedAttributeId === $id) {
                 $this->selectAttribute($id, reload: true);
@@ -477,7 +477,7 @@ class AttributesRelationManager extends RelationManager
                         $this->optionEditorData = [];
                         $this->dispatch('configurator-option-editor-filled');
                     }
-                } elseif (isset($this->optionEditorDrafts[$attributeId][$optionId]) && $this->optionEditorState($this->optionEditorDrafts[$attributeId][$optionId]) != ($this->previewOriginals['value:'.$optionId] ?? [])) {
+                } elseif (isset($this->optionEditorDrafts[$attributeId][$optionId]) && ! app(ConfiguratorEditorChanges::class)->sameMeaning('value', $this->optionEditorState($this->optionEditorDrafts[$attributeId][$optionId]), $this->previewOriginals['value:'.$optionId] ?? [])) {
                     $this->optionEditorStaleRows[$optionId] = true;
                 } else {
                     $customDraft = $this->optionEditorDrafts[$attributeId][$optionId]['_subtitle_custom_draft'] ?? null;
@@ -489,7 +489,7 @@ class AttributesRelationManager extends RelationManager
                         $fresh = $options[$optionId]->only(SaveConfiguratorOption::FIELDS);
                         $this->optionEditorDrafts[$attributeId][$optionId] = [...$fresh, '_subtitle_custom_draft' => $customDraft];
                         $this->previewOriginals['value:'.$optionId] = $this->optionEditorState($fresh);
-                        $this->optionEditorOriginals[$attributeId][$optionId] = hash('sha256', json_encode($this->optionEditorState($fresh), JSON_THROW_ON_ERROR));
+                        $this->optionEditorOriginals[$attributeId][$optionId] = app(ConfiguratorEditorChanges::class)->comparisonHash('value', $this->optionEditorState($fresh));
                     } else {
                         unset($this->optionEditorOriginals[$attributeId][$optionId]);
                     }

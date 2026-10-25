@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { editorDrafts, configuratorDrafts } from '../../resources/js/editor-drafts.js';
+import { readFileSync } from 'node:fs';
+import { editorDrafts, configuratorDrafts, sameEditorMeaning } from '../../resources/js/editor-drafts.js';
+
+const comparisonCases = JSON.parse(readFileSync(new URL('../Fixtures/EditorComparisonCases.json', import.meta.url), 'utf8'));
+for (const fixture of comparisonCases) {
+    test(`shared editor comparison: ${fixture.name}`, () => {
+        assert.equal(sameEditorMeaning(fixture.type, fixture.left, fixture.right), fixture.same);
+    });
+}
 
 function controller() {
     const state = editorDrafts();

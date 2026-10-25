@@ -1,0 +1,19 @@
+[
+  {"name":"exact label", "type":"rule", "left":{"label":"001"}, "right":{"label":"1"}, "same":false},
+  {"name":"exact operand", "type":"rule", "left":{"condition_blocks":[{"type":"predicate","data":{"operand_text":"001"}}]}, "right":{"condition_blocks":[{"type":"predicate","data":{"operand_text":"1"}}]}, "same":false},
+  {"name":"transport identity", "type":"attribute", "left":{"default_configurator_option_id":7}, "right":{"default_configurator_option_id":"7"}, "same":true},
+  {"name":"transport boolean", "type":"value", "left":{"hidden_by_default":false}, "right":{"hidden_by_default":"0"}, "same":true},
+  {"name":"missing differs from clear", "type":"attribute", "left":{}, "right":{"label_override":null}, "same":false},
+  {"name":"established blank", "type":"overview", "left":{"description":null}, "right":{"description":""}, "same":true},
+  {"name":"map insertion order", "type":"overview", "left":{"name":"A","description":"B"}, "right":{"description":"B","name":"A"}, "same":true},
+  {"name":"ordered list", "type":"overview", "left":{"hidden_context_options":{"territory":["001","1"]}}, "right":{"hidden_context_options":{"territory":["1","001"]}}, "same":false},
+  {"name":"literal map keys", "type":"overview", "left":{"context_schema":{"דגם.x":["001"],"model.x":["1"]}}, "right":{"context_schema":{"model.x":["1"],"דגם.x":["001"]}}, "same":true},
+  {"name":"builder row keys", "type":"rule", "left":{"condition_blocks":{"uuid-a":{"type":"predicate","data":{"operand_text":"draft"}}}}, "right":{"condition_blocks":[{"type":"predicate","data":{"operand_text":"draft"}}]}, "same":true},
+  {"name":"incomplete rule stays comparable", "type":"rule", "left":{"condition_blocks":[{"type":"predicate","data":{"source_kind":"ProductProperty","operand_text":"001","operand_list":["unfinished"]}}]}, "right":{"condition_blocks":[{"type":"predicate","data":{"source_kind":"ProductProperty","operand_text":"1","operand_list":["unfinished"]}}]}, "same":false},
+  {"name":"value helper only", "type":"value", "left":{"subtitle_mode":"master","display_value_override":null,"_subtitle_text":"Old","_subtitle_custom_draft":"Mine"}, "right":{"subtitle_mode":"master","display_value_override":null,"_subtitle_text":"New"}, "same":true},
+  {"name":"subtitle intent", "type":"value", "left":{"subtitle_mode":"master","display_value_override":null}, "right":{"subtitle_mode":"none","display_value_override":null}, "same":false},
+  {"name":"legacy custom subtitle", "type":"value", "left":{"display_value_override":"001"}, "right":{"subtitle_mode":"custom","display_value_override":"001"}, "same":true},
+  {"name":"invalid subtitle remains dirty", "type":"value", "left":{"subtitle_mode":"unfinished","display_value_override":"001"}, "right":{"subtitle_mode":"unfinished","display_value_override":"1"}, "same":false},
+  {"name":"explicit mapping clear", "type":"rule", "left":{"sets":[{"disallowed_target_behavior":"Disable"}]}, "right":{"sets":[{"disallowed_target_behavior":null}]}, "same":false},
+  {"name":"nonbreaking space remains text", "type":"overview", "left":{"description":"\u00a0"}, "right":{"description":null}, "same":false}
+]

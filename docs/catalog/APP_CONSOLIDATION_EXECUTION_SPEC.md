@@ -28,6 +28,7 @@ Paths in the tables below are relative to that checkout unless absolute. New fil
 | D08 | One shared execution history must be read before, and updated after, every change. Record actual evidence and changes to dependencies, not merely a list of edited files. |
 | D09 | One dedicated consolidation worktree, sequential code changes, one writer. Parallel agents may research or audit without editing code. |
 | D10 | Subagents use gpt-6.1-sol only: medium reasoning for research, max for monitoring, high for audits. Never use Astra. Each delegation states its role, model, reasoning effort, target and write boundary. Do not use an old agent with conflicting model settings; launch a correctly configured one. Implementation is performed by the single writer; there is no delegated implementation-model choice in this specification. |
+| D11 | User additionally requested MySQL-copy verification during execution. Use an isolated copy of the local configurator_catalog_dev database for realistic-data/browser checks, with a copy-only account and worktree-local runtime. Keep reset-based suites on configurator_catalog_test; never reset the source or silently point the reset harness at the copy. Source inspection/export is read-only. |
 
 ### Explicitly excluded
 

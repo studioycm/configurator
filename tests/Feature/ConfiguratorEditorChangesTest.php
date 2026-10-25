@@ -30,6 +30,32 @@ function editorChangesFixture(): array
     return [$configurator, app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())];
 }
 
+test('editor comparison follows the shared meaningful-state contract', function (array $case) {
+    expect(app(ConfiguratorEditorChanges::class)->sameMeaning($case['type'], $case['left'], $case['right']))->toBe($case['same']);
+})->with(fn (): array => collect(json_decode(file_get_contents(dirname(__DIR__).'/Fixtures/EditorComparisonCases.json'), true, flags: JSON_THROW_ON_ERROR))
+    ->mapWithKeys(fn (array $case): array => [$case['name'] => [$case]])->all());
+
+test('numeric-looking Rule text survives export inspection preparation and later acknowledgement', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $newRule = fixtureAdvanced('numeric-label', [], 'B', 'SetHint', [], 'Existing hint');
+    $newRule['label'] = '001';
+    $newRule['effects'][0]['target_configurator_attribute_id'] = $saved['attributes'][1]['id'];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, [...$saved, 'rules' => [$newRule]]);
+    $rule = $configurator->rules()->firstOrFail();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectRule', $rule->id)->fillForm(['label' => '1'], 'editorForm');
+    $capture = $manager->instance()->exportPreviewChanges();
+    expect($capture['rows'])->toHaveCount(1);
+    $changes = app(ConfiguratorEditorChanges::class);
+    expect($changes->inspect($configurator, [$capture])['changes'][0]['fields']['label']['after'])->toBe('1');
+    $prepared = $changes->prepare($configurator, [$capture]);
+    expect($prepared['data']['rules'][0]['label'])->toBe('1');
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
+    $manager->fillForm(['label' => '01'], 'editorForm')->call('acceptPreviewSave', $configurator->id, [$capture])
+        ->assertSet('editorData.label', '01');
+    expect($rule->fresh()->label)->toBe('1');
+});
+
 test('opening conflict Rules preserves saved Rule edits and the exact unsaved new Rule', function () {
     [$configurator, $saved] = editorChangesFixture();
     $first = $configurator->rules()->create(['label' => 'First Rule', 'kind' => 'Advanced', 'is_active' => true, 'priority' => 0]);

@@ -64,7 +64,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
             $saved = $this->owner()->only(ConfiguratorEditorChanges::OVERVIEW_FIELDS);
             $this->form->fill($saved);
             $this->previewOriginal = $this->data;
-            if ($changes->normalize('overview', $current) == $changes->normalize('overview', $row['after'])) {
+            if ($changes->sameMeaning('overview', $current, $row['after'])) {
                 $this->dispatch('catalog-overview-saved');
             } else {
                 $this->form->fill($changes->rebase('overview', $current, $row['after'], $this->previewOriginal));
@@ -81,7 +81,7 @@ class ConfiguratorOverview extends Component implements HasSchemas
     public function exportPreviewChanges(): array
     {
         Gate::authorize('manage-catalog');
-        $rows = $this->data == $this->previewOriginal ? [] : [['type' => 'overview', 'id' => 'overview', 'before' => $this->previewOriginal, 'after' => $this->data]];
+        $rows = app(ConfiguratorEditorChanges::class)->sameMeaning('overview', $this->data, $this->previewOriginal) ? [] : [['type' => 'overview', 'id' => 'overview', 'before' => $this->previewOriginal, 'after' => $this->data]];
 
         return app(ConfiguratorEditorChanges::class)->capture($this->configuratorId, $rows);
     }

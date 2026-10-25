@@ -5,6 +5,7 @@ use App\Actions\SaveConfiguratorDefinition;
 use App\Actions\SaveConfiguratorOption;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
+use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Livewire\Catalog\ConfiguratorPreview;
 use App\Models\ConfiguratorOption;
 use App\Models\Group;
@@ -13,6 +14,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEditorChanges;
+use App\Services\ConfiguratorEngine;
 use Livewire\Livewire;
 
 require_once dirname(__DIR__).'/ConfiguratorFixtures.php';
@@ -30,6 +32,33 @@ function previewSnapshotFixture(): array
 
     return [$configurator, $product, $saved, $capture];
 }
+
+test('an exact numeric-looking operand reaches Preview saving and engine evaluation unchanged', function () {
+    [$configurator, $product, $saved] = previewSnapshotFixture();
+    $product->update(['profile_fields' => ['lot.code' => '001']]);
+    $condition = [...fixtureCondition('literal'), 'source_kind' => 'ProductProperty', 'source_configurator_attribute_id' => null,
+        'property_key' => 'lot.code', 'operand' => '001', 'option_ids' => []];
+    $rule = fixtureAdvanced('literal-rule', [$condition], 'B', 'SetHint', [], 'Exact literal matched');
+    $target = $saved['attributes'][1]['id'];
+    $rule['effects'][0]['target_configurator_attribute_id'] = $target;
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, [...$saved, 'rules' => [$rule]]);
+    $loader = app(ConfiguratorDefinitionLoader::class);
+    $engine = app(ConfiguratorEngine::class);
+    expect($engine->evaluate($loader->forPreview(auth()->user(), $configurator->id, $product->id))->attributes[$target]['hint'])->toBe('Exact literal matched');
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectRule', $configurator->rules()->sole()->id);
+    $blocks = $manager->get('editorData.condition_blocks');
+    $blocks[array_key_first($blocks)]['data']['operand_text'] = '1';
+    $manager->fillForm(['condition_blocks' => $blocks], 'editorForm');
+    $capture = $manager->instance()->exportPreviewChanges();
+    expect($capture['rows'])->toHaveCount(1);
+    expect(app(ConfiguratorEditorChanges::class)->prepare($configurator, [$capture])['data']['rules'][0]['conditions'][0]['operand'])->toBe('1');
+    Livewire::test(ConfiguratorPreview::class, ['configuratorId' => $configurator->id])
+        ->call('saveChanges', [$capture])->assertHasNoErrors()->assertReturned(fn (array $result): bool => $result['status'] === 'committed');
+
+    expect($loader->draft($configurator->fresh())['rules'][0]['conditions'][0]['operand'])->toBe('1');
+    expect($engine->evaluate($loader->forPreview(auth()->user(), $configurator->id, $product->id))->attributes[$target]['hint'])->toBeNull();
+});
 
 test('review and inspection preserve the exact tested snapshot until an explicit rebuild', function () {
     [$configurator, $product, $saved, $capture] = previewSnapshotFixture();

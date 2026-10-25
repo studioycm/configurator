@@ -110,7 +110,7 @@ class RulesRelationManager extends RelationManager
             $key = $new ? 'new:'.$row['after']['kind'] : 'rule:'.$row['id'];
             $activeKey = $this->editorKind === null ? null : ($this->selectedRuleId === null ? 'new:'.$this->editorKind : 'rule:'.$this->selectedRuleId);
             $current = $activeKey === $key ? $this->editorData : ($this->editorDrafts[$key] ?? null);
-            $matches = $current !== null && $current == $row['after'];
+            $matches = $current !== null && $changes->sameMeaning('rule', $current, $row['after']);
             unset($this->editorDrafts[$key], $this->editorOriginals[$key], $this->previewOriginals[$key], $this->editorStaleRows[$key]);
             if ($new) {
                 $savedId = $newRules[$row['id']]['id'] ?? null;
@@ -122,7 +122,7 @@ class RulesRelationManager extends RelationManager
                     $rebased = $changes->rebase('rule', $current, $row['after'], $saved);
                     $this->editorDrafts['rule:'.$savedId] = $rebased;
                     $this->previewOriginals['rule:'.$savedId] = $saved;
-                    $this->editorOriginals['rule:'.$savedId] = hash('sha256', json_encode($saved, JSON_THROW_ON_ERROR));
+                    $this->editorOriginals['rule:'.$savedId] = app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $saved);
                 }
                 if ($activeKey === $key) {
                     $this->selectedRuleId = null;
@@ -133,7 +133,7 @@ class RulesRelationManager extends RelationManager
             } else {
                 $saved = $this->ruleDraft((int) $row['id']);
                 $this->previewOriginals[$key] = $saved;
-                $this->editorOriginals[$key] = hash('sha256', json_encode($saved, JSON_THROW_ON_ERROR));
+                $this->editorOriginals[$key] = app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $saved);
                 if (! $matches && $current !== null) {
                     $rebased = $changes->rebase('rule', $current, $row['after'], $saved);
                     $this->editorDrafts[$key] = $rebased;
@@ -166,7 +166,7 @@ class RulesRelationManager extends RelationManager
         $rows = [];
         foreach ($states as $key => $state) {
             $original = $this->previewOriginals[$key] ?? $state;
-            if ($state != $original) {
+            if (! app(ConfiguratorEditorChanges::class)->sameMeaning('rule', $state, $original)) {
                 $new = str_starts_with($key, 'new:');
                 $rows[] = ['type' => 'rule', 'id' => $new ? $state['id'] : substr($key, 5), 'before' => $new ? [] : $original, 'after' => $state];
             }
@@ -218,7 +218,7 @@ class RulesRelationManager extends RelationManager
         $this->resetValidation();
         $this->cacheSchema('editorForm')->fill($this->editorDrafts['rule:'.$id] ?? $this->ruleDraft($id));
         if ($reload || ! isset($this->editorOriginals['rule:'.$id])) {
-            $this->editorOriginals['rule:'.$id] = hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR));
+            $this->editorOriginals['rule:'.$id] = app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->editorData);
             $this->previewOriginals['rule:'.$id] = $this->editorData;
         }
         $this->dispatch('configurator-editor-filled');
@@ -233,7 +233,7 @@ class RulesRelationManager extends RelationManager
         $this->editorKind = $kind;
         $this->resetValidation();
         $this->cacheSchema('editorForm')->fill($this->editorDrafts['new:'.$kind] ?? app(ConfiguratorRuleDraft::class)->fromRule(['id' => 'new:'.Str::uuid(), 'label' => '', 'kind' => $kind, 'is_active' => true, 'priority' => 0, 'driver_configurator_attribute_id' => null, 'target_configurator_attribute_id' => null, 'conditions' => [], 'effects' => [], 'sets' => []]));
-        $this->editorOriginals['new:'.$kind] ??= hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR));
+        $this->editorOriginals['new:'.$kind] ??= app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->editorData);
         $this->previewOriginals['new:'.$kind] ??= $this->editorData;
         $this->dispatch('configurator-editor-filled');
     }
@@ -242,7 +242,7 @@ class RulesRelationManager extends RelationManager
     {
         if ($this->editorKind !== null) {
             $key = $this->selectedRuleId === null ? 'new:'.$this->editorKind : 'rule:'.$this->selectedRuleId;
-            if (hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$key] ?? '')) {
+            if (app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->editorData) !== ($this->editorOriginals[$key] ?? '')) {
                 $this->editorDrafts[$key] = $this->editorData;
             } else {
                 unset($this->editorDrafts[$key]);
@@ -271,7 +271,7 @@ class RulesRelationManager extends RelationManager
                     $this->resetValidation();
                     $this->dispatch('configurator-editor-filled');
                 }
-            } elseif (isset($this->editorDrafts[$key]) || ($this->selectedRuleId === $id && hash('sha256', json_encode($this->editorData, JSON_THROW_ON_ERROR)) !== ($this->editorOriginals[$key] ?? ''))) {
+            } elseif (isset($this->editorDrafts[$key]) || ($this->selectedRuleId === $id && app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->editorData) !== ($this->editorOriginals[$key] ?? ''))) {
                 $this->editorStaleRows[$key] = true;
             } elseif ($this->selectedRuleId === $id) {
                 $this->selectRule($id, reload: true);
