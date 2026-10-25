@@ -37,7 +37,6 @@ class NormalizedIntArrayCast implements CastsAttributes
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return array<int, int>|null
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): ?string
     {
