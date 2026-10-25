@@ -13,6 +13,7 @@ use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorValueTextFields;
 use App\Filament\Resources\DependencyActions;
 use App\Filament\Resources\FormOrderControls;
+use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\ItemCountColumn;
 use App\Filament\Resources\TablePresentation;
@@ -41,8 +42,20 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 
-class AttributesRelationManager extends RelationManager
+class AttributesRelationManager extends RelationManager implements HasWorkspaceTable
 {
+    /** @return list<string> */
+    public function tableProfileControlNames(): array
+    {
+        return ['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'];
+    }
+
+    /** @return list<string> */
+    public function tableQuickFilterNames(): array
+    {
+        return ['tags', ...$this->workspaceQuickFilterNames()];
+    }
+
     use InteractsWithConfiguratorTable;
     use InteractsWithScopedTableSearch;
 
@@ -532,7 +545,7 @@ class AttributesRelationManager extends RelationManager
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription(__('configurator.help.remove_this_local_inclusion_and_its_included'))
                     ->action(fn (ConfiguratorAttribute $record) => $this->removeInclusion($record->id))),
-            ]), 'configurator-attributes', true, ['includeMany']);
+            ]), 'configurator-attributes', true, ['includeMany'], selectionVisible: fn (): bool => $this->showSelection, workspaceActions: fn (): array => $this->workspaceVisibilityActions(), rowActions: fn (): array => $this->rowOrderingActions());
     }
 
     /** @param list<int|string> $ids @param list<array<string, mixed>> $rows */

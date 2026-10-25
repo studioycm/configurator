@@ -29,6 +29,6 @@ class OptionsTable
             SelectFilter::make('attribute_id')->label(__('catalog.resources.attributes.singular'))->relationship('attribute', 'label')->searchable()->preload(),
             SelectFilter::make('value_id')->label(__('catalog.fields.master_value'))->relationship('value', 'label')->searchable(),
         ])->filtersFormColumns(5)->deferFilters(false)->filtersLayout(FiltersLayout::AboveContent)
-            ->defaultSort('code')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Option $record): string => OptionResource::getUrl('edit', ['record' => $record]))]), 'options', true);
+            ->defaultSort('code')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Option $record): string => OptionResource::getUrl('edit', ['record' => $record]))]), 'options', true, tagRelationship: 'value');
     }
 }

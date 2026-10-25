@@ -21,6 +21,12 @@ use Livewire\Attributes\Locked;
 
 trait InteractsWithConfiguratorTable
 {
+    /** @return array{owner: int|string, widthVariant: string, profileVariant: string} */
+    public function tableHostIdentity(): array
+    {
+        return ['owner' => $this->getOwnerRecord()->getKey(), 'widthVariant' => '', 'profileVariant' => ''];
+    }
+
     use InteractsWithRowOrdering;
 
     #[Locked]

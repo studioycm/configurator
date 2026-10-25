@@ -9,6 +9,7 @@ use App\Filament\Resources\Configurators\Actions\AddValuesAction;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
+use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\TablePresentation;
 use App\Filament\Resources\ValueTagFilter;
@@ -30,8 +31,20 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 
-class OptionsRelationManager extends RelationManager
+class OptionsRelationManager extends RelationManager implements HasWorkspaceTable
 {
+    /** @return list<string> */
+    public function tableProfileControlNames(): array
+    {
+        return ['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'];
+    }
+
+    /** @return list<string> */
+    public function tableQuickFilterNames(): array
+    {
+        return ['tags', ...$this->workspaceQuickFilterNames()];
+    }
+
     use InteractsWithConfiguratorTable;
     use InteractsWithScopedTableSearch;
 
@@ -67,7 +80,7 @@ class OptionsRelationManager extends RelationManager
     }
 
     /** @return array{column: string, revision: string} */
-    public function tableBrowserProfileColumnMigration(): array
+    public function tableProfileColumnMigration(): ?array
     {
         return ['column' => 'stored_default', 'revision' => 'saved-default-v1'];
     }
@@ -114,7 +127,7 @@ class OptionsRelationManager extends RelationManager
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription(__('configurator.help.choose_another_stored_default_and_repair_rule'))
                     ->action(fn (ConfiguratorOption $record) => $this->removeOption($record->id))),
-            ]), 'configurator-options', true, ['includeMany']);
+            ]), 'configurator-options', true, ['includeMany'], tagRelationship: 'option.value', selectionVisible: fn (): bool => $this->showSelection, workspaceActions: fn (): array => $this->workspaceVisibilityActions(), rowActions: fn (): array => $this->rowOrderingActions());
     }
 
     public function setDefault(int $id): void

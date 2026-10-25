@@ -8,6 +8,7 @@ use App\Filament\InteractsWithConfiguratorRuleImport;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorRuleForm;
+use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\ItemCountColumn;
 use App\Filament\Resources\TablePresentation;
@@ -39,8 +40,20 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 
-class RulesRelationManager extends RelationManager
+class RulesRelationManager extends RelationManager implements HasWorkspaceTable
 {
+    /** @return list<string> */
+    public function tableProfileControlNames(): array
+    {
+        return ['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'];
+    }
+
+    /** @return list<string> */
+    public function tableQuickFilterNames(): array
+    {
+        return ['tags', ...$this->workspaceQuickFilterNames()];
+    }
+
     use InteractsWithConfiguratorRuleImport;
     use InteractsWithConfiguratorTable;
     use InteractsWithScopedTableSearch;
@@ -375,7 +388,7 @@ class RulesRelationManager extends RelationManager
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription(__('configurator.help.remove_this_rule_and_its_owned_conditions'))
                     ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
-            ]), 'configurator-rules', true, ['addMapping', 'addAdvanced', 'importRules']);
+            ]), 'configurator-rules', true, ['addMapping', 'addAdvanced', 'importRules'], selectionVisible: fn (): bool => $this->showSelection, workspaceActions: fn (): array => $this->workspaceVisibilityActions(), rowActions: fn (): array => $this->rowOrderingActions());
     }
 
     private function createAction(string $kind): Action

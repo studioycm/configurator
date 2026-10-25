@@ -1,5 +1,5 @@
 @php
-    $hasScopedSearch = method_exists($this, 'scopedSearchColumns');
+    $hasScopedSearch = $this instanceof \App\Filament\Resources\HasWorkspaceTable;
     $searchFields = $hasScopedSearch ? $this->scopedSearchColumns() : \App\Filament\Resources\TablePresentation::searchColumns($this->getTable());
     $scope = $hasScopedSearch ? $this->tableSearchScope : ($this->tableFilters['workspaceSearch']['scope'] ?? 'all');
 @endphp

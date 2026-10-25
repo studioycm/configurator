@@ -22,6 +22,6 @@ class ValueSelectionTable
                 TextColumn::make('tags')->label(__('catalog.fields.tags'))->badge()->toggleable(),
             ])->filters([
                 ValueTagFilter::make(),
-            ])->defaultSort('label')->paginationPageOptions([10, 25, 50]), 'select-value', true);
+            ])->defaultSort('label')->paginationPageOptions([10, 25, 50]), 'select-value', true, tagRelationship: '');
     }
 }

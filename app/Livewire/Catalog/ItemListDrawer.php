@@ -6,6 +6,7 @@ use App\DTO\ItemListDefinition;
 use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Groups\GroupResource;
 use App\Filament\Resources\Groups\Pages\EditGroup;
+use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithRowOrdering;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\Options\OptionResource;
@@ -13,6 +14,7 @@ use App\Filament\Resources\Options\Pages\EditOption;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\TablePresentation;
+use App\Models\ConfiguratorOption;
 use App\Models\Group;
 use App\Models\Option;
 use App\Models\Product;
@@ -42,8 +44,25 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTable
+class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTable, HasWorkspaceTable
 {
+    /** @return list<string> */
+    public function tableProfileControlNames(): array
+    {
+        return ['tableSearchScope', 'tableSearchFields', 'showOrderControls'];
+    }
+
+    /** @return array{owner: int|string, widthVariant: string, profileVariant: string} */
+    public function tableHostIdentity(): array
+    {
+        return ['owner' => $this->parentId, 'widthVariant' => $this->listKey, 'profileVariant' => $this->listKey];
+    }
+
+    protected function removeWorkspaceNativeFilter(string $filterName, ?string $field, bool $isRemovingAllFilters): void
+    {
+        $this->removeNativeTableFilter($filterName, $field, $isRemovingAllFilters);
+    }
+
     use InteractsWithActions;
     use InteractsWithRowOrdering, InteractsWithScopedTableSearch, InteractsWithTable {
         InteractsWithRowOrdering::rowOrderingActions as protected baseRowOrderingActions;
@@ -192,7 +211,11 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
             ->emptyStateActions(array_filter([Action::make('clearSearch')->label(__('admin-ux.clear_search'))->icon(Heroicon::OutlinedXMark)
                 ->visible(fn (): bool => filled($this->tableSearch) || $this->getTable()->isFiltered())->action(fn () => $this->clearListSearch()), $this->assignmentAction('assignEmpty')]))
             ->paginationPageOptions([10, 25, 50])
-            ->headerActions($headerActions), (is_array($definition->query) ? 'array-' : 'items-').$this->listKey, true, ['assignMore', 'assignGroups', 'fullList']);
+            ->headerActions($headerActions), (is_array($definition->query) ? 'array-' : 'items-').$this->listKey, true, ['assignMore', 'assignGroups', 'fullList'], tagRelationship: ! $definition->query instanceof Builder || in_array($this->listKey, ['value-options', 'canonical-value-options', 'value-option-inclusions'], true) ? null : match ($definition->query->getModel()::class) {
+                Option::class => 'value',
+                ConfiguratorOption::class => 'option.value',
+                default => null,
+            }, rowActions: fn (): array => $this->rowOrderingActions());
     }
 
     private function assignmentAction(string $name = 'assignMore'): ?Action

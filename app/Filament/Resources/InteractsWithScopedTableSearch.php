@@ -13,6 +13,32 @@ use Livewire\Attributes\Renderless;
 
 trait InteractsWithScopedTableSearch
 {
+    /** @return array{owner: int|string, widthVariant: string, profileVariant: string} */
+    abstract public function tableHostIdentity(): array;
+
+    /** @return list<string> */
+    public function tableProfileControlNames(): array
+    {
+        return ['tableSearchScope', 'tableSearchFields'];
+    }
+
+    /** @return array<string, mixed>|null */
+    public function tableProfileColumnMigration(): ?array
+    {
+        return null;
+    }
+
+    /** @return list<string> */
+    public function tableQuickFilterNames(): array
+    {
+        return ['tags'];
+    }
+
+    protected function removeWorkspaceNativeFilter(string $filterName, ?string $field, bool $isRemovingAllFilters): void
+    {
+        parent::removeTableFilter($filterName, $field, $isRemovingAllFilters);
+    }
+
     public string $tableSearchScope = 'all';
 
     /** @var list<string> */
@@ -54,7 +80,7 @@ trait InteractsWithScopedTableSearch
     {
         if ($this->getTable()->hasDeferredFilters()) {
             $name = explode('.', $key ?? '')[0];
-            $quick = ['tags', ...(method_exists($this, 'workspaceQuickFilterNames') ? $this->workspaceQuickFilterNames() : [])];
+            $quick = $this->tableQuickFilterNames();
             if (in_array($name, $quick, true)) {
                 $this->tableDeferredFilters[$name] = $this->tableFilters[$name] ?? [];
             } else {
@@ -71,11 +97,7 @@ trait InteractsWithScopedTableSearch
         if ($preservePending) {
             $this->tableDeferredFilters = $this->tableFilters;
         }
-        if (method_exists($this, 'removeNativeTableFilter')) {
-            $this->removeNativeTableFilter($filterName, $field, $isRemovingAllFilters);
-        } else {
-            parent::removeTableFilter($filterName, $field, $isRemovingAllFilters);
-        }
+        $this->removeWorkspaceNativeFilter($filterName, $field, $isRemovingAllFilters);
         if ($preservePending) {
             $this->tableDeferredFilters = [...$pending, $filterName => $this->tableFilters[$filterName]];
         }
@@ -94,11 +116,11 @@ trait InteractsWithScopedTableSearch
     public function mountInteractsWithScopedTableSearch(): void
     {
         $controls = session()->get(TableBrowserProfile::sessionKey($this, 'controls'), []);
-        foreach (['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'] as $property) {
+        foreach ($this->tableProfileControlNames() as $property) {
             if ($this instanceof SplitListRecords && (($property === 'tableSearchScope' && request()->has('scope')) || ($property === 'tableSearchFields' && request()->has('searchFields')))) {
                 continue;
             }
-            if (property_exists($this, $property) && isset($controls[$property]) && get_debug_type($controls[$property]) === get_debug_type($this->{$property})) {
+            if (isset($controls[$property]) && get_debug_type($controls[$property]) === get_debug_type($this->{$property})) {
                 $this->{$property} = $controls[$property];
             }
         }
@@ -107,10 +129,8 @@ trait InteractsWithScopedTableSearch
     public function dehydrateInteractsWithScopedTableSearch(): void
     {
         $controls = [];
-        foreach (['tableSearchScope', 'tableSearchFields', 'showSelection', 'showOrderControls'] as $property) {
-            if (property_exists($this, $property)) {
-                $controls[$property] = $this->{$property};
-            }
+        foreach ($this->tableProfileControlNames() as $property) {
+            $controls[$property] = $this->{$property};
         }
         session()->put(TableBrowserProfile::sessionKey($this, 'controls'), $controls);
     }

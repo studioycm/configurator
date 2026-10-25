@@ -406,7 +406,8 @@ test('Rule batch reconciliation preserves new-kind drafts and protects a dirty s
     $manager->fillForm(['label' => 'Keep dirty saved rule'], 'editorForm')->selectTableRecords([$rule])
         ->mountAction(TestAction::make('batchEdit')->table()->bulk())->fillForm(['operation' => 'edit', 'changes' => [['field' => 'label', 'mode' => 'set', 'value' => 'Batch rule']]])
         ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()
-        ->call('saveEditor')->assertHasErrors();
+        ->call('saveEditor')->assertActionMounted('reconcileRule')->assertSet('editorData.label', 'Keep dirty saved rule')
+        ->call('unmountAction');
     expect($rule->fresh()->label)->toBe('Batch rule')->and($rule->fresh()->is_active)->toBeFalse();
     $manager->selectTableRecords([$rule])->mountAction(TestAction::make('batchRemove')->table()->bulk())
         ->callMountedAction(['preview' => true])->callMountedAction()->assertHasNoFormErrors()->assertSet('editorKind', null);

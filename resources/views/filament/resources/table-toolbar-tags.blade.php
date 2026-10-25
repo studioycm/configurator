@@ -1,4 +1,4 @@
-@if ($this->getTable()->getFilter('tags') && method_exists($this, 'inlineTagsForm'))
+@if ($this->getTable()->getFilter('tags') && $this instanceof \App\Filament\Resources\HasWorkspaceTable)
     <div class="catalog-inline-tag-filter" wire:key="{{ $this->getId() }}.inline-tags">
         @php($isAnd = ($this->tableFilters['tags']['operator'] ?? 'or') === 'and')
         <x-filament::icon-button
@@ -12,7 +12,7 @@
         {{ $this->inlineTagsForm }}
     </div>
 @endif
-@if (! $this->isTableReordering() && method_exists($this, 'quickFiltersForm') && $this->quickFiltersForm->getComponents())
+@if (! $this->isTableReordering() && ($this instanceof \App\Filament\Resources\HasWorkspaceTable && array_diff($this->tableQuickFilterNames(), ['tags']) !== []) && $this->quickFiltersForm->getComponents())
     <div class="catalog-workspace-quick-filters" wire:key="{{ $this->getId() }}.quick-filters">
         {{ $this->quickFiltersForm }}
     </div>

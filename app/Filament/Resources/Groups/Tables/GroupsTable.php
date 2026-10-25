@@ -42,6 +42,6 @@ class GroupsTable
                     ->action(fn (Group $record, $livewire) => $livewire->moveGroup($record->id, $direction)), [-1, 1]),
                 Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Group $record): string => GroupResource::getUrl('edit', ['record' => $record])),
                 Action::make('openCatalog')->label(__('catalog.groups.labels.open_catalog_page'))->url(fn (Group $record): string => route('catalog.groups.show', $record))->openUrlInNewTab(),
-            ]), 'groups', true);
+            ]), 'groups', true, rowActions: fn (): array => $table->getLivewire()->rowOrderingActions());
     }
 }

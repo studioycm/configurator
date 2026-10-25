@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TableSelect\Livewire\TableSelectLivewireComponent;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\QueryBuilder\Constraints\NumberConstraint;
 use Filament\QueryBuilder\Constraints\TextConstraint;
@@ -25,20 +27,21 @@ use Illuminate\Support\Js;
 class TablePresentation
 {
     /** @param list<string> $frequentActions */
-    public static function configure(Table $table, string $key, bool $narrow = false, array $frequentActions = []): Table
+    public static function configure(Table $table, string $key, bool $narrow = false, array $frequentActions = [], ?string $tagRelationship = null, ?Closure $selectionVisible = null, ?Closure $workspaceActions = null, ?Closure $rowActions = null): Table
     {
         if (in_array($key, ['values', 'attributes', 'options', 'attribute-options', 'configurators', 'groups', 'configurator-attributes', 'configurator-options', 'configurator-rules'], true)) {
             $table->toolbarActions([BatchEditActions::group($key)]);
         }
         StatusActions::configure($table, $key);
         $component = $table->getLivewire();
-        self::configureValueTags($table, $key);
-        $configuratorWorkspace = method_exists($component, 'workspaceVisibilityActions');
-        if ($configuratorWorkspace) {
-            $table->selectable(fn (): bool => $component->showSelection);
+        if ($tagRelationship !== null && $table->getFilter('tags') === null) {
+            $table->pushFilters([ValueTagFilter::make($tagRelationship)]);
+        }
+        if ($selectionVisible !== null) {
+            $table->selectable($selectionVisible);
             $table->authorizeReorder(fn (): bool => auth()->user()?->can('manage-catalog') ?? false);
         }
-        if (! method_exists($component, 'scopedSearchColumns')) {
+        if (! $component instanceof HasWorkspaceTable) {
             $table->pushFilters([Filter::make('workspaceSearch')->schema([Hidden::make('scope')->default('all')])->indicateUsing(fn (array $data): array => [])]);
             $table->searchUsing(function (Builder $query, string $search) use ($table, $component): void {
                 $scope = $component->tableFilters['workspaceSearch']['scope'] ?? 'all';
@@ -60,8 +63,8 @@ class TablePresentation
                 }
             });
         }
-        $context = method_exists($component, 'getOwnerRecord') ? $component->getOwnerRecord()->getKey() : ($component->parentId ?? $component->tableArguments['owner_id'] ?? 'list');
-        $widthKey = $key.':'.$context.':'.($component->listKey ?? '');
+        $identity = $component instanceof HasWorkspaceTable ? $component->tableHostIdentity() : ['owner' => $component instanceof TableSelectLivewireComponent ? ($component->getTableArguments()['owner_id'] ?? 'list') : 'list', 'widthVariant' => ''];
+        $widthKey = $key.':'.$identity['owner'].':'.$identity['widthVariant'];
         $table->extraAttributes(['data-width-table' => $widthKey], merge: true);
         foreach ($table->getColumns() as $column) {
             $column->wrapHeader();
@@ -130,15 +133,15 @@ class TablePresentation
             foreach ($selectionActions as $selectionAction) {
                 $remainingActions[] = $selectionAction->dropdown(false);
             }
-            if ($configuratorWorkspace) {
-                array_push($remainingActions, ...$component->workspaceVisibilityActions());
-            } elseif (filled($table->getReorderColumn()) && ! method_exists($component, 'rowOrderingActions')) {
+            if ($workspaceActions !== null) {
+                array_push($remainingActions, ...$workspaceActions());
+            } elseif (filled($table->getReorderColumn()) && $rowActions === null) {
                 $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['class' => 'catalog-reorder-trigger'], merge: true));
                 $remainingActions[] = $table->getReorderRecordsTriggerAction(false)->label(__('admin.workspace.labels.reorder_rows'))->visible(fn (): bool => $table->isReorderable());
             }
-            if (filled($table->getReorderColumn()) && method_exists($component, 'rowOrderingActions')) {
+            if (filled($table->getReorderColumn()) && $rowActions !== null) {
                 $table->reorderRecordsTriggerAction(fn (Action $action): Action => $action->extraAttributes(['style' => 'display: none'], merge: true));
-                array_push($directActions, ...$component->rowOrderingActions());
+                array_push($directActions, ...$rowActions());
             }
             if ($remainingActions !== []) {
                 $menu = ActionGroup::make($remainingActions)->label(__('admin.workspace.labels.more_actions'))->icon(Heroicon::OutlinedEllipsisHorizontal)->iconButton()->tooltip(__('admin.workspace.help.more_actions'));
@@ -156,29 +159,8 @@ class TablePresentation
             ->filtersLayout(FiltersLayout::Modal)->filtersFormColumns(1)->deferFilters()
             ->filtersTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.filters'))->iconButton()->tooltip(__('ui.tables.filters'))->slideOver()->stickyModalHeader()->stickyModalFooter())
             ->filtersResetAction(fn (Action $action): Action => $action->label(__('admin.workspace.labels.clear_filters')))
-            ->reorderableColumns()->columnManagerLayout(ColumnManagerLayout::Modal)->persistInSession(method_exists($component, 'restoreTableBrowserProfile'))->persistColumnsInSession()
+            ->reorderableColumns()->columnManagerLayout(ColumnManagerLayout::Modal)->persistInSession($component instanceof HasWorkspaceTable)->persistColumnsInSession()
             ->columnManagerTriggerAction(fn (Action $action): Action => $action->label(__('ui.tables.columns'))->iconButton()->tooltip(__('ui.tables.columns'))->slideOver()->stickyModalHeader()->stickyModalFooter()->extraModalFooterActions([$table->getColumnManagerApplyAction()->alpineClickHandler("workspaceColumnManager(\$el, 'applyTableColumnManager'); close()"), Action::make('resetColumnManager')->label(__('admin.workspace.labels.reset_columns'))->color('danger')->alpineClickHandler("workspaceColumnManager(\$el, 'resetDeferredColumns'); \$wire.resetTableColumnManager(); ".'$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')'), Action::make('resetWidths')->label(__('admin.workspace.labels.reset_widths'))->color('gray')->alpineClickHandler('$dispatch('.Js::from('table-widths-reset').', '.Js::from(['table' => $widthKey]).')')]));
-    }
-
-    private static function configureValueTags(Table $table, string $key): void
-    {
-        $scope = $table->getLivewire()->listKey ?? $key;
-        if (in_array($scope, ['value-options', 'canonical-value-options', 'value-option-inclusions'], true)) {
-            return;
-        }
-        $columns = $table->getColumns();
-        $relationship = match (true) {
-            isset($columns['value.label']) => 'value',
-            isset($columns['option.value.label']) => 'option.value',
-            in_array($key, ['values', 'select-value'], true) => '',
-            default => null,
-        };
-        if ($relationship === null) {
-            return;
-        }
-        if ($table->getFilter('tags') === null) {
-            $table->pushFilters([ValueTagFilter::make($relationship)]);
-        }
     }
 
     private static function configureQuickFilters(Table $table): void

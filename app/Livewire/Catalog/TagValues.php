@@ -4,6 +4,7 @@ namespace App\Livewire\Catalog;
 
 use App\Actions\BatchCatalogChanges;
 use App\Actions\ManageValueTags;
+use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\TablePresentation;
 use App\Filament\Resources\ValueTagFilter;
@@ -34,8 +35,19 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-class TagValues extends Component implements HasActions, HasSchemas, HasTable
+class TagValues extends Component implements HasActions, HasSchemas, HasTable, HasWorkspaceTable
 {
+    /** @return array{owner: int|string, widthVariant: string, profileVariant: string} */
+    public function tableHostIdentity(): array
+    {
+        return ['owner' => 'list', 'widthVariant' => $this->listKey, 'profileVariant' => $this->listKey];
+    }
+
+    protected function removeWorkspaceNativeFilter(string $filterName, ?string $field, bool $isRemovingAllFilters): void
+    {
+        $this->removeNativeTableFilter($filterName, $field, $isRemovingAllFilters);
+    }
+
     use InteractsWithActions;
     use InteractsWithSchemas;
     use InteractsWithScopedTableSearch, InteractsWithTable {

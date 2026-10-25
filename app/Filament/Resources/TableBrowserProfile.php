@@ -9,20 +9,20 @@ use Livewire\Component;
 
 class TableBrowserProfile
 {
-    public static function scope(Component $component): string
+    public static function scope(Component&HasWorkspaceTable $component): string
     {
-        $owner = method_exists($component, 'getOwnerRecord') ? $component->getOwnerRecord()->getKey() : ($component->parentId ?? $component->tableArguments['owner_id'] ?? 'list');
+        $identity = $component->tableHostIdentity();
 
-        return $component::class.':'.$owner.':'.($component->listKey ?? ($component->tableConfiguration ?? ''));
+        return $component::class.':'.$identity['owner'].':'.$identity['profileVariant'];
     }
 
-    public static function sessionKey(Component $component, string $setting): string
+    public static function sessionKey(Component&HasWorkspaceTable $component, string $setting): string
     {
         return 'tables.local.'.hash('sha256', auth()->id().':admin:'.self::scope($component)).'.'.$setting;
     }
 
     /** @param array<string, mixed> $state */
-    public static function restore(Component $component, array $state): void
+    public static function restore(Component&HasWorkspaceTable $component, array $state): void
     {
         Gate::authorize('manage-catalog');
         unset($state['tagFilters']);
@@ -90,10 +90,10 @@ class TableBrowserProfile
                 $component->updatedTableFilters();
             }
         }
-        if (isset($state['showSelection']) && property_exists($component, 'showSelection') && $component->showSelection !== (bool) $state['showSelection']) {
+        if (isset($state['showSelection']) && in_array('showSelection', $component->tableProfileControlNames(), true) && $component->showSelection !== (bool) $state['showSelection']) {
             $component->toggleWorkspaceSelection();
         }
-        if (isset($state['showOrderControls']) && property_exists($component, 'showOrderControls') && $component->showOrderControls !== (bool) $state['showOrderControls']) {
+        if (isset($state['showOrderControls']) && in_array('showOrderControls', $component->tableProfileControlNames(), true) && $component->showOrderControls !== (bool) $state['showOrderControls']) {
             $component->toggleOrderControls();
         }
         $component->resetPage();

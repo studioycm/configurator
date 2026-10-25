@@ -6,10 +6,16 @@ use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\RulesRelationManager;
 use App\Filament\Resources\Options\Pages\ListOptions;
 use App\Filament\Resources\OptionSelectionTable;
+use App\Filament\Resources\TableBrowserProfile;
 use App\Filament\Resources\Values\Pages\ListValues;
+use App\Filament\Resources\ValueSelectionTable;
+use App\Livewire\Catalog\ItemListDrawer;
+use App\Livewire\Catalog\WorkspaceTablePicker;
 use App\Models\Attribute;
 use App\Models\ConfiguratorAttribute;
+use App\Models\ConfiguratorOption;
 use App\Models\ConfiguratorRule;
+use App\Models\Group;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
@@ -58,6 +64,7 @@ test('embedded record selection supports the same scoped search without altering
     $b = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'code' => 'B1', 'value_id' => Value::factory()->create(['label' => 'A1'])->id]);
     $table = Livewire::test(TableSelectLivewireComponent::class, ['tableConfiguration' => base64_encode(OptionSelectionTable::class), 'tableArguments' => ['owner_id' => $inclusion->id], 'state' => []])
         ->searchTable('A1')->assertCanSeeTableRecords([$a, $b]);
+    expect($table->instance()->getTable()->getExtraAttributes()['data-width-table'])->toBe('select-option:'.$inclusion->id.':');
     $table->set('tableFilters.workspaceSearch.scope', 'code')->assertCanSeeTableRecords([$a])->assertCanNotSeeTableRecords([$b]);
     $table->assertSet('state', []);
     $table->set('tableFilters.workspaceSearch.scope', ['untrusted'])->assertCanNotSeeTableRecords([$a, $b])->assertSet('state', []);
@@ -130,4 +137,45 @@ test('tag filters remain buttons beyond six choices and match any selected tag',
     expect($field->getOptions())->toHaveKey('seventh');
     $page->filterTable('tags', ['values' => ['seventh']])
         ->assertCanSeeTableRecords([$seventh])->assertCanNotSeeTableRecords([$a, $b, $c]);
+});
+
+test('table identities retain separate SQL relation array and raw picker profile scopes', function () {
+    $root = Livewire::test(ListOptions::class)->instance();
+    expect($root->getTable()->getExtraAttributes()['data-width-table'])->toBe('options:list:')
+        ->and(TableBrowserProfile::scope($root))->toBe(ListOptions::class.':list:');
+
+    $attribute = Attribute::factory()->create();
+    $relation = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditAttribute::class])->instance();
+    expect($relation->getTable()->getExtraAttributes()['data-width-table'])->toBe('attribute-options:'.$attribute->id.':')
+        ->and(TableBrowserProfile::scope($relation))->toBe(OptionsRelationManager::class.':'.$attribute->id.':');
+
+    $group = Group::factory()->create(['result_settings' => ['card_properties' => ['001', '1']]]);
+    $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'group-card-properties', 'parentId' => $group->id])->instance();
+    expect($drawer->getTable()->getExtraAttributes()['data-width-table'])->toBe('array-group-card-properties:'.$group->id.':group-card-properties')
+        ->and(TableBrowserProfile::scope($drawer))->toBe($drawer::class.':'.$group->id.':group-card-properties');
+
+    $rawConfiguration = base64_encode(ValueSelectionTable::class);
+    $picker = Livewire::test(WorkspaceTablePicker::class, ['tableConfiguration' => $rawConfiguration, 'tableArguments' => ['attribute_id' => $attribute->id], 'state' => []])->instance();
+    expect($picker->getTable()->getExtraAttributes()['data-width-table'])->toBe('select-value:list:')
+        ->and(TableBrowserProfile::scope($picker))->toBe($picker::class.':list:'.$rawConfiguration);
+});
+
+test('quick tags preserve an unrelated pending constraint and removal keeps that pending draft', function () {
+    Value::factory()->create(['tags' => ['metal']]);
+    $pending = ['rules' => [['type' => 'code', 'data' => ['operator' => 'contains', 'settings' => ['text' => 'unsent']]]]];
+    $page = Livewire::test(ListOptions::class)->set('tableDeferredFilters.constraints', $pending)
+        ->set('tableFilters.tags.values', ['metal'])->assertSet('tableDeferredFilters.constraints', $pending)
+        ->assertSet('tableFilters.constraints.rules', []);
+    $page->call('removeTableFilter', 'tags')->assertSet('tableDeferredFilters.constraints', $pending)
+        ->assertSet('tableFilters.tags.values', []);
+});
+
+test('drawer tags follow finite model relationships and preserve value-context exclusions', function () {
+    $option = Option::factory()->create();
+    $inclusion = ConfiguratorAttribute::factory()->create(['attribute_id' => $option->attribute_id]);
+    ConfiguratorOption::factory()->create(['configurator_attribute_id' => $inclusion->id, 'option_id' => $option->id]);
+    foreach ([['canonical-value-inclusions', $option->value_id, true], ['canonical-option-inclusions', $option->id, true], ['inclusion-options', $inclusion->id, true], ['attribute-inclusions', $option->attribute_id, false], ['value-option-inclusions', $option->value_id, false], ['value-options', $option->value_id, false]] as [$key, $owner, $tags]) {
+        $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => $key, 'parentId' => $owner])->instance();
+        expect($drawer->getTable()->getFilter('tags') !== null)->toBe($tags, $key);
+    }
 });

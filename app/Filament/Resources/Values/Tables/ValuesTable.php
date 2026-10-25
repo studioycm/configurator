@@ -35,7 +35,7 @@ class ValuesTable
         ])->filters([
             ValueTagFilter::make(),
         ])
-            ->searchPlaceholder(__('catalog.master_values.search_placeholder'))->defaultSort('label')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]), 'values', true)->pushToolbarActions([self::assignTagsAction()]);
+            ->searchPlaceholder(__('catalog.master_values.search_placeholder'))->defaultSort('label')->recordActions([Action::make('edit')->label(__('ui.actions.edit'))->url(fn (Value $record): string => ValueResource::getUrl('edit', ['record' => $record]))]), 'values', true, tagRelationship: '')->pushToolbarActions([self::assignTagsAction()]);
     }
 
     private static function assignTagsAction(): BulkAction

@@ -13,8 +13,14 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 
-abstract class SplitListRecords extends ListRecords
+abstract class SplitListRecords extends ListRecords implements HasWorkspaceTable
 {
+    /** @return array{owner: int|string, widthVariant: string, profileVariant: string} */
+    public function tableHostIdentity(): array
+    {
+        return ['owner' => 'list', 'widthVariant' => '', 'profileVariant' => ''];
+    }
+
     use InteractsWithCompactListHeader;
     use InteractsWithScopedTableSearch;
 

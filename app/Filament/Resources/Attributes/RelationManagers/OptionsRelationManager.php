@@ -6,6 +6,7 @@ use App\Actions\DeleteCanonicalDefinition;
 use App\Actions\SaveCanonicalOption;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\DependencyActions;
+use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithScopedTableSearch;
 use App\Filament\Resources\TablePresentation;
 use App\Models\Attribute;
@@ -24,8 +25,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
 
-class OptionsRelationManager extends RelationManager
+class OptionsRelationManager extends RelationManager implements HasWorkspaceTable
 {
+    /** @return array{owner: int|string, widthVariant: string, profileVariant: string} */
+    public function tableHostIdentity(): array
+    {
+        return ['owner' => $this->getOwnerRecord()->getKey(), 'widthVariant' => '', 'profileVariant' => ''];
+    }
+
     use InteractsWithScopedTableSearch;
 
     protected static string $relationship = 'options';
@@ -64,7 +71,7 @@ class OptionsRelationManager extends RelationManager
                         ConfiguratorFormErrors::run(fn () => app(DeleteCanonicalDefinition::class)->handle(auth()->user(), $record), $this->getMountedActionSchema());
                         $this->dispatch('catalog-record-saved');
                     }),
-            ]), 'attribute-options', true, ['create']);
+            ]), 'attribute-options', true, ['create'], tagRelationship: 'value');
     }
 
     private function optionAction(string $name): Action
