@@ -405,6 +405,7 @@ test('the actual Rules table supplies workspace summary relationships without pe
     $draft['rules'][1]['priority'] = 1;
     app(SaveConfiguratorDefinition::class)->handle($this->actor, $owner, $draft);
     $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class]);
+    $manager->instance()->flushCachedTableRecords();
     $records = $manager->instance()->getTableRecords();
     DB::enableQueryLog();
     DB::flushQueryLog();

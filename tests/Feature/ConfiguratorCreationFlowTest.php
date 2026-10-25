@@ -452,8 +452,8 @@ test('V05 mounted Add Attributes rejects duplicate new canonical Keys and Codes 
 })->with(['key', 'code']);
 
 test('V05 mounted Add Attributes new Master composer never ignores the coincident Configurator record', function () {
-    $owner = Configurator::factory()->create();
     $persisted = Value::factory()->create(['semantic_id' => 'taken']);
+    $owner = Configurator::factory()->create(['id' => $persisted->id]);
     expect($owner->id)->toBe($persisted->id);
     $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])->mountAction(TestAction::make('includeMany')->table())->set('catalogCreationTab', 'create');
     $key = array_key_first($manager->get('mountedActions.0.data.attributes'));
