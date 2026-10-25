@@ -347,11 +347,11 @@ class ConfiguratorEditorChanges
 
     public function fingerprint(Configurator $configurator, int $productId, bool $lock = false): string
     {
+        $context = CatalogContextSettings::current(lock: $lock)->choices;
         $data = $this->loader->draft($configurator);
         [$attributes, $options] = $this->loader->canonical($data, $lock);
         $product = Product::whereKey($productId)->when($lock, fn ($query) => $query->lockForUpdate())->firstOrFail();
         $group = $product->group()->when($lock, fn ($query) => $query->lockForUpdate())->firstOrFail();
-        $context = CatalogContextSettings::current(lock: $lock)->choices;
 
         return hash('sha256', json_encode([$data, $attributes, $options, $configurator->is_active, $product->getAttributes(), $group->getAttributes(), $context], JSON_THROW_ON_ERROR));
     }

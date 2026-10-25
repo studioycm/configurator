@@ -31,7 +31,12 @@ function catalogContentionResult(Closure $operation): array
     } catch (ValidationException $exception) {
         return ['status' => 'rejected', 'errors' => $exception->errors()];
     } catch (Throwable $exception) {
-        return ['status' => 'exception', 'class' => $exception::class, 'sqlstate' => $exception instanceof QueryException ? $exception->errorInfo[0] : null, 'driver_code' => $exception instanceof QueryException ? $exception->errorInfo[1] : null];
+        $databaseException = $exception;
+        while (! $databaseException instanceof QueryException && $databaseException->getPrevious() !== null) {
+            $databaseException = $databaseException->getPrevious();
+        }
+
+        return ['status' => 'exception', 'class' => $exception::class, 'sqlstate' => $databaseException instanceof QueryException ? $databaseException->errorInfo[0] : null, 'driver_code' => $databaseException instanceof QueryException ? $databaseException->errorInfo[1] : null];
     }
 }
 

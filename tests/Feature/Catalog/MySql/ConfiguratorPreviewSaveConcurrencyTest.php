@@ -183,6 +183,60 @@ function assertAtomicPreviewContentionOutcome(array $fixture, array $result): vo
     expect($fixture['configurator']->rules()->count())->toBe($result['status'] === 'committed' ? 1 : 0);
 }
 
+test('different Configurators sharing canonical rows save without the context canonical deadlock cycle', function () {
+    DB::commit();
+    $fixture = null;
+    $other = null;
+    $workers = [];
+    try {
+        $fixture = previewContentionFixture();
+        $other = app(SaveConfiguratorDefinition::class)->duplicate($fixture['actor'], $fixture['configurator'], 'Second shared owner');
+        DB::purge('mysql');
+        $workers['ordinary'] = startPreviewContentionWorker(fn (): int => app(SaveConfiguratorDefinition::class)->change($fixture['actor'], $other,
+            fn (array $draft): array => [...$draft, 'description' => 'Ordinary second owner saved'])->id, 'configurators', 'catalog_context_settings');
+        $workers['preview'] = startPreviewContentionWorker(testedPreviewWrite($fixture), 'catalog_context_settings', null, announceAttempt: true);
+        writeCatalogContentionMessage($workers['ordinary']['channel'], ['phase' => 'start']);
+        expect(readCatalogContentionMessage($workers['ordinary']['channel']))->toMatchArray(['phase' => 'locked', 'table' => 'catalog_context_settings']);
+        writeCatalogContentionMessage($workers['preview']['channel'], ['phase' => 'start']);
+        expect(readCatalogContentionMessage($workers['preview']['channel']))->toMatchArray(['phase' => 'attempting']);
+        $waiting = false;
+        $deadline = microtime(true) + 5;
+        do {
+            foreach (DB::select('SHOW FULL PROCESSLIST') as $process) {
+                if ((int) $process->Id === $workers['preview']['connection_id'] && str_contains((string) $process->Info, 'from `catalog_context_settings`') && str_contains((string) $process->Info, 'for update')) {
+                    $waiting = true;
+                    break 2;
+                }
+            }
+            usleep(10000);
+        } while (microtime(true) < $deadline);
+        expect($waiting)->toBeTrue();
+        writeCatalogContentionMessage($workers['ordinary']['channel'], ['phase' => 'release']);
+        $ordinary = readCatalogContentionMessage($workers['ordinary']['channel']);
+        $preview = readCatalogContentionMessage($workers['preview']['channel']);
+
+        expect($ordinary['status'])->toBe('committed', 'SQLSTATE '.($ordinary['sqlstate'] ?? '').'; driver '.($ordinary['driver_code'] ?? ''))
+            ->and($preview['status'])->toBe('committed', 'SQLSTATE '.($preview['sqlstate'] ?? '').'; driver '.($preview['driver_code'] ?? ''))
+            ->and($ordinary['attempts'])->toBe(1)->and($preview['attempts'])->toBe(1)
+            ->and($other->fresh()->description)->toBe('Ordinary second owner saved')
+            ->and($fixture['configurator']->fresh()->description)->toBe('Preview committed');
+    } finally {
+        stopCatalogContentionWorkers($workers);
+        if ($other !== null) {
+            $ids = DB::table('configurator_attributes')->where('configurator_id', $other->id)->pluck('id');
+            DB::table('configurator_attributes')->whereIn('id', $ids)->update(['default_configurator_option_id' => null]);
+            DB::table('configurator_options')->whereIn('configurator_attribute_id', $ids)->delete();
+            DB::table('configurator_rules')->where('configurator_id', $other->id)->delete();
+            DB::table('configurator_attributes')->whereIn('id', $ids)->delete();
+            DB::table('configurators')->where('id', $other->id)->delete();
+        }
+        if ($fixture !== null) {
+            removePreviewContentionFixture($fixture);
+        }
+        DB::beginTransaction();
+    }
+});
+
 test('actual Product and tested Preview lock inversion finishes within bounded retries without partial writes', function () {
     DB::commit();
     $fixture = null;
