@@ -221,3 +221,8 @@ Specification: APP_CONSOLIDATION_EXECUTION_SPEC.md. User approved implementation
 ### CON-15 — corrected legacy storage disposition
 
 - Status: retained and characterized. Baseline a250c5d. The located legacy fixture setter already returns JSON text; no storage repair remains. Corrected only its stale array-return PHPDoc. Six real one-column Eloquent roundtrips through the actual legacy OptionRule consumer pass 6 / 9 for nonempty/empty/null writes, exact encoded text, malformed/scalar reads and current lenient integer conversion. Behavior passed before and after the documentation-only correction; Pint and diff checks pass. No production Product JSON, enum, model location or malformed-input policy changed.
+
+### CON-16 — retain distinct Rule presentation inputs
+
+- Status: retained, final matrix pending. Baseline a21223d. The actual Rules table already eagerly loads the relationship graph used by workspaceSummary. The small Eloquent presentation methods and separate capture/canonical-array descriptions have different inputs and remain with their existing owners. No measured loading defect justifies a shared presenter or model split.
+- Added real Rules-table consumer coverage for Mapping/Advanced summaries with exact Option codes and zero additional SQL after loading the table records. The new test passes; the other 98 selected presentation/capture/Rule/inactive-tab checks passed in the preceding run. Initial characterization fixture mistakes (duplicate priorities, assuming pagination for an unpaginated table) were corrected without application changes. The final full matrix below includes every named retained-boundary test on the final source. Pint and diff checks pass.

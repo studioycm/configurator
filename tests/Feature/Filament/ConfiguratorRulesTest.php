@@ -9,6 +9,7 @@ use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleDraft;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Select;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -397,3 +398,23 @@ test('changing selection operators remounts the browser picker and preserves all
     'In root' => ['In', false], 'NotIn root' => ['NotIn', false],
     'In group' => ['In', true], 'NotIn group' => ['NotIn', true],
 ]);
+
+test('the actual Rules table supplies workspace summary relationships without per-row queries', function () {
+    [$owner, $draft] = canonicalDefinitionFixture();
+    $draft['rules'] = [fixtureMapping(), fixtureAdvanced('summary', [fixtureCondition('summary-condition')], 'B', 'AllowOptions', ['new:B0'])];
+    $draft['rules'][1]['priority'] = 1;
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $owner, $draft);
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class]);
+    $records = $manager->instance()->getTableRecords();
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+    try {
+        $summaries = collect($records)->mapWithKeys(fn ($rule): array => [$rule->kind => $rule->workspaceSummary()])->all();
+        expect($summaries)->toHaveKeys(['Mapping', 'Advanced'])
+            ->and($summaries['Mapping'])->toContain('A', 'B')
+            ->and($summaries['Advanced'])->toContain('A0', 'B0')
+            ->and(DB::getQueryLog())->toBeEmpty();
+    } finally {
+        DB::disableQueryLog();
+    }
+});
