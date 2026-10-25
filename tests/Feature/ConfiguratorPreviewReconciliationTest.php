@@ -21,6 +21,29 @@ use Livewire\Livewire;
 
 require_once dirname(__DIR__).'/ConfiguratorFixtures.php';
 
+test('a delayed Preview acknowledgement cannot bless an unseen Rule version under later typing', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $data['rules'] = [fixtureMapping()];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $data);
+    $rule = $configurator->rules()->sole();
+    $editor = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectRule', $rule->id)->set('editorData.label', 'Preview save');
+    $capture = null;
+    $editor->call('exportPreviewChanges')->assertReturned(function (array $result) use (&$capture): bool {
+        $capture = $result;
+
+        return true;
+    });
+    $prepared = app(ConfiguratorEditorChanges::class)->prepare(auth()->user(), $configurator->fresh(), [$capture]);
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $prepared['data']);
+    $editor->set('editorData.label', 'Later typing');
+    $rule->fresh()->update(['label' => 'Third-party saved version']);
+    $editor->call('acceptPreviewSave', $configurator->id, [$capture], [], 'delayed-save')
+        ->assertSet('editorData.label', 'Later typing')->call('saveEditor')->assertActionMounted('reconcileRule');
+    expect($rule->fresh()->label)->toBe('Third-party saved version');
+});
+
 test('editor acknowledgment is scoped and repeated successful receipts preserve later text', function (string $editor) {
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
     [$configurator, $data] = canonicalDefinitionFixture();

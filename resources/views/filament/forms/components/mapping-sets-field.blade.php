@@ -1,4 +1,5 @@
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
+    <fieldset @disabled($isDisabled())>
     <div
         wire:key="matrix-{{ sha1($getStatePath().json_encode([$getSourceChoices(), $getTargetChoices()])) }}"
         x-data="{
@@ -97,8 +98,8 @@
                     <fieldset class="text-sm">
                         <legend class="mb-1 font-medium">{{ __('configurator.copy.disallowed_targets') }}</legend>
                         <div class="flex flex-wrap gap-3">
-                            <label class="flex items-center gap-1"><input type="radio" value="Disable" x-model="set.disallowed_target_behavior" :name="'mapping-mode-' + set.id" /> {{ __('configurator.copy.disable') }}</label>
-                            <label class="flex items-center gap-1"><input type="radio" value="Hide" x-model="set.disallowed_target_behavior" :name="'mapping-mode-' + set.id" /> {{ __('configurator.copy.hide') }}</label>
+                            <label class="flex items-center gap-1"><input type="radio" value="Disable" x-model="set.disallowed_target_behavior" :name="@js($getStatePath()) + '-mapping-mode-' + set.id" /> {{ __('configurator.copy.disable') }}</label>
+                            <label class="flex items-center gap-1"><input type="radio" value="Hide" x-model="set.disallowed_target_behavior" :name="@js($getStatePath()) + '-mapping-mode-' + set.id" /> {{ __('configurator.copy.hide') }}</label>
                         </div>
                     </fieldset>
                     <button type="button" class="text-sm font-medium text-danger-600" :aria-label="uiInterpolate(@js(__('configurator.mapping.remove')), {number: index + 1})" x-on:click="sets.splice(index, 1)">{{ __('configurator.copy.remove_set') }}</button>
@@ -136,4 +137,5 @@
         </template>
         <x-filament::button type="button" color="gray" icon="heroicon-o-plus" x-on:click="add()">{{ __('configurator.copy.add_set') }}</x-filament::button>
     </div>
+    </fieldset>
 </x-dynamic-component>

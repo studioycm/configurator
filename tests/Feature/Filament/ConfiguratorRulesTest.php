@@ -28,6 +28,149 @@ function ruleEditorFixture(): array
     return [$configurator, app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())];
 }
 
+test('an ordinary stale Rule save keeps the exact draft and opens reconciliation without overwriting', function () {
+    [$configurator] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $first = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id);
+    $second = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)
+        ->set('editorData.label', '001')->set('editorData.sets.0.label', '  My exact draft  ');
+    $draft = $second->get('editorData');
+    $first->set('editorData.label', 'Newer saved Rule')->call('saveEditor')->assertHasNoErrors();
+    $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+
+    $second->call('saveEditor')->assertHasNoErrors()->assertActionMounted('reconcileRule');
+
+    expect($second->get('editorData'))->toBe($draft)
+        ->and(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+});
+
+test('a public ordinary Rule save cannot bypass its trusted opening base', function () {
+    [$configurator, $saved] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $draft = app(ConfiguratorRuleDraft::class)->fromRule($saved['rules'][0]);
+    $draft['label'] = 'Without an opening base';
+
+    Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('saveRule', $rule->id, 'Mapping', $draft)->assertHasErrors(['rule']);
+
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+});
+
+test('the Mapping reconciliation modal transfers chosen sections and edited raw fields without saving', function () {
+    [$configurator] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)
+        ->set('editorData.label', 'Mine');
+    Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)
+        ->set('editorData.label', 'Latest')->set('editorData.sets.0.label', 'Latest set')->call('saveEditor')->assertHasNoErrors();
+    $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule')
+        ->assertSet('mountedActions.0.data.take_latest', ['label', 'enabled', 'conditions', 'content'])
+        ->assertSet('mountedActions.0.data.latest.label', 'Latest')
+        ->assertSet('mountedActions.0.data.draft.label', 'Mine');
+    $id = $manager->get('mountedActions.0.data.draft.sets.0.id');
+    $manager->set('mountedActions.0.data.take_latest', ['label', 'enabled', 'conditions'])
+        ->set('mountedActions.0.data.latest.label', 'Forged browser latest')
+        ->set('mountedActions.0.data.draft.sets.0.label', '  001  ')
+        ->callMountedAction()->assertHasNoErrors()->assertActionNotMounted();
+
+    expect($manager->get('editorData.label'))->toBe('Latest')
+        ->and($manager->get('editorData.sets.0.label'))->toBe('  001  ')
+        ->and($manager->get('editorData.sets.0.id'))->toBe($id)
+        ->and(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+    $manager->call('saveEditor')->assertHasNoErrors();
+    expect($rule->fresh()->label)->toBe('Latest')->and($rule->mappingSets()->sole()->label)->toBe('  001  ');
+});
+
+test('the Advanced reconciliation modal preserves nested persistent identities and exact edited text', function () {
+    [$configurator, $data] = canonicalDefinitionFixture();
+    $data['rules'] = [fixtureAdvanced('Advanced', [['id' => 'new:group', 'operator' => 'Any', 'conditions' => [fixtureCondition('choice')]]], 'B', 'SetHint', ['new:B1'], 'Original hint')];
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)->set('editorData.label', 'Mine');
+    $other = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id);
+    $effectKey = array_key_first($other->get('editorData.effects'));
+    $other->set('editorData.effects.'.$effectKey.'.display_value', 'Latest hint')->call('saveEditor')->assertHasNoErrors();
+    $saved = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh());
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule');
+    $blockKey = array_key_first($manager->get('mountedActions.0.data.draft.condition_blocks'));
+    $conditionKey = array_key_first($manager->get('mountedActions.0.data.draft.condition_blocks.'.$blockKey.'.data.conditions'));
+    $effectKey = array_key_first($manager->get('mountedActions.0.data.draft.effects'));
+    $groupId = $manager->get('mountedActions.0.data.draft.condition_blocks.'.$blockKey.'.data.id');
+    $effectId = $manager->get('mountedActions.0.data.draft.effects.'.$effectKey.'.id');
+    $manager->set('mountedActions.0.data.take_latest', [])
+        ->set('mountedActions.0.data.draft.condition_blocks.'.$blockKey.'.data.conditions.'.$conditionKey.'.operator', 'NotEquals')
+        ->set('mountedActions.0.data.draft.effects.'.$effectKey.'.display_value', '001')
+        ->callMountedAction()->assertHasNoErrors();
+
+    expect(app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh()))->toBe($saved);
+    $manager->call('saveEditor')->assertHasNoErrors();
+    $after = app(ConfiguratorDefinitionLoader::class)->draft($configurator->fresh())['rules'][0];
+    expect($after['label'])->toBe('Mine')
+        ->and($after['conditions'][0]['id'])->toBe($groupId)
+        ->and($after['conditions'][0]['conditions'][0]['operator'])->toBe('NotEquals')
+        ->and($after['effects'][0]['id'])->toBe($effectId)->and($after['effects'][0]['display_value'])->toBe('001');
+});
+
+test('reconciliation uses the exact displayed snapshot and catches a subsequent save again', function (bool $beforeUpdate) {
+    [$configurator] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)->set('editorData.label', 'My draft');
+    $other = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id);
+    $other->set('editorData.label', 'Displayed latest')->call('saveEditor')->assertHasNoErrors();
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule');
+    if ($beforeUpdate) {
+        $other->set('editorData.label', 'Unseen third write')->call('saveEditor')->assertHasNoErrors();
+    }
+    $manager->callMountedAction()->assertHasNoErrors()->assertSet('editorData.label', 'Displayed latest');
+    if (! $beforeUpdate) {
+        $other->set('editorData.label', 'Unseen third write')->call('saveEditor')->assertHasNoErrors();
+    }
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule')->assertSet('editorData.label', 'Displayed latest')
+        ->assertSet('mountedActions.0.data.latest.label', 'Unseen third write');
+    expect($rule->fresh()->label)->toBe('Unseen third write');
+})->with(['after modal display' => true, 'after draft update' => false]);
+
+test('cancelling reconciliation retains the exact losing draft and its opening base', function () {
+    [$configurator] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)->set('editorData.label', '001');
+    $draft = $manager->get('editorData');
+    $base = $manager->get('ruleEditBases');
+    $rule->mappingSets()->sole()->update(['label' => 'Child-only intervening change']);
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule')->call('unmountAction')->assertActionNotMounted();
+    expect($manager->get('editorData'))->toBe($draft)->and($manager->get('ruleEditBases'))->toBe($base);
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule');
+});
+
+test('ordinary freshness ignores unrelated Rules and preserves the latest reordered priority', function () {
+    [$configurator, $data] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)->set('editorData.label', 'My valid edit');
+    $data['rules'][] = [...$data['rules'][0], 'id' => 'new:unrelated', 'label' => 'Unrelated', 'sets' => [[...$data['rules'][0]['sets'][0], 'id' => 'new:other-set']], 'priority' => 12];
+    $data['rules'][0]['priority'] = 7;
+    app(SaveConfiguratorDefinition::class)->handle($this->actor, $configurator, $data);
+    $manager->call('saveEditor')->assertHasNoErrors()->assertActionNotMounted();
+    expect($rule->fresh()->label)->toBe('My valid edit')->and($rule->fresh()->priority)->toBe(7)
+        ->and($configurator->rules()->where('label', 'Unrelated')->exists())->toBeTrue();
+});
+
+test('a Rule reconciliation rechecks permission and membership before updating its draft', function (string $change) {
+    [$configurator] = ruleEditorFixture();
+    $rule = $configurator->rules()->sole();
+    $manager = Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->call('selectRule', $rule->id)->set('editorData.label', 'Mine');
+    $rule->update(['label' => 'Latest']);
+    $manager->call('saveEditor')->assertActionMounted('reconcileRule');
+    if ($change === 'permission') {
+        $this->actingAs(User::factory()->create());
+        $manager->callMountedAction()->assertForbidden();
+        expect($rule->fresh()->label)->toBe('Latest');
+    } else {
+        $rule->delete();
+        $manager->callMountedAction()->assertNotFound();
+    }
+})->with(['permission', 'deletion']);
+
 test('new Advanced effects keep string scopes and show Target values before any values are selected', function () {
     [$configurator, $data] = ruleEditorFixture();
     $attribute = $data['attributes'][1];

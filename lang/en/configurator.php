@@ -1,6 +1,17 @@
 <?php
 
 return [
+    'reconciliation' => [
+        'open_first' => 'Open this Rule again before saving it.',
+        'changed' => 'This Rule changed while you were editing',
+        'help' => 'Nothing from your attempted save was written. Review the latest saved version below. Checked sections replace your draft with those saved values. Uncheck a section to keep or edit your draft. Update form does not save; use Save Rule afterward.',
+        'take_latest' => 'Use latest saved values for these sections',
+        'latest' => 'Latest saved version — read only',
+        'draft' => 'Your draft — uncheck sections above to keep your edits',
+        'mapping' => 'Mapping: driver, target and value sets',
+        'update_form' => 'Update form',
+        'keep_editing' => 'Keep editing my draft',
+    ],
     'creation' => [
         'choose_values' => 'Choose an existing shared Value or stage a new one.',
         'invalid_shape' => 'Submit only the fields supported by this addition.',

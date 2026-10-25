@@ -18,8 +18,10 @@ use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorRuleDraft;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -85,6 +87,14 @@ class RulesRelationManager extends RelationManager
     #[Locked]
     public array $editorStaleRows = [];
 
+    /** @var array<string, array<string, mixed>> */
+    #[Locked]
+    public array $ruleEditBases = [];
+
+    /** @var array<string, mixed>|null */
+    #[Locked]
+    public ?array $ruleConflictLatest = null;
+
     #[Locked]
     public ?string $lastAppliedPreviewSave = null;
 
@@ -119,6 +129,7 @@ class RulesRelationManager extends RelationManager
                 }
                 $saved = $this->ruleDraft((int) $savedId);
                 if ($current !== null && ! $matches) {
+                    $this->ruleEditBases['rule:'.$savedId] = [...$row['after'], 'id' => (string) $savedId];
                     $rebased = $changes->rebase('rule', $current, $row['after'], $saved);
                     $this->editorDrafts['rule:'.$savedId] = $rebased;
                     $this->previewOriginals['rule:'.$savedId] = $saved;
@@ -216,7 +227,12 @@ class RulesRelationManager extends RelationManager
         $this->selectedRuleId = $rule->id;
         $this->editorKind = $rule->kind;
         $this->resetValidation();
-        $this->cacheSchema('editorForm')->fill($this->editorDrafts['rule:'.$id] ?? $this->ruleDraft($id));
+        $saved = $this->ruleDraft($id);
+        if ($reload || ! isset($this->ruleEditBases['rule:'.$id])) {
+            $this->ruleEditBases['rule:'.$id] = $saved;
+        }
+        $this->ruleConflictLatest = null;
+        $this->cacheSchema('editorForm')->fill($this->editorDrafts['rule:'.$id] ?? $saved);
         if ($reload || ! isset($this->editorOriginals['rule:'.$id])) {
             $this->editorOriginals['rule:'.$id] = app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->editorData);
             $this->previewOriginals['rule:'.$id] = $this->editorData;
@@ -231,6 +247,7 @@ class RulesRelationManager extends RelationManager
         $this->stashEditorDraft();
         $this->selectedRuleId = null;
         $this->editorKind = $kind;
+        $this->ruleConflictLatest = null;
         $this->resetValidation();
         $this->cacheSchema('editorForm')->fill($this->editorDrafts['new:'.$kind] ?? app(ConfiguratorRuleDraft::class)->fromRule(['id' => 'new:'.Str::uuid(), 'label' => '', 'kind' => $kind, 'is_active' => true, 'priority' => 0, 'driver_configurator_attribute_id' => null, 'target_configurator_attribute_id' => null, 'conditions' => [], 'effects' => [], 'sets' => []]));
         $this->editorOriginals['new:'.$kind] ??= app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->editorData);
@@ -263,7 +280,7 @@ class RulesRelationManager extends RelationManager
         foreach ($ids as $id) {
             $key = 'rule:'.$id;
             if ($removed) {
-                unset($this->editorDrafts[$key], $this->editorOriginals[$key], $this->previewOriginals[$key], $this->editorStaleRows[$key]);
+                unset($this->editorDrafts[$key], $this->editorOriginals[$key], $this->previewOriginals[$key], $this->editorStaleRows[$key], $this->ruleEditBases[$key]);
                 if ($this->selectedRuleId === $id) {
                     $this->selectedRuleId = null;
                     $this->editorKind = null;
@@ -291,6 +308,8 @@ class RulesRelationManager extends RelationManager
         $this->editorOriginals = [];
         $this->previewOriginals = [];
         $this->editorStaleRows = [];
+        $this->ruleEditBases = [];
+        $this->ruleConflictLatest = null;
         $this->resetValidation();
         $this->dispatch('configurator-editor-filled');
     }
@@ -299,12 +318,11 @@ class RulesRelationManager extends RelationManager
     {
         Gate::authorize('manage-catalog');
         abort_if($this->editorKind === null, 404);
-        if ($this->selectedRuleId !== null && isset($this->editorStaleRows['rule:'.$this->selectedRuleId])) {
-            throw ValidationException::withMessages(['editorData' => __('configurator.validation.batch_changes_were_saved_for_this_record')]);
-        }
         $this->editorForm->getState();
         $state = $this->editorForm->getRawState();
-        $this->saveRule($this->selectedRuleId, $this->editorKind, $state instanceof Arrayable ? $state->toArray() : $state);
+        if (! $this->saveRule($this->selectedRuleId, $this->editorKind, $state instanceof Arrayable ? $state->toArray() : $state)) {
+            return;
+        }
         if ($this->selectedRuleId === null) {
             unset($this->editorDrafts['new:'.$this->editorKind], $this->editorOriginals['new:'.$this->editorKind], $this->previewOriginals['new:'.$this->editorKind]);
             $this->editorKind = null;
@@ -368,11 +386,12 @@ class RulesRelationManager extends RelationManager
     }
 
     /** @param array<string, mixed> $data */
-    public function saveRule(?int $id, string $kind, array $data): void
+    public function saveRule(?int $id, string $kind, array $data): bool
     {
         $owner = $this->owner();
+        $latest = null;
         try {
-            app(SaveConfiguratorDefinition::class)->change(auth()->user(), $owner, function (array $draft) use ($id, $kind, $data): array {
+            app(SaveConfiguratorDefinition::class)->change(auth()->user(), $owner, function (array $draft) use ($id, $kind, $data, &$latest): array {
                 $index = array_search((string) $id, array_column($draft['rules'], 'id'), true);
                 if ($id !== null && $index === false) {
                     throw ValidationException::withMessages(['rule' => __('configurator.validation.this_rule_does_not_belong_to_this')]);
@@ -383,6 +402,18 @@ class RulesRelationManager extends RelationManager
                 }
                 $rule = app(ConfiguratorRuleDraft::class)->toRule($data);
                 if ($id !== null) {
+                    $base = $this->ruleEditBases['rule:'.$id] ?? null;
+                    if ($base === null) {
+                        throw ValidationException::withMessages(['rule' => __('configurator.reconciliation.open_first')]);
+                    }
+                    $current = app(ConfiguratorRuleDraft::class)->fromRule($draft['rules'][$index]);
+                    unset($base['priority']);
+                    $comparison = $current;
+                    unset($comparison['priority']);
+                    if (! app(ConfiguratorEditorChanges::class)->sameMeaning('rule', $base, $comparison)) {
+                        $latest = $current;
+                        throw ValidationException::withMessages(['ruleConflict' => __('configurator.reconciliation.changed')]);
+                    }
                     $rule['id'] = (string) $id;
                     $rule['priority'] = $draft['rules'][$index]['priority'];
                     $draft['rules'][$index] = $rule;
@@ -397,9 +428,84 @@ class RulesRelationManager extends RelationManager
                 return $draft;
             });
         } catch (\Throwable $exception) {
+            if ($latest !== null && $exception instanceof ValidationException && isset($exception->errors()['ruleConflict']) && $id === $this->selectedRuleId) {
+                $this->ruleConflictLatest = $latest;
+                $this->mountAction('reconcileRule');
+
+                return false;
+            }
             ConfiguratorFormErrors::rethrow($exception, $this->editorKind === null ? null : $this->editorForm, '/^rules\.\d+\./');
         }
         $this->saved();
+
+        return true;
+    }
+
+    public function reconcileRuleAction(): Action
+    {
+        return Action::make('reconcileRule')->authorize('manage-catalog')
+            ->visible(fn (): bool => $this->ruleConflictLatest !== null && $this->selectedRuleId !== null)
+            ->modalHeading(__('configurator.reconciliation.changed'))
+            ->modalDescription(__('configurator.reconciliation.help'))
+            ->modalWidth('5xl')->modalSubmitActionLabel(__('configurator.reconciliation.update_form'))
+            ->modalCancelActionLabel(__('configurator.reconciliation.keep_editing'))
+            ->fillForm(function (): array {
+                $this->assertRuleReview();
+
+                return ['take_latest' => array_keys($this->ruleRefreshGroups()), 'latest' => $this->ruleConflictLatest, 'draft' => $this->editorData];
+            })
+            ->schema(fn (): array => [
+                CheckboxList::make('take_latest')->label(__('configurator.reconciliation.take_latest'))
+                    ->options(array_map(fn (array $group): string => $group['label'], $this->ruleRefreshGroups()))->columns(2),
+                Section::make(__('configurator.reconciliation.latest'))->statePath('latest')->columns(1)->columnSpanFull()->disabled()->dehydrated(false)->validatedWhenNotDehydrated(false)
+                    ->schema(fn (): array => ConfiguratorRuleForm::components($this->owner(), $this->editorKind)),
+                Section::make(__('configurator.reconciliation.draft'))->statePath('draft')->columns(1)->columnSpanFull()->dehydrated(false)->validatedWhenNotDehydrated(false)
+                    ->schema(fn (): array => ConfiguratorRuleForm::components($this->owner(), $this->editorKind)),
+            ])
+            ->action(function (array $data): void {
+                $this->assertRuleReview();
+                $raw = $this->getMountedActionSchema()->getRawState();
+                $raw = $raw instanceof Arrayable ? $raw->toArray() : $raw;
+                $draft = $raw['draft'];
+                foreach ($this->ruleRefreshGroups() as $key => $group) {
+                    if (in_array($key, $data['take_latest'] ?? [], true)) {
+                        foreach ($group['fields'] as $field) {
+                            $draft[$field] = $this->ruleConflictLatest[$field];
+                        }
+                    }
+                }
+                $draft['id'] = $this->ruleConflictLatest['id'];
+                $draft['kind'] = $this->ruleConflictLatest['kind'];
+                $draft['priority'] = $this->ruleConflictLatest['priority'];
+                $key = 'rule:'.$this->selectedRuleId;
+                $this->ruleEditBases[$key] = $this->ruleConflictLatest;
+                $this->previewOriginals[$key] = $this->ruleConflictLatest;
+                $this->editorOriginals[$key] = app(ConfiguratorEditorChanges::class)->comparisonHash('rule', $this->ruleConflictLatest);
+                $this->cacheSchema('editorForm')->fill($draft);
+                unset($this->editorDrafts[$key], $this->editorStaleRows[$key]);
+                $this->ruleConflictLatest = null;
+                $this->resetValidation();
+                $this->dispatch('configurator-editor-filled');
+            });
+    }
+
+    private function assertRuleReview(): void
+    {
+        $rule = $this->owner()->rules()->findOrFail($this->selectedRuleId);
+        abort_unless($this->ruleConflictLatest !== null && (string) $rule->id === (string) $this->ruleConflictLatest['id'] && $rule->kind === $this->editorKind, 409);
+    }
+
+    /** @return array<string, array{label: string, fields: list<string>}> */
+    private function ruleRefreshGroups(): array
+    {
+        return [
+            'label' => ['label' => __('ui.fields.label'), 'fields' => ['label']],
+            'enabled' => ['label' => __('ui.status.enabled'), 'fields' => ['is_active']],
+            'conditions' => ['label' => __('configurator.labels.all_conditions'), 'fields' => ['condition_blocks']],
+            'content' => $this->editorKind === 'Mapping'
+                ? ['label' => __('configurator.reconciliation.mapping'), 'fields' => ['driver_configurator_attribute_id', 'target_configurator_attribute_id', 'sets']]
+                : ['label' => __('configurator.labels.effects'), 'fields' => ['effects']],
+        ];
     }
 
     public function removeRule(int $id): void
