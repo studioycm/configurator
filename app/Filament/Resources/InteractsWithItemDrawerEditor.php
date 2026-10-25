@@ -6,9 +6,8 @@ use App\Livewire\Catalog\ItemListDrawer;
 use App\Models\Group;
 use App\Models\Option;
 use App\Models\Product;
-use App\Services\ItemLists;
+use App\Services\ItemListMembers;
 use Filament\Actions\Action;
-use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Locked;
 
 trait InteractsWithItemDrawerEditor
@@ -54,19 +53,21 @@ trait InteractsWithItemDrawerEditor
         }
 
         abort_unless($this->listKey !== null && $this->parentId !== null, 404);
-        $definition = app(ItemLists::class)->definition(auth()->user(), $this->listKey, $this->parentId);
+        $members = app(ItemListMembers::class);
         $model = static::getResource()::getModel();
         abort_unless(in_array($model, [Option::class, Group::class, Product::class], true), 404);
 
         if ($this->listKey === 'group-card-properties') {
+            $members->propertyKeys(auth()->user(), $this->parentId);
             abort_unless($model === Group::class && (string) $record === (string) $this->parentId, 404);
             abort_unless(Group::query()->whereKey($record)->doesntHave('children')->exists(), 404);
 
             return;
         }
 
-        abort_unless($definition->query instanceof Builder && $definition->query->getModel()::class === $model, 404);
-        abort_unless((clone $definition->query)->whereKey($record)->exists(), 404);
+        $query = $members->query(auth()->user(), $this->listKey, $this->parentId);
+        abort_unless($query->getModel()::class === $model, 404);
+        abort_unless($query->whereKey($record)->exists(), 404);
     }
 
     protected function notifyItemDrawerSaved(): void

@@ -71,6 +71,7 @@ test('mapping order preserves set identities memberships and rejects incomplete 
 test('card ordering changes only the stored selected properties and shows complete array rows during drag', function () {
     $settings = ['card_properties' => ['Model', 'WT', 'B'], 'cards_per_row' => 3, 'custom_future_setting' => ['keep' => true]];
     $group = Group::factory()->create(['result_settings' => $settings]);
+    $settings = $group->fresh()->result_settings;
     $drawer = Livewire::test(ItemListDrawer::class, ['listKey' => 'group-card-properties', 'parentId' => $group->id])
         ->set('tableSearch', 'WT')->call('toggleTableReordering');
     expect($drawer->instance()->getTableRecords())->toHaveCount(3);
@@ -121,4 +122,13 @@ test('card order rejects stale sets and does not materialize an empty fallback o
     expect(fn () => $service->reorder(auth()->user(), 'group-card-properties', $group->id, ['Model', 'WT']))->toThrow(ValidationException::class);
     $service->reorder(auth()->user(), 'group-card-properties', $group->id, []);
     expect($group->fresh()->result_settings)->toBe(['card_properties' => []]);
+});
+
+test('card membership order preserves numeric-looking and dotted property strings without UI definitions', function () {
+    $keys = ['0', '001', '1', 'literal.field', 'שדה'];
+    $group = Group::factory()->create(['result_settings' => ['card_properties' => $keys]]);
+    $service = app(ItemListOrdering::class);
+    expect($service->ids(auth()->user(), 'group-card-properties', $group->id))->toBe($keys);
+    $service->reorder(auth()->user(), 'group-card-properties', $group->id, array_reverse($keys));
+    expect($service->ids(auth()->user(), 'group-card-properties', $group->id))->toBe(array_reverse($keys));
 });

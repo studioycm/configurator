@@ -29,10 +29,11 @@ class ItemListOrdering
     {
         $column = $this->column($key);
         abort_if($column === null, 403);
-        $query = app(ItemLists::class)->definition($actor, $key, $parentId)->query;
-        if (is_array($query)) {
-            return array_keys($query);
+        $members = app(ItemListMembers::class);
+        if ($key === 'group-card-properties') {
+            return $members->propertyKeys($actor, $parentId);
         }
+        $query = $members->query($actor, $key, $parentId);
 
         return $query->reorder()->orderBy($column, $key === 'configurator-rules' ? 'desc' : 'asc')->orderBy('id')->pluck('id')->all();
     }

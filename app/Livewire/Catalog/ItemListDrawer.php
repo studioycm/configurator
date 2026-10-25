@@ -18,6 +18,7 @@ use App\Models\Option;
 use App\Models\Product;
 use App\Models\RuleEffect;
 use App\RuleEffectKind;
+use App\Services\ItemListMembers;
 use App\Services\ItemListOrdering;
 use App\Services\ItemLists;
 use Filament\Actions\Action;
@@ -138,7 +139,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
                 ->icon(Heroicon::OutlinedArrowTopRightOnSquare)->url(fn (Model $record): string => app(ItemLists::class)->recordUrl($record))->openUrlInNewTab()]);
         }
 
-        if ($this->localEditorComponent($definition) !== null) {
+        if ($this->localEditorComponent($definition->query instanceof Builder ? $definition->query : null) !== null) {
             $table->recordAction(null)->recordUrl(null)
                 ->recordClasses(fn (Model|array $record): ?string => $record instanceof Model && (string) $record->getKey() === $this->selectedRecordId ? 'catalog-selected-row' : null)
                 ->recordActions([
@@ -180,7 +181,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
             array_unshift($headerActions, Action::make('assignGroups')->label(__('admin-ux.assign_groups'))->icon(Heroicon::OutlinedPlus)
                 ->url(ConfiguratorResource::getUrl('edit', ['record' => $this->parentId, 'tab' => 'groups::data::tab']))->openUrlInNewTab());
         }
-        if ($this->listKey === 'group-card-properties' && $this->localEditorComponent($definition) !== null) {
+        if ($this->listKey === 'group-card-properties' && $this->localEditorComponent($definition->query instanceof Builder ? $definition->query : null) !== null) {
             array_unshift($headerActions, Action::make('editPresentation')->label(__('catalog.labels.edit_presentation'))->icon('heroicon-o-pencil-square')->authorize('manage-catalog')
                 ->extraAttributes(['data-item-editor-transition' => true])->action(fn () => $this->editPresentation()));
         }
@@ -207,7 +208,12 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
 
     public function beginAssignment(): void
     {
-        $this->definition();
+        $members = app(ItemListMembers::class);
+        if ($this->listKey === 'group-card-properties') {
+            $members->propertyKeys(auth()->user(), $this->parentId);
+        } else {
+            $members->query(auth()->user(), $this->listKey, $this->parentId);
+        }
         abort_unless($this->assignmentAction() !== null, 403);
         $this->selectedRecordId = null;
         $this->isAssigning = true;
@@ -229,9 +235,11 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         if ($this->relatedRecordsExist !== null) {
             return $this->relatedRecordsExist;
         }
-        $query = $this->definition()->query;
+        $members = app(ItemListMembers::class);
 
-        return $this->relatedRecordsExist = is_array($query) ? $query !== [] : (clone $query)->exists();
+        return $this->relatedRecordsExist = $this->listKey === 'group-card-properties'
+            ? $members->propertyKeys(auth()->user(), $this->parentId) !== []
+            : $members->query(auth()->user(), $this->listKey, $this->parentId)->exists();
     }
 
     public function clearListSearch(): void
@@ -259,19 +267,19 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         return strtok($definition->fullListUrl, '?').'?'.http_build_query($query);
     }
 
-    private function localEditorComponent(ItemListDefinition $definition): ?string
+    private function localEditorComponent(?Builder $query = null): ?string
     {
         if (! $this->allowLocalEditing) {
             return null;
         }
         if ($this->listKey === 'group-card-properties') {
+            app(ItemListMembers::class)->propertyKeys(auth()->user(), $this->parentId);
+
             return Group::query()->whereKey($this->parentId)->doesntHave('children')->exists() ? EditGroup::class : null;
         }
-        if (! $definition->query instanceof Builder) {
-            return null;
-        }
+        $query ??= app(ItemListMembers::class)->query(auth()->user(), $this->listKey, $this->parentId);
 
-        return match ($definition->query->getModel()::class) {
+        return match ($query->getModel()::class) {
             Option::class => EditOption::class,
             Group::class => EditGroup::class,
             Product::class => EditProduct::class,
@@ -281,22 +289,21 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
 
     public function editorComponent(): ?string
     {
-        return $this->selectedRecordId === null ? null : $this->localEditorComponent($this->definition());
+        return $this->selectedRecordId === null ? null : $this->localEditorComponent();
     }
 
     public function selectRecord(string $record): void
     {
-        $definition = $this->definition();
-        abort_if($this->localEditorComponent($definition) === null, 404);
+        abort_if($this->localEditorComponent() === null, 404);
+        $members = app(ItemListMembers::class);
         if ($this->listKey === 'group-card-properties') {
-            abort_unless(is_array($definition->query) && array_key_exists($record, $definition->query), 404);
+            abort_unless(in_array($record, $members->propertyKeys(auth()->user(), $this->parentId), true), 404);
             $this->editPresentation();
 
             return;
         }
 
-        abort_unless($definition->query instanceof Builder, 404);
-        $model = (clone $definition->query)->findOrFail($record);
+        $model = $members->query(auth()->user(), $this->listKey, $this->parentId)->findOrFail($record);
         $resource = match ($model::class) {
             Option::class => OptionResource::class,
             Product::class => ProductResource::class,
@@ -310,8 +317,7 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
 
     public function editPresentation(): void
     {
-        $definition = $this->definition();
-        abort_unless($this->listKey === 'group-card-properties' && $this->localEditorComponent($definition) !== null, 404);
+        abort_unless($this->listKey === 'group-card-properties' && $this->localEditorComponent() !== null, 404);
         $group = Group::findOrFail($this->parentId);
         abort_unless(GroupResource::canEdit($group), 403);
         $this->selectedRecordId = (string) $group->getKey();
@@ -335,8 +341,10 @@ class ItemListDrawer extends Component implements HasActions, HasSchemas, HasTab
         if ($listKey !== $this->listKey || $parentId !== $this->parentId) {
             return;
         }
-        $definition = $this->definition();
-        if ($this->selectedRecordId === $record && $definition->query instanceof Builder && ! (clone $definition->query)->whereKey($record)->exists()) {
+        $members = app(ItemListMembers::class);
+        if ($this->listKey === 'group-card-properties') {
+            $members->propertyKeys(auth()->user(), $this->parentId);
+        } elseif ($this->selectedRecordId === $record && ! $members->query(auth()->user(), $this->listKey, $this->parentId)->whereKey($record)->exists()) {
             $this->selectedRecordId = null;
         }
         $this->flushCachedTableRecords();

@@ -8,7 +8,7 @@ use App\Filament\Resources\Attributes\Schemas\AttributeForm;
 use App\Filament\Resources\Options\Schemas\OptionForm;
 use App\Models\Attribute;
 use App\Models\Option;
-use App\Services\ItemLists;
+use App\Services\ItemListMembers;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Notifications\Notification;
@@ -45,7 +45,7 @@ class AttributeValueAssignment extends Component implements HasActions, HasSchem
     private function authorizeAssignment(): void
     {
         abort_unless(in_array($this->listKey, ['attribute-options', 'value-options'], true), 404);
-        app(ItemLists::class)->definition(auth()->user(), $this->listKey, $this->parentId);
+        app(ItemListMembers::class)->query(auth()->user(), $this->listKey, $this->parentId);
     }
 
     public function form(Schema $schema): Schema
