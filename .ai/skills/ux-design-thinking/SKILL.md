@@ -41,13 +41,46 @@ It does not authorize implementation.
   coverage.
 - Keep design artifacts outside the repository unless the operator asks to
   write or commit them.
-- After operator approval, route the chosen phase into the normal research,
-  planning, TDD, simplification, and verification workflow.
+- After design approval, hand over the approved outcomes, protected contracts,
+  and relevant acceptance criteria. Follow the operator-approved development
+  approach and current task requirements.
 
-For a full redesign or design audit, complete every stage and pass every exit
-test. For a narrow implementation review, run the minimum Stage 0–2
-orientation needed for evidence, apply the Stage 4 lens linter, and label the
-result as a lens-lint review rather than a complete design audit.
+This UX skill does not prescribe TDD, a fixed skill sequence, worktree
+arrangements, or test execution. Choose development order and verification
+proportionate to the change and its actual risks.
+
+## Review modes
+
+Choose the mode that matches the requested scope.
+
+- **Full design process:** Complete Stages 0–8 and their exit tests.
+- **Bounded workflow review:** Review one named workflow, decision sequence,
+  terminology problem, or form interaction. Perform the minimum Stage 0–2
+  orientation needed to establish its contracts, user questions, and evidence,
+  then apply [Workflow review](references/workflow-review.md).
+- **Lens-lint review:** For a narrow implementation review, perform the minimum
+  Stage 0–2 orientation, apply the Stage 4 lens linter, and label the result
+  as a lens-lint review.
+
+A bounded review reduces coverage and deliverables to the named scope. It
+retains contract grounding, operator inquiry, evidence classification, and
+critical-unknown gates for every conclusion. It does not automatically require
+a full product audit, mockups, implementation phases, or estimates.
+
+Distinguish confirmed source behavior, observed interface behavior, operator
+reports, and inference. Written descriptions do not establish observed UI
+behavior. Separate proposed acceptance checks from checks actually performed.
+
+When a review includes implementation feasibility, read
+[Implementation capabilities](references/implementation-capabilities.md)
+after deriving the user outcome and product contract. Use only technologies
+confirmed in the current product. Do not select a framework through this review.
+
+All modes remain read-only. Product approval controls and the operator's
+authorization to implement a recommendation are separate decisions.
+
+Review exit criteria describe the evidence needed for a design conclusion.
+They do not require automated tests or test-first development.
 
 ## Operator inquiry loop
 
@@ -321,6 +354,14 @@ action.
 7. Preserve named transitions, exits, and return context where the job needs
    continuity.
 
+When the screen includes treatment choices, inspection alongside batch
+selection, conflicts, or staged decisions, apply the relevant checks in
+[Workflow review](references/workflow-review.md).
+
+Inspection and selection may support the same user job on one screen.
+Distinguish their controls and meanings without requiring separate screens.
+Apply only concepts established by the current product's evidence.
+
 Use the product's actual language, direction, visual theme, density, content
 shapes, devices, and accessibility constraints. Wrong-locale or generic
 grayscale mockups can hide the defects being tested. Number annotations and
@@ -438,7 +479,11 @@ Use this during the full process and during later implementation reviews:
 
 ## Deliverable contract
 
-The operator receives:
+The checklist below applies to the full design process.
+
+Bounded workflow reviews use the deliverable contract in
+[Workflow review](references/workflow-review.md). Lens-lint reviews report
+their scope, findings, evidence, and coverage limits.
 
 - [ ] contracts table;
 - [ ] user/operator model and weighted jobs table;
@@ -451,8 +496,9 @@ The operator receives:
 - [ ] adversarial adopt/steer table;
 - [ ] phased plan with honest hours and drift register;
 - [ ] unresolved questions and evidence gaps;
-- [ ] explicit statement that the work was read-only, nothing was implemented,
-      and operator phase selection is required.
+- [ ] explicit statement that the work was read-only and nothing was
+      implemented; identify recommendations awaiting operator review and
+      request phase selection when implementation phases were proposed.
 
 ## Worked example
 
