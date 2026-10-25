@@ -45,6 +45,6 @@ class SaveConfiguratorOption
             $draft['attributes'][$attributeIndex] = $attribute;
 
             return $draft;
-        });
+        }, additionalParents: ['option_ids' => isset($data['option_id']) && (is_int($data['option_id']) || is_string($data['option_id'])) ? [$data['option_id']] : []]);
     }
 }

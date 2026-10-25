@@ -175,8 +175,8 @@ class ConfiguratorDefinitionLoader
         return ['name' => $configurator->name, 'description' => $configurator->description, 'context_schema' => $configurator->context_schema ?? ['territory' => [], 'application' => []], 'hidden_context_options' => $configurator->hidden_context_options ?? ['territory' => [], 'application' => []], 'policy_overrides' => $configurator->policy_overrides ?? [], 'attributes' => $attributes, 'rules' => $rules];
     }
 
-    /** @param array<string, mixed> $data @return array{array<int, array{key: string, label: string}>, array<int, array{attribute_id: int, code: string, label: string}>} */
-    public function canonical(array $data, bool $lock = false): array
+    /** @param array<string, mixed> $data @return array{attribute_ids: list<int|string>, option_ids: list<int|string>} */
+    public function canonicalReferences(array $data): array
     {
         $attributeIds = [];
         $optionIds = [];
@@ -193,14 +193,32 @@ class ConfiguratorDefinitionLoader
                 }
             }
         }
-        $attributeQuery = Attribute::whereKey($attributeIds)->orderBy('id');
-        $optionQuery = Option::with('value')->whereKey($optionIds)->orderBy('id');
+
+        return ['attribute_ids' => $attributeIds, 'option_ids' => $optionIds];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array{attribute_ids?: list<int|string>, value_ids?: list<int|string>, option_ids?: list<int|string>}  $additionalParents
+     * @return array{array<int, array{key: string, label: string}>, array<int, array{attribute_id: int, code: string, label: string}>}
+     */
+    public function canonical(array $data, bool $lock = false, array $additionalParents = []): array
+    {
+        ['attribute_ids' => $attributeIds, 'option_ids' => $optionIds] = $this->canonicalReferences($data);
         if ($lock) {
-            $attributeQuery->lockForUpdate();
-            $optionQuery->lockForUpdate();
+            $parents = app(CanonicalUsage::class)->lockParents(
+                [...$attributeIds, ...($additionalParents['attribute_ids'] ?? [])],
+                $additionalParents['value_ids'] ?? [],
+                [...$optionIds, ...($additionalParents['option_ids'] ?? [])],
+            );
+            $attributeRecords = $parents['attributes']->only(array_map('intval', $attributeIds));
+            $optionRecords = $parents['options']->only(array_map('intval', $optionIds));
+        } else {
+            $attributeRecords = Attribute::whereKey($attributeIds)->orderBy('id')->get();
+            $optionRecords = Option::with('value')->whereKey($optionIds)->orderBy('id')->get();
         }
-        $attributes = $attributeQuery->get()->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->only(['key', 'label', 'is_active'])])->all();
-        $options = $optionQuery->get()->mapWithKeys(fn (Option $option): array => [$option->id => ['attribute_id' => $option->attribute_id, 'code' => $option->code, 'label' => $option->value->label, 'semantic_id' => $option->value->semantic_id, 'is_active' => $option->is_active, 'is_hidden' => $option->is_hidden]])->all();
+        $attributes = $attributeRecords->mapWithKeys(fn (Attribute $attribute): array => [$attribute->id => $attribute->only(['key', 'label', 'is_active'])])->all();
+        $options = $optionRecords->mapWithKeys(fn (Option $option): array => [$option->id => ['attribute_id' => $option->attribute_id, 'code' => $option->code, 'label' => $option->value->label, 'semantic_id' => $option->value->semantic_id, 'is_active' => $option->is_active, 'is_hidden' => $option->is_hidden]])->all();
 
         return [$attributes, $options];
     }

@@ -13,6 +13,7 @@ use App\Models\ConfiguratorRule;
 use App\Models\Group;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Value;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEditorChanges;
 use App\Services\ConfiguratorRuleDraft;
@@ -230,6 +231,53 @@ test('different Configurators sharing canonical rows save without the context ca
             DB::table('configurator_attributes')->whereIn('id', $ids)->delete();
             DB::table('configurators')->where('id', $other->id)->delete();
         }
+        if ($fixture !== null) {
+            removePreviewContentionFixture($fixture);
+        }
+        DB::beginTransaction();
+    }
+});
+
+test('tested Preview waits for a canonical Value and rejects the freshly changed parent instead of a stale snapshot', function () {
+    DB::commit();
+    $fixture = null;
+    $workers = [];
+    try {
+        $fixture = previewContentionFixture();
+        $optionId = $fixture['saved']['attributes'][0]['options'][0]['option_id'];
+        $valueId = DB::table('options')->where('id', $optionId)->value('value_id');
+        DB::purge('mysql');
+        $workers['parent'] = startPreviewContentionWorker(fn (): int => DB::transaction(function () use ($valueId): int {
+            $value = Value::whereKey($valueId)->lockForUpdate()->firstOrFail();
+            $value->update(['label' => 'Changed while Preview was waiting']);
+
+            return $value->id;
+        }), 'values', 'values');
+        $workers['preview'] = startPreviewContentionWorker(testedPreviewWrite($fixture), 'values', null, announceAttempt: true);
+        writeCatalogContentionMessage($workers['parent']['channel'], ['phase' => 'start']);
+        expect(readCatalogContentionMessage($workers['parent']['channel']))->toMatchArray(['phase' => 'locked', 'table' => 'values']);
+        writeCatalogContentionMessage($workers['preview']['channel'], ['phase' => 'start']);
+        expect(readCatalogContentionMessage($workers['preview']['channel']))->toMatchArray(['phase' => 'attempting']);
+        $waiting = false;
+        $deadline = microtime(true) + 5;
+        do {
+            foreach (DB::select('SHOW FULL PROCESSLIST') as $process) {
+                if ((int) $process->Id === $workers['preview']['connection_id'] && str_contains((string) $process->Info, 'from `values`') && str_contains((string) $process->Info, 'for update')) {
+                    $waiting = true;
+                    break 2;
+                }
+            }
+            usleep(10000);
+        } while (microtime(true) < $deadline);
+        expect($waiting)->toBeTrue();
+        writeCatalogContentionMessage($workers['parent']['channel'], ['phase' => 'release']);
+        expect(readCatalogContentionMessage($workers['parent']['channel'])['status'])->toBe('committed');
+        $preview = readCatalogContentionMessage($workers['preview']['channel']);
+        expect($preview['status'])->toBe('rejected')
+            ->and($preview['errors']['preview'])->toContain(__('configurator.preview.saved_conflict'))
+            ->and(app(ConfiguratorDefinitionLoader::class)->draft($fixture['configurator']->fresh()))->toBe($fixture['saved']);
+    } finally {
+        stopCatalogContentionWorkers($workers);
         if ($fixture !== null) {
             removePreviewContentionFixture($fixture);
         }

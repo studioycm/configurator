@@ -40,7 +40,7 @@ class SaveConfiguratorDefinition
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
             $globalContext = CatalogContextSettings::current(lock: true)->choices;
             $current = $this->loader->draft($record);
-            [$attributes, $options] = $this->loader->canonical($data, true);
+            [$attributes, $options] = $this->loader->canonical($data, true, $this->loader->canonicalReferences($current));
             $definition = $this->compiler->compile($data, $attributes, $options, authoring: true, globalContext: $globalContext);
             $data = $definition->data;
             $this->assertOwnership($data, $current);
@@ -149,16 +149,22 @@ class SaveConfiguratorDefinition
         });
     }
 
-    /** @param \Closure(array<string, mixed>): array<string, mixed> $change */
-    public function change(User $actor, Configurator $configurator, \Closure $change): Configurator
+    /**
+     * @param  \Closure(array<string, mixed>): array<string, mixed>  $change
+     * @param  array{attribute_ids?: list<int|string>, value_ids?: list<int|string>, option_ids?: list<int|string>}  $additionalParents
+     */
+    public function change(User $actor, Configurator $configurator, \Closure $change, array $additionalParents = []): Configurator
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($actor, $configurator, $change): Configurator {
+        return DB::transaction(function () use ($actor, $configurator, $change, $additionalParents): Configurator {
             $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
             CatalogContextSettings::current(lock: true);
 
-            return $this->handle($actor, $record, $change($this->loader->draft($record)));
+            $current = $this->loader->draft($record);
+            $this->loader->canonical($current, true, $additionalParents);
+
+            return $this->handle($actor, $record, $change($current));
         });
     }
 
@@ -168,7 +174,9 @@ class SaveConfiguratorDefinition
 
         return DB::transaction(function () use ($actor, $configurator, $name): Configurator {
             $source = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            CatalogContextSettings::current(lock: true);
             $data = $this->loader->draft($source);
+            $this->loader->canonical($data, true);
             $data['name'] = $name;
             foreach ($data['attributes'] as &$attribute) {
                 $attribute['id'] = 'new:attribute'.$attribute['id'];

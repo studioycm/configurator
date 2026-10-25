@@ -115,7 +115,11 @@ class AddConfiguratorValues
                 $readyForAggregate = true;
 
                 return $draft;
-            });
+            }, additionalParents: [
+                'attribute_ids' => [$inclusion->attribute_id],
+                'option_ids' => $payload['existing_option_ids'],
+                'value_ids' => array_values(array_filter(array_column($payload['new_values'], 'value_id'), fn (mixed $id): bool => is_int($id) || is_string($id))),
+            ]);
         } catch (ValidationException $exception) {
             if (! $readyForAggregate) {
                 throw $exception;

@@ -148,7 +148,11 @@ class AddConfiguratorAttributes
                 $readyForAggregate = true;
 
                 return $draft;
-            });
+            }, additionalParents: [
+                'attribute_ids' => $selected,
+                'option_ids' => array_values(array_filter(data_get($payload, 'reviews.*.values.*.option_id', []), fn (mixed $id): bool => is_int($id) || is_string($id))),
+                'value_ids' => array_values(array_filter(data_get($payload, 'attributes.*.values.*.value_id', []), fn (mixed $id): bool => is_int($id) || is_string($id))),
+            ]);
         } catch (ValidationException $exception) {
             if (! $readyForAggregate) {
                 throw $exception;

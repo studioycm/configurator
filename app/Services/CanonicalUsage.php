@@ -10,9 +10,35 @@ use App\Models\ConfiguratorRule;
 use App\Models\Option;
 use App\Models\Value;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\ValidationException;
 
 class CanonicalUsage
 {
+    /**
+     * @param  list<int|string>  $attributeIds
+     * @param  list<int|string>  $valueIds
+     * @param  list<int|string>  $optionIds
+     * @return array{attributes: Collection<int, Attribute>, values: Collection<int, Value>, options: Collection<int, Option>}
+     */
+    public function lockParents(array $attributeIds, array $valueIds = [], array $optionIds = []): array
+    {
+        $links = Option::whereKey($optionIds)->get(['id', 'attribute_id', 'value_id']);
+        $attributeIds = array_values(array_unique([...$attributeIds, ...$links->pluck('attribute_id')->all()]));
+        $valueIds = array_values(array_unique([...$valueIds, ...$links->pluck('value_id')->all()]));
+        $attributes = Attribute::whereKey($attributeIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $values = Value::whereKey($valueIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $options = Option::whereKey($optionIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        foreach ($options as $option) {
+            if (! $attributes->has($option->attribute_id) || ! $values->has($option->value_id)) {
+                throw ValidationException::withMessages(['definition' => __('configurator.validation.changes_could_not_be_saved_your_draft')]);
+            }
+            $option->setRelation('value', $values->get($option->value_id));
+        }
+
+        return compact('attributes', 'values', 'options');
+    }
+
     /** @return Builder<Configurator> */
     public function configurators(Attribute|Value|Option $record): Builder
     {

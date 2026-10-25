@@ -611,7 +611,7 @@ class AttributesRelationManager extends RelationManager
                 }
 
                 return $draft;
-            });
+            }, additionalParents: app(ConfiguratorDefinitionLoader::class)->canonicalReferences(['attributes' => [$data]]));
         } catch (\Throwable $exception) {
             ConfiguratorFormErrors::rethrow($exception, $this->getMountedActionSchema() ?? ($this->selectedAttributeId !== null ? $this->editorForm : null), '/^attributes\.\d+\./');
         }
