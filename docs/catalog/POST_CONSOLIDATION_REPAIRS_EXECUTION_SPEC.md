@@ -1,8 +1,10 @@
 # Post-consolidation repairs: execution specification
 
-**Status: proposed for human approval. No application implementation is authorized.** Prepared 26 October 2026, Asia/Jerusalem.
+**Status: approved for execution by the human on 26 October 2026.** One writer in one dedicated worktree; local checkpoints only, no merge or push. The approval includes the export-version column. Security remains deferred; step 8 stays with the catalog task.
 
 **Independent review:** Cross-worktree integration audit completed a bounded read-only review and re-review; no remaining approval-blocking contradiction was found. This is specification readiness only. All implementation, migrations, application regressions, capacity measurements and runtime acceptance below remain unexecuted. The proposed nullable export-version marker is part of the requested human specification approval.
+
+**Execution disposition, latest human clarification:** finish and verify all of steps 5–7 in this task, including implementing CSV/readiness step 6, and only then merge the completed set into local master. No push. Stop implementing in the linked consolidation worktree; continue in the main checkout on temporary branch `codex/finish-post-consolidation-repairs`, leaving master history unchanged until the final merge. CP5 is implemented; CP7's existing patch is under final checks; CP6 remains to implement. This supersedes the earlier stop/partial-integration interpretation. Security remains deferred and step 8 belongs to the catalog task.
 
 **Goal:** repair SA-01, RL-02/RL-01 and AD-01 while preserving current application behavior, other tasks' work and the accepted consolidation contracts.
 
@@ -25,7 +27,7 @@
 | P07 | Security and package/served-asset work are deferred until the human explicitly requests them. There is no automatic security phase after these repairs or the feature review. Preserve existing authorization and safety guards. |
 | P08 | Step 8 belongs to Plan catalog configuration and UX for both Image Manager and catalog redesign. This task supplies the final verified SHA/contracts/evidence; the owner audits and proposes alignment. No automatic combined-P6 implementation, merge, P7–P10 or prototype changes. |
 | P09 | No push, deployment, dependency change, production operation, source database reset, feature-worktree import, legacy restoration or broad structural refactor. Merge and feature integration require their own later authority. |
-| P10 | This specification approval must precede application/test edits. Current authority covers preparing/reviewing this document and updating its planning records only. |
+| P10 | This specification approval must precede application/test edits. The human has explicitly approved this specification, including the export-version marker; implementation and the scoped tests are authorized. |
 
 SA-01 preserves the current hidden versus disabled-but-visible distinction. AD-01 preserves stored values, compiler behavior and existing whitespace semantics. CSV A is the explicitly selected exception to the earlier no-acceptance-change default: previously accepted nonstandard quoting will be rejected rather than silently reinterpreted.
 
@@ -267,4 +269,4 @@ Keep security findings and their older package/asset plan recorded as deferred u
 
 Each execution checkpoint uses an explicit reviewed file/hunk allowlist and local commit, preserving concurrent work. No bulk staging, reset, archive or automatic merge/push. Update the journal after actual changes/tests. Roll back application code only through a reviewed compatible checkpoint; preserve immutable captured artifacts/evidence. Never restore permissive CSV parsing or false-success readiness silently, delete user export history, or run a database rollback to conceal an uncertain outcome.
 
-**Approval requested next:** review this specification, including the central rule owner and optional-mode gate. Application implementation starts only after the human explicitly approves it. No proposed regression, performance budget, metadata lifecycle or browser check above has been executed merely by writing this document.
+**Execution authority:** the human approved the specification and instructed root to execute steps 5–7 with checkpoints, one writer and one dedicated worktree. The optional-mode gate remains investigation only. No proposed regression, performance budget, metadata lifecycle or browser check above has been executed merely by writing this document.

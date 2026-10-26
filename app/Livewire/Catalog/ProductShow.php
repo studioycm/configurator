@@ -25,6 +25,6 @@ class ProductShow extends Component
         $product = Product::with('group')->findOrFail($this->productId);
         app(CatalogAvailability::class)->assertProduct($product);
 
-        return view('livewire.catalog.product-show', compact('product'))->title($product->product_name ?: $product->product_code);
+        return view('livewire.catalog.product-show', compact('product'))->title($product->product_name !== '' ? $product->product_name : $product->product_code);
     }
 }

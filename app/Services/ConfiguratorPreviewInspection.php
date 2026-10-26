@@ -46,7 +46,7 @@ final class ConfiguratorPreviewInspection
         foreach ($definition->data['rules'] as $row) {
             $rawRules[$row['id']] = $row;
             foreach ($row['sets'] as $index => $set) {
-                $sets[$row['id']][$set['id']] = $set['label'] ?: __('configurator.preview.mapping_set', ['number' => $index + 1]);
+                $sets[$row['id']][$set['id']] = ($set['label'] !== null && $set['label'] !== '' ? $set['label'] : __('configurator.preview.mapping_set', ['number' => $index + 1]));
             }
         }
         foreach ($definition->rules as $rule) {

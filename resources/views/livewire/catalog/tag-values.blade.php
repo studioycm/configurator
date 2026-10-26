@@ -48,7 +48,7 @@
                     @foreach (array_slice($this->batchPreview['rows'], 0, 5) as $row)
                         <div wire:key="tag-impact-{{ $row['id'] }}">
                             <strong>{{ $row['name'] }}</strong>
-                            <span>{{ implode(', ', $row['before']['tags'] ?? []) ?: '—' }} → {{ implode(', ', $row['after']['tags'] ?? []) ?: '—' }}</span>
+                            <span>{{ ($row['before']['tags'] ?? []) !== [] ? implode(', ', $row['before']['tags']) : '—' }} → {{ ($row['after']['tags'] ?? []) !== [] ? implode(', ', $row['after']['tags']) : '—' }}</span>
                         </div>
                     @endforeach
                 </div>

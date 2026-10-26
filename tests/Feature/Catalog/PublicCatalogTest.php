@@ -291,3 +291,15 @@ test('ordinary and preset matches determine the displayed differences using exac
     $html = implode('', $response['htmlChunks']);
     expect($response['total'])->toBe(2)->and($html)->toContain('data-product-id="'.$first->id.'"', 'data-product-id="'.$second->id.'"', 'data-property-key="Model"')->not->toContain('OTHER', 'data-property-key="Working_Pressure"');
 });
+
+test('Product document titles retain exact zero and whitespace names with empty fallback', function (?string $name, string $expected) {
+    $product = Product::factory()->create(['product_name' => $name, 'product_code' => 'TITLE-FALLBACK']);
+    $html = $this->get(route('catalog.products.show', $product))->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($html);
+    $title = (new DOMXPath($document))->evaluate('string(//title)');
+    expect($title)->toContain($expected);
+    if ($name !== null && $name !== '') {
+        expect($title)->not->toContain('TITLE-FALLBACK');
+    }
+})->with([['0', '0'], ['001', '001'], ['   ', '   '], ['', 'TITLE-FALLBACK']]);
