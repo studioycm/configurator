@@ -1,12 +1,14 @@
 # App consolidation execution specification
 
-**Status: original consolidation merged locally; approved legacy retirement implemented and automatically verified in the dedicated worktree. R16 is retired there with its sole consumer; retirement is not yet merged. Real browser CSV acceptance and representative current-app browser checks passed with manual assistance; push prohibited.**
+**Status: original consolidation and approved legacy retirement merged into local master; merged-result verification complete. R16 is retired with its sole consumer. Real CSV and representative current-app browser checks passed with human assistance. The dedicated QA site/copy has since been retired; worktree/chat retained. Push prohibited.**
 
 **Prepared:** 25 October 2026, Asia/Jerusalem. The user accepted the sixteen-step repair order, reviewed this specification and explicitly approved implementation in one dedicated consolidation worktree with checkpoint reporting. Integration into master requires a separate later approval; pushing is excluded. Earlier approval-gate language below describes that gate and must not be treated as a request to obtain the same implementation permission again.
 
 **Integration update — 25 October 2026:** the user separately approved merging the reviewed consolidation checkpoint c57c44a into local master. The fast-forward from 0567df0 retained the exact reviewed tree and all unrelated pending work. The complete merged-result PHP, MySQL, JavaScript, safety and build matrix passed. The browser CSV-upload limitation remains documented; a fresh postmerge browser smoke could not connect because the browser tool timed out. See CONSOLIDATION_CHANGELOG.md, CON-18, for evidence, preservation and the current five-workstream handoff. No push is authorized.
 
 **Legacy retirement update — 26 October 2026:** after reviewing the exact boundary and an independent final preflight, the human approved full source retirement in the existing consolidation worktree. Remove the 139 legacy fixture files, seven exclusively legacy test files and app/Casts/JsonRuleCast.php; selectively preserve the six current table datasets and Columns drawer test. Current models, migrations, packages, data, imports and compatibility guards remain unchanged. This supersedes the setter-repair proposal below: R16 is retired with its consumer, not repaired by the earlier counterexample tests. Full PHP, disposable MySQL, JavaScript and safety checks pass on the retirement tree. Real browser CSV upload, mapping, mixed completion/rejection, persisted data and failed-row download now pass with human assistance. Representative Master Values read-back, the current Attribute editor and Preview rendering/selection also pass with human assistance. This is selected smoke coverage, not every Product or combination. No new merge or push is approved. See CON-20.
+
+**Retirement integration and QA closeout — 26 October 2026:** the human separately approved merging the retirement checkpoint and then committing all eight pending documentation/UX files. CON-21 records the local merge and fresh merged-result checks; CON-22 records the exact eight-file documentation commit. The subsequent approved CON-23 retires only the dedicated QA domain/certificate, database copy and copy-only login, retaining this worktree, chat, source database and reusable test database. These later decisions supersede the earlier pending-integration statements above. A new full read-only audit of the app on master is authorized; further application repairs are not.
 
 **Goal:** repair the agreed correctness, reliability and responsibility boundaries in the existing app, preserving established behavior and other tasks' work.
 
@@ -33,6 +35,7 @@ Paths in the tables below are relative to that checkout unless absolute. New fil
 | D09 | One dedicated consolidation worktree, sequential code changes, one writer. Parallel agents may research or audit without editing code. |
 | D10 | Subagents use gpt-6.1-sol only: medium reasoning for research, max for monitoring, high for audits. Never use Astra. Each delegation states its role, model, reasoning effort, target and write boundary. Do not use an old agent with conflicting model settings; launch a correctly configured one. Implementation is performed by the single writer; there is no delegated implementation-model choice in this specification. |
 | D11 | User additionally requested MySQL-copy verification during execution. Use an isolated copy of the local configurator_catalog_dev database for realistic-data/browser checks, with a copy-only account and worktree-local runtime. Keep reset-based suites on configurator_catalog_test; never reset the source or silently point the reset harness at the copy. Source inspection/export is read-only. |
+| D12 | For future merges, first make both participating checkouts clean: review and commit intentional work in explicit logical groups under the existing authority, or preserve/isolate unfinished work before proceeding. Do not blindly stage unrelated files, secrets, local settings or generated artifacts merely to clear status. A local documentation/checkpoint commit does not authorize implementation, push or deployment. |
 
 ### Explicitly excluded
 
@@ -246,7 +249,7 @@ Keep three native protocols separate: picker model/record/relationship/bound-sta
 
 ### 15. Legacy JSON persistence — N13 / original R16; retired by approved legacy removal
 
-**Current disposition:** on 26 October 2026 the human approved full legacy retirement after source/coverage audits and a final preflight. JsonRuleCast and its sole ConfigProfile consumer are removed together in the dedicated worktree; automated checks pass. R16 is retired in that tree, with integration still pending. The corrected 25 October reopening and unimplemented setter proposal below remain historical research; do not implement that now-obsolete proposal or call the cast repaired.
+**Current disposition:** on 26 October 2026 the human approved full legacy retirement after source/coverage audits and a final preflight. JsonRuleCast and its sole ConfigProfile consumer are removed together in the dedicated worktree; automated checks pass. R16 is retired in that tree and now on local master through the separately approved CON-21 merge. The corrected 25 October reopening and unimplemented setter proposal below remain historical research; do not implement that now-obsolete proposal or call the cast repaired.
 
 **Actual owner/consumer:** app/Casts/JsonRuleCast.php::set(), used by tests/Fixtures/Legacy/Models/ConfigProfile.php::extra_rules_json. The legacy factory supplies [], its legacy textarea supplies JSON text, and its legacy migration defines a nullable JSON column. No current production model registration was located. Original FINDINGS_REGISTER R16 and the earlier pattern-domain-boundaries F6/R16 analysis already identify this cast correctly.
 
@@ -358,7 +361,7 @@ Planning inputs: /private/tmp/ari-solution-research/CURRENT_SCOPE.md, EXECUTION_
 | R12 | Superseded importer-as-field-authority advice; retain current ProductFields and literal-key authority. |
 | R13 | Retain live CatalogDiscovery vocabulary and distinct prepare callers; no inferred deletion. |
 | R14 / R15 / R17 | Steps 16 / 14 / 13 respectively; retain the presentation boundary, repair scoped memo consistency and startup registration. |
-| R16 | Retired in the approved consolidation worktree: full legacy removal includes JsonRuleCast and its sole ConfigProfile consumer. The earlier NormalizedIntArrayCast characterization did not fix this defect. Retirement source/coverage closure and automated checks are recorded in CON-20; master integration remains pending. |
+| R16 | Retired on local master through CON-21: full legacy removal includes JsonRuleCast and its sole ConfigProfile consumer. The earlier NormalizedIntArrayCast characterization did not fix this defect. CON-20 records source/coverage closure; CON-21 records the approved merge and fresh merged checks. |
 | O01–05 | Retain valid factories, existing Actions/Services/enums/policy naming and serialization. No mass reorganization. |
 | O06–08 | Preserve wiring/lifetimes and actual package consumers in 13; explicit actor in 3. No package purge or compulsory provider split. |
 | O09 / V02 / INT-01 | Step 1; optional test reclassification must preserve its real lifecycle and is not the safety fix. |
@@ -390,6 +393,8 @@ Boost search-docs was used with the installed package context; native ImportActi
 - [x] Approved source retirement, preserved current table coverage and automatic verification completed; R16 retired with its consumer in this worktree.
 - [x] Actual native browser CSV upload, mapping, completion/rejection feedback, persisted data and failed-row download verified with human assistance (26 October 2026).
 - [x] Representative fresh browser acceptance completed with human assistance: Master Values read-back, current Attribute editor and Preview rendering/selection; no exhaustive all-Product or combination claim.
-- [ ] User separately approves integration of the verified retirement checkpoint into master.
+- [x] User separately approves integration of the verified retirement checkpoint into master; CON-21 local merge and fresh checks completed (26 October 2026).
+- [x] User authorizes committing all eight pending documentation/UX files on master; CON-22 completed with exact contents preserved.
+- [x] User approves retiring the dedicated Consolidation QA setup while retaining the worktree/chat; CON-23 completed.
 
-The recorded human instructions authorize implementation and verification already underway. Further master integration and pushing remain separate decisions; no new permission is needed to finish the authorized browser checks.
+The recorded human instructions authorize implementation and verification already underway. The original programme and the separately approved retirement integration are complete locally. Pushing remains a separate decision. The newly requested full-app master audit is read-only and does not authorize further application changes.
