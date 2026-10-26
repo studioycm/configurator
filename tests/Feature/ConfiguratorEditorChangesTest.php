@@ -642,3 +642,62 @@ test('V25 partial tested Value capture preserves a linked subtitle in the clean 
         ->call('exportPreviewChanges')->assertReturned(fn (array $result): bool => $result['rows'] === []);
     expect($manager->get('previewOriginals')['value:'.$value['id']])->toHaveKey('subtitle_mode', 'master');
 });
+
+test('zero labels survive new Rule preparation inspection and nested references', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $a = $saved['attributes'][0];
+    $b = $saved['attributes'][1];
+    $value = $a['options'][0];
+    $mapping = fixtureMapping('zero-review');
+    $mapping['label'] = '0';
+    $mapping['driver_configurator_attribute_id'] = $a['id'];
+    $mapping['target_configurator_attribute_id'] = $b['id'];
+    $mapping['sets'][0]['source_option_ids'] = [$value['id']];
+    $mapping['sets'][0]['target_option_ids'] = [$b['options'][1]['id']];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [
+        ['type' => 'attribute', 'id' => $a['id'], 'before' => $a, 'after' => [...$a, 'label_override' => '0']],
+        ['type' => 'value', 'id' => $value['id'], 'before' => $value, 'after' => [...$value, 'label_override' => '0']],
+        ['type' => 'rule', 'id' => $mapping['id'], 'before' => [], 'after' => app(ConfiguratorRuleDraft::class)->fromRule($mapping)],
+    ]);
+    foreach (['inspect', 'prepare'] as $method) {
+        $report = $changes->$method(auth()->user(), $configurator, [$capture]);
+        expect($report['changes'][0]['label'])->toBe('0');
+        expect($report['changes'][2]['label'])->toBe('0');
+        expect($report['changes'][2]['fields']['driver_configurator_attribute_id']['after_text'])->toBe('0');
+        expect($report['changes'][2]['fields']['sets']['after_text'])->toContain('0 · A0');
+    }
+});
+
+test('new Rule headings preserve whitespace and numeric looking labels', function (string $label) {
+    [$configurator, $saved] = editorChangesFixture();
+    $rule = fixtureAdvanced('exact-heading', [], 'B', 'SetHint', [], 'Note');
+    $rule['label'] = $label;
+    $rule['effects'][0]['target_configurator_attribute_id'] = $saved['attributes'][1]['id'];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'rule', 'id' => $rule['id'], 'before' => [], 'after' => $rule]]);
+    expect($changes->prepare(auth()->user(), $configurator, [$capture])['changes'][0]['label'])->toBe($label);
+})->with(['0', '001', '   ']);
+
+test('compiler error locations preserve a zero Attribute override', function () {
+    [$configurator, $saved] = editorChangesFixture();
+    $a = $saved['attributes'][0];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'attribute', 'id' => $a['id'], 'before' => $a, 'after' => [...$a, 'label_override' => '0', 'default_configurator_option_id' => 'missing']]]);
+    try {
+        $changes->prepare(auth()->user(), $configurator, [$capture]);
+        $this->fail('The invalid default must be rejected.');
+    } catch (ValidationException $exception) {
+        expect(implode(' ', Arr::flatten($exception->errors())))->toContain('“0”');
+    }
+});
+
+test('empty and null Attribute overrides retain canonical review labels', function (?string $label) {
+    [$configurator, $saved] = editorChangesFixture();
+    $a = $saved['attributes'][0];
+    $changes = app(ConfiguratorEditorChanges::class);
+    $capture = $changes->capture(auth()->user(), $configurator->id, [['type' => 'attribute', 'id' => $a['id'], 'before' => $a, 'after' => [...$a, 'label_override' => $label, 'help_text' => 'Review a separate change']]]);
+    foreach (['inspect', 'prepare'] as $method) {
+        expect($changes->$method(auth()->user(), $configurator, [$capture])['changes'][0]['label'])->toBe('A');
+    }
+})->with([null, '']);

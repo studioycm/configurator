@@ -2,6 +2,7 @@
 
 use AnourValar\EloquentSerialize\Facades\EloquentSerializeFacade;
 use App\Filament\Exports\ConfiguratorRuleExporter;
+use App\Filament\Exports\Jobs\CreateCatalogXlsxFile;
 use App\Filament\Exports\Jobs\CreateConfiguratorRulesXlsxFile;
 use App\Filament\Exports\Jobs\ExportConfiguratorRulesCsv;
 use App\Filament\Exports\ValueExporter;
@@ -336,7 +337,7 @@ test('actual CSV and XLSX preserve trailing backslashes and adjacent quotation m
     expect($sheets['Rules_helpers'][1])->toBe($rows[0]);
 });
 
-test('only Rules exports resolve the RFC-compatible XLSX job', function () {
+test('Rules and managed canonical exports use scoped XLSX jobs while historical exports keep native behavior', function () {
     $actor = User::factory()->create(['email' => 'beny.cr@gmail.com']);
     $rules = ruleExportRecord($actor);
     $catalog = ruleExportRecord($actor);
@@ -347,6 +348,8 @@ test('only Rules exports resolve the RFC-compatible XLSX job', function () {
 
     expect($rulesJob)->toBeInstanceOf(CreateConfiguratorRulesXlsxFile::class);
     expect($catalogJob::class)->toBe(CreateXlsxFile::class);
+    $catalog->update(['catalog_artifact_version' => 1]);
+    expect(app(CreateXlsxFile::class, ['export' => $catalog, 'columnMap' => [], 'options' => []]))->toBeInstanceOf(CreateCatalogXlsxFile::class);
 });
 
 test('failed JSON publication leaves no downloadable chunk or counters', function (bool $throws) {

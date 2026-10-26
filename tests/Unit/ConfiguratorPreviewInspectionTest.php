@@ -9,6 +9,7 @@ use App\Services\ConfiguratorEngine;
 use App\Services\ConfiguratorPreviewInspection;
 use App\Services\ConfiguratorPreviewNotes;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -252,4 +253,22 @@ test('V26 inspection retains independent base and effective subtitle text for ma
     expect($value)->toMatchArray(['label' => 'Local main', 'display_value' => 'Rule subtitle']);
     expect($result->definition->attributes['new:B']->options['new:B1']->displayValue)->toBe('');
     expect($value['presentation'][0])->toMatchArray(['field' => 'display_value', 'effective_value' => 'Rule subtitle', 'winner_rule_ids' => ['new:subtitle']]);
+});
+
+test('Mapping explanations retain zero whitespace and numeric looking set labels', function (?string $label, string $expected) {
+    [$result] = inspectionFixture(function (array &$data) use ($label): void {
+        $rule = fixtureMapping('exact-set');
+        $rule['sets'][0]['label'] = $label;
+        $data['rules'] = [$rule];
+    });
+    $report = app(ConfiguratorPreviewInspection::class)->build($result);
+    expect($report['attributes']['new:B']['causes'][0]['set_label'])->toBe($expected);
+})->with([['0', '0'], ['001', '001'], ['   ', '   '], [null, 'Set 1']]);
+
+test('empty Mapping set labels still follow existing compiler validation', function () {
+    expect(fn () => inspectionFixture(function (array &$data): void {
+        $rule = fixtureMapping('invalid-empty-label');
+        $rule['sets'][0]['label'] = '';
+        $data['rules'] = [$rule];
+    }))->toThrow(ValidationException::class);
 });

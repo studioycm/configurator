@@ -222,3 +222,15 @@ test('tag mutation events refresh clean editors and preserve dirty row drafts', 
 
     expect($value->fresh()->tags)->toBe(['metal', 'bulk', 'next']);
 });
+
+test('tag assignment review shows literal zero on either side of the change', function (array $before, array $after, string $expected) {
+    $value = Value::factory()->create(['tags' => $before]);
+    $page = Livewire::test(TagValues::class, ['tag' => $before[0]])
+        ->selectTableRecords([$value])->callAction(TestAction::make('editTags')->table()->bulk())
+        ->fillForm(['mode' => 'set', 'tags' => $after], 'assignmentForm')->call('refreshAssignmentPreview')->assertHasNoErrors();
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+    $xpath = new DOMXPath($document);
+    expect(trim($xpath->evaluate('string(//div[contains(@class,"catalog-tag-impact")]//span)')))->toBe($expected);
+    expect($value->fresh()->tags)->toBe($before);
+})->with([[['0'], [], '0 → —'], [['other'], ['0'], 'other → 0'], [['001'], ['0'], '001 → 0']]);

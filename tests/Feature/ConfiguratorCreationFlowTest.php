@@ -433,8 +433,9 @@ test('V21 removing a new Attribute review Value preserves that exclusion through
 });
 
 test('V05 mounted Add Attributes rejects duplicate new canonical Keys and Codes under a coincident outer record', function (string $field) {
-    $owner = Configurator::factory()->create();
-    $persisted = Option::factory()->create(['code' => 'D1']);
+    $coincidentId = max(Configurator::max('id') ?? 0, Attribute::max('id') ?? 0) + 1;
+    $owner = Configurator::factory()->create(['id' => $coincidentId]);
+    $persisted = Option::factory()->for(Attribute::factory()->create(['id' => $coincidentId]))->create(['code' => 'D1']);
     expect($owner->id)->toBe($persisted->attribute_id);
     $master = creationMaster();
     $manager = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $owner, 'pageClass' => EditConfigurator::class])->mountAction(TestAction::make('includeMany')->table())->set('catalogCreationTab', 'create');

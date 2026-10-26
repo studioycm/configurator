@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Filament\Exports\CatalogExportDispatcher;
 use App\Filament\Exports\ConfiguratorRuleExporter;
+use App\Filament\Exports\Jobs\CreateCatalogXlsxFile;
 use App\Filament\Exports\Jobs\CreateConfiguratorRulesXlsxFile;
 use App\Models\Attribute;
 use App\Models\Configurator;
@@ -13,9 +15,13 @@ use App\Models\User;
 use App\Models\Value;
 use App\Services\AdminAppearance;
 use App\Services\AdminNavigationCounts;
+use App\Services\CatalogCsv;
+use App\Services\CatalogDataExchangePolicy;
 use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
+use Filament\Actions\Exports\ExportDispatcher;
 use Filament\Actions\Exports\Jobs\CreateXlsxFile;
+use Filament\Actions\Exports\Models\Export;
 use Filament\Facades\Filament;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -25,6 +31,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Js;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,13 +40,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(ExportDispatcher::class, CatalogExportDispatcher::class);
         $this->app->bind(CreateXlsxFile::class, function (Application $app, array $parameters): CreateXlsxFile {
             if ($parameters['export']->exporter === ConfiguratorRuleExporter::class) {
                 return $app->make(CreateConfiguratorRulesXlsxFile::class, $parameters);
             }
 
+            if ($parameters['export']->catalog_artifact_version !== null && in_array($parameters['export']->exporter, $app->make(CatalogDataExchangePolicy::class)->canonicalExporters(), true)) {
+                return $app->make(CreateCatalogXlsxFile::class, $parameters);
+            }
+
             return new CreateXlsxFile($parameters['export'], $parameters['columnMap'], $parameters['options'] ?? []);
         });
+        $this->app->scoped(CatalogCsv::class);
         $this->app->scoped(CatalogRevisions::class);
         $this->app->scoped(AdminAppearance::class);
     }
@@ -49,6 +62,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Export::creating(function (Export $export): void {
+            if (in_array($export->exporter, app(CatalogDataExchangePolicy::class)->canonicalExporters(), true)) {
+                $export->catalog_artifact_version = CatalogDataExchangePolicy::VERSION;
+            }
+        });
+        Export::created(function (Export $export): void {
+            if (in_array($export->exporter, app(CatalogDataExchangePolicy::class)->canonicalExporters(), true) && $export->getFileDisk()->directoryExists($export->getFileDirectory())) {
+                throw new RuntimeException('An existing export destination must be preserved and reconciled.');
+            }
+        });
         foreach ([Attribute::class, Value::class, Option::class, Configurator::class, Group::class, Product::class] as $model) {
             $invalidate = fn () => app(AdminNavigationCounts::class)->forget($model);
             $model::created($invalidate);

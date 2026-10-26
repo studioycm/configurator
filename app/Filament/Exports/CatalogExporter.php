@@ -2,6 +2,11 @@
 
 namespace App\Filament\Exports;
 
+use App\Filament\Exports\Downloaders\CatalogCsvDownloader;
+use App\Filament\Exports\Downloaders\CatalogXlsxDownloader;
+use Filament\Actions\Exports\Downloaders\Contracts\Downloader;
+use Filament\Actions\Exports\Enums\Contracts\ExportFormat as ExportFormatInterface;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -32,9 +37,26 @@ abstract class CatalogExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        return __('data_exchange.notifications.export_completed', [
-            'successful' => number_format($export->successful_rows),
-            'failed' => number_format($export->getFailedRowsCount()),
-        ]);
+        return static::completionBody((new CatalogExportFiles($export))->assessment(), $export->getOptions()['_catalog_formats'] ?? []);
+    }
+
+    /** @param array{planned:int,successful:int,rejected:int,unconfirmed:int,csv:array{state:string},xlsx:array{state:string}} $assessment @param list<string> $formats */
+    public static function completionBody(array $assessment, array $formats): string
+    {
+        $body = __('data_exchange.notifications.export_results', array_intersect_key($assessment, array_flip(['planned', 'successful', 'rejected', 'unconfirmed'])));
+        foreach (array_intersect($formats, ['csv', 'xlsx']) as $format) {
+            $body .= ' '.strtoupper($format).': '.__('data_exchange.artifact_states.'.$assessment[$format]['state']).'.';
+        }
+
+        return $body;
+    }
+
+    public static function getDownloader(ExportFormatInterface $format): Downloader
+    {
+        return match ($format) {
+            ExportFormat::Csv => app(CatalogCsvDownloader::class),
+            ExportFormat::Xlsx => app(CatalogXlsxDownloader::class),
+            default => parent::getDownloader($format),
+        };
     }
 }

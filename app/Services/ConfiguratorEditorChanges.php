@@ -227,7 +227,7 @@ class ConfiguratorEditorChanges
                 $after['priority'] = $data['rules'] === [] ? 0 : max(array_column($data['rules'], 'priority')) + 1;
                 $data['rules'][] = $after;
                 $fields = $this->newRuleFields($after);
-                $changes[] = ['type' => $type, 'id' => $id, 'label' => $after['label'] ?: __('configurator.preview.new_rule'), 'new' => true, 'fields' => $this->differences($type, [], $after, $fields)];
+                $changes[] = ['type' => $type, 'id' => $id, 'label' => ($after['label'] !== '' ? $after['label'] : __('configurator.preview.new_rule')), 'new' => true, 'fields' => $this->differences($type, [], $after, $fields)];
 
                 continue;
             }
@@ -528,10 +528,10 @@ class ConfiguratorEditorChanges
         $attributes = [];
         $options = [];
         foreach ($data['attributes'] as $attribute) {
-            $attributes[$attribute['id']] = $attribute['label_override'] ?: ($canonicalAttributes[$attribute['attribute_id']]['label'] ?? '—');
+            $attributes[$attribute['id']] = ($attribute['label_override'] !== null && $attribute['label_override'] !== '' ? $attribute['label_override'] : ($canonicalAttributes[$attribute['attribute_id']]['label'] ?? '—'));
             foreach ($attribute['options'] as $option) {
                 $canonical = $canonicalOptions[$option['option_id']] ?? [];
-                $options[$option['id']] = ($option['label_override'] ?: ($canonical['label'] ?? '—')).' · '.($canonical['code'] ?? '—').(filled($canonical['semantic_id'] ?? null) ? ' · '.$canonical['semantic_id'] : '');
+                $options[$option['id']] = (($option['label_override'] !== null && $option['label_override'] !== '' ? $option['label_override'] : ($canonical['label'] ?? '—'))).' · '.($canonical['code'] ?? '—').(filled($canonical['semantic_id'] ?? null) ? ' · '.$canonical['semantic_id'] : '');
             }
         }
         foreach ($changes as &$change) {
@@ -613,7 +613,7 @@ class ConfiguratorEditorChanges
             if ($type === 'rules') {
                 $labels[] = __('configurator.preview.types.rule').' “'.(is_string($row['label'] ?? null) && filled($row['label']) ? $row['label'] : __('configurator.preview.new_rule')).'”';
             } else {
-                $labels[] = __('configurator.preview.types.attribute').' “'.($row['label_override'] ?: ($attributes[$row['attribute_id']]['label'] ?? '—')).'”';
+                $labels[] = __('configurator.preview.types.attribute').' “'.(($row['label_override'] !== null && $row['label_override'] !== '' ? $row['label_override'] : ($attributes[$row['attribute_id']]['label'] ?? '—'))).'”';
                 if (($parts[0] ?? null) === 'options' && isset($parts[1])) {
                     array_shift($parts);
                     $option = $row['options'][(int) array_shift($parts)] ?? [];
@@ -680,7 +680,7 @@ class ConfiguratorEditorChanges
         return match ($type) {
             'overview' => __('configurator.workspace.tabs.overview'),
             'rule' => $row['label'],
-            'attribute' => $row['label_override'] ?: Attribute::findOrFail($row['attribute_id'])->label,
+            'attribute' => ($row['label_override'] !== null && $row['label_override'] !== '' ? $row['label_override'] : Attribute::findOrFail($row['attribute_id'])->label),
             'value' => Option::with('value')->findOrFail($row['option_id'])->value->labelWithSemanticId($row['label_override']),
         };
     }
