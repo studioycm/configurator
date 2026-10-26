@@ -24,18 +24,18 @@ Four newly identified current-app issues supplement the previously documented ap
 | SEC-03 / F03 | P1 | Existing signing primitive reconfirmed; cross-owner disclosure impact conditional on private output presence | Import FileUpload metadata can sign client-substituted paths on the shared private disk. |
 | SEC-02 / F02 | P2 | Existing source weakness reconfirmed | Retained 2FA component snapshots do not enforce current password confirmation on sensitive actions. |
 | SEC-04 / S01 | P2 | Existing authority-design weakness; exploitation depends on a vacant allowlisted address | A changeable email is administration authority. |
-| RL-01 | P2 | New source-confirmed storage-failure defect; application fault injection unrun | Generic canonical exports can commit success accounting when files were not written. |
-| RL-02 | P2 | New byte-roundtrip defect reproduced in the installed library with native settings; full application chain unrun | Generic canonical CSV escaping can merge records/corrupt fields; native XLSX reading shares the escape assumption. |
-| SA-01 | P2 | New source inconsistency; confidentiality impact depends on visibility policy | An existing ProductConfigurator child can render fresh facts after Product/Group availability is withdrawn. |
+| RL-01 | P2 | Implemented CP6; storage/transaction/concurrency regressions pass | Generic canonical exports can commit success accounting when files were not written. |
+| RL-02 | P2 | Implemented CP6; real canonical file roundtrips and quoting modes verified | Generic canonical CSV escaping can merge records/corrupt fields; native XLSX reading shares the escape assumption. |
+| SA-01 | P2 | Implemented CP5; authentic retained-child HTTP regressions pass | An existing ProductConfigurator child can render fresh facts after Product/Group availability is withdrawn. |
 | SEC-06 | P2 | Existing response distinction/missing limits reconfirmed; volume impact unmeasured | Recovery enumeration and direct resend abuse controls remain incomplete. |
 | SEC-04 / S02 | P3 | Existing configuration-contract defect; fails closed for multi-address/list configuration | Horizon compares plural allowed-emails configuration to one scalar address. |
-| AD-01 | P3 | New source-confirmed presentation defect; application regression unrun | Valid exact text `"0"` is replaced by fallback labels or an empty marker. |
+| AD-01 | P3 | Implemented CP7; exact-text presentation regressions pass | Valid exact text `"0"` is replaced by fallback labels or an empty marker. |
 
 Priorities indicate review urgency, not implementation approval. P1 source weaknesses are not claims that an incident occurred or that the relevant account/disk conditions exist in production.
 
 ### Later execution disposition — 26 October 2026
 
-The human chose SA-01, then RL-02/RL-01, then AD-01 for the next repairs, with AD-01 permitted as an independent one-writer checkpoint while CSV review proceeds. CSV A and readiness B are selected; the [execution specification](POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md) is awaiting approval before code/tests change. The optional single queued streaming worker is an added investigation, not a replacement for readiness B.
+The human approved CSV A/readiness B and the [execution specification](POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md), then directed completion in the main checkout before local integration. Root implemented CP5, independent CP7, then CP6; tests and bounded independent review pass. Current evidence/dispositions are in specification section10 and journal CON-31. XLSX browser saving remains explicitly unverified because the client blocks that download; real HTTP/file tests verify its bytes. Optional queued streaming remains unavailable pending an effective worker/capacity gate. Security remains deferred until requested; step8 belongs to the catalog task.
 
 **Security backlog:** SEC-02–06, the scoped Horizon issue and the separate package/served-asset security track remain open and deferred **until the human explicitly asks for them**. Completing these repairs or the later feature audit does not start security work automatically. Keep the [security plan](SECURITY_FIXES_IMPLEMENTATION_PLAN.md) and [security specification](SECURITY_FIXES_EXECUTION_SPEC.md) as unimplemented proposals; revalidate their baseline/advisories when requested. Existing guards/authorization stay in force. Step 8's Images/catalog plan alignment remains with Plan catalog configuration and UX against the final verified baseline.
 
@@ -196,3 +196,8 @@ Before coding, review these coherent groups:
 5. **Images compatibility before combined acceptance:** IMG-A01–04 and plan chronology, then phase-specific P7/P8 delivery and the P9 bound/query decision. Prototype navigation/visual decisions remain their own review.
 
 These groups express prerequisites and shared code dependencies, not a newly approved implementation order. The source audit does not justify a broad structural rewrite. Further fixes, feature work, integration and pushing need their respective human approval.
+
+
+### Post-audit repair disposition
+
+SA-01, RL-01, RL-02 and AD-01 have approved implementations and verification recorded in [the follow-up specification](POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md#10-execution-evidence--steps-57) and journal CON-31. The sections above retain the original audit evidence/proposals; unrun statements there describe the original audit snapshot. They do not supersede the later implementation results. Original security findings and Images/catalog integration obligations remain separate deferred work. No complete new architecture or security remediation is implied.

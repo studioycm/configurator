@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\Value;
 use Filament\Actions\Action;
 use Filament\Actions\Imports\Downloaders\Contracts\Downloader;
-use Filament\Actions\Imports\Downloaders\CsvDownloader;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
@@ -21,7 +20,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Number;
-use Symfony\Component\HttpFoundation\Response;
 
 abstract class CatalogImporter extends Importer
 {
@@ -91,9 +89,9 @@ abstract class CatalogImporter extends Importer
     {
         return [
             Checkbox::make('update_existing')->label(__('data_exchange.actions.update_existing'))
-                ->helperText(__('data_exchange.help.update_existing'))->default(false),
+                ->helperText(__('data_exchange.help.update_existing'))->default(false)->live(),
             Checkbox::make('restore_spreadsheet_text')->label(__('data_exchange.actions.restore_spreadsheet_text'))
-                ->helperText(__('data_exchange.help.restore_spreadsheet_text'))->default(false),
+                ->helperText(__('data_exchange.help.restore_spreadsheet_text'))->default(false)->live(),
         ];
     }
 
@@ -192,14 +190,6 @@ abstract class CatalogImporter extends Importer
 
     public static function getFailedRowsDownloader(): Downloader
     {
-        return new class implements Downloader
-        {
-            public function __invoke(Import $import): Response
-            {
-                abort_unless($import->failedRows()->exists(), 404);
-
-                return app(CsvDownloader::class)($import);
-            }
-        };
+        return app(CatalogFailedRowsCsvDownloader::class);
     }
 }

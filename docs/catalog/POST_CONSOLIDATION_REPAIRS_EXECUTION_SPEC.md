@@ -4,7 +4,7 @@
 
 **Independent review:** Cross-worktree integration audit completed a bounded read-only review and re-review; no remaining approval-blocking contradiction was found. This is specification readiness only. All implementation, migrations, application regressions, capacity measurements and runtime acceptance below remain unexecuted. The proposed nullable export-version marker is part of the requested human specification approval.
 
-**Execution disposition, latest human clarification:** finish and verify all of steps 5–7 in this task, including implementing CSV/readiness step 6, and only then merge the completed set into local master. No push. Stop implementing in the linked consolidation worktree; continue in the main checkout on temporary branch `codex/finish-post-consolidation-repairs`, leaving master history unchanged until the final merge. CP5 is implemented; CP7's existing patch is under final checks; CP6 remains to implement. This supersedes the earlier stop/partial-integration interpretation. Security remains deferred and step 8 belongs to the catalog task.
+**Execution disposition, latest human clarification:** finish and verify all of steps 5–7 in this task, including implementing CSV/readiness step 6, and only then merge the completed set into local master. No push. Stop implementing in the linked consolidation worktree; continue in the main checkout on temporary branch `codex/finish-post-consolidation-repairs`, leaving master history unchanged until the final merge. CP5, CP7 and CP6 are implemented. CP5/CP7 passed their focused checkpoints; CP6 passed its CSV/readiness tests, independent source review, guarded full PHP/MySQL suites and the representative isolated browser checks described below. Final local integration and merged-result verification remain to complete. This supersedes the earlier stop/partial-integration interpretation. Security remains deferred and step 8 belongs to the catalog task.
 
 **Goal:** repair SA-01, RL-02/RL-01 and AD-01 while preserving current application behavior, other tasks' work and the accepted consolidation contracts.
 
@@ -20,7 +20,7 @@
 | --- | --- |
 | P01 | Steps 5–7 belong to Plan bulk creation forms, with one implementation writer and independent read-only review by Cross-worktree integration audit. No Astra: Sol 6.1 medium for research, high for auditors, max for monitors. |
 | P02 | Default order is SA-01, then RL-02/RL-01, then AD-01. AD-01 has no CSV dependency and may be completed as an independent checkpoint while CSV design/review proceeds. Code edits remain sequential; parallel work is read-only. |
-| P03 | CSV A: new canonical CSV uses standard doubled quotes and an empty proprietary escape. Validate the entire selected CSV structure before dispatch/writes; reject nonstandard quoting with a useful explanation. No Legacy mode or dialect guessing is approved. |
+| P03 | CSV A remains the canonical export/default-import format. Human later requested visible active rules and explicit legacy/custom import quoting options. Validate the whole file under the chosen controls before dispatch/writes; quoting is never guessed. The human selected both explicit legacy choices: preserve escaped quotes or convert escaped enclosure characters only; ordinary path backslashes remain unchanged. |
 | P04 | Readiness B: new canonical exports use a sealed plan, verified immutable artifact evidence, truthful row accounting and independent CSV/XLSX readiness. Proposed implementation includes one nullable contract-version marker on the existing export record; no new durable database ledger/outbox platform is proposed. |
 | P05 | Additional rules for partial results, historical files, retries and format independence are accepted below. Centralize these decisions so later changes do not require editing many adapters/jobs. |
 | P06 | Investigate one queued streaming worker as an optional added execution mode using the same policy/evidence contracts. It does not replace readiness B, change the default chunked mode or block the mandatory repairs. Its implementation/activation gate is section 8. |
@@ -45,11 +45,11 @@ The highest-value review cases are: an authentic retained child snapshot after w
 
 ### One editable rule owner
 
-**Proposed:** `app/Services/CatalogDataExchangePolicy.php`, a stateless concrete service resolved normally by Laravel. It owns named, readable CSV and export decisions. No competing config rule lists, browser flags or job-local policy copies.
+**Implemented decision owner:** `app/Services/CatalogDataExchangePolicy.php`, a stateless concrete service resolved normally by Laravel. It owns named, readable CSV and export decisions. No competing config rule lists, browser flags or job-local policy copies.
 
 | Rule group | Decisions owned in that file |
 | --- | --- |
-| CSV-01–04 | Standard-only mode, enclosure/empty escape, supported delimiter handling, grammar acceptance, complete pre-dispatch validation, preservation of quoted LF/CRLF and existing exact-text/spreadsheet rules. |
+| CSV-01–04 | Standard export/default import, explicit selected import quoting, enclosure/escape and supported delimiter handling, grammar acceptance, complete pre-dispatch validation, preservation of quoted LF/CRLF and existing exact-text/spreadsheet rules. |
 | EXP-01–03 | Sealed-plan requirement, artifact identity/layout/hash/count requirements, no missing or duplicated planned identities, and derivation of exported/rejected/unconfirmed counts. |
 | EXP-04–06 | Legitimate partial results versus infrastructure failure; per-format pending/ready/failed/unconfirmed/no-data decisions; checked publication and independent workbook evidence. |
 | EXP-07–09 | Conservative retry/reconciliation, qualified historical downloads, useful no-data feedback, and allowed notification/download actions for the assessed facts. |
@@ -125,6 +125,13 @@ import,semantic_id,label
 Current parsing retains those backslashes; changing only the escape permissively damages the text. Therefore empty escape is not itself a strict validator. Preserve correctly doubled quotes, literal backslashes, quoted LF and CRLF, commas, Unicode/BOM, existing delimiter choices, `001`, `0`, whitespace and intentional apostrophes. Do not add trimming, numeric coercion, a Legacy toggle or dialect guessing.
 
 Validate enclosure transitions, doubled quotes, proper field closure and end-of-file under the selected delimiter. Preserve existing blank-record, missing-field, header mapping and row-validation contracts; do not silently add unrelated new acceptance restrictions. Diagnose row/column and correction without echoing the whole uploaded file. Validate the complete immutable uploaded bytes before import dispatch/catalogue writes, using streaming within existing upload/row limits; reuse the same delimiter/mode for subsequent stages. Existing temporary-upload I/O remains valid. Place validation at the upload/dispatch boundary, reuse only proof bound to the same bytes/controls, and avoid repeatedly scanning the entire file during unrelated renders.
+
+### Human amendment — visible active rules and configurable import quoting
+
+- The human requested enabled CSV rules listed in the import modal, with explicit legacy/custom quoting options. This supersedes standard-only import acceptance. New canonical exports and failed-row CSV remain standard doubled-quote / empty-escape output.
+- The modal lists whole-file validation, selected quoting, exact-text behavior, import=0, current update-existing and spreadsheet-text-restoration behavior. Those rule codes and grammar/readiness decisions remain owned by CatalogDataExchangePolicy.
+- Custom import supports single-byte separator/enclosure and empty or single-byte escape, matching the installed parser. Changing settings clears column mapping for review; no automatic guessing of quoting or text conversion.
+- After reviewing path/quoted-text/trailing-backslash examples, the human selected both explicit legacy choices. Preserve mode matches the old parser; convert mode removes an escape only before an enclosure in parsed field values. No general backslash stripping or interpretation of \n/\t is approved. Standard remains the default. Conversion must be applied once per Reader despite repeated native configuration calls.
 
 ### Actual extension points
 
@@ -270,3 +277,21 @@ Keep security findings and their older package/asset plan recorded as deferred u
 Each execution checkpoint uses an explicit reviewed file/hunk allowlist and local commit, preserving concurrent work. No bulk staging, reset, archive or automatic merge/push. Update the journal after actual changes/tests. Roll back application code only through a reviewed compatible checkpoint; preserve immutable captured artifacts/evidence. Never restore permissive CSV parsing or false-success readiness silently, delete user export history, or run a database rollback to conceal an uncertain outcome.
 
 **Execution authority:** the human approved the specification and instructed root to execute steps 5–7 with checkpoints, one writer and one dedicated worktree. The optional-mode gate remains investigation only. No proposed regression, performance budget, metadata lifecycle or browser check above has been executed merely by writing this document.
+
+
+## 10. Execution evidence — steps 5–7
+
+Root remained the only implementation writer. Actual order was CP5 availability, independent CP7 exact-text presentation, then the shared CP6 CSV/readiness pipeline. CP5/CP7 are checkpoint66aaaab; CP6 is awaiting its explicit-file local checkpoint at this record. Final integration records are in [the journal](CONSOLIDATION_CHANGELOG.md).
+
+- CP6 uses the approved nullable `exports.catalog_artifact_version` column, one central `CatalogDataExchangePolicy`, mechanical `CatalogCsv`, bounded native import/export adapters and private immutable evidence. It does not add a durable recovery ledger or change Rules exports.
+- All three canonical families have actual file/export/download/upload/import regressions. Physical transaction, rollback, storage-write failure, partial row rejection, retry/re-entry, historical page gaps, per-format publication and MySQL concurrency cases pass. The real workbook HTTP route checks status, verified header and exact captured-file hash.
+- Guarded full PHP including the final workbook-route assertions: 1,466 tests / 9,241 assertions (97.38s); the real-route subset independently passes 3 / 33. Restricted disposable MySQL: 64 / 481. Dedicated safety: 36 / 74. JavaScript: 253 passing. Pint and FilaCheck pass. Merged-result counts will supersede these below/in the journal.
+- Human approved a fresh non-Git snapshot at `/private/tmp/configurator-csv-qa-20261026`, served by Herd at `configurator-csv-qa.test`, with its own restricted `configurator_csv_qa_20261026` MySQL copy and private verified login. Main and Images runtime/database settings were preserved. The additive migration was applied only to this QA copy before browser tests.
+- Actual browser uploads, mappings and submits passed for Standard, legacy-preserve, legacy-convert, and custom single-quote/semicolon input. The active-rule list reflects selected mode/update options. Standard import: 2 processed, 1 saved, 1 required-name rejection, 0 unconfirmed; the downloaded failed CSV contains exactly that invalid row/error. Malformed unclosed quoting is rejected with a line/column diagnostic before an Import/row dispatch. Four accepted QA records render in Master Values, including literal0 and tags0/001, the two distinct legacy results and custom quoted text.
+- Actual browser Export all captured38 rows with zero rejection/unconfirmed and verified-ready CSV/XLSX feedback. The downloaded CSV retains exact commas, quotes, trailing backslash, literal0 and tags. **XLSX browser saving remains unverified:** IAB reports `ERR_BLOCKED_BY_CLIENT`; no application exception was recorded. Workbook generation/readiness and exact download bytes are verified by real HTTP/file tests. This explicit client limitation is not an application success claim.
+- Existing Product/Configurator Preview render in the isolated browser; choosing DIN16 changes the preview code to D1 without saving a definition. These are representative checks, not every Product/combination or every fault in a real browser.
+- Cross-worktree integration audit's final bounded review found no remaining source blocker, accepted the transaction/download tests, and required retaining the workbook-browser limitation and current status/SHA records. It inspected source/logs; it did not rerun the tests itself.
+- Optional CP6-OPT remains **unavailable, not implemented**. Effective runtime uses sync and no queue worker is running/configured for an operational capacity gate. No representative queued-worker memory/time/failure measurement was performed, and source Horizon limits are not operational evidence. A separately approved worker/capacity investigation and bounded opt-in proposal are still required; chunked mode remains the default.
+- Security stays deferred until the human asks. Step8 stays with Plan catalog configuration and UX. No feature reconciliation, push, worktree archive or branch deletion is part of these repairs.
+
+Evidence, private snapshots/manifests and logs: `/private/tmp/post-consolidation-repairs-20261026`. Credentials and database dumps are private temporary artifacts, never committed.
