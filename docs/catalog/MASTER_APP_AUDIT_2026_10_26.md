@@ -33,6 +33,12 @@ Four newly identified current-app issues supplement the previously documented ap
 
 Priorities indicate review urgency, not implementation approval. P1 source weaknesses are not claims that an incident occurred or that the relevant account/disk conditions exist in production.
 
+### Later execution disposition — 26 October 2026
+
+The human chose SA-01, then RL-02/RL-01, then AD-01 for the next repairs, with AD-01 permitted as an independent one-writer checkpoint while CSV review proceeds. CSV A and readiness B are selected; the [execution specification](POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md) is awaiting approval before code/tests change. The optional single queued streaming worker is an added investigation, not a replacement for readiness B.
+
+**Security backlog:** SEC-02–06, the scoped Horizon issue and the separate package/served-asset security track remain open and deferred **until the human explicitly asks for them**. Completing these repairs or the later feature audit does not start security work automatically. Keep the [security plan](SECURITY_FIXES_IMPLEMENTATION_PLAN.md) and [security specification](SECURITY_FIXES_EXECUTION_SPEC.md) as unimplemented proposals; revalidate their baseline/advisories when requested. Existing guards/authorization stay in force. Step 8's Images/catalog plan alignment remains with Plan catalog configuration and UX against the final verified baseline.
+
 ## Current-app findings and meaningful verification
 
 ### SEC-05 — native panel login and Fortify TOTP
