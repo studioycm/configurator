@@ -10,7 +10,7 @@ The full report traces master 05ed6a9 after the selected consolidation repairs, 
 
 Four new current-app findings are AD-01 (exact `"0"` labels), SA-01 (independent child availability), RL-01 (generic export file-failure outcomes), and RL-02 (CSV escape/roundtrip bytes). RL-02 was reproduced only in the installed library using generated in-memory strings; other new application regressions remain proposed. Separate previously planned security findings were reconfirmed, not implemented. No application code was changed by this audit.
 
-The [catalog/Images handoff](../../CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md), personally authored here after owner consultation, maps the sixteen selected step dispositions and pending integration prerequisites. Images P0–P6 source and its later amendments remain in the untouched feature worktree; P7–P10 and the separate browsing redesign are unfinished. Owner review is read-only. Use the [shared journal](../../CONSOLIDATION_CHANGELOG.md), CON-25 and later updates, for actual review/verification status.
+The [catalog/Images handoff](../../CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md), personally authored here after owner consultation, maps the sixteen selected step dispositions and pending integration prerequisites. Images P0–P6 source and its later amendments remain in the untouched feature worktree; P7–P10 and the separate browsing redesign are unfinished. The read-only owner review and cross-task consistency check are complete, with clarifications incorporated; no implementation is approved. Use the [shared journal](../../CONSOLIDATION_CHANGELOG.md), CON-25/26, for actual review/verification status.
 
 ## Responsibility and correctness recommendations
 

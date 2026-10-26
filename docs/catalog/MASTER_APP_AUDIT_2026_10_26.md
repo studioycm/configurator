@@ -151,13 +151,15 @@ These are distinct from current-master defects. Exact pending status is P0–P6 
 | IMG-A01 | Definite combined-source incompatibility: Images lacks `HasWorkspaceTable`, while master profile methods require it. Adopt the contract; do not loosen master types. No combined runtime test ran. |
 | IMG-A02 | Semantic merge obligation: keep Configurator-before-Groups planning/current owner guard alongside pending image fingerprint logic. No pending-worktree race was reproduced. |
 | IMG-A03 | Merge image factories into master's once-per-Alpine registrar/export union, preserving both startup timings. |
-| IMG-A04 | Combine asset-search/custom pagination with column migration, failed restore preservation and compact profile limits. |
+| IMG-A04 | Deliver with A01: combine asset-search/custom pagination with column migration, failed restore preservation and compact profile limits. Validation remains host-specific. |
 | IMG-A05 | Future P9 contract gap: 500-entry input bound before deduplication, plus the query limit, versus all-results catalog/501-card behavior and query budget. Repeated pointers also need coverage. Not a P6 regression. |
 | IMG-A06 | Planning chronology drift: older committed master snapshots and later P6 worktree amendments must be reconciled without discarding either history. |
 | IMG-R01 | Owner-requested recovery semantics review: current intended/baseline state does not prove this request committed/rolled back. Review both outcome labels and the resulting draft reset, success event/notification, retry language and navigation. Keep native full-form `review_required` distinct; do not mandate a new durable receipt platform. |
 | CB-P01 / CB-P02 | Open prototype choice/preset/chronology reconciliation and below-six caption mismatch. No live-master defect inferred. |
 
 All 88 pending file hashes and 52 prototype file hashes were rechecked unchanged. Eight direct overlaps include two planning files; a clean textual merge alone is insufficient. [The handoff](CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md) gives the actual contract map and acceptance agenda.
+
+The feature owner subsequently reviewed that handoff and confirmed these obligations, with the recovery-result/consumer and input-count clarifications incorporated. It recommends a verified combined P6 checkpoint before P7/P8, then P9/P10. Prototype precedence and any changed automatic recovery continuation require product decisions. This consultation did not execute tests or independently recertify all current-master findings. The Cross-worktree integration audit found no factual conflict with the newer Git/closeout record.
 
 ## Healthy boundaries and verification ledger
 

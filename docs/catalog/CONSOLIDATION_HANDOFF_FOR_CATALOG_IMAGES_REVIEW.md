@@ -73,6 +73,8 @@ Preserve P6's native **full-record** draft hash, source/actor/context/property b
 
 **Owner-requested review question (IMG-R01):** `CatalogMainImageEdits::reconcile()` checks current desired state and never replays. It labels a matching pointer `committed` and an unchanged original fingerprint with a different desired pointer `not_committed`. These observations establish current goal/baseline state, not durable attribution of this particular request's commit or rollback. Review both classifications and explicit retry language. `CatalogImages::reconcileImageSave()` also passes the matching-state result to `completeImageSave()`, which resets the draft, emits a committed event, notifies “Main image saved” and continues navigation. Agree whether and how goal-state convergence permits those effects, including another writer setting the same pointer. Preserve owner/target/draft/destination fencing. Do not silently introduce a durable receipt platform. Native image-enabled full-form recovery already returns `review_required` and must remain separate.
 
+Later tests should prepare `keep`, or `remove` when no image is present, **never invoke Save**, then reconcile: confirming an already satisfied goal must not attribute a commit to that request. Also define what happens if another writer changes the image between inspection and completion. Whether verified goal satisfaction releases an already-requested navigation is an explicit recovery UX decision, not merely a label change.
+
 ## 4. Eight direct overlaps and integration obligations
 
 | Path | Preserve/reconcile |
@@ -90,7 +92,7 @@ Changed-to-unchanged dependencies also matter. No direct overlap count certifies
 
 **IMG-A01:** pending `CatalogImages` implements `HasTable` but not `HasWorkspaceTable`; its browsing mount/header/restore calls reach newly typed master profile methods. Add truthful target-specific identity, supported controls/search and restore behavior to Images. Preserve separate Product/Group preferences, ordinal pagination, single search authority and the 32-KiB profile bound; do not relax master types.
 
-**IMG-A02–04:** Group writer, startup and profile merges above are semantic obligations even where Git can merge text. Preserve native picker parameter forwarding, hidden selections, Results/Checked navigation and width/profile/session encodings. Never persist checked IDs, pasted-code sets, drafts, source tokens or receipts as compact preferences.
+**IMG-A02–04:** Group writer, startup and profile merges above are semantic obligations even where Git can merge text. Deliver A01/A04 together: master currently rejects `assetSearch`, while Images also needs custom pagination. Add only truthful host-specific validation/capabilities; do not admit image state indiscriminately on every table. Preserve native picker parameter forwarding, hidden selections, Results/Checked navigation and width/profile/session encodings. Never persist checked IDs, pasted-code sets, drafts, source tokens or receipts as compact preferences.
 
 **IMG-A05:** future public display must reconcile `CatalogAssetDisplay::forIds()`'s 500-ID/query ceiling with current all-results catalog behavior, including the 501-card case. The input-length check occurs **before deduplication**, so more than 500 repeated pointers can also be rejected even with fewer distinct images; the query later deduplicates IDs and limits returned rows to 500. Naïve direct calls can reject a legitimate result; naïve chunking changes the promised one-extra-query budget. Decide that contract before P9; do not add a new catalog result cap incidentally. It is not a current P6 defect.
 
@@ -98,7 +100,7 @@ Changed-to-unchanged dependencies also matter. No direct overlap count certifies
 
 ## 5. Separate catalog design review
 
-Keep **CB-P01** (preset/direct-choice reconciliation plus preserved chronology) and **CB-P02** (below-six caption versus exact 6-bar mapping) open. Use one bounded action reconciliation model and an explicit serialized precedence list where the design requires newest optional choice to win. Retain compatible older choices and explain cleared choices. Never clear Group membership, availability or future mandatory suitability constraints to make results appear.
+Keep **CB-P01** (preset/direct-choice reconciliation plus preserved chronology) and **CB-P02** (below-six caption versus exact 6-bar mapping) open. The proposed CB-P01 policy needs approval: newest optional choice wins, compatible older choices remain, and cleared choices are explained. Its engineering mechanism would use one bounded action reconciler and explicit serialized chronology. Preserve AND matching; never clear Group membership, availability or future mandatory suitability constraints to make results appear. The proposed CB-P02 caption is “Low Pressure (6 bar)”, without changing data or inventing a threshold.
 
 Master's current PHP/JS filter reconciliation is a behavioral reference; it does not authorize copying production snapshot/identity contracts into a simulated prototype or transplanting the prototype into Laravel. Settle chosen visual direction, navigation and hierarchy semantics explicitly. Do not make these decisions prerequisites for unrelated backend source preparation.
 
@@ -107,6 +109,8 @@ Master's current PHP/JS filter reconciliation is a behavioral reference; it does
 See [the full master audit](MASTER_APP_AUDIT_2026_10_26.md). New findings are exact-text `"0"` presentation (AD-01), child visibility revalidation (SA-01), generic canonical export storage outcomes (RL-01), and generic CSV escape/roundtrip handling (RL-02). Existing source-security work remains: SEC-02–06 and the scoped Horizon list issue. None was silently repaired by this audit.
 
 Coordinate particularly native FileUpload path protection with legitimate P6 upload provenance, future admin authority with the existing `manage-catalog` Gate, and public image display with fresh availability checks. Do not independently fork master fixes or remove owner checks. General structural refactors are not prerequisites merely because they appeared in an old audit.
+
+The owner's review found no demonstrated need to exempt P6's upload field from future path protection: managed previews are separate, and temporary native uploads remain supported. Verify actual Product, Group-create and Images entrypoints when combined; a protective configuration must not be waived solely because a field is custom.
 
 ## 7. Evidence and future combined-QA ledger
 
@@ -134,8 +138,19 @@ Later combined acceptance must cover:
 - P7/P8 acceptance separately proves review version/expiry/frozen membership, ≤50 Apply, same-step retries, Stop/Continue and partial outcomes.
 - P9 proves 0/1/200/>500 distinct pointers, duplicates/invalid winners, image-free warm reads and actual request/query budgets.
 
-## 8. Requested owner response and next gate
+## 8. Completed owner review and next gate
 
-Review the worktree's plans and feature design against this map. Return: (1) accepted/corrected contract deltas, (2) plan amendments needed, (3) engineering prerequisites versus product decisions, (4) a proposed bounded integration/delivery order and meaningful acceptance checks, and (5) evidence gaps. Keep prototype and Laravel findings separate.
+**Plan catalog configuration and UX** completed its read-only review against documentation checkpoint `18db4fd`. It confirmed the feature/status map, A01–06 and the separate prototype findings, and requested the recovery/deduplication/host-validation clarifications now incorporated above. It did not independently recertify every master audit finding or run combined tests. **Cross-worktree integration audit** separately reconciled the new merge/closeout records and found no factual conflict; its earlier pending-integration statements are superseded.
 
-Preserve useful source/file-preparation/assignment/UI/display boundaries; no generic repository, lock/retry framework, competing writer or new state platform is implied. Do not edit plans/code/prototype/tests, merge, push, run migrations or change sites under this handoff. A reviewed plan and separate human implementation approval come next.
+The owner recommends this bounded sequence **after separate approval**:
+
+1. Preserve the complete overlay/runtime and reconcile the blueprint's active responsibility, recovery, table/profile, display and verification sections against accepted master.
+2. Combine P0–P6 in one isolated implementation lane; resolve A01–04 and R01 with their overlapping callers.
+3. Establish a reviewed, tested combined P6 checkpoint before extending functionality.
+4. Deliver P7 matching/review, then P8 foreground Apply with separate acceptance checkpoints.
+5. Resolve A05 and implement P9 in existing catalog surfaces; keep the browsing redesign separate.
+6. Complete P10 concurrency, capacity and browser gates. D60 source access/import retains its separate authorization boundary.
+
+A05 is an engineering prerequisite unless the proposal changes visible result/loading behavior. Investigate an authorized result-scoped projection within the existing display service before changing the promised query budget. Prototype precedence/navigation/hierarchy and changed recovery continuation remain explicit product decisions. No combined compatibility or runtime readiness is established yet.
+
+Preserve useful source/file-preparation/assignment/UI/display boundaries; no generic repository, lock/retry framework, competing writer or new state platform is implied. Neither consultation edited the feature plans or code. This handoff does not authorize plan/code/prototype/test changes, integration, merge, push, migrations or site changes. A reviewed execution specification and separate human implementation approval come next.
