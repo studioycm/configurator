@@ -4,7 +4,29 @@ Prepared by the original consolidation task, 26 October 2026. **Read-only review
 
 The human requested this handoff be authored here, after asking **Plan catalog configuration and UX** what it needs. That consultation is complete. The owner requested the contract/dependency map below, rather than duplicated logs or an unqualified request to rebase.
 
-## 1. Exact sources and authority
+## Current baseline update — steps 5–7 integrated
+
+This update supersedes the original source-state table below. The earlier sixteen-step consolidation and full legacy retirement remain integrated. The later four audit findings SA-01/RL-01/RL-02/AD-01 are now implemented and merged into **local master `5788905a4a0ac95f26cf435cac4d82c09b576dd0`**, from checkpoints `66aaaab` and `03ab3e4`. Nothing was pushed. This handoff is a compatibility/review baseline, not authority to resume feature implementation. Final merged-result evidence is recorded in journal CON-32.
+
+| Updated contract / files | Catalog rebuild / Images review obligation |
+| --- | --- |
+| `app/Livewire/Catalog/ProductConfigurator.php`, existing `CatalogAvailability` | Retained nested child requests recheck fresh Product/ancestor/Configurator availability in render. Preserve that admission in P9 image projection and any new catalog shell. Administrator Preview retains its separate inspection boundary. |
+| `ConfiguratorEditorChanges`, `ConfiguratorPreviewInspection`, `ProductShow`, `resources/views/livewire/catalog/tag-values.blade.php` | Presentation preserves literal0,001 and whitespace instead of falsey fallback. Keep this in rebuilt cards/titles, variables, Mapping explanations and tag reviews; do not broaden empty-label compiler acceptance. |
+| `app/Services/CatalogDataExchangePolicy.php`, `CatalogCsv.php` | One central decision owner for canonical CSV controls/grammar/readiness/retry/notification/default mode, with mechanical streaming/parser collaborators. Standard default/output; explicit legacy-preserve, legacy-convert enclosure only, custom byte controls/separator on import. Active rules are visible. Do not scatter copies of those decisions or reuse CSV policy as an unrelated Images framework. |
+| `app/Filament/Imports/CatalogImportAction.php`, `CatalogFailedRowsCsvDownloader`, existing `CatalogImporter` / `CatalogDataActions` | Native upload/encoding/mapping/dispatch boundary remains. Whole uploaded bytes are checked before Import/row dispatch. Settings changes clear mapping. Preserve exact text, existing/unmapped-field and code/membership semantics. Rules import/export are distinct. |
+| `app/Filament/Exports/CatalogExportFiles.php`, scoped dispatcher, jobs and Downloaders | Ordered immutable captured input, checked publication only after real enclosing commit, same Export row lock during publication proof, truthful row/infrastructure accounting, independent format readiness, bounded retry and historical handling. A matching file/pointer or current SQL state alone is not request-attribution proof. Keep Images' own approved lifecycle and unknown-outcome boundaries; no generic durable receipt platform was added. |
+| `app/Providers/AppServiceProvider.php` | Preserve existing scoped/memo/wiring work **and** new scoped CSV service, canonical Export creation/version/destination protection, bounded dispatcher and XLSX bindings. Merge the Images provider additions with current master; never replace this file with its old overlay. Rules' custom XLSX and historical native resolution stay distinct. |
+| `database/migrations/2026_10_26_085549_add_catalog_artifact_version_to_exports_table.php` | One additive nullable export marker, applied to the main local dev database after verified-target checks. Existing historical rows remain null. Incoming isolated copies need the migration; never reset retained source data or confuse it with image schema migrations. |
+
+Verification covers real file roundtrips for all three canonical families, exact text, native entrypoints, physical commit/rollback/storage failure/re-entry, known rejection/unknown outcomes, format independence, historical gaps, and MySQL concurrency. Representative fresh browser checks use a separately approved snapshot and disposable MySQL copy: all four quoting modes submitted, malformed input blocked, valid/rejected accounting/report and exact CSV download confirmed, four imported values read back, Product/Preview rendered, DIN16 changed preview code without saving. **Browser saving of XLSX remains unverified (`ERR_BLOCKED_BY_CLIENT`)**; real authenticated HTTP/file tests verify workbook bytes, readiness and verified response headers. See specification section10/journal CON-31–32 for exact test counts and bounded evidence. Do not turn this into full combined Images/browser acceptance.
+
+Optional one-worker streaming mode remains unavailable and unimplemented: no effective queued worker/capacity gate was established. Chunked is the default. SEC-02–06/Horizon security work stays deferred until the human asks; there is no automatic security phase.
+
+Images preservation: detached `244b305d083a90c731cd4bde23d996b4db0f8f3d` and all88 pending file hashes remain unchanged at final premerge review. The old app-consolidation checkout now contains this task's earlier CP5 commit plus eight preserved CP7 duplicate/transfer changes; those are backup evidence of already integrated repairs, not pending Images work. No checkout/branch was deleted or archived.
+
+**Next owner review:** reconcile this baseline with the worktree's later implementation plan/blueprint amendments for **both** catalog rebuild and Image Manager; map changed responsibilities, contracts, provider/host/assets/profile overlaps, dependencies and verification gaps. Keep a concrete before/after plan diff and preserve all pending source. Perform the full combined architecture/structure/design and current-state audit before resuming development, then present the revised implementation/integration plan for the human's approval. A prior separate P6 checklist is not combined-master acceptance.
+
+## 1. Original full-audit source inventory (historical)
 
 | Source | Verified state and use |
 | --- | --- |
