@@ -1,8 +1,16 @@
 # Combined findings and reconciliation register
 
-This preserves both original reviews without claiming a new complete application scan. Except for explicit later dispositions such as R16 and the consolidation execution-spec mapping, the original application observations are **historical and require current-source verification**. “Source risk” and “conditional defect” retain the strength of the original evidence; neither means a production incident was observed. Target names are proposals, not implemented or approved architecture. A fresh full-app audit of local master was requested on 26 October 2026; that new review is not yet complete.
+This preserves both original reviews as historical evidence. The separate [26 October current-master audit](../../MASTER_APP_AUDIT_2026_10_26.md) is now complete and supplies current dispositions; do not treat the old recommendations below as 32 unresolved defects or silently rewrite their original answers. “Source risk” and “conditional defect” retain the strength of their evidence; neither means a production incident was observed. Target names below are proposals, not implemented or approved architecture.
 
 The deeper review supplies stable IDs R01–R18, O01–O09 and V01–V05: **32 recommendations/candidates**. The first review's unnumbered recommendations map into these IDs. Do not inflate the count by counting the same boundary twice.
+
+## Current reconciliation — 26 October 2026
+
+The full report traces master 05ed6a9 after the selected consolidation repairs, approved 147-file legacy retirement, local integration and QA-runtime closeout. R16 is retired, not setter-repaired. The report's historical-disposition table covers every R/O/V group; valid native adapters, concrete Services, distinct representations and existing ownership remain justified. R18 is a measurement lead, not measured slowness. Dependency/CI changes and optional reorganization remain separate.
+
+Four new current-app findings are AD-01 (exact `"0"` labels), SA-01 (independent child availability), RL-01 (generic export file-failure outcomes), and RL-02 (CSV escape/roundtrip bytes). RL-02 was reproduced only in the installed library using generated in-memory strings; other new application regressions remain proposed. Separate previously planned security findings were reconfirmed, not implemented. No application code was changed by this audit.
+
+The [catalog/Images handoff](../../CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md), personally authored here after owner consultation, maps the sixteen selected step dispositions and pending integration prerequisites. Images P0–P6 source and its later amendments remain in the untouched feature worktree; P7–P10 and the separate browsing redesign are unfinished. Owner review is read-only. Use the [shared journal](../../CONSOLIDATION_CHANGELOG.md), CON-25 and later updates, for actual review/verification status.
 
 ## Responsibility and correctness recommendations
 
