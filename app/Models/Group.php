@@ -6,6 +6,7 @@ use Database\Factories\GroupFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
@@ -34,6 +35,11 @@ class Group extends Model
     public function children(): HasMany
     {
         return $this->hasMany(Group::class, 'parent_id');
+    }
+
+    public function tagValues(): BelongsToMany
+    {
+        return $this->belongsToMany(GroupTagValue::class, 'group_tag_value')->withPivot('position')->orderByPivot('position')->orderBy('group_tag_values.id');
     }
 
     public function products(): HasMany

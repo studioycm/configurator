@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,9 +15,19 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
+pest()->extend(TestCase::class)->in('Feature');
+
+$independentCommitTests = [__DIR__.'/Feature/Catalog/MySql/CatalogGroupTagsConcurrencyTest.php'];
+$transactionalTests = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {
+    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), $independentCommitTests, true)) {
+        $transactionalTests[] = $file->getPathname();
+    }
+}
+if ($transactionalTests !== []) {
+    pest()->use(RefreshDatabase::class)->in(...$transactionalTests);
+}
+pest()->use(DatabaseMigrations::class)->in(...$independentCommitTests);
 
 /*
 |--------------------------------------------------------------------------
@@ -26,9 +40,9 @@ pest()->extend(Tests\TestCase::class)
 |
 */
 
-//expect()->extend('toBeOne', function () {
+// expect()->extend('toBeOne', function () {
 //    return $this->toBe(1);
-//});
+// });
 
 /*
 |--------------------------------------------------------------------------
