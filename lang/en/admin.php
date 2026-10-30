@@ -59,6 +59,10 @@ return [
             'small_640px' => 'Small · 640px',
         ],
         'title' => 'Admin Appearance',
+        'recovery' => [
+            'notice' => 'Some saved appearance settings could not be used. Safe defaults are being used where needed; your saved preferences have not been changed.',
+            'repair' => 'Review appearance settings',
+        ],
         'validation' => [
             'shared_appearance_storage_is_not_installed_yet' => 'Shared appearance storage is not installed yet. Apply the reviewed Admin Appearance migration before saving. Your preview is still available.',
             'the_logo_must_fit_within_the_header' => 'The logo must fit within the header with 6 px padding above and below.',

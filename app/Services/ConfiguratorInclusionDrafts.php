@@ -8,10 +8,16 @@ use Illuminate\Support\Str;
 
 class ConfiguratorInclusionDrafts
 {
+    /** @return array{label_override:null,subtitle_mode:string,display_value_override:null,hint:null,hidden_by_default:bool,disabled_by_default:bool} */
+    public function optionLocalDefaults(): array
+    {
+        return ['label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
+    }
+
     /** @return array<string, mixed> */
     public function option(Option $option): array
     {
-        return ['id' => 'new:'.Str::uuid(), 'option_id' => $option->id, 'label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
+        return ['id' => 'new:'.Str::uuid(), 'option_id' => $option->id, ...$this->optionLocalDefaults()];
     }
 
     /** @return array<string, mixed> */

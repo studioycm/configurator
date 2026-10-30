@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap-mysql.php" colors="true">
+    <testsuites>
+        <testsuite name="Reconciliation MySQL">
+            <file>tests/Feature/Catalog/MySql/CatalogBatchConcurrencyTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogCreationConcurrencyTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogDiscoveryTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogExportPublicationTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogImportTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogNativeImportConcurrencyTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogSchemaTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogSnapshotTest.php</file>
+            <file>tests/Feature/Catalog/MySql/CatalogStatusConcurrencyTest.php</file>
+            <file>tests/Feature/Catalog/MySql/ConfiguratorIntegrityTest.php</file>
+            <file>tests/Feature/Catalog/MySql/ConfiguratorPreviewSaveConcurrencyTest.php</file>
+            <file>tests/Feature/Catalog/MySql/ProductFieldReferenceMigrationTest.php</file>
+            <!-- RetainedDataTransfer requires the original catalog target; its seven MySQL cases remain unrun here. -->
+            <file>tests/Feature/ConfiguratorCreationFlowTest.php</file>
+            <file>tests/Feature/Filament/AdminAppearanceTest.php</file>
+            <file>tests/Feature/Catalog/CatalogSnapshotCommandTest.php</file>
+        </testsuite>
+    </testsuites>
+    <source><include><directory>app</directory></include></source>
+    <php>
+        <env name="CATALOG_MYSQL_TEST_PROFILE" value="reconciliation"/>
+        <env name="APP_ENV" value="testing"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3307"/>
+        <env name="DB_DATABASE" value="configurator_reconciliation_test"/>
+        <env name="DB_USERNAME" value="configurator_reconciliation_test"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="MAIL_MAILER" value="array"/>
+    </php>
+</phpunit>

@@ -68,6 +68,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => view('filament.resources.appearance-variables'))
+            ->renderHook(PanelsRenderHook::PAGE_START, function () {
+                $appearance = app(AdminAppearance::class);
+                $appearance->current();
+
+                return view('filament.resources.appearance-recovery-notice', ['recovery' => $appearance->recovery()]);
+            })
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.resources.workspace-assets'))
             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
             ->navigationItems([

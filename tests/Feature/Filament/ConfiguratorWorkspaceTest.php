@@ -599,7 +599,11 @@ test('V25 clean helper-only Value stashes refresh saved batch fields while retai
 })->with(['active' => false, 'stashed' => true]);
 
 test('V20 saved table defaults preserve active and stashed Attribute and Value edits through separate saves', function (bool $stash) {
-    Option::factory()->count(3)->create();
+    Option::factory()->count(3)->sequence(
+        ['code' => 'X0'],
+        ['code' => 'X1'],
+        ['code' => 'X2'],
+    )->create();
     [$configurator, $draft] = canonicalDefinitionFixture();
     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
     $attributes = $configurator->attributes()->orderBy('display_order')->get();
@@ -631,6 +635,69 @@ test('V20 saved table defaults preserve active and stashed Attribute and Value e
     expect($attribute->fresh())->help_text->toBe('Pending Attribute help')->default_configurator_option_id->toBe($options[1]->id);
     expect($options[1]->fresh()->hint)->toBeNull();
 })->with(['active' => false, 'stashed' => true]);
+
+test('PV-COV-1 same-inclusion addition preserves older drafts and the newer saved Default', function (bool $stash, bool $batch) {
+    Option::factory()->create(['code' => 'X9']);
+    [$configurator, $draft] = canonicalDefinitionFixture();
+    $draft['rules'] = [fixtureMapping()];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+    $attributes = $configurator->attributes()->orderBy('display_order')->get();
+    $attribute = $attributes[0];
+    $options = $attribute->options()->orderBy('display_order')->get();
+    $candidate = Option::factory()->create(['attribute_id' => $attribute->attribute_id, 'code' => 'Z9']);
+    $loader = app(ConfiguratorDefinitionLoader::class);
+    $before = $loader->draft($configurator->fresh());
+    $editor = Livewire::test(AttributesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])
+        ->call('selectAttribute', $attribute->id)->fillForm(['help_text' => 'Older Attribute draft'], 'editorForm')
+        ->call('selectOption', $attribute->id, $options[0]->id)
+        ->fillForm(['label_override' => 'Older local name', '_subtitle_text' => 'Older subtitle', 'hint' => 'Older Value hint', 'hidden_by_default' => true, 'disabled_by_default' => true], 'optionEditorForm');
+    if ($stash) {
+        $editor->call('selectAttribute', $attributes[1]->id)->fillForm(['label_override' => 'Unrelated unsaved draft'], 'editorForm');
+    }
+    $table = Livewire::test(OptionsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditConfigurator::class]);
+
+    if ($batch) {
+        $table->mountAction(TestAction::make('includeMany')->table())
+            ->set('mountedActions.0.data.existing_option_ids', [$candidate->id])->callMountedAction()->assertHasNoFormErrors();
+    } else {
+        $table->call('saveOption', null, ['option_id' => $candidate->id])->assertHasNoErrors();
+    }
+    $table->assertDispatched('configurator-options-updated');
+    $editor->dispatch('configurator-options-updated')->assertHasNoErrors();
+    $added = $attribute->options()->where('option_id', $candidate->id)->sole();
+    expect($added->id)->not->toBe($candidate->id);
+    expect($added->display_order)->toBe(2);
+    expect($added->configurator_attribute_id)->toBe($attribute->id);
+    $table->callAction(TestAction::make('setDefault')->table($added))->assertHasNoErrors();
+    $editor->dispatch('configurator-options-updated')->assertHasNoErrors();
+    if ($stash) {
+        $editor->assertSet('editorData.label_override', 'Unrelated unsaved draft')->call('selectAttribute', $attribute->id);
+    }
+    $editor->assertSet('optionEditorData.label_override', 'Older local name')->assertSet('optionEditorData.hint', 'Older Value hint')
+        ->assertSet('editorData.help_text', 'Older Attribute draft')
+        ->call('saveOptionEditor')->assertHasNoErrors()->call('saveEditor')->assertHasNoErrors();
+
+    $after = $loader->draft($configurator->fresh());
+    expect(array_column($after['attributes'][0]['options'], 'id'))
+        ->toBe([...array_column($before['attributes'][0]['options'], 'id'), (string) $added->id]);
+    expect(array_column($after['attributes'][0]['options'], 'option_id'))
+        ->toBe([...array_column($before['attributes'][0]['options'], 'option_id'), $candidate->id]);
+    expect(array_column($after['attributes'][0]['options'], 'display_order'))->toBe([0, 1, 2]);
+    expect($after['attributes'][0]['default_configurator_option_id'])->toBe((string) $added->id);
+    expect($after['attributes'][0]['help_text'])->toBe('Older Attribute draft');
+    expect($options[0]->fresh())->label_override->toBe('Older local name')->subtitle_mode->toBe('custom')
+        ->display_value_override->toBe('Older subtitle')->hint->toBe('Older Value hint')->hidden_by_default->toBeTrue()->disabled_by_default->toBeTrue();
+    expect($after['attributes'][0]['options'][1])->toBe($before['attributes'][0]['options'][1]);
+    expect(array_slice($after['attributes'], 1))->toBe(array_slice($before['attributes'], 1));
+    expect($after['rules'])->toBe($before['rules']);
+    expect($attribute->fresh()->default_configurator_option_id)->toBe($added->id);
+    if ($stash) {
+        $editor->call('selectAttribute', $attributes[1]->id)->assertSet('editorData.label_override', 'Unrelated unsaved draft');
+    }
+})->with([
+    'active draft and ordinary addition' => [false, false],
+    'stashed draft and batch addition' => [true, true],
+]);
 
 test('V20 workspace Attribute captures omit defaults symmetrically without losing active or stashed changes', function () {
     [$configurator, $draft] = canonicalDefinitionFixture();

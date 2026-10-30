@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AdminAppearanceSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,11 @@ class AdminAppearance
 {
     /** @var array<string, bool|int|string>|null */
     private ?array $resolved = null;
+
+    /** @var array{defaulted_fields:list<string>,ignored_unknown_count:int,invalid_payload:bool}|null */
+    private ?array $recoveryReport = null;
+
+    private bool $recoveryLogged = false;
 
     public const string CACHE_KEY = 'admin-appearance:singleton:v1';
 
@@ -32,15 +38,7 @@ class AdminAppearance
     /** @param array<string, mixed> $settings @return array<string, bool|int|string> */
     public function validate(array $settings): array
     {
-        $rules = ['settings' => ['required', 'array:'.implode(',', array_keys($this->defaults()))]];
-        foreach ($this->ranges() as $key => [$min, $max]) {
-            $rules['settings.'.$key] = ['required', 'integer', 'between:'.$min.','.$max];
-        }
-        foreach (['modal_width', 'slide_over_width'] as $key) {
-            $rules['settings.'.$key] = ['required', Rule::in(['small', 'medium', 'large'])];
-        }
-        $rules['settings.dialog_control_style'] = ['required', Rule::in(['icons', 'icons_text', 'text'])];
-        $rules['settings.show_configurator_loading_indicator'] = ['required', 'boolean'];
+        $rules = ['settings' => ['required', 'array:'.implode(',', array_keys($this->defaults()))], ...$this->fieldRules()];
         $validated = Validator::make(['settings' => $settings], $rules)->validate()['settings'];
         foreach ($this->ranges() as $key => $range) {
             $validated[$key] = (int) $validated[$key];
@@ -56,6 +54,62 @@ class AdminAppearance
         return $validated;
     }
 
+    /** @return array<string, array<int, mixed>> */
+    private function fieldRules(): array
+    {
+        $rules = [];
+        foreach ($this->ranges() as $key => [$min, $max]) {
+            $rules['settings.'.$key] = ['required', 'integer', 'between:'.$min.','.$max];
+        }
+        foreach (['modal_width', 'slide_over_width'] as $key) {
+            $rules['settings.'.$key] = ['required', Rule::in(['small', 'medium', 'large'])];
+        }
+        $rules['settings.dialog_control_style'] = ['required', Rule::in(['icons', 'icons_text', 'text'])];
+        $rules['settings.show_configurator_loading_indicator'] = ['required', 'boolean'];
+
+        return $rules;
+    }
+
+    /** @return array<string, bool|int|string> */
+    private function recoverStored(mixed $stored): array
+    {
+        $defaults = $this->defaults();
+        $report = ['defaulted_fields' => [], 'ignored_unknown_count' => 0, 'invalid_payload' => ! is_array($stored)];
+        $candidate = $defaults;
+        if (is_array($stored)) {
+            $report['ignored_unknown_count'] = count(array_diff_key($stored, $defaults));
+            $candidate = array_replace($defaults, array_intersect_key($stored, $defaults));
+            $validator = Validator::make(['settings' => $candidate], $this->fieldRules());
+            if ($validator->fails()) {
+                foreach (array_keys($validator->failed()) as $path) {
+                    $field = substr($path, strlen('settings.'));
+                    $candidate[$field] = $defaults[$field];
+                    $report['defaulted_fields'][] = $field;
+                }
+            }
+            foreach (['logo_height' => 1, 'page_title_size' => 1.2] as $field => $scale) {
+                if ((int) ceil((int) $candidate[$field] * $scale) > (int) $candidate['header_height'] - 12) {
+                    $candidate[$field] = $defaults[$field];
+                    $report['defaulted_fields'][] = $field;
+                }
+            }
+        }
+        $validated = $this->validate($candidate);
+        $this->recoveryReport = $report['defaulted_fields'] !== [] || $report['ignored_unknown_count'] > 0 || $report['invalid_payload'] ? $report : null;
+        if ($this->recoveryReport !== null && ! $this->recoveryLogged) {
+            Log::warning('Stored admin appearance settings required recovery.', $this->recoveryReport);
+            $this->recoveryLogged = true;
+        }
+
+        return $validated;
+    }
+
+    /** @return array{defaulted_fields:list<string>,ignored_unknown_count:int,invalid_payload:bool}|null */
+    public function recovery(): ?array
+    {
+        return $this->recoveryReport;
+    }
+
     /** @return array<string, bool|int|string> */
     public function current(): array
     {
@@ -66,11 +120,13 @@ class AdminAppearance
             return $this->resolved;
         }
         if (! Schema::hasTable('admin_appearance_settings')) {
+            $this->recoveryReport = null;
+
             return $transactional ? $this->defaults() : ($this->resolved = $this->defaults());
         }
-        $read = fn (): array => AdminAppearanceSettings::findOrFail(1)->settings;
+        $read = fn (): mixed => AdminAppearanceSettings::findOrFail(1)->settings;
         $settings = $transactional ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
-        $settings = $this->validate(array_replace($this->defaults(), $settings));
+        $settings = $this->recoverStored($settings);
 
         return $transactional ? $settings : ($this->resolved = $settings);
     }
@@ -79,6 +135,7 @@ class AdminAppearance
     public function rememberSaved(array $settings): void
     {
         $this->resolved = DB::transactionLevel() > 0 ? null : $settings;
+        $this->recoveryReport = null;
     }
 
     /** @param array<string, mixed>|null $draft @return array<string, string> */

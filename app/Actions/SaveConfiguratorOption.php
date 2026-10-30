@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\ConfiguratorAttribute;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionCompiler;
+use App\Services\ConfiguratorInclusionDrafts;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -12,7 +13,7 @@ class SaveConfiguratorOption
 {
     public const FIELDS = ['option_id', 'label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
 
-    public function __construct(private SaveConfiguratorDefinition $save) {}
+    public function __construct(private SaveConfiguratorDefinition $save, private ConfiguratorInclusionDrafts $drafts) {}
 
     /** @param array<string, mixed> $data */
     public function handle(User $actor, ConfiguratorAttribute $owner, ?int $id, array $data): void
@@ -37,7 +38,7 @@ class SaveConfiguratorOption
                 }
             }
             if ($id === null) {
-                $attribute['options'][] = [...['id' => 'new:'.Str::uuid(), 'label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false,
+                $attribute['options'][] = [...['id' => 'new:'.Str::uuid(), ...$this->drafts->optionLocalDefaults(),
                     'display_order' => ($attribute['options'] === [] ? -1 : max(array_column($attribute['options'], 'display_order'))) + 1], ...$data];
             } else {
                 $attribute['options'][$index] = [...$attribute['options'][$index], ...$data];

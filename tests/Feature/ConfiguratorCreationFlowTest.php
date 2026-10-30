@@ -4,6 +4,7 @@ use App\Actions\AddConfiguratorAttributes;
 use App\Actions\AddConfiguratorValues;
 use App\Actions\CreateMasterValues;
 use App\Actions\SaveConfiguratorDefinition;
+use App\Actions\SaveConfiguratorOption;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
 use App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager;
@@ -57,6 +58,56 @@ function creationMaster(array $overrides = []): array
     return [...['ref' => creationRef(), 'label' => 'Shared blue', 'semantic_id' => 'shared_blue', 'tags' => [' blue '], 'description' => 'Specification'], ...$overrides];
 }
 
+test('new local Values share defaults while preserving saved controls identities and selected Default', function (string $operation) {
+    [$owner, $draft] = canonicalDefinitionFixture();
+    $draft['attributes'][0]['default_configurator_option_id'] = 'new:A1';
+    $draft['attributes'][0]['options'][0] = [...$draft['attributes'][0]['options'][0], 'subtitle_mode' => 'custom', 'display_value_override' => '0', 'hint' => 'Retained hint', 'hidden_by_default' => true];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
+    $otherOwner = Configurator::factory()->create();
+    $otherDraft = [...$draft, 'name' => 'Unrelated shorter configuration', 'attributes' => array_slice($draft['attributes'], 0, 2)];
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $otherOwner, $otherDraft);
+    $loader = app(ConfiguratorDefinitionLoader::class);
+    $before = $loader->draft($owner->fresh());
+    $otherBefore = $loader->draft($otherOwner->fresh());
+    $inclusion = $owner->attributes()->orderBy('display_order')->firstOrFail();
+    $option = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'code' => 'Z9']);
+
+    if ($operation === 'ordinary') {
+        app(SaveConfiguratorOption::class)->handle(auth()->user(), $inclusion, null, ['option_id' => $option->id]);
+    } else {
+        app(AddConfiguratorValues::class)->handle(auth()->user(), $owner, $inclusion->id, ['existing_option_ids' => [$option->id]]);
+    }
+
+    $after = $loader->draft($owner->fresh());
+    $created = $inclusion->options()->where('option_id', $option->id)->sole();
+    expect($created->only(['label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default']))
+        ->toBe(['label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false]);
+    expect($created->display_order)->toBe(2);
+    expect($created->configurator_attribute_id)->toBe($inclusion->id);
+    expect($created->id)->not->toBeIn(array_map('intval', array_column($before['attributes'][0]['options'], 'id')));
+    expect(array_slice($after['attributes'][0]['options'], 0, 2))->toBe($before['attributes'][0]['options']);
+    expect($after['attributes'][0]['default_configurator_option_id'])->toBe($before['attributes'][0]['default_configurator_option_id']);
+    expect(array_slice($after['attributes'], 1))->toBe(array_slice($before['attributes'], 1));
+    expect($loader->draft($otherOwner->fresh()))->toBe($otherBefore);
+})->with(['ordinary', 'batch']);
+
+test('ordinary new local Values retain explicit subtitle intent ahead of creation defaults', function (array $patch, string $mode, ?string $text) {
+    [$owner, $draft] = canonicalDefinitionFixture();
+    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
+    $inclusion = $owner->attributes()->orderBy('display_order')->firstOrFail();
+    $option = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'code' => 'Z9']);
+
+    app(SaveConfiguratorOption::class)->handle(auth()->user(), $inclusion, null, ['option_id' => $option->id, ...$patch]);
+
+    expect($inclusion->options()->where('option_id', $option->id)->sole())
+        ->subtitle_mode->toBe($mode)->display_value_override->toBe($text);
+})->with([
+    'explicit none' => [['subtitle_mode' => 'none', 'display_value_override' => 'Ignored'], 'none', null],
+    'explicit custom zero' => [['subtitle_mode' => 'custom', 'display_value_override' => '0'], 'custom', '0'],
+    'legacy custom' => [['display_value_override' => '  Exact  '], 'custom', '  Exact  '],
+    'explicit master' => [['subtitle_mode' => 'master'], 'master', null],
+]);
+
 test('V14 actual Add Attributes includes existing only with empty creation branches', function () {
     $owner = Configurator::factory()->create();
     $option = Option::factory()->create(['code' => 'Q1']);
@@ -109,6 +160,42 @@ test('V15 mixed shared creation reuses a Master once and persists exact local de
     }
     expect(Option::whereIn('code', ['Aa', 'aA'])->pluck('value_id')->unique()->count())->toBe(1);
     expect(Value::where('semantic_id', 'shared_blue')->sole()->tags)->toBe(['blue']);
+});
+
+test('PV-COV-2 Add Attributes persists omitted local defaults review order and the explicit second Default', function () {
+    Option::factory()->count(2)->sequence(['code' => 'X0'], ['code' => 'X1'])->create();
+    $owner = Configurator::factory()->create();
+    $shared = Attribute::factory()->create();
+    $canonical = Option::factory()->count(2)->for($shared)->sequence(['code' => 'Q1'], ['code' => 'Q2'])->create();
+    $review = creationReview($shared->id);
+    $review['values'] = array_reverse($review['values']);
+    $review['default_ref'] = $review['values'][1]['ref'];
+
+    app(AddConfiguratorAttributes::class)->handle(auth()->user(), $owner, [
+        'existing_attribute_ids' => [$shared->id],
+        'reviews' => [$review],
+    ]);
+
+    $inclusion = $owner->attributes()->sole();
+    $reloaded = app(ConfiguratorDefinitionLoader::class)->draft($owner->fresh());
+    expect($reloaded['attributes'])->toHaveCount(1);
+    $row = $reloaded['attributes'][0];
+    expect($row['id'])->toBe((string) $inclusion->id);
+    expect($row['attribute_id'])->toBe($shared->id);
+    expect($row['options'])->toHaveCount(2);
+    expect(array_column($row['options'], 'option_id'))->toBe([$canonical[1]->id, $canonical[0]->id]);
+    expect(array_column($row['options'], 'display_order'))->toBe([0, 1]);
+    expect($row['default_configurator_option_id'])->toBe($row['options'][1]['id']);
+    expect($inclusion->fresh()->default_configurator_option_id)->toBe((int) $row['options'][1]['id']);
+    $defaults = ['label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
+    foreach ($row['options'] as $value) {
+        $stored = $inclusion->options()->findOrFail($value['id']);
+        expect($value['id'])->not->toBe((string) $value['option_id']);
+        expect($stored->configurator_attribute_id)->toBe($inclusion->id);
+        expect($stored->only(array_keys($defaults)))->toBe($defaults);
+        expect(array_intersect_key($value, $defaults))->toBe($defaults);
+    }
+    expect($inclusion->defaultOption->option_id)->toBe($canonical[0]->id);
 });
 
 test('V15 missing foreign and duplicate review references fail with zero local or canonical writes', function (string $failure) {
@@ -279,7 +366,7 @@ test('C08 context is acquired before a patch callback can make nested canonical 
         if (str_contains($query->sql, 'catalog_context_settings')) {
             $events[] = 'context';
         }
-        if (str_starts_with($query->sql, 'insert into "values"')) {
+        if (str_starts_with($query->sql, 'insert into '.$query->connection->getQueryGrammar()->wrapTable('values'))) {
             $events[] = 'master';
         }
     });
@@ -289,6 +376,7 @@ test('C08 context is acquired before a patch callback can make nested canonical 
 
         return $draft;
     });
+    expect($events)->toContain('context', 'callback', 'master');
     expect(array_search('context', $events, true))->toBeLessThan(array_search('callback', $events, true));
     expect(array_search('callback', $events, true))->toBeLessThan(array_search('master', $events, true));
 });

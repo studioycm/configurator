@@ -16,6 +16,35 @@ final class TestDatabaseSafety
         'database' => 'configurator_catalog_test', 'username' => 'configurator_catalog_test',
     ];
 
+    /** @var array<string, array<string, string>> */
+    private const MYSQL_PROFILES = [
+        'catalog' => self::MYSQL,
+        'rules' => [...self::MYSQL, 'database' => 'configurator_rules_test', 'username' => 'configurator_rules_test'],
+        'reconciliation' => [...self::MYSQL, 'database' => 'configurator_reconciliation_test', 'username' => 'configurator_reconciliation_test'],
+    ];
+
+    /** @param list<array<string, mixed>> $sources @return array<string, string> */
+    private static function mysqlTarget(array $sources): array
+    {
+        $profiles = [];
+        foreach ($sources as $source) {
+            if (! isset($source['CATALOG_MYSQL_TEST_PROFILE']) || $source['CATALOG_MYSQL_TEST_PROFILE'] === false) {
+                continue;
+            }
+            $profile = $source['CATALOG_MYSQL_TEST_PROFILE'];
+            if (! is_string($profile) || ! array_key_exists($profile, self::MYSQL_PROFILES)) {
+                self::refuse('unknown MySQL test profile', true);
+            }
+            $profiles[] = $profile;
+        }
+        $profiles = array_values(array_unique($profiles));
+        if (count($profiles) > 1) {
+            self::refuse('conflicting MySQL test profiles', true);
+        }
+
+        return self::MYSQL_PROFILES[$profiles[0] ?? 'catalog'];
+    }
+
     public static function assertBeforeBootstrap(bool $mysqlRun = false): void
     {
         self::assertEnvironment($_ENV, $_SERVER, getenv(), $mysqlRun);
@@ -38,10 +67,11 @@ final class TestDatabaseSafety
         }
         $expected = ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => ':memory:'];
         if ($mysqlRun) {
+            $target = self::mysqlTarget($sources);
             $expected = [
                 'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql',
-                'DB_HOST' => self::MYSQL['host'], 'DB_PORT' => self::MYSQL['port'],
-                'DB_DATABASE' => self::MYSQL['database'], 'DB_USERNAME' => self::MYSQL['username'],
+                'DB_HOST' => $target['host'], 'DB_PORT' => $target['port'],
+                'DB_DATABASE' => $target['database'], 'DB_USERNAME' => $target['username'],
             ];
         }
         foreach ($expected as $key => $value) {
@@ -73,7 +103,7 @@ final class TestDatabaseSafety
             return;
         }
         if ($mysqlRun) {
-            foreach (self::MYSQL as $key => $expected) {
+            foreach (self::mysqlTarget([$_ENV, $_SERVER, getenv()]) as $key => $expected) {
                 if (! isset($connection[$key]) || ! is_scalar($connection[$key]) || (string) $connection[$key] !== $expected) {
                     self::refuse('resolved connection '.$key.' differs from the disposable target', true);
                 }
