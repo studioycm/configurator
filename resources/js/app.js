@@ -8,6 +8,7 @@ import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSecti
 import { catalogFilters } from './catalog-filters';
 import { catalogNavigation } from './catalog-navigation';
 import { catalogConfigurationUrl } from './catalog-configuration-url';
+import { catalogProductComparison } from './catalog-product-comparison';
 import { catalogShell } from './catalog-shell';
 import { itemCountPreview } from './item-count-preview';
 import { workspaceDialog, workspaceColumnManager } from './workspace-dialogs';
@@ -43,6 +44,7 @@ function registerComponents(Alpine) {
     Alpine.data('catalogShell', catalogShell);
     Alpine.data('catalogNavigation', catalogNavigation);
     Alpine.data('catalogConfigurationUrl', catalogConfigurationUrl);
+    Alpine.data('catalogProductComparison', catalogProductComparison);
     Alpine.data('itemCountPreview', itemCountPreview);
     Alpine.data('workspaceDialog', workspaceDialog);
     Alpine.data('tableColumnWidths', tableColumnWidths);

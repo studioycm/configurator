@@ -240,6 +240,7 @@ export function catalogFilters() {
             else if(pendingPosition && pendingPosition.criteria!==productBrowsePosition(root.dataset.groupId,result.state,{scrollY:0}).criteria)pendingPosition=null;
             this.notices = result.notices;
             const computed = engine.evaluate(result.state);
+            this.updateComparisonMatches?.(computed.ids, snapshot.groupId);
             this.total = computed.total;
             this.maximum = snapshot.settings.max_results;
             this.columns = snapshot.settings.cards_per_row;
@@ -447,7 +448,13 @@ export function catalogFilters() {
             return refreshPromise;
         },
 
+        chooseProductComparison(id, label) {
+            if (!alive || suspended || !this.available || !engine) return;
+            this.toggleComparisonProduct?.(id, label, engine.evaluate(this.state).ids.includes(id));
+        },
+
         exitLeaf(status) {
+            this.updateComparisonMatches?.([], root.dataset.groupId, { unavailable: true });
             pendingPosition = null;
             stopWork();
             this.available = false;

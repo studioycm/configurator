@@ -9,6 +9,7 @@ use App\Services\CatalogCards;
 use App\Services\CatalogJourney;
 use App\Services\CatalogNavigation;
 use App\Services\CatalogPresentation;
+use App\Services\CatalogProductComparison;
 use App\Services\CatalogSnapshots;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -67,6 +68,31 @@ class GroupShow extends Component
             ])->validate();
 
             return $this->cards->get((int) $this->groupId, $criteria, $revision, $requestId, $displayVersion);
+        } catch (ModelNotFoundException) {
+            abort(404);
+        } catch (AuthorizationException) {
+            abort(403);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof ValidationException && ! $exception instanceof HttpExceptionInterface) {
+                report($exception);
+            }
+            throw $exception;
+        }
+    }
+
+    /** @return array<string, mixed> */
+    #[Json]
+    public function loadComparison(mixed $productIds, mixed $requestId): array
+    {
+        abort_unless(auth()->check(), 401);
+        try {
+            Validator::make(compact('productIds', 'requestId'), [
+                'productIds' => ['required', 'array', 'list', 'size:2'],
+                'requestId' => ['required', 'string', 'max:100', 'regex:/\A[A-Za-z0-9:-]+\z/D'],
+            ])->validate();
+            $result = app(CatalogProductComparison::class)->get(auth()->user(), (int) $this->groupId, $productIds);
+
+            return [...$result, 'requestId' => $requestId, 'componentId' => $this->getId()];
         } catch (ModelNotFoundException) {
             abort(404);
         } catch (AuthorizationException) {

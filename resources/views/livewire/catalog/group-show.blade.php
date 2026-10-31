@@ -2,7 +2,7 @@
     <x-catalog.breadcrumbs :group="$group" :ancestors="$ancestors" :catalog-return-url="$catalogReturnUrl" compact />
 </x-slot:breadcrumbs>
 
-<div wire:key="catalog-group-{{ $group->id }}">
+<div wire:key="catalog-group-{{ $group->id }}" @if (! $isBranch) data-catalog-comparison-group="{{ $group->id }}" x-data="catalogProductComparison({{ \Illuminate\Support\Js::from(['groupId' => (string) $group->id, 'componentId' => $this->getId(), 'labels' => __('catalog.comparison')]) }})" @endif>
     @if ($journeyNotice)<p role="status" class="text-sm text-zinc-600 dark:text-zinc-400">{{ $journeyNotice }}</p>@endif
     @if ($isBranch)
         <p role="status">{{ __('catalog.browse.redirecting') }}</p>
@@ -78,5 +78,6 @@
                 </div>
             </section>
         </div>
+        <x-catalog.product-comparison :group="$group" />
     @endif
 </div>

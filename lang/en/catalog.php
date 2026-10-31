@@ -1,6 +1,21 @@
 <?php
 
 return [
+    'comparison' => [
+        'title' => 'Compare Products', 'add' => 'Add to comparison', 'remove' => 'Remove from comparison',
+        'compare' => 'Compare', 'close' => 'Close comparison', 'property' => 'Property',
+        'choose' => 'Choose two Products to compare their saved properties.',
+        'group_scope' => 'Comparisons use two Products from this Group. Switching Groups clears the selection.',
+        'group_changed' => 'Comparison selections were cleared because the Group changed or became unavailable.',
+        'outside' => 'Outside current results', 'replace_prompt' => 'Comparison holds two Products. Choose which one to replace with',
+        'replace' => 'Replace', 'cancel' => 'Keep current pair', 'loading' => 'Reading current saved properties…',
+        'differences' => 'Differences', 'same' => 'Same values', 'missing' => 'Not provided',
+        'empty' => 'No comparison properties are configured for this Group.', 'empty_section' => 'No properties in this section.',
+        'failed' => 'The comparison could not be verified. Retry to read the current saved properties.',
+        'stale' => 'The selected Products are no longer available together in this Group. Choose two Products again.',
+        'retry' => 'Retry comparison', 'open_failed' => 'The comparison could not be opened. Try again.',
+        'invalid_pair' => 'Choose exactly two different Products from this Group.',
+    ],
     'journey' => [
         'reset' => 'Return information is invalid or no longer available. This page uses its current selections.',
         'overflow' => 'Return information is too large for this link. The destination will open normally.',
