@@ -16,7 +16,7 @@ class CatalogNavigation
 
     private const TREE_PAGE_SIZE = 50;
 
-    public function __construct(private CatalogAvailability $availability) {}
+    public function __construct(private CatalogAvailability $availability, private CatalogPresentation $presentation) {}
 
     /** @param array<string, mixed> $query @return array<string, mixed> */
     public function get(User $actor, array $query): array
@@ -62,7 +62,7 @@ class CatalogNavigation
             unset($identity['requestId']);
 
             return ['requestId' => $query['requestId'], 'queryIdentity' => hash('sha256', json_encode($identity, JSON_THROW_ON_ERROR)),
-                'displayVersion' => 'defaults:v1', 'branch' => $branchId === null ? null : $this->identity($groups[$branchId]),
+                'displayVersion' => $this->presentation->current()['version'], 'branch' => $branchId === null ? null : $this->identity($groups[$branchId]),
                 'ancestors' => array_reverse($ancestors), 'treeRows' => $this->treeRows(array_slice($graph['children'][0] ?? [], 0, self::TREE_PAGE_SIZE), $graph),
                 'treeVersion' => $graph['version'], 'tags' => $this->facets($baseIds, $query['tagValueIds']), 'cards' => $cards,
                 'total' => $total, 'page' => $page, 'hasMore' => $page < (int) ceil($total / self::CARD_PAGE_SIZE)];

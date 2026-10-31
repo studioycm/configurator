@@ -2,13 +2,16 @@
 
 namespace App\Livewire\Catalog;
 
+use App\DTO\CatalogSnapshot;
 use App\Models\Group;
 use App\Services\CatalogAvailability;
 use App\Services\CatalogCards;
+use App\Services\CatalogPresentation;
 use App\Services\CatalogSnapshots;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Json;
@@ -38,17 +41,18 @@ class GroupShow extends Component
 
     /** @param array<string, mixed> $criteria @return array<string, mixed> */
     #[Json]
-    public function loadCards(mixed $criteria, mixed $revision, mixed $requestId): array
+    public function loadCards(mixed $criteria, mixed $revision, mixed $requestId, mixed $displayVersion = null): array
     {
         abort_unless(auth()->check(), 401);
         try {
-            Validator::make(compact('criteria', 'revision', 'requestId'), [
+            Validator::make(compact('criteria', 'revision', 'requestId', 'displayVersion'), [
                 'criteria' => ['required', 'array', 'max:4'],
                 'revision' => ['required', 'string'],
                 'requestId' => ['required', 'string'],
+                'displayVersion' => ['nullable', 'string', 'regex:/^(?:defaults:v1|[0-9A-HJKMNP-TV-Z]{26})$/D'],
             ])->validate();
 
-            return $this->cards->get((int) $this->groupId, $criteria, $revision, $requestId);
+            return $this->cards->get((int) $this->groupId, $criteria, $revision, $requestId, $displayVersion);
         } catch (ModelNotFoundException) {
             abort(404);
         } catch (AuthorizationException) {
@@ -72,7 +76,24 @@ class GroupShow extends Component
         $snapshot = null;
         if (! $isBranch) {
             try {
-                $snapshot = app(CatalogSnapshots::class)->get((int) $this->groupId);
+                $snapshots = app(CatalogSnapshots::class);
+                for ($attempt = 0; $attempt < 2; $attempt++) {
+                    $prepared = $snapshots->get((int) $this->groupId);
+                    $snapshot = DB::transaction(function () use ($snapshots, $prepared): ?CatalogSnapshot {
+                        if ($snapshots->revision((int) $this->groupId) !== $prepared->revision()) {
+                            return null;
+                        }
+                        $record = Group::query()->findOrFail($this->groupId);
+                        $presentation = app(CatalogPresentation::class);
+                        $shared = $presentation->current();
+                        $available = $presentation->resolveCategoryIds($shared['settings'], [$record]);
+
+                        return new CatalogSnapshot([...$prepared->data, 'displayVersion' => $shared['version'], 'presentation' => $presentation->effective($record, $shared['settings'], $available)]);
+                    }, attempts: 1);
+                    if ($snapshot !== null) {
+                        break;
+                    }
+                }
             } catch (Throwable $exception) {
                 if (! $exception instanceof HttpExceptionInterface) {
                     report($exception);

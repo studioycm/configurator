@@ -10,26 +10,31 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 class CatalogCards
 {
-    public function __construct(private CatalogSnapshots $snapshots, private CatalogSnapshotMatcher $matcher, private CatalogCardDisplay $display) {}
+    public function __construct(private CatalogSnapshots $snapshots, private CatalogSnapshotMatcher $matcher, private CatalogCardDisplay $display, private CatalogPresentation $presentation) {}
 
     /** @param array<string, mixed> $criteria @return array<string, mixed> */
-    public function get(int $groupId, array $criteria, string $revision, string $requestId): array
+    public function get(int $groupId, array $criteria, string $revision, string $requestId, ?string $expectedDisplayVersion = null): array
     {
-        Validator::make(compact('revision', 'requestId'), [
+        Validator::make(compact('revision', 'requestId', 'expectedDisplayVersion'), [
             'revision' => ['required', 'string', 'regex:/^[1-9][0-9]{0,19}$/'],
             'requestId' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9:-]+$/'],
+            'expectedDisplayVersion' => ['nullable', 'string', 'regex:/^(?:defaults:v1|[0-9A-HJKMNP-TV-Z]{26})$/D'],
         ])->validate();
         for ($attempt = 0; $attempt < 2; $attempt++) {
-            $read = DB::transaction(function () use ($groupId, $criteria, $revision, $requestId): ?array {
+            $read = DB::transaction(function () use ($groupId, $criteria, $revision, $requestId, $expectedDisplayVersion): ?array {
                 $current = $this->snapshots->revision($groupId);
-                $response = ['requestId' => $requestId, 'revision' => $current, 'status' => 'refresh_required', 'total' => null, 'htmlChunks' => [], 'propertiesNotice' => null];
-                if ($current !== $revision) {
+                $shared = $this->presentation->current();
+                $response = ['requestId' => $requestId, 'revision' => $current, 'displayVersion' => $shared['version'], 'status' => 'refresh_required', 'total' => null, 'htmlChunks' => [], 'propertiesNotice' => null];
+                if ($current !== $revision || ($expectedDisplayVersion !== null && $shared['version'] !== $expectedDisplayVersion)) {
                     return ['response' => $response];
                 }
                 $snapshot = $this->snapshots->cached($groupId, $current);
                 if ($snapshot === null) {
                     return null;
                 }
+                $group = Group::query()->findOrFail($groupId);
+                $available = $this->presentation->resolveCategoryIds($shared['settings'], [$group]);
+                $response['presentation'] = $this->presentation->effective($group, $shared['settings'], $available);
                 $ids = $this->matcher->ids($snapshot, $criteria);
                 $total = count($ids);
                 $settings = CatalogPolicy::resultSettings($snapshot->data['settings']);
@@ -41,13 +46,12 @@ class CatalogCards
                 }
                 $products = Product::query()->where('group_id', $groupId)->where('is_active', true)->whereIn('id', $ids)->orderBy('product_code')->orderBy('id')->get(['id', 'product_code', 'profile_fields']);
 
-                return ['response' => $response, 'products' => $products, 'snapshot' => $snapshot, 'settings' => $settings];
+                return ['response' => $response, 'products' => $products, 'group' => $group, 'snapshot' => $snapshot, 'settings' => $settings];
             });
             if ($read !== null) {
                 if (isset($read['products'])) {
                     $snapshot = $read['snapshot']->data;
-                    $group = new Group(['name' => $snapshot['cardGroup']['name']]);
-                    $group->id = $groupId;
+                    $group = $read['group'];
                     $mainGroup = $snapshot['cardGroup']['mainName'] === null ? null : new Group(['name' => $snapshot['cardGroup']['mainName']]);
                     $appearance = $read['settings'];
                     $labels = array_column($snapshot['fields'], 'label', 'key');
@@ -59,7 +63,7 @@ class CatalogCards
                         default => null,
                     };
                     foreach ($read['products']->chunk(24) as $products) {
-                        $read['response']['htmlChunks'][] = view('components.catalog.card-chunk', ['products' => $products, 'group' => $group, 'mainGroup' => $mainGroup, 'fields' => $display['fields'], 'appearance' => $appearance])->render();
+                        $read['response']['htmlChunks'][] = view('components.catalog.card-chunk', ['products' => $products, 'group' => $group, 'mainGroup' => $mainGroup, 'fields' => $display['fields'], 'appearance' => $appearance, 'presentation' => $read['response']['presentation']])->render();
                     }
                 }
 

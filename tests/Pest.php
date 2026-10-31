@@ -17,7 +17,11 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Feature');
 
-$independentCommitTests = [__DIR__.'/Feature/Catalog/MySql/CatalogGroupTagsConcurrencyTest.php'];
+$independentCommitTests = [
+    __DIR__.'/Feature/Catalog/MySql/CatalogGroupTagsConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/CatalogPresentationCommitTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogPresentationConcurrencyTest.php',
+];
 $transactionalTests = [];
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {
     if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), $independentCommitTests, true)) {

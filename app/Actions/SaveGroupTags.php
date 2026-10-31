@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\CatalogPresentationSettings;
 use App\Models\Group;
 use App\Models\GroupTagCategory;
 use App\Models\GroupTagValue;
@@ -64,6 +65,50 @@ class SaveGroupTags
     public function fingerprint(Group $group): string
     {
         return $this->hashAssignment((int) $group->id, $this->assignmentRows((int) $group->id));
+    }
+
+    public function removeCategory(User $actor, GroupTagCategory $category): void
+    {
+        Gate::forUser($actor)->authorize('manage-catalog');
+
+        DB::transaction(function () use ($category): void {
+            $groups = $this->integrity->lockGroups();
+            $shared = CatalogPresentationSettings::query()->whereKey(1)->lockForUpdate()->first();
+            $record = GroupTagCategory::query()->whereKey($category->id)->lockForUpdate()->firstOrFail();
+            $values = $record->values()->orderBy('id')->lockForUpdate()->get(['id']);
+            $references = [$shared?->settings];
+            foreach ($groups as $group) {
+                $references[] = $group->result_settings['catalog_presentation'] ?? null;
+            }
+            foreach ($references as $settings) {
+                if (is_array($settings) && is_array($settings['group_card_tag_categories'] ?? null)
+                    && in_array((int) $record->id, $settings['group_card_tag_categories'], true)) {
+                    throw ValidationException::withMessages(['tag_category' => 'Remove the category from Catalog Display settings before deleting it.']);
+                }
+            }
+            if ($values->isNotEmpty()) {
+                throw ValidationException::withMessages(['tag_category' => 'Remove all values before deleting this category.']);
+            }
+            $record->delete();
+        }, attempts: 1);
+    }
+
+    public function removeValue(User $actor, GroupTagValue $value): void
+    {
+        Gate::forUser($actor)->authorize('manage-catalog');
+
+        DB::transaction(function () use ($value): void {
+            $this->integrity->lockGroups();
+            CatalogPresentationSettings::query()->whereKey(1)->lockForUpdate()->first();
+            $categoryId = GroupTagValue::query()->whereKey($value->id)->firstOrFail()->group_tag_category_id;
+            GroupTagCategory::query()->whereKey($categoryId)->lockForUpdate()->firstOrFail();
+            $record = GroupTagValue::query()->whereKey($value->id)->lockForUpdate()->firstOrFail();
+            $assignments = DB::table('group_tag_value')->where('group_tag_value_id', $record->id)->orderBy('group_id')->lockForUpdate()->get(['group_id']);
+            if ($assignments->isNotEmpty()) {
+                throw ValidationException::withMessages(['tag_value' => 'Unassign this value from all Groups before deleting it.']);
+            }
+            $record->delete();
+        }, attempts: 1);
     }
 
     /** @param list<int> $orderedValueIds */

@@ -17,6 +17,7 @@ use App\Services\AdminAppearance;
 use App\Services\AdminNavigationCounts;
 use App\Services\CatalogCsv;
 use App\Services\CatalogDataExchangePolicy;
+use App\Services\CatalogPresentation;
 use App\Services\CatalogRevisions;
 use Filament\Actions\Action;
 use Filament\Actions\Exports\ExportDispatcher;
@@ -54,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->scoped(CatalogCsv::class);
         $this->app->scoped(CatalogRevisions::class);
+        $this->app->scoped(CatalogPresentation::class);
         $this->app->scoped(AdminAppearance::class);
     }
 

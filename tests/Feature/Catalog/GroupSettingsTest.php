@@ -6,16 +6,112 @@ use App\Filament\Resources\Groups\Pages\EditGroup;
 use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\GroupFilter;
+use App\Models\GroupTagCategory;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\CatalogDiscovery;
 use App\Services\CatalogPolicy;
+use App\Services\CatalogPresentation;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->actor = User::factory()->create(['email' => 'ycm@data4.work']);
+});
+
+test('legacy settings saves preserve raw presentation and future metadata through the real Group editor', function () {
+    $raw = ['card_show_labels' => false, 'products_debounce_ms' => 0, 'future_root' => ['enabled' => false, 'zero' => 0],
+        'catalog_presentation' => ['group_card_content' => [], 'product_image_placement' => 'right', 'future_key' => ['x' => 0]]];
+    $group = Group::factory()->create(['result_settings' => $raw]);
+    app(SaveGroupSettings::class)->handle($this->actor, $group, groupSettingsInput(['result_settings' => ['cards_per_row' => 2]]));
+    expect($group->fresh()->result_settings)->toMatchArray($raw);
+    $before = $group->fresh()->result_settings;
+    $this->actingAs($this->actor);
+    Livewire::test(EditGroup::class, ['record' => $group->id])->set('data.name', 'Renamed without presentation edits')->call('save')->assertHasNoFormErrors();
+    expect($group->fresh()->result_settings)->toBe($before);
+});
+
+test('full presentation replacement removes omitted known overrides while retaining future keys and explicit inherited values', function () {
+    $service = app(CatalogPresentation::class);
+    $group = Group::factory()->create(['result_settings' => ['future_root' => false, 'catalog_presentation' => [
+        'group_image_placement' => 'right', 'product_image_scale' => 'large', 'future_key' => ['zero' => 0],
+    ]]]);
+    $writer = app(SaveGroupSettings::class);
+    $group->refresh();
+    $revision = $group->catalog_revision;
+    $writer->handle($this->actor, $group, groupSettingsInput(['result_settings' => ['catalog_presentation' => ['group_image_placement' => 'left', 'group_card_content' => []]]]), $service->groupFingerprint($group));
+    $saved = $group->fresh();
+    expect($saved->result_settings['catalog_presentation'])->toBe(['future_key' => ['zero' => 0], 'group_image_placement' => 'left', 'group_card_content' => []]);
+    expect($saved->result_settings['future_root'])->toBeFalse();
+    expect((int) $saved->catalog_revision)->toBe($revision + 1);
+    $writes = [];
+    DB::listen(function ($query) use (&$writes) {
+        if (preg_match('/^\s*(insert|update|delete)\b/i', $query->sql)) {
+            $writes[] = $query->sql;
+        }
+    });
+    $writer->handle($this->actor, $saved, groupSettingsInput(['result_settings' => ['catalog_presentation' => ['group_card_content' => [], 'group_image_placement' => 'left']]]), $service->groupFingerprint($saved));
+    expect($writes)->toBeEmpty();
+    expect($saved->fresh()->getAttributes())->toBe($saved->getAttributes());
+});
+
+test('narrow overrides merge reset and preserve exact category order without incidental legacy changes', function () {
+    $service = app(CatalogPresentation::class);
+    $writer = app(SaveGroupSettings::class);
+    $categories = GroupTagCategory::factory()->count(2)->create();
+    $group = Group::factory()->create(['result_settings' => ['card_show_labels' => false, 'products_debounce_ms' => 0,
+        'catalog_presentation' => ['group_image_placement' => 'right', 'future_key' => false]]]);
+    $group->refresh();
+    $writer->patchPresentation($this->actor, $group, ['catalog_presentation' => ['group_card_tag_categories' => [$categories[1]->id, $categories[0]->id], 'group_card_content' => []]], ['group_image_placement'], $service->groupFingerprint($group));
+    $saved = $group->fresh();
+    expect($saved->result_settings)->toBe(['card_show_labels' => false, 'products_debounce_ms' => 0,
+        'catalog_presentation' => ['future_key' => false, 'group_card_content' => [], 'group_card_tag_categories' => [$categories[1]->id, $categories[0]->id]]]);
+    expect((int) $saved->catalog_revision)->toBe($group->catalog_revision + 1);
+    $writer->patchPresentation($this->actor, $saved, [], ['group_card_tag_categories', 'group_card_content'], $service->groupFingerprint($saved));
+    expect($saved->fresh()->result_settings['catalog_presentation'])->toBe(['future_key' => false]);
+});
+
+test('presentation writes reject stale missing malformed and unowned intent atomically', function () {
+    $service = app(CatalogPresentation::class);
+    $writer = app(SaveGroupSettings::class);
+    $group = Group::factory()->create(['result_settings' => ['future' => 0]]);
+    $group->refresh();
+    $before = $group->getAttributes();
+    $fingerprint = $service->groupFingerprint($group);
+    $cases = [
+        [['catalog_presentation' => ['group_image_placement' => 'right']], [], null],
+        [['catalog_presentation' => ['group_image_placement' => 'right']], [], 'stale'],
+        [['catalog_presentation' => null], [], $fingerprint],
+        [['catalog_presentation' => ['unknown' => true]], [], $fingerprint],
+        [['catalog_presentation' => ['group_card_content' => null]], [], $fingerprint],
+        [['catalog_presentation' => ['group_card_tag_categories' => ['1']]], [], $fingerprint],
+        [['catalog_presentation' => ['group_card_tag_categories' => [PHP_INT_MAX]]], [], $fingerprint],
+        [[], ['unknown'], $fingerprint],
+        [['catalog_presentation' => ['group_image_placement' => 'right']], ['group_image_placement'], $fingerprint],
+    ];
+    foreach ($cases as [$changes, $remove, $expected]) {
+        expect(fn () => $writer->patchPresentation($this->actor, $group, $changes, $remove, $expected))->toThrow(ValidationException::class);
+        expect($group->fresh()->getAttributes())->toBe($before);
+    }
+    expect(fn () => $writer->patchPresentation(User::factory()->create(), $group, ['catalog_presentation' => ['group_card_content' => []]], [], $fingerprint))->toThrow(AuthorizationException::class);
+    $writer->patchPresentation($this->actor, $group, ['catalog_presentation' => ['group_card_content' => []]], [], $fingerprint);
+    expect(fn () => $writer->patchPresentation($this->actor, $group, ['catalog_presentation' => ['group_card_content' => ['tags']]], [], $fingerprint))->toThrow(ValidationException::class);
+    expect($group->fresh()->result_settings['catalog_presentation']['group_card_content'])->toBe([]);
+});
+
+test('physical branches reject Product image overrides but allow explicit cleanup and Group display overrides', function () {
+    $service = app(CatalogPresentation::class);
+    $writer = app(SaveGroupSettings::class);
+    $parent = Group::factory()->create(['result_settings' => ['catalog_presentation' => ['product_image_scale' => 'large']]]);
+    Group::factory()->create(['parent_id' => $parent->id]);
+    $parent->refresh();
+    foreach (['product_image_scale' => 'small', 'product_image_placement' => 'above'] as $key => $value) {
+        expect(fn () => $writer->patchPresentation($this->actor, $parent, ['catalog_presentation' => [$key => $value]], [], $service->groupFingerprint($parent)))->toThrow(ValidationException::class);
+    }
+    $writer->patchPresentation($this->actor, $parent, ['catalog_presentation' => ['group_card_content' => []]], ['product_image_scale'], $service->groupFingerprint($parent));
+    expect($parent->fresh()->result_settings['catalog_presentation'])->toBe(['group_card_content' => []]);
 });
 
 function groupSettingsInput(array $changes = []): array

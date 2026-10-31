@@ -1,6 +1,39 @@
 <?php
 
 return [
+    'display' => [
+        'unsaved' => 'Unsaved changes', 'no_unsaved' => 'No unsaved changes',
+        'vocabulary' => 'Group tag vocabulary', 'create_new' => 'Create a new record', 'existing_record' => 'Existing record (leave empty to create)',
+        'tag_label' => 'Exact label', 'sort_order' => 'Sort order', 'category' => 'Tag category', 'edit_categories' => 'Create or rename category',
+        'edit_values' => 'Create or rename value', 'remove_category' => 'Remove empty category', 'remove_value' => 'Remove unassigned value',
+        'removal_hint' => 'Referenced categories and assigned values must be explicitly removed from their uses first. This action does not detach anything.',
+        'title' => 'Catalog Display', 'shared' => 'Shared catalog defaults', 'group' => 'Selected Group overrides', 'group_tags' => 'Group tags',
+        'choose_group' => 'Find a Group', 'override' => 'Override shared default', 'save_shared' => 'Save shared defaults', 'save_group' => 'Save Group overrides',
+        'save_tags' => 'Save Group tags', 'reset_shared' => 'Prepare factory defaults', 'reset_group' => 'Prepare inheritance', 'saved' => 'Catalog settings saved',
+        'scope' => 'Saved settings apply to the dashboard catalog. Each section saves independently.',
+        'no_group' => 'Choose a Group to manage its own overrides and tags.', 'pending' => 'This Group has unsaved changes. Save or discard them before switching.',
+        'save_switch' => 'Save Group drafts and switch', 'discard' => 'Discard Group drafts and switch', 'stay' => 'Stay here',
+        'invalid_group' => 'Choose a current Group.', 'invalid_choice' => 'Choose Save, Discard or Stay.',
+        'recovery' => 'Some stored display options need review. Valid preferences are retained; saving shared defaults repairs this section.',
+        'fields' => [
+            'sidebar_mode' => 'Group navigation', 'group_image_placement' => 'Group card image placement', 'group_image_scale' => 'Group card image size',
+            'group_card_density' => 'Group card spacing', 'group_cards_per_row' => 'Group cards per row', 'group_card_content' => 'Group card content in order',
+            'group_card_tag_categories' => 'Group card tag categories in order', 'tag_presentation' => 'Sidebar tag style', 'tag_columns' => 'Sidebar tag columns',
+            'tag_density' => 'Sidebar tag spacing', 'tag_counts' => 'Show tag counts', 'branch_tag_retention' => 'Tags when changing branches',
+            'criteria_container' => 'Filter section', 'criteria_columns' => 'Filter column style', 'criteria_choices' => 'Filter choices',
+            'product_image_placement' => 'Product card image placement', 'product_image_scale' => 'Product card image size',
+            'product_page_layout' => 'Product page layout', 'product_page_image_scale' => 'Product page image size',
+        ],
+        'options' => [
+            'tree' => 'Free tree', 'tags' => 'Tags', 'above' => 'Above', 'below' => 'Below', 'left' => 'Left', 'right' => 'Right',
+            'small' => 'Small', 'medium' => 'Medium', 'large' => 'Large', 'compact' => 'Compact', 'comfortable' => 'Comfortable',
+            'description' => 'Description', 'product_count' => 'Product count', 'legacy_id' => 'Legacy identifier',
+            'cards' => 'Cards', 'chip_grid' => 'Chip grid', 'chips' => 'Chips', 'rows' => 'Rows', 'keep_available' => 'Keep available tags', 'clear' => 'Clear tags',
+            'responsive' => 'Responsive section', 'drawer' => 'Drawer', 'plain' => 'Plain', 'divided' => 'Divided', 'checkbox' => 'Checkboxes', 'buttons' => 'Buttons',
+            'compact_header' => 'Compact header', 'image_column' => 'Image column',
+        ],
+    ],
+
     'creation' => [
         'create' => 'Create', 'create_values' => 'Create Master Values', 'add_row' => 'Add row', 'add_rows' => 'Add :count rows',
         'invalid_ref' => 'The draft reference is invalid.', 'missing_ref' => 'A referenced Master Value is missing or empty.',

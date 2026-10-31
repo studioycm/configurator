@@ -6,6 +6,68 @@ const snapshot = {schema:2, groupId:'1', revision:'2', columns:[{key:'pressure',
     fields:[{key:'pressure',label:'Pressure',column:0,options:[{value:'25',label:'25',code:0},{value:'16',label:'16',code:1}]}],
     presets:[], rows:[['A',0],['B',1]], settings:{max_results:'all',cards_per_row:4,products_debounce_ms:60000}};
 let moduleId = 0;
+
+const displayA = '01K8AAAAAAAAAAAAAAAAAAAAAA';
+const displayB = '01K8BBBBBBBBBBBBBBBBBBBBBB';
+
+for (const invalid of [null, [], {}, 'old', 0]) {
+    test(`malformed display identity ${JSON.stringify(invalid)} leaves usable choices and presentation intact`, async t => {
+        const initial = {...snapshot,displayVersion:displayA,presentation:{product_image_placement:'left'}};
+        const c = await harness(t,catalogLabels,initial);
+        c.init();
+        c.choose('filter','pressure','25');
+        const state = structuredClone(c.state);
+        fetch = async () => ({ok:true,status:200,json:async()=>({...initial,displayVersion:invalid})});
+        assert.equal(await c.refreshSnapshot(),false);
+        assert.deepEqual(c.state,state);
+        assert.equal(c.displayVersion,displayA);
+        assert.equal(c.presentation.product_image_placement,'left');
+        assert.equal(c.freshnessError,catalogMessages.update_failed);
+    });
+}
+
+test('a display-only refresh changes presentation and ETag while preserving Product state chronology count and URL', async t => {
+    const initial = {...snapshot,displayVersion:displayA,presentation:{product_image_placement:'left'}};
+    const c = await harness(t,catalogLabels,initial);
+    c.init();
+    c.choose('filter','pressure','25');
+    const state = structuredClone(c.state);
+    const url = location.href;
+    const fields = structuredClone(c.fields);
+    let etag;
+    fetch = async (_url,options) => {
+        etag = options.headers['If-None-Match'];
+        return {ok:true,status:200,json:async () => ({...initial,displayVersion:displayB,presentation:{product_image_placement:'right'}})};
+    };
+    assert.equal(await c.refreshSnapshot(),true);
+    assert.equal(etag,`"catalog-1-2-2-${displayA}"`);
+    assert.equal(c.displayVersion,displayB);
+    assert.equal(c.presentation.product_image_placement,'right');
+    assert.deepEqual(c.state,state);
+    assert.deepEqual(c.fields,fields);
+    assert.equal(c.total,1);
+    assert.equal(location.href,url);
+    fetch = async (_url,options) => {etag = options.headers['If-None-Match'];return {status:304};};
+    assert.equal(await c.refreshSnapshot(),true);
+    assert.equal(etag,`"catalog-1-2-2-${displayB}"`);
+    assert.deepEqual(c.state,state);
+});
+
+test('a suspended old 304 cannot confirm an obsolete display pair after restoration', async t => {
+    const initial = {...snapshot,displayVersion:displayA,presentation:{product_image_placement:'left'}};
+    const c = await harness(t,catalogLabels,initial);
+    c.init();
+    let finishOld;
+    fetch = () => new Promise(resolve => {finishOld = resolve;});
+    const old = c.refreshSnapshot();
+    window.dispatchEvent(new Event('pagehide'));
+    window.dispatchEvent(new Event('pageshow'));
+    fetch = async () => ({ok:true,status:200,json:async () => ({...initial,displayVersion:displayB})});
+    assert.equal(await c.refreshSnapshot(),true);
+    finishOld({status:304});
+    assert.equal(await old,false);
+    assert.equal(c.displayVersion,displayB);
+});
 async function harness(t, payload, initial = snapshot) {
     if (arguments.length < 2) payload = catalogLabels;
     const keys = ['document','window','location','history','fetch','requestAnimationFrame','cancelAnimationFrame'];

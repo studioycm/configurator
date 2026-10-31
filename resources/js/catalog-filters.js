@@ -29,7 +29,9 @@ export function catalogFilters() {
     let initialized = false;
     const instance = crypto.randomUUID();
     const listeners = [];
-    const current = (id, revision) => alive && !suspended && id === generation && snapshot?.revision === revision;
+    const displayToken = value => value && Object.hasOwn(value,'displayVersion') ? value.displayVersion : 'defaults:v1';
+    const validDisplayToken = value => typeof value === 'string' && /^(?:defaults:v1|[0-9A-HJKMNP-TV-Z]{26})$/.test(value);
+    const current = (id, revision, displayVersion) => alive && !suspended && id === generation && snapshot?.revision === revision && displayToken(snapshot) === displayVersion;
     const listen = (target, type, callback) => { target.addEventListener(type, callback); listeners.push(()=>target.removeEventListener(type,callback)); };
     const stopWork = () => {
         generation++;
@@ -84,6 +86,7 @@ export function catalogFilters() {
     return {
         state: {version:1, filters:{}, subGroupId:null, precedence:[]},
         fields: [], presets: [], notices: [], total: null, columns: 4, maximum: 'all',
+        displayVersion: 'defaults:v1', presentation: {},
         available: false, unavailable: '', reloadRequired: false, freshnessError: '', refreshing: false,
         cardStatus: 'idle', cardError: '', cardChunks: [], cardsVisible: false, cardPropertiesNotice: null,
 
@@ -102,6 +105,7 @@ export function catalogFilters() {
                 const initial = JSON.parse(source?.textContent ?? 'null');
                 source?.remove();
                 if (initial) {
+                    if (!validDisplayToken(displayToken(initial))) throw new Error('Invalid display identity');
                     snapshot = initial;
                     engine = createFilterEngine(snapshot, labels);
                     this.available = true;
@@ -179,6 +183,8 @@ export function catalogFilters() {
             this.total = computed.total;
             this.maximum = snapshot.settings.max_results;
             this.columns = snapshot.settings.cards_per_row;
+            this.displayVersion = displayToken(snapshot);
+            this.presentation = snapshot.presentation ?? {};
             if (displayedRevision !== snapshot.revision) {
                 this.presets = snapshot.presets.map(({id,label})=>({id,label}));
                 this.fields = snapshot.fields.map(field => ({key:field.key,label:field.label,hidden:false,
@@ -247,38 +253,39 @@ export function catalogFilters() {
 
         async loadCards(id) {
             const revision = snapshot.revision;
-            if (!current(id, revision)) return;
+            const displayVersion = displayToken(snapshot);
+            if (!current(id, revision, displayVersion)) return;
             const requestId = `${instance}:${id}`;
             try {
-                const response = await this.$wire.loadCards(JSON.parse(JSON.stringify(this.state)), revision, requestId);
-                if (!current(id, revision) || response?.requestId !== requestId) return;
-                if (response.status === 'refresh_required' || response.revision !== revision) {
+                const response = await this.$wire.loadCards(JSON.parse(JSON.stringify(this.state)), revision, requestId, displayVersion);
+                if (!current(id, revision, displayVersion) || response?.requestId !== requestId) return;
+                if (response.status === 'refresh_required' || response.revision !== revision || displayToken(response) !== displayVersion) {
                     if (automaticRetries > 0) {
                         automaticRetries--;
                         const refreshed = await this.refreshSnapshot(true);
-                        if (refreshed && current(id, revision)) this.scheduleCards();
-                        else if (!refreshed && current(id, revision)) { this.cardStatus = 'error'; this.cardError = labels.catalog_changed; }
+                        if (refreshed && current(id, revision, displayVersion)) this.scheduleCards();
+                        else if (!refreshed && current(id, revision, displayVersion)) { this.cardStatus = 'error'; this.cardError = labels.catalog_changed; }
                     } else { this.cardStatus = 'error'; this.cardError = labels.still_changing; }
                     return;
                 }
                 if (!['ready','empty','above_threshold'].includes(response.status) || response.total !== this.total) throw new Error('Inconsistent catalog response');
-                this.confirm(revision);
+                this.confirm(revision, displayVersion);
                 if (response.status !== 'ready') { this.cardStatus = response.status; return; }
                 await this.clearCards();
-                if (!current(id, revision)) return;
+                if (!current(id, revision, displayVersion)) return;
                 this.cardPropertiesNotice = typeof response.propertiesNotice === 'string' ? response.propertiesNotice : null;
                 let index = 0;
                 const insert = () => {
-                    if (!current(id, revision)) return;
+                    if (!current(id, revision, displayVersion)) return;
                     if (index < response.htmlChunks.length) {
                         this.cardChunks.push({key:`${requestId}:${index}`, html:response.htmlChunks[index++]});
                         this.cardsVisible = true;
-                        this.$nextTick(()=> { if (current(id, revision)) insertionFrame = requestAnimationFrame(insert); });
+                        this.$nextTick(()=> { if (current(id, revision, displayVersion)) insertionFrame = requestAnimationFrame(insert); });
                     } else this.cardStatus = 'ready';
                 };
                 insertionFrame = requestAnimationFrame(insert);
             } catch (error) {
-                if (!current(id, revision)) return;
+                if (!current(id, revision, displayVersion)) return;
                 this.cardStatus = 'error';
                 this.cardError = errorText(error);
                 if ([404,409].includes(Number(error?.status))) this.exitLeaf(Number(error.status));
@@ -294,8 +301,8 @@ export function catalogFilters() {
             this.scheduleCards();
         },
 
-        confirm(revision) {
-            if (snapshot?.revision !== revision || !alive || suspended) return;
+        confirm(revision, displayVersion) {
+            if (snapshot?.revision !== revision || displayToken(snapshot) !== displayVersion || !alive || suspended) return;
             confirmedAt = performance.now();
             this.freshnessError = '';
             this.armFreshness();
@@ -320,18 +327,19 @@ export function catalogFilters() {
             if (refreshPromise) return refreshPromise;
             const sequence = ++refreshSequence;
             const revision = snapshot?.revision;
+            const displayVersion = displayToken(snapshot);
             refreshController = new AbortController();
             const signal = refreshController.signal;
             attemptedAt = performance.now();
             this.refreshing = true;
-            const valid = () => alive && !suspended && sequence === refreshSequence && snapshot?.revision === revision;
+            const valid = () => alive && !suspended && sequence === refreshSequence && snapshot?.revision === revision && displayToken(snapshot) === displayVersion;
             refreshPromise = (async () => {
                 try {
                     const headers = {Accept:'application/json'};
-                    if (snapshot) headers['If-None-Match'] = `"catalog-${snapshot.groupId}-${snapshot.schema}-${revision}"`;
+                    if (snapshot) headers['If-None-Match'] = `"catalog-${snapshot.groupId}-${snapshot.schema}-${revision}-${displayVersion}"`;
                     const response = await fetch(root.dataset.datasetUrl, {headers,signal,credentials:'same-origin',cache:'no-cache'});
                     if (!valid()) return false;
-                    if (response.status === 304 && snapshot) { this.confirm(revision); return true; }
+                    if (response.status === 304 && snapshot) { this.confirm(revision, displayVersion); return true; }
                     if ([404,409].includes(response.status)) { this.exitLeaf(response.status); return false; }
                     if (!response.ok) throw {status:response.status};
                     const replacement = await response.json();
@@ -342,6 +350,7 @@ export function catalogFilters() {
                         return false;
                     }
                     if (replacement.groupId !== root.dataset.groupId || !/^[1-9][0-9]{0,19}$/.test(replacement.revision)) throw new Error('Invalid dataset identity');
+                    if (!validDisplayToken(displayToken(replacement))) throw new Error('Invalid display identity');
                     if (revision && BigInt(replacement.revision) < BigInt(revision)) return false;
                     if (replacement.revision !== revision || !engine) {
                         const newEngine = createFilterEngine(replacement, labels);
@@ -352,8 +361,11 @@ export function catalogFilters() {
                         this.available = true;
                         this.unavailable = '';
                         this.publish(normalized, 'replace');
+                    } else if (displayToken(replacement) !== displayVersion) {
+                        snapshot = replacement;
+                        this.publish({state:this.state, notices:this.notices}, 'replace');
                     }
-                    this.confirm(snapshot.revision);
+                    this.confirm(snapshot.revision, displayToken(snapshot));
                     return true;
                 } catch (error) {
                     if (!valid() || signal.aborted) return false;

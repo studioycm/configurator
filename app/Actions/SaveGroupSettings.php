@@ -4,11 +4,13 @@ namespace App\Actions;
 
 use App\Models\Group;
 use App\Models\GroupFilter;
+use App\Models\GroupTagCategory;
 use App\Models\SubGroup;
 use App\Models\User;
 use App\Services\CatalogDiscovery;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogPolicy;
+use App\Services\CatalogPresentation;
 use App\Services\CatalogRevisions;
 use App\Services\ProductFields;
 use Illuminate\Support\Facades\DB;
@@ -20,22 +22,22 @@ use Illuminate\Validation\ValidationException;
 
 class SaveGroupSettings
 {
-    public function __construct(private CatalogIntegrity $integrity, private CatalogDiscovery $discovery, private CatalogRevisions $revisions) {}
+    public function __construct(private CatalogIntegrity $integrity, private CatalogDiscovery $discovery, private CatalogRevisions $revisions, private CatalogPresentation $presentation) {}
 
     /** @param array<string,mixed> $changes */
-    public function patchPresentation(User $actor, Group $group, array $changes): Group
+    public function patchPresentation(User $actor, Group $group, array $changes, array $removeOverrides = [], ?string $expectedPresentationFingerprint = null): Group
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($group, $changes): Group {
+        return DB::transaction(function () use ($group, $changes, $removeOverrides, $expectedPresentationFingerprint): Group {
             $record = $this->integrity->lockGroups()->get($group->id);
             abort_if($record === null, 404);
-            if ($changes === []) {
+            if ($changes === [] && $removeOverrides === []) {
                 return $record;
             }
-            $validated = Validator::make(['settings' => ['result_settings' => $changes]], $this->resultRules())->validate()['settings']['result_settings'];
+            $validated = $changes === [] ? [] : Validator::make(['settings' => ['result_settings' => $changes]], $this->resultRules())->validate()['settings']['result_settings'];
             $normalized = $this->normalizeResults($validated);
-            $results = array_replace($record->result_settings ?? [], $normalized);
+            $results = $this->mergeResults($record, $normalized, false, $removeOverrides, $expectedPresentationFingerprint);
             if (array_intersect(array_keys($changes), ['default_page_size', 'allow_page_size_change', 'page_size_options']) !== []) {
                 $effective = CatalogPolicy::resultSettings($results);
                 if (($results['allow_page_size_change'] ?? false) === true && ! in_array($effective['default_page_size'], $effective['page_size_options'], true)) {
@@ -43,7 +45,7 @@ class SaveGroupSettings
                 }
             }
             if (! $this->sameMap($record->result_settings ?? [], $results)) {
-                $settingsChanged = ! $this->sameMap(CatalogPolicy::resultSettings($record->result_settings), CatalogPolicy::resultSettings($results));
+                $settingsChanged = $this->effectiveSettingsChanged($record, $results);
                 $record->result_settings = $results;
                 $record->save();
                 if ($settingsChanged) {
@@ -56,11 +58,11 @@ class SaveGroupSettings
     }
 
     /** @param array<string, mixed> $data */
-    public function handle(User $actor, Group $group, array $data): Group
+    public function handle(User $actor, Group $group, array $data, ?string $expectedPresentationFingerprint = null): Group
     {
         Gate::forUser($actor)->authorize('manage-catalog');
 
-        return DB::transaction(function () use ($group, $data): Group {
+        return DB::transaction(function () use ($group, $data, $expectedPresentationFingerprint): Group {
             $record = $this->integrity->lockGroups()->get($group->id);
             abort_if($record === null, 404);
             $filters = $record->filters()->orderBy('id')->lockForUpdate()->get()->keyBy('id');
@@ -112,8 +114,7 @@ class SaveGroupSettings
                     }
                 }
             }
-            $results = array_replace(CatalogPolicy::resultSettings($record->result_settings), $validated['result_settings']);
-            $results = $this->normalizeResults($results);
+            $results = $this->mergeResults($record, $this->normalizeResults($validated['result_settings']), true, [], $expectedPresentationFingerprint);
             if ($results['allow_page_size_change'] && ! in_array($results['default_page_size'], $results['page_size_options'], true)) {
                 $errors['settings.result_settings.page_size_options'] = __('catalog.groups.validation.include_default_page_size');
             }
@@ -122,8 +123,10 @@ class SaveGroupSettings
             }
             $retainedFilters = array_filter(array_column($validated['filters'], 'id'));
             $retainedPresets = array_filter(array_column($validated['sub_groups'], 'id'));
-            $changed = $record->filters()->whereNotIn('id', $retainedFilters)->delete() > 0;
-            $changed = $record->subGroups()->whereNotIn('id', $retainedPresets)->delete() > 0 || $changed;
+            $removedFilters = $filters->keys()->diff($retainedFilters)->all();
+            $removedPresets = $presets->keys()->diff($retainedPresets)->all();
+            $changed = $removedFilters !== [] && $record->filters()->whereKey($removedFilters)->delete() > 0;
+            $changed = ($removedPresets !== [] && $record->subGroups()->whereKey($removedPresets)->delete() > 0) || $changed;
             $reservedKeys = array_fill_keys([...$filters->pluck('property_key')->all(), ...array_column($validated['filters'], 'property_key')], true);
             foreach ($validated['filters'] as $row) {
                 if (isset($row['id']) && $filters[$row['id']]->property_key !== $row['property_key']) {
@@ -163,7 +166,7 @@ class SaveGroupSettings
                     $changed = true;
                 }
             }
-            $settingsChanged = ! $this->sameMap(CatalogPolicy::resultSettings($record->result_settings), $results);
+            $settingsChanged = $this->effectiveSettingsChanged($record, $results);
             if (! $this->sameMap($record->result_settings ?? [], $results)) {
                 $record->result_settings = $results;
             }
@@ -184,7 +187,8 @@ class SaveGroupSettings
     private function resultRules(): array
     {
         return [
-            'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,editor_properties,cards_per_row,max_results,products_debounce_ms,card_only_differences,card_show_labels,card_property_layout,card_property_columns,card_padding_block,card_padding_inline'],
+            'settings.result_settings' => ['required', 'array:default_page_size,allow_page_size_change,page_size_options,card_properties,editor_properties,cards_per_row,max_results,products_debounce_ms,card_only_differences,card_show_labels,card_property_layout,card_property_columns,card_padding_block,card_padding_inline,catalog_presentation'],
+            'settings.result_settings.catalog_presentation' => ['sometimes', 'array'],
             'settings.result_settings.default_page_size' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.CatalogPolicy::MAX_PAGE_SIZE],
             'settings.result_settings.allow_page_size_change' => ['sometimes', 'required', 'boolean'],
             'settings.result_settings.page_size_options' => ['sometimes', 'array', 'list'],
@@ -221,9 +225,78 @@ class SaveGroupSettings
         return $changes;
     }
 
-    /** @param array<string|int, mixed> $first @param array<string|int, mixed> $second */
-    private function sameMap(array $first, array $second): bool
+    /**
+     * @param  array<string,mixed>  $changes
+     * @param  list<string>  $removeOverrides
+     * @return array<string,mixed>
+     */
+    private function mergeResults(Group $record, array $changes, bool $full, array $removeOverrides, ?string $expectedFingerprint): array
     {
+        $raw = $record->result_settings ?? [];
+        $results = array_replace($full ? array_replace($raw, CatalogPolicy::resultSettings($raw)) : $raw, $changes);
+        $ownsOverrides = array_key_exists('catalog_presentation', $changes);
+        if (! $ownsOverrides && $removeOverrides === []) {
+            return $results;
+        }
+        $path = 'settings.result_settings.catalog_presentation';
+        if ($expectedFingerprint === null || ! hash_equals($this->presentation->groupFingerprint($record), $expectedFingerprint)) {
+            throw ValidationException::withMessages([$path => 'Group presentation changed. Reload it before saving.']);
+        }
+        $keys = $this->presentation->overrideKeys();
+        if (! array_is_list($removeOverrides) || count(array_unique($removeOverrides, SORT_REGULAR)) !== count($removeOverrides)
+            || array_filter($removeOverrides, fn (mixed $key): bool => ! is_string($key) || ! in_array($key, $keys, true)) !== []) {
+            throw ValidationException::withMessages([$path => 'Reset only known Group presentation options.']);
+        }
+        try {
+            $submitted = $this->presentation->validateOverrides($changes['catalog_presentation'] ?? []);
+        } catch (ValidationException $exception) {
+            $errors = [];
+            foreach ($exception->errors() as $key => $messages) {
+                $errors[$path.substr($key, strlen('settings'))] = $messages;
+            }
+            throw ValidationException::withMessages($errors);
+        }
+        if (array_intersect(array_keys($submitted), $removeOverrides) !== []) {
+            throw ValidationException::withMessages([$path => 'Choose either an override or reset for each option.']);
+        }
+        $own = is_array($raw['catalog_presentation'] ?? null) ? $raw['catalog_presentation'] : [];
+        foreach (['product_image_placement', 'product_image_scale'] as $key) {
+            if (array_key_exists($key, $submitted) && (! array_key_exists($key, $own) || $own[$key] !== $submitted[$key])) {
+                $this->integrity->assertLeaf($record);
+            }
+        }
+        if (array_key_exists('group_card_tag_categories', $submitted)) {
+            $ids = $submitted['group_card_tag_categories'];
+            $current = GroupTagCategory::query()->whereKey($ids)->orderBy('id')->lockForUpdate()->get(['id']);
+            if ($current->count() !== count($ids)) {
+                throw ValidationException::withMessages([$path.'.group_card_tag_categories' => 'Choose current tag categories.']);
+            }
+        }
+        $retained = $full && $ownsOverrides ? array_diff_key($own, array_flip($keys)) : $own;
+        $results['catalog_presentation'] = array_replace(array_diff_key($retained, array_flip($removeOverrides)), $submitted);
+
+        return $results;
+    }
+
+    /** @param array<string,mixed> $results */
+    private function effectiveSettingsChanged(Group $record, array $results): bool
+    {
+        return ! $this->sameMap(CatalogPolicy::resultSettings($record->result_settings), CatalogPolicy::resultSettings($results))
+            || ! $this->sameMap($record->result_settings['catalog_presentation'] ?? [], $results['catalog_presentation'] ?? []);
+    }
+
+    /** @param array<string|int, mixed> $first @param array<string|int, mixed> $second */
+    private function sameMap(mixed $first, mixed $second): bool
+    {
+        if (! is_array($first) || ! is_array($second)) {
+            return $first === $second;
+        }
+        foreach (['catalog_presentation'] as $key) {
+            if (isset($first[$key], $second[$key]) && is_array($first[$key]) && is_array($second[$key])) {
+                ksort($first[$key]);
+                ksort($second[$key]);
+            }
+        }
         ksort($first);
         ksort($second);
 

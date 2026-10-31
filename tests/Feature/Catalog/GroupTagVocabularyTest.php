@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SaveGroupTags;
+use App\Models\CatalogPresentationSettings;
 use App\Models\Group;
 use App\Models\GroupTagCategory;
 use App\Models\GroupTagValue;
@@ -131,4 +132,58 @@ test('assigned vocabulary cannot be deleted through database cascades', function
     $value = GroupTagValue::factory()->create();
     $group->tagValues()->attach($value->id, ['position' => 0]);
     expect(fn () => $value->delete())->toThrow(QueryException::class);
+});
+
+test('taxonomy removal requires explicit unassignment and empty categories and preserves catalog state', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $writer = app(SaveGroupTags::class);
+    $group = Group::factory()->create(['result_settings' => ['future' => false]]);
+    $product = Product::factory()->for($group)->create();
+    $before = $group->fresh()->getAttributes();
+    $productBefore = $product->fresh()->getAttributes();
+    $category = GroupTagCategory::factory()->create();
+    $value = GroupTagValue::factory()->for($category, 'category')->create();
+    $writer->assign($actor, $group, [$value->id], $writer->fingerprint($group));
+    expect(fn () => $writer->removeCategory($actor, $category))->toThrow(ValidationException::class);
+    expect(fn () => $writer->removeValue($actor, $value))->toThrow(ValidationException::class);
+    $this->assertModelExists($category);
+    $this->assertModelExists($value);
+    $writer->assign($actor, $group, [], $writer->fingerprint($group));
+    $writer->removeValue($actor, $value);
+    $writer->removeCategory($actor, $category);
+    $this->assertModelMissing($value);
+    $this->assertModelMissing($category);
+    expect($group->fresh()->getAttributes())->toBe($before);
+    expect($product->fresh()->getAttributes())->toBe($productBefore);
+    $this->assertDatabaseCount('catalog_presentation_settings', 0);
+});
+
+test('category removal checks fresh raw shared and Group presentation references without clearing them', function (string $scope) {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $category = GroupTagCategory::factory()->create();
+    $group = Group::factory()->create(['result_settings' => ['future' => 0]]);
+    $raw = ['group_card_tag_categories' => [$category->id], 'future' => false];
+    if ($scope === 'shared') {
+        $settings = CatalogPresentationSettings::factory()->create(['settings' => $raw]);
+    } else {
+        $group->update(['result_settings' => ['future' => 0, 'catalog_presentation' => $raw]]);
+    }
+    $before = $group->fresh()->getAttributes();
+    expect(fn () => app(SaveGroupTags::class)->removeCategory($actor, $category))->toThrow(ValidationException::class);
+    $this->assertModelExists($category);
+    expect($group->fresh()->getAttributes())->toBe($before);
+    if ($scope === 'shared') {
+        expect($settings->fresh()->settings)->toBe($raw);
+    }
+})->with(['shared', 'group']);
+
+test('taxonomy removal reauthorizes every call including unassigned empty records', function () {
+    $viewer = User::factory()->create();
+    $category = GroupTagCategory::factory()->create();
+    $value = GroupTagValue::factory()->for($category, 'category')->create();
+    $writer = app(SaveGroupTags::class);
+    expect(fn () => $writer->removeValue($viewer, $value))->toThrow(AuthorizationException::class);
+    expect(fn () => $writer->removeCategory($viewer, $category))->toThrow(AuthorizationException::class);
+    $this->assertModelExists($category);
+    $this->assertModelExists($value);
 });
