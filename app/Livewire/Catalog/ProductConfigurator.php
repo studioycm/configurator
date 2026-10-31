@@ -7,6 +7,7 @@ use App\DTO\ConfiguratorEvaluationResult;
 use App\Models\Product;
 use App\Services\AdminAppearance;
 use App\Services\CatalogAvailability;
+use App\Services\CatalogPresentation;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorEngine;
 use App\Services\ProductEditorData;
@@ -77,12 +78,14 @@ class ProductConfigurator extends Component
     {
         $product = Product::with('group.filters')->findOrFail($this->productId);
         app(CatalogAvailability::class)->assertProduct($product);
+        $shared = app(CatalogPresentation::class)->current();
 
         return view('livewire.catalog.product-configurator', [
             'result' => $this->result(),
             'product' => $product,
             'propertyFields' => ProductEditorData::groupFields($product),
             'showLoadingIndicator' => app(AdminAppearance::class)->current()['show_configurator_loading_indicator'],
+            'pagePresentation' => ['layout' => $shared['settings']['product_page_layout'], 'scale' => $shared['settings']['product_page_image_scale'], 'displayVersion' => $shared['version']],
         ]);
     }
 }

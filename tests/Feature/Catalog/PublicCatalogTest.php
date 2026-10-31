@@ -166,7 +166,7 @@ test('group cards lead with code then real hierarchy and escaped property values
     expect($xpath->query('.//dt[contains(@class,"sr-only")]', $card)->length)->toBe(4);
     expect(collect($xpath->query('.//dd', $card))->map(fn ($node) => trim($node->textContent))->all())->toBe(['25 bar', 'Flange', 'Model 1', '<final dimension>']);
     expect($xpath->query('.//a', $card)->length)->toBe(1);
-    expect($xpath->query('.//a/header//h3', $card)->length)->toBe(1);
+    expect($xpath->query('.//a//header//h3', $card)->length)->toBe(1);
 });
 
 test('group cards display selected properties and show none when the default has no filters', function () {

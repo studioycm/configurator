@@ -206,8 +206,9 @@ select:focus[data-flux-control] {
 .catalog-card-grid [data-product-id] { min-width: 0; }
 .catalog-product-card { height: 100%; min-width: 0; }
 .catalog-product-card__link {
-    display: grid;
-    grid-template-rows: auto 1fr;
+    --catalog-card-image-side: 96px;
+    --catalog-card-image-block: 144px;
+    display: flex;
     height: 100%;
     overflow: hidden;
     border: 1px solid #cbd5e1;
@@ -215,6 +216,66 @@ select:focus[data-flux-control] {
     background: white;
     color: #1e293b;
     text-decoration: none;
+}
+.catalog-product-card__body { display: grid; grid-template-rows: auto 1fr; flex: 1; min-width: 0; min-height: 0; }
+.catalog-product-card__link[data-image-scale='small'] { --catalog-card-image-side: 64px; --catalog-card-image-block: 96px; }
+.catalog-product-card__link[data-image-scale='large'] { --catalog-card-image-side: 128px; --catalog-card-image-block: 192px; }
+.catalog-product-card__link[data-image-placement='right'] { flex-direction: row-reverse; }
+.catalog-product-card__link[data-image-placement='above'] { flex-direction: column; }
+.catalog-product-card__link[data-image-placement='below'] { flex-direction: column-reverse; }
+.catalog-product-card__image {
+    flex: 0 1 var(--catalog-card-image-side);
+    inline-size: var(--catalog-card-image-side);
+    max-inline-size: 35%;
+    align-self: start;
+    aspect-ratio: 1;
+    margin: var(--catalog-card-padding-block, 4px) var(--catalog-card-padding-inline, 6px);
+}
+.catalog-product-card__link:is([data-image-placement='above'], [data-image-placement='below']) .catalog-product-card__image {
+    flex: none;
+    inline-size: calc(100% - 2 * var(--catalog-card-padding-inline, 6px));
+    max-inline-size: 100%;
+    block-size: var(--catalog-card-image-block);
+    max-block-size: var(--catalog-card-image-block);
+    aspect-ratio: auto;
+}
+.catalog-image-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    min-inline-size: 0;
+    overflow: hidden;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
+    background: #f1f5f7;
+    color: #7b909c;
+}
+.catalog-image-placeholder svg { inline-size: min(32px, 70%); block-size: 32px; max-block-size: 70%; flex-shrink: 0; }
+.catalog-image-placeholder span { max-inline-size: 100%; padding-inline: 3px; font-size: 10px; line-height: 14px; text-align: center; overflow-wrap: anywhere; }
+.dark .catalog-image-placeholder { background: #e7edf0; color: #668390; border-color: #8ba1ab; }
+.catalog-product-page {
+    --catalog-page-image-max: 240px;
+    display: grid;
+    grid-template-columns: minmax(0, min(33%, var(--catalog-page-image-max))) minmax(0, 1fr);
+    gap: 12px 16px;
+    align-items: start;
+}
+.catalog-product-page[data-product-page-image-scale='small'] { --catalog-page-image-max: 160px; }
+.catalog-product-page[data-product-page-image-scale='large'] { --catalog-page-image-max: 320px; }
+.catalog-product-page__image { grid-column: 1; grid-row: 1; inline-size: 100%; max-inline-size: var(--catalog-page-image-max); aspect-ratio: 1; }
+.catalog-product-page__identity { grid-column: 2; grid-row: 1; min-width: 0; }
+.catalog-product-page__content { grid-column: 1 / -1; grid-row: 2; }
+.catalog-product-page[data-product-page-layout='image_column'] .catalog-product-page__image { grid-row: 1 / span 2; }
+.catalog-product-page[data-product-page-layout='image_column'] .catalog-product-page__content { grid-column: 2; }
+@media (max-width: 639px) {
+    .catalog-product-page { grid-template-columns: minmax(0, 1fr); }
+    .catalog-product-page .catalog-product-page__image,
+    .catalog-product-page[data-product-page-layout='image_column'] .catalog-product-page__image { grid-column: 1; grid-row: 1; }
+    .catalog-product-page .catalog-product-page__identity { grid-column: 1; grid-row: 2; }
+    .catalog-product-page .catalog-product-page__content,
+    .catalog-product-page[data-product-page-layout='image_column'] .catalog-product-page__content { grid-column: 1; grid-row: 3; }
 }
 .catalog-product-card__link:hover { border-color: #64748b; }
 .catalog-product-card__link:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }

@@ -1,12 +1,13 @@
-<section class="min-w-0" aria-label="{{ __('admin.navigation.product_configuration') }}" wire:loading.attr="aria-busy" x-data="{ tab: 'configurator' }">
-    <div class="min-w-0 flex-1 space-y-3">
-        <div class="space-y-1 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-blue-950 dark:text-blue-100">
-                <span class="text-sm font-medium">{{ __('configurator.labels.product_code') }}</span>
-                <span class="break-all font-mono text-xl">{{ $product->product_code }}</span>
-            </div>
-            <x-catalog.configuration-result :result="$result" inline :show-diagnostics="false" />
+<section class="catalog-product-page min-w-0" aria-label="{{ __('admin.navigation.product_configuration') }}" wire:loading.attr="aria-busy" x-data="{ tab: 'configurator' }" data-product-page-layout="{{ $pagePresentation['layout'] }}" data-product-page-image-scale="{{ $pagePresentation['scale'] }}" data-catalog-display-version="{{ $pagePresentation['displayVersion'] }}">
+    <x-catalog.image-placeholder class="catalog-product-page__image" />
+    <div class="catalog-product-page__identity space-y-1 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-blue-950 dark:text-blue-100">
+            <span class="text-sm font-medium">{{ __('configurator.labels.product_code') }}</span>
+            <span class="break-all font-mono text-xl">{{ $product->product_code }}</span>
         </div>
+        <x-catalog.configuration-result :result="$result" inline :show-diagnostics="false" />
+    </div>
+    <div class="catalog-product-page__content min-w-0 space-y-3">
         <div class="flex flex-wrap gap-1 border-b border-slate-300 dark:border-zinc-700" role="tablist" aria-label="{{ __('configurator.copy.product_sections') }}"
             x-on:keydown.arrow-right.prevent="$focus.wrap().next()" x-on:keydown.arrow-left.prevent="$focus.wrap().previous()" x-on:keydown.home.prevent="$focus.first()" x-on:keydown.end.prevent="$focus.last()">
             @foreach (['configurator' => __('configurator.resource.singular'), 'details' => __('configurator.copy.product_details'), 'information' => __('configurator.copy.information')] as $key => $label)
