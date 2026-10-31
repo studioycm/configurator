@@ -5,7 +5,7 @@
         <span>{{ __('catalog.browse.no_image') }}</span>
     </div>
     <div class="catalog-model-copy">
-        <h2><a @if (! $dynamic) href="{{ $card['url'] }}" @endif :href="card.url" :data-catalog-focus="'model-' + card.id" x-text="card.name">{{ $card['name'] ?? '' }}</a></h2>
+        <h2><a @if (! $dynamic) href="{{ $card['url'] }}" @endif :href="modelHref(card)" :data-catalog-focus="'model-' + card.id" x-text="card.name">{{ $card['name'] ?? '' }}</a></h2>
         <template x-for="content in card.presentation.group_card_content" :key="content">
             <div>
                 <p x-show="content === 'description' && card.description" x-text="content === 'description' ? card.description : ''" class="catalog-model-description"></p>
@@ -19,6 +19,6 @@
         @if (! $dynamic)
             <noscript>@if ($card['description'] !== null && $card['description'] !== '')<p>{{ $card['description'] }}</p>@endif</noscript>
         @endif
-        <a class="catalog-model-open" @if (! $dynamic) href="{{ $card['url'] }}" @endif :href="card.url" :aria-label="@js(__('catalog.browse.open_products')) + ' · ' + card.name">{{ __('catalog.browse.open_products') }} <span aria-hidden="true">→</span></a>
+        <a class="catalog-model-open" @if (! $dynamic) href="{{ $card['url'] }}" @endif :href="modelHref(card)" :data-catalog-focus="'model-' + card.id" :aria-label="@js(__('catalog.browse.open_products')) + ' · ' + card.name">{{ __('catalog.browse.open_products') }} <span aria-hidden="true">→</span></a>
     </div>
 </article>

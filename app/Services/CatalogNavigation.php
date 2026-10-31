@@ -266,7 +266,7 @@ class CatalogNavigation
     }
 
     /** @param array<string,mixed> $query @return array{branchId:int|null,search:string,tagValueIds:list<int>,mode:?string,page:int,requestId:string} */
-    private function validateQuery(array $query): array
+    public function validateQuery(array $query): array
     {
         if ((array_key_exists('mode', $query) && $query['mode'] === null) || array_diff(array_keys($query), ['branchId', 'search', 'tagValueIds', 'mode', 'page', 'requestId']) !== []) {
             throw ValidationException::withMessages(['query' => 'Unsupported catalog navigation input.']);

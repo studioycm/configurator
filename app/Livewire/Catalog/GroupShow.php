@@ -6,6 +6,7 @@ use App\DTO\CatalogSnapshot;
 use App\Models\Group;
 use App\Services\CatalogAvailability;
 use App\Services\CatalogCards;
+use App\Services\CatalogJourney;
 use App\Services\CatalogNavigation;
 use App\Services\CatalogPresentation;
 use App\Services\CatalogSnapshots;
@@ -28,6 +29,9 @@ class GroupShow extends Component
     #[Locked]
     public string $groupId;
 
+    #[Locked]
+    public ?string $journeyEnvelope = null;
+
     protected CatalogCards $cards;
 
     public function boot(CatalogCards $cards): void
@@ -42,8 +46,11 @@ class GroupShow extends Component
             $query = Index::queryFromUrl(request()->query('g', []), (int) $group->id, (string) request()->server('QUERY_STRING', ''));
             $navigation = app(CatalogNavigation::class)->get(auth()->user(), $query);
             $this->redirectRoute('catalog.index', ['g' => Index::urlState($navigation['query'])]);
-        }
 
+            return;
+        }
+        $raw = request()->query('r');
+        $this->journeyEnvelope = $raw === null ? null : (is_string($raw) && strlen($raw) <= 8192 ? $raw : 'invalid');
     }
 
     /** @param array<string, mixed> $criteria @return array<string, mixed> */
@@ -79,6 +86,12 @@ class GroupShow extends Component
         $availableGroup = $availability->firstWhere('id', $group->id);
         abort_if($availableGroup === null, 404);
         $isBranch = (bool) $availableGroup->children_exists;
+        $journey = app(CatalogJourney::class);
+        $resolvedJourney = $journey->resolve(auth()->user(), $this->journeyEnvelope, (int) $group->id);
+        $journeyState = $resolvedJourney['state'];
+        $journeyData = $journeyState === null ? null : $journey->forClient($journeyState);
+        $journeyNotice = $resolvedJourney['notice'];
+        $catalogReturnUrl = $journeyState === null ? route('catalog.index') : $journey->catalogUrl($journeyState);
         $children = $group->children()->whereKey($availability->modelKeys())->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'description']);
         $snapshot = null;
         if (! $isBranch) {
@@ -108,7 +121,8 @@ class GroupShow extends Component
             }
         }
 
-        return view('livewire.catalog.group-show', ['group' => $group, 'ancestors' => $group->ancestorTrail(), 'children' => $children, 'isBranch' => $isBranch, 'snapshot' => $snapshot])
+        return view('livewire.catalog.group-show', ['group' => $group, 'ancestors' => $group->ancestorTrail(), 'children' => $children, 'isBranch' => $isBranch, 'snapshot' => $snapshot,
+            'journeyData' => $journeyData, 'journeyNotice' => $journeyNotice, 'catalogReturnUrl' => $catalogReturnUrl])
             ->title($group->name)->layoutData(['subtitle' => $group->description]);
     }
 }

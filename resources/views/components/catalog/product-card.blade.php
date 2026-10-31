@@ -5,6 +5,8 @@
 @endphp
 <article {{ $attributes->class(['catalog-product-card']) }}>
     <a href="{{ route('catalog.products.show', $product->id) }}" class="catalog-product-card__link"
+        data-catalog-product-url="{{ route('catalog.products.show', $product->id) }}" data-catalog-product-id="{{ $product->id }}" data-catalog-focus="product-{{ $product->id }}"
+        :href="productHref($el.dataset.catalogProductUrl, $el.dataset.catalogProductId)"
         aria-labelledby="catalog-card-title-{{ $identity }}"
         aria-describedby="catalog-card-group-{{ $identity }}{{ $fields === [] ? '' : ' catalog-card-facts-'.$identity }}"
         data-property-columns="{{ $appearance['card_property_columns'] }}"

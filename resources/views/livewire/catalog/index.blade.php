@@ -2,7 +2,7 @@
     @if ($invalidState)
         <section data-catalog-invalid-state role="alert" class="catalog-browse-state"><h2>{{ __('catalog.browse.invalid') }}</h2><a href="{{ route('catalog.index') }}">{{ __('catalog.browse.return_all') }}</a></section>
     @else
-        <div wire:ignore x-data="catalogNavigation" data-catalog-navigation data-catalog-index-url="{{ route('catalog.index') }}" data-labels="{{ \Illuminate\Support\Js::encode(__('catalog.browse.messages')) }}" :aria-busy="loading" @keydown.escape.window="if (criteriaOpen) closeCriteria()">
+        <div wire:ignore x-data="catalogNavigation" data-catalog-navigation data-catalog-index-url="{{ route('catalog.index') }}" data-journey-return="{{ \Illuminate\Support\Js::encode($journeyReturn) }}" data-journey-overflow="{{ __('catalog.journey.overflow') }}" data-labels="{{ \Illuminate\Support\Js::encode(__('catalog.browse.messages')) }}" :aria-busy="loading" @keydown.escape.window="if (criteriaOpen) closeCriteria()">
             <script type="application/json" data-navigation-projection>{!! \Illuminate\Support\Js::encode($navigation) !!}</script>
             <div class="catalog-browse-toolbar" :inert="criteriaOpen && drawer">
                 <form class="catalog-group-search" role="search" @submit.prevent="searchNow()"><label for="catalog-group-search" class="sr-only">{{ __('catalog.browse.search') }}</label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="catalog-group-search" data-catalog-focus="search" type="search" placeholder="{{ __('catalog.browse.search') }}" x-model="searchText" @input="searchLater($event.target.value)" /><button type="submit">{{ __('catalog.browse.search_action') }}</button></form>
@@ -11,6 +11,8 @@
             </div>
             <x-catalog.criteria-panel />
             <div :inert="criteriaOpen && drawer">
+                @if ($journeyNotice)<p class="catalog-browse-notice" role="status">{{ $journeyNotice }}</p>@endif
+                <p x-cloak x-show="journeyError" class="catalog-browse-notice" role="status" x-text="journeyError"></p>
                 <div x-cloak x-show="error" role="alert" class="catalog-browse-state"><span x-text="error"></span><button type="button" @click="retry()">{{ __('catalog.browse.retry') }}</button><button type="button" @click="reset()">{{ __('catalog.browse.clear_choices') }}</button></div>
                 <p x-cloak x-show="notice" role="status" class="catalog-browse-notice" x-text="notice"></p>
                 <p x-cloak x-show="projection.presentationRecovery" role="status" class="catalog-browse-notice">{{ __('catalog.browse.recovery') }}</p>

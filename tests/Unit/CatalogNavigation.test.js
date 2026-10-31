@@ -6,7 +6,7 @@ async function moduleUnderTest() { return import('../../resources/js/catalog-nav
 const card = id => ({id,name:'Model '+id,url:'/dashboard/catalog/groups/'+id,description:null,legacyId:null,productCount:1,mainImage:null,tags:[],presentation:{group_card_content:[],group_image_placement:'left',group_image_scale:'medium'}});
 const query = (overrides={}) => ({branchId:null,search:'',tagValueIds:[],mode:'tree',page:1,...overrides});
 const reply = (q=query(), overrides={}) => ({requestId:'initial',queryIdentity:'server-only-opaque-hash',query:q,displayVersion:'defaults:v1',treeVersion:'a'.repeat(64),branch:q.branchId===null?null:{id:q.branchId,name:'Branch',parentId:null},ancestors:[],treeRows:[{id:1,name:'Branch',parentId:null,hasChildren:true,modelCount:2}],rootTreePagination:{page:1,nextPage:null,hasMore:false},tags:[{id:1,label:'Pressure',values:[{id:3,label:'001',count:2,selected:false},{id:4,label:'001',count:1,selected:false}]}],cards:[card(2)],total:1,page:1,hasMore:false,presentation:{sidebar_mode:'tree',branch_tag_retention:'keep_available',criteria_container:'responsive'},presentationRecovery:null,...overrides});
-async function harness() {
+async function harness(options={}) {
     const {catalogNavigation} = await moduleUnderTest();
     const browser = new EventTarget(); browser.location={href:'https://catalog.test/dashboard/catalog?d[x]=001&external=keep'};
     browser.history={state:{outside:true},pushes:[],replaces:[],pushState(s,t,u){this.state=s;browser.location.href=String(u);this.pushes.push(String(u));},replaceState(s,t,u){this.state=s;browser.location.href=String(u);this.replaces.push(String(u));}};
@@ -16,7 +16,7 @@ async function harness() {
     browser.advance=milliseconds=>{clock+=milliseconds;const tasks=[];for(const [id,timer] of [...timers])if(timer.at<=clock){timers.delete(id);tasks.push(timer.callback());}return tasks;};
     browser.innerWidth=1280; browser.scrollY=0; browser.scrollTo=()=>{};
     const requests=[], trees=[];
-    const component=catalogNavigation(browser);component.$el={querySelector:()=>({textContent:JSON.stringify(reply())}),dataset:{catalogIndexUrl:'/dashboard/catalog',labels:JSON.stringify({failed:'Failed. Retry.',removed:'Unavailable tags removed',invalid:'Invalid catalog state',treeChanged:'Tree changed. Retry.'})}};
+    const component=catalogNavigation(browser);component.$el={querySelector:()=>({textContent:JSON.stringify(reply())}),querySelectorAll:()=>options.elements || [],dataset:{journeyReturn:JSON.stringify(options.journeyReturn??null),catalogIndexUrl:'/dashboard/catalog',labels:JSON.stringify({failed:'Failed. Retry.',removed:'Unavailable tags removed',invalid:'Invalid catalog state',treeChanged:'Tree changed. Retry.'})}};
     component.$wire={loadNavigation(q){const d=deferred();requests.push({q,...d});return d.promise;},loadTreeChildren(...args){const d=deferred();trees.push({args,...d});return d.promise;}};
     component.$nextTick=f=>f();component.init();
     return {component,browser,requests,trees};
@@ -342,4 +342,18 @@ test('K3-PENDING-RETENTION-001 accepted transition metadata cannot affect a late
 test('K3-PENDING-RETENTION-001 invalid draft in the continuation boundary retains context with a usable error',async()=>{
     const {component:c,requests,browser}=await harness();const before=browser.location.href;c.searchLater('x'.repeat(501));let task;
     assert.doesNotThrow(()=>{[task]=browser.advance(250);});await task;assert.ok(c.error);assert.equal(c.loading,false);assert.equal(requests.length,0);assert.equal(c.projection.cards[0].id,2);assert.equal(browser.location.href,before);c.destroy();
+});
+
+test('model links carry settled source choices rather than newer pending drafts and no link-building request',async()=>{
+    const {component:c,browser,requests}=await harness();const pending=c.chooseBranch(1);c.searchLater('new pending draft');
+    const before=browser.history.pushes.length;const link=new URL(c.modelHref({...card(2),url:'/dashboard/catalog/groups/2?external=keep'}));
+    const r=JSON.parse(Buffer.from(link.searchParams.get('r'),'base64url').toString('utf8'));
+    assert.deepEqual(r.catalog.query,query());assert.equal(r.catalog.anchor,'model-2');assert.equal(r.products,null);assert.equal(r.productId,null);
+    assert.equal(requests.length,1);assert.equal(browser.history.pushes.length,before);assert.equal(link.searchParams.get('external'),'keep');
+    answer(requests[0]);await pending;c.destroy();
+});
+test('explicit catalog return focuses its current model once without replay on later requests',async()=>{
+    let focused=0,scrolled=0;const element={dataset:{catalogFocus:'model-2'},focus(){focused++;},scrollIntoView(){scrolled++;}};
+    const {component:c,requests}=await harness({journeyReturn:{query:query(),anchor:'model-2'},elements:[element]});
+    assert.equal(focused,1);assert.equal(scrolled,1);const refresh=c.refresh();answer(requests[0]);await refresh;assert.equal(focused,1);c.destroy();
 });

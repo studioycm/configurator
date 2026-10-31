@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'journey' => [
+        'reset' => 'Return information is invalid or no longer available. This page uses its current selections.',
+        'overflow' => 'Return information is too large for this link. The destination will open normally.',
+    ],
     'browse' => [
         'heading' => 'Catalog', 'select_group' => 'Select group',
         'search' => 'Search model name or identifier…', 'search_action' => 'Search', 'group_filters' => 'Group filters',

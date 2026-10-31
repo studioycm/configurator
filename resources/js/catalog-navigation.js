@@ -1,3 +1,5 @@
+import { journeyLink } from './catalog-journey.js';
+
 const positive = value => {
     if (!['string','number'].includes(typeof value) || !/^[1-9][0-9]*$/.test(String(value)) || !Number.isSafeInteger(Number(value))) throw new Error('Invalid identifier');
     return Number(value);
@@ -45,7 +47,7 @@ export function navigationQueryFromUrl(url, defaultMode = 'tree') {
 
 export function catalogNavigation(browser = window) {
     return {
-        hydrated:false, active:false, projection:null, criteria:null, searchText:'', loading:false, error:'', notice:'', criteriaOpen:false, sidebarOpen:true, narrow:false,
+        hydrated:false, active:false, projection:null, criteria:null, searchText:'', loading:false, error:'', notice:'', journeyError:'', criteriaOpen:false, sidebarOpen:true, narrow:false,
         expanded:{}, treePages:{}, treeRequests:{}, treeErrors:{}, treeRefreshes:0, generation:0, treeGeneration:0, sequence:0, timer:null, searchRevision:0, settledSearchRevision:0, pendingSearchRevision:0, labels:{}, root:null, pendingQuery:null, pendingIntent:null,
         init() {
             if (this.active) return;
@@ -56,7 +58,30 @@ export function catalogNavigation(browser = window) {
                 this.active=true;this.seedTree();this.hydrated=true;this.resize();
                 this.onPop=()=>this.restore(); this.onPageShow=event=>{if(event.persisted)this.restore();};this.onPageHide=()=>{this.persistPosition();this.generation++;this.treeGeneration++;this.treeRequests={};this.cancelSearch();};this.onResize=()=>this.resize();
                 browser.addEventListener('popstate',this.onPop);browser.addEventListener('pageshow',this.onPageShow);browser.addEventListener('pagehide',this.onPageHide);browser.addEventListener('resize',this.onResize);
+                this.restoreJourneyAnchor();
             } catch { this.error=this.labels.invalid || 'Invalid catalog state.'; }
+        },
+        modelHref(card) {
+            try {
+                return journeyLink(card.url,{version:1,groupId:String(card.id),productId:null,catalog:{query:this.criteria,anchor:`model-${card.id}`},products:null},browser.location.href);
+            } catch {
+                this.journeyError=this.root.dataset.journeyOverflow || '';
+                try { return journeyLink(card.url,null,browser.location.href); }
+                catch { return this.root.dataset.catalogIndexUrl; }
+            }
+        },
+        restoreJourneyAnchor() {
+            const raw=this.root.dataset.journeyReturn;
+            if(!raw)return;
+            let position;
+            try { position=JSON.parse(raw);if(!position || JSON.stringify(normalizeNavigationQuery(position.query))!==JSON.stringify(this.criteria) || !/^model-[1-9][0-9]*$/.test(position.anchor))return; }
+            catch { return; }
+            const generation=this.generation;
+            this.$nextTick(()=>{
+                if(!this.active || this.generation!==generation)return;
+                const element=[...(this.root.querySelectorAll?.('[data-catalog-focus]') || [])].find(el=>el.dataset.catalogFocus===position.anchor);
+                element?.focus({preventScroll:true});element?.scrollIntoView?.({block:'nearest'});
+            });
         },
         resize() { this.narrow=browser.innerWidth < 1024; },
         get drawer() { return this.narrow || this.projection?.presentation.criteria_container === 'drawer'; },

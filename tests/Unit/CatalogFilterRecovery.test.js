@@ -216,3 +216,23 @@ test('exhausted automatic card retries use the translated message', async t => {
     assert.equal(c.cardStatus,'error');
     assert.equal(c.cardError,'RETRY_TRANSLATION');
 });
+
+for (const scenario of ['matching','explicit-return','foreign-group','different-state','stale','filtered-out','empty','destroyed']) test(`Product return position waits for current chunks: ${scenario}`,async t=>{
+    const {productBrowsePosition}=await import('../../resources/js/catalog-journey.js');const c=await harness(t,catalogLabels,scenario==='empty'?{...snapshot,rows:[]}:snapshot);
+    let focused=0,reset=0,scrolls=0;const element={dataset:{catalogFocus:'product-9'},focus(){focused++;}};
+    c.$el.querySelectorAll=()=>['filtered-out','empty'].includes(scenario)?[]:[element];c.$el.dispatchEvent=()=>true;c.$refs={reset:{focus(){reset++;}}};
+    const position=productBrowsePosition('1',{version:1,filters:{},subGroupId:null,precedence:[]},{scrollY:90,document:{activeElement:element}});
+    if(scenario==='foreign-group')position.groupId='2';if(scenario==='different-state')position.criteria='different';
+    history.state=scenario==='explicit-return'?{outside:'keep'}:{outside:'keep',catalogProductBrowse:position};
+    if(scenario==='explicit-return')c.$el.dataset.catalogJourney=JSON.stringify({version:1,groupId:'1',productId:'9',catalog:null,products:{criteria:{version:1,filters:{},subGroupId:null,precedence:[]},anchor:'product-9'}});
+    history.replaceState=(s,_t,url)=>{history.state=s;location.href=String(url);};
+    window.scrollTo=()=>scrolls++;const frames=new Map();let frame=0;requestAnimationFrame=cb=>{frames.set(++frame,cb);return frame;};cancelAnimationFrame=id=>frames.delete(id);
+    const ticks=[];c.$nextTick=cb=>ticks.push(cb);let finish;
+    c.$wire.loadCards=(_state,revision,requestId,displayVersion)=>new Promise(resolve=>{finish=()=>resolve({revision,requestId,displayVersion,status:'ready',total:c.total,htmlChunks:['<article>current</article>']});});
+    c.init();const task=scenario==='empty'?Promise.resolve():c.loadCards(1);assert.equal(focused,0);
+    if(scenario==='stale')c.choose('filter','pressure','25');finish?.();await task;
+    if(scenario==='destroyed')c.destroy();
+    for(let n=0;n<30 && (ticks.length || frames.size);n++) {while(ticks.length)ticks.shift()();const batch=[...frames];frames.clear();for(const [,cb]of batch)cb();}
+    assert.equal(focused,['matching','explicit-return'].includes(scenario)?1:0);assert.equal(reset,['filtered-out','empty'].includes(scenario)?1:0);assert.equal(scrolls,scenario==='matching'?1:0);
+    assert.equal(history.state.outside,'keep');assert.equal(c.total,scenario==='empty'?0:scenario==='stale'?1:2);
+});

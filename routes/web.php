@@ -8,6 +8,7 @@ use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
 use App\Livewire\Settings\TwoFactor;
+use App\Services\CatalogJourney;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -20,8 +21,15 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/dashboard/catalog/groups/{group}', GroupShow::class)->name('catalog.groups.show');
     Route::livewire('/dashboard/catalog/products/{product}', ProductShow::class)->name('catalog.products.show');
     Route::redirect('/catalog', '/dashboard/catalog');
-    Route::get('/catalog/groups/{group}', fn (string $group) => redirect()->route('catalog.groups.show', ['group' => $group, ...request()->query()]));
-    Route::get('/catalog/products/{product}', fn (string $product) => redirect()->route('catalog.products.show', ['product' => $product]));
+    Route::get('/catalog/groups/{group}', function (string $group) {
+        if (array_key_exists('g', request()->query())) {
+            CatalogIndex::queryFromUrl(request()->query('g'), null, (string) request()->server('QUERY_STRING', ''));
+        }
+
+        return redirect()->route('catalog.groups.show', ['group' => $group, ...app(CatalogJourney::class)->compatibilityQuery(auth()->user(), request()->query(), 'group', (int) $group)]);
+    })->whereNumber('group');
+    Route::get('/catalog/products/{product}', fn (string $product) => redirect()->route('catalog.products.show', ['product' => $product,
+        ...app(CatalogJourney::class)->compatibilityQuery(auth()->user(), request()->query(), 'product', (int) $product)]))->whereNumber('product');
 });
 
 Route::middleware(['auth'])->group(function () {

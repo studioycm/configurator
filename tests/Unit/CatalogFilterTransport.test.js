@@ -59,7 +59,8 @@ test('only current cards can publish a properties notice and criteria, retry and
             rows:[['A',0],['B',1]], presets:[],
             settings:{max_results:'all',cards_per_row:4,products_debounce_ms:0}};
         const root = new EventTarget();
-        root.dataset = {catalogLabels, datasetUrl:'/dataset', groupId:'1'};
+        const sourceCatalog={query:{branchId:2,search:'שסתום',tagValueIds:[3],mode:'tags',page:2},anchor:'model-1'};
+        root.dataset = {catalogLabels, datasetUrl:'/dataset', groupId:'1',catalogJourney:JSON.stringify({version:1,groupId:'1',productId:null,catalog:sourceCatalog,products:null})};
         root.querySelector = () => ({textContent:JSON.stringify(snapshot), remove() {}});
         globalThis.document = new EventTarget();
         document.hidden = true;
@@ -79,7 +80,14 @@ test('only current cards can publish a properties notice and criteria, retry and
         }};
         component.init();
         assert.equal(component.cardPropertiesNotice, null);
+        const linked = () => JSON.parse(Buffer.from(new URL(component.productHref('/dashboard/catalog/products/9?external=keep','9')).searchParams.get('r'),'base64url').toString('utf8'));
+        assert.deepEqual(linked().products.criteria.filters,{});
         component.choose('filter', 'pressure', '25');
+        assert.deepEqual(linked().products.criteria.filters,{pressure:'25'});
+        assert.deepEqual(linked().products.criteria.precedence,['filter:pressure']);
+        assert.deepEqual(linked().catalog,sourceCatalog);
+        assert.equal(linked().products.criteria.filters['3'],undefined);
+        assert.equal(linked().groupId,'1');
         reply(1, 'Only one product matches.');
         await flush();
         assert.equal(component.cardPropertiesNotice, 'Only one product matches.');
@@ -103,6 +111,8 @@ test('only current cards can publish a properties notice and criteria, retry and
         reply(3, 'Current shared properties.');
         await flush();
         assert.equal(component.cardPropertiesNotice, 'Current shared properties.');
+        assert.deepEqual(linked().products.criteria.filters,{});
+        assert.equal(new URL(component.productHref('/dashboard/catalog/products/9?external=keep','9')).searchParams.get('external'),'keep');
         window.dispatchEvent(new Event('pagehide'));
         assert.equal(component.cardPropertiesNotice, null);
         assert.equal(component.cardsVisible, false);

@@ -1,20 +1,22 @@
 <x-slot:breadcrumbs>
-    <x-catalog.breadcrumbs :group="$group" :ancestors="$ancestors" compact />
+    <x-catalog.breadcrumbs :group="$group" :ancestors="$ancestors" :catalog-return-url="$catalogReturnUrl" compact />
 </x-slot:breadcrumbs>
 
 <div wire:key="catalog-group-{{ $group->id }}">
+    @if ($journeyNotice)<p role="status" class="text-sm text-zinc-600 dark:text-zinc-400">{{ $journeyNotice }}</p>@endif
     @if ($isBranch)
         <p role="status">{{ __('catalog.browse.redirecting') }}</p>
         <a href="{{ route('catalog.index', ['g' => ['version' => 1, 'branch' => $group->id]]) }}">{{ __('catalog.browse.group_navigation') }}</a>
     @else
-        <div wire:ignore x-data="catalogFilters" data-catalog-filters :data-catalog-display-version="displayVersion" :data-catalog-product-image-placement="presentation.product_image_placement" data-catalog-labels="{{ \Illuminate\Support\Js::encode(__('catalog.frontend.messages')) }}" data-group-id="{{ $group->id }}" data-dataset-url="{{ route('catalog.groups.dataset', $group) }}">
+        <div wire:ignore x-data="catalogFilters" data-catalog-filters :data-catalog-display-version="displayVersion" :data-catalog-product-image-placement="presentation.product_image_placement" data-catalog-labels="{{ \Illuminate\Support\Js::encode(__('catalog.frontend.messages')) }}" data-group-id="{{ $group->id }}" data-catalog-journey="{{ \Illuminate\Support\Js::encode($journeyData) }}" data-journey-overflow="{{ __('catalog.journey.overflow') }}" data-dataset-url="{{ route('catalog.groups.dataset', $group) }}">
             <script type="application/json" data-catalog-snapshot>{!! \Illuminate\Support\Js::encode($snapshot?->data) !!}</script>
+            <p x-cloak x-show="journeyError" role="status" class="text-sm text-zinc-600 dark:text-zinc-400" x-text="journeyError"></p>
             <noscript><p>{{ __('catalog.frontend.copy.enable_javascript_to_use_the_product_filters') }}</p></noscript>
             <div x-cloak x-show="!available" role="status" class="mt-4 space-y-2">
                 <p data-catalog-recovery x-text="unavailable">{{ __('catalog.frontend.messages.initialization_failed') }}</p>
                 <button type="button" x-show="!reloadRequired" @click="refreshSnapshot()" :disabled="refreshing" class="rounded-lg border px-3 py-2">{{ __('catalog.frontend.copy.retry_filters') }}</button>
                 <a x-show="reloadRequired" href="{{ route('catalog.groups.show', $group) }}" class="underline">{{ __('catalog.frontend.copy.reload_page') }}</a>
-                <a href="{{ route('catalog.index') }}" class="ml-3 underline">{{ __('catalog.frontend.copy.return_to_catalog') }}</a>
+                <a href="{{ $catalogReturnUrl }}" class="ml-3 underline">{{ __('catalog.frontend.copy.return_to_catalog') }}</a>
             </div>
             <section wire:ignore x-cloak x-show="available" aria-label="{{ __('catalog.frontend.copy.product_filters') }}" class="mt-3">
                 <div class="mb-3 flex items-stretch gap-2">

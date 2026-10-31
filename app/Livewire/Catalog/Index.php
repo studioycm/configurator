@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Catalog;
 
+use App\Services\CatalogJourney;
 use App\Services\CatalogNavigation;
 use Closure;
 use Illuminate\Contracts\View\View;
@@ -23,6 +24,12 @@ class Index extends Component
     #[Locked]
     public bool $invalidState = false;
 
+    #[Locked]
+    public ?array $journeyReturn = null;
+
+    #[Locked]
+    public ?string $journeyNotice = null;
+
     /** @var array<string,mixed>|null */
     protected ?array $preparedNavigation = null;
 
@@ -31,6 +38,12 @@ class Index extends Component
         try {
             $this->initialQuery = self::queryFromUrl(request()->query('g', []), null, (string) request()->server('QUERY_STRING', ''));
             $this->preparedNavigation = $this->loadNavigation($this->initialQuery);
+            $resolved = app(CatalogJourney::class)->resolve(auth()->user(), request()->query('r'));
+            $this->journeyNotice = $resolved['notice'];
+            $catalog = $resolved['state']['catalog'] ?? null;
+            if ($catalog !== null && $catalog['query'] === $this->preparedNavigation['query']) {
+                $this->journeyReturn = $catalog;
+            }
         } catch (ValidationException) {
             $this->invalidState = true;
         }
@@ -173,8 +186,20 @@ class Index extends Component
     public function render(): View
     {
         $navigation = $this->invalidState ? null : ($this->preparedNavigation ?? $this->loadNavigation($this->initialQuery));
+        $journeyNotice = $this->journeyNotice;
+        if ($navigation !== null) {
+            foreach ($navigation['cards'] as &$card) {
+                try {
+                    $card['url'] = app(CatalogJourney::class)->groupUrl(['version' => 1, 'groupId' => (string) $card['id'], 'productId' => null,
+                        'catalog' => ['query' => $navigation['query'], 'anchor' => 'model-'.$card['id']], 'products' => null]);
+                } catch (ValidationException) {
+                    $journeyNotice = __('catalog.journey.overflow');
+                }
+            }
+            unset($card);
+        }
 
-        return view('livewire.catalog.index', compact('navigation'))->title(__('catalog.navigation.product_catalog'))
+        return view('livewire.catalog.index', compact('navigation', 'journeyNotice'))->title(__('catalog.navigation.product_catalog'))
             ->layoutData(['heading' => __('catalog.browse.heading')]);
     }
 }

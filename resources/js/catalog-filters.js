@@ -1,5 +1,6 @@
 import { createFilterEngine, readDiscovery, discoveryUrl } from './catalog-filter-engine.js';
 import { requireLabels } from './ui-wording.js';
+import { journeyLink, productBrowsePosition } from './catalog-journey.js';
 
 export function catalogFilters() {
     // Dataset rows, indexes, timers and transport identities never enter Alpine's proxy.
@@ -7,6 +8,9 @@ export function catalogFilters() {
     let labels;
     let root;
     let engine;
+    let journey = null;
+    let pendingPosition = null;
+    let anchorConsumed = false;
     let displayedRevision;
     let generation = 0;
     let refreshSequence = 0;
@@ -88,12 +92,14 @@ export function catalogFilters() {
         fields: [], presets: [], notices: [], total: null, columns: 4, maximum: 'all',
         displayVersion: 'defaults:v1', presentation: {},
         available: false, unavailable: '', reloadRequired: false, freshnessError: '', refreshing: false,
-        cardStatus: 'idle', cardError: '', cardChunks: [], cardsVisible: false, cardPropertiesNotice: null,
+        cardStatus: 'idle', cardError: '', cardChunks: [], cardsVisible: false, cardPropertiesNotice: null, journeyError: '',
 
         init() {
             if (initialized) return;
             initialized = true;
             root = this.$el;
+            try { journey = JSON.parse(root.dataset.catalogJourney || 'null'); } catch { journey = null; }
+            if (journey && String(journey.groupId) !== String(root.dataset.groupId)) journey = null;
             const source = root.querySelector('[data-catalog-snapshot]');
             try {
                 labels = requireLabels(JSON.parse(root.dataset.catalogLabels), [
@@ -110,7 +116,7 @@ export function catalogFilters() {
                     engine = createFilterEngine(snapshot, labels);
                     this.available = true;
                     confirmedAt = performance.now();
-                    this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace');
+                    this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace', performance.now(), true);
                 } else this.unavailable = labels.filters_unavailable;
             } catch {
                 this.available = false;
@@ -121,12 +127,14 @@ export function catalogFilters() {
             listen(window, 'popstate', () => {
                 if (!alive || suspended || !engine) return;
                 automaticRetries = 1;
-                this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace');
+                this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace', performance.now(), true);
             });
             listen(window, 'focus', () => this.checkFreshness());
             listen(document, 'visibilitychange', () => this.checkFreshness());
             listen(window, 'online', () => this.checkFreshness());
             listen(window, 'pagehide', () => {
+                this.persistProductPosition();
+                pendingPosition = null;
                 suspended = true;
                 stopWork();
                 this.cardsVisible = false;
@@ -136,7 +144,7 @@ export function catalogFilters() {
                 if (!suspended || !alive) return;
                 suspended = false;
                 this.refreshing = false;
-                if (engine) this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace');
+                if (engine) this.publish(engine.normalize(readDiscovery(location.href,snapshot)), 'replace', performance.now(), true);
                 this.$nextTick(scheduleHeadings);
                 this.checkFreshness();
             });
@@ -155,6 +163,7 @@ export function catalogFilters() {
         },
 
         destroy() {
+            pendingPosition = null;
             alive = false;
             stopWork();
             this.cardPropertiesNotice = null;
@@ -164,6 +173,7 @@ export function catalogFilters() {
 
         choose(type, key = null, value = null) {
             if (!this.available || suspended) return;
+            pendingPosition = null;
             const started = performance.now();
             const result = engine.change(this.state, type === 'filter' ? {type,key,value} : type === 'preset' ? {type,id:key} : {type});
             if (!result.changed) return;
@@ -171,13 +181,63 @@ export function catalogFilters() {
             this.publish(result, 'push', started);
         },
 
-        publish(result, historyMode, started = performance.now()) {
+        productHref(baseUrl, productId) {
+            try {
+                return journeyLink(baseUrl,{version:1,groupId:String(root.dataset.groupId),productId:String(productId),catalog:journey?.catalog ?? null,
+                    products:{criteria:this.state,anchor:`product-${productId}`}},location.href);
+            } catch {
+                this.journeyError=root.dataset.journeyOverflow || '';
+                try { return journeyLink(baseUrl,null,location.href); }
+                catch { return location.href; }
+            }
+        },
+
+        persistProductPosition() {
+            if(!alive || !engine || !this.available)return;
+            const position=productBrowsePosition(root.dataset.groupId,this.state,{document,scrollY:window.scrollY});
+            history.replaceState({...history.state,catalogProductBrowse:position},'',location.href);
+        },
+
+        returnPosition(state) {
+            const identity=productBrowsePosition(root.dataset.groupId,state,{scrollY:0}).criteria;
+            const saved=history.state?.catalogProductBrowse;
+            if(saved && saved.groupId===String(root.dataset.groupId) && saved.criteria===identity) {
+                anchorConsumed=true;
+                return productBrowsePosition(root.dataset.groupId,state,{scrollY:saved.scroll,document:{activeElement:{dataset:{catalogFocus:saved.focus}}}});
+            }
+            if(!anchorConsumed && journey?.products) {
+                anchorConsumed=true;
+                if(productBrowsePosition(root.dataset.groupId,journey.products.criteria,{scrollY:0}).criteria===identity) {
+                    return {groupId:String(root.dataset.groupId),criteria:identity,scroll:null,focus:journey.products.anchor};
+                }
+            }
+            return null;
+        },
+
+        restoreProductPosition(id, revision, displayVersion) {
+            const position=pendingPosition;
+            if(!position)return;
+            this.$nextTick(()=>{
+                if(!current(id,revision,displayVersion) || pendingPosition!==position || productBrowsePosition(root.dataset.groupId,this.state,{scrollY:0}).criteria!==position.criteria)return;
+                pendingPosition=null;
+                const element=[...(root.querySelectorAll?.('[data-catalog-focus]') || [])].find(el=>el.dataset.catalogFocus===position.focus);
+                if(position.focus && !element) { this.$refs?.reset?.focus({preventScroll:true}); return; }
+                element?.focus({preventScroll:true});
+                if(position.scroll!==null)window.scrollTo?.({top:position.scroll,behavior:'instant'});
+                else element?.scrollIntoView?.({block:'nearest'});
+            });
+        },
+
+        publish(result, historyMode, started = performance.now(), restore = false) {
             generation++;
             clearTimeout(cardTimer);
             cancelAnimationFrame(insertionFrame);
             this.clearCards();
             this.cardError = '';
             this.state = result.state;
+            this.journeyError = '';
+            if(restore)pendingPosition=this.returnPosition(result.state);
+            else if(pendingPosition && pendingPosition.criteria!==productBrowsePosition(root.dataset.groupId,result.state,{scrollY:0}).criteria)pendingPosition=null;
             this.notices = result.notices;
             const computed = engine.evaluate(result.state);
             this.total = computed.total;
@@ -242,8 +302,8 @@ export function catalogFilters() {
         scheduleCards() {
             clearTimeout(cardTimer);
             if (!alive || suspended || !this.available) return;
-            if (this.total === 0) { this.cardStatus = 'empty'; return; }
-            if (this.maximum !== 'all' && this.total > this.maximum) { this.cardStatus = 'above_threshold'; return; }
+            if (this.total === 0) { this.cardStatus = 'empty'; this.restoreProductPosition(generation,snapshot.revision,displayToken(snapshot)); return; }
+            if (this.maximum !== 'all' && this.total > this.maximum) { this.cardStatus = 'above_threshold'; this.restoreProductPosition(generation,snapshot.revision,displayToken(snapshot)); return; }
             this.cardStatus = 'loading';
             const id = generation;
             const delay = snapshot.settings.products_debounce_ms;
@@ -281,7 +341,10 @@ export function catalogFilters() {
                         this.cardChunks.push({key:`${requestId}:${index}`, html:response.htmlChunks[index++]});
                         this.cardsVisible = true;
                         this.$nextTick(()=> { if (current(id, revision, displayVersion)) insertionFrame = requestAnimationFrame(insert); });
-                    } else this.cardStatus = 'ready';
+                    } else {
+                        this.cardStatus = 'ready';
+                        this.restoreProductPosition(id,revision,displayVersion);
+                    }
                 };
                 insertionFrame = requestAnimationFrame(insert);
             } catch (error) {
@@ -385,6 +448,7 @@ export function catalogFilters() {
         },
 
         exitLeaf(status) {
+            pendingPosition = null;
             stopWork();
             this.available = false;
             this.cardsVisible = false;
