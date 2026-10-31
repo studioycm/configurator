@@ -7,6 +7,7 @@ import { interpolate } from './ui-wording';
 import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
 import { catalogFilters } from './catalog-filters';
 import { catalogNavigation } from './catalog-navigation';
+import { catalogConfigurationUrl } from './catalog-configuration-url';
 import { catalogShell } from './catalog-shell';
 import { itemCountPreview } from './item-count-preview';
 import { workspaceDialog, workspaceColumnManager } from './workspace-dialogs';
@@ -41,6 +42,7 @@ function registerComponents(Alpine) {
     Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
     Alpine.data('catalogShell', catalogShell);
     Alpine.data('catalogNavigation', catalogNavigation);
+    Alpine.data('catalogConfigurationUrl', catalogConfigurationUrl);
     Alpine.data('itemCountPreview', itemCountPreview);
     Alpine.data('workspaceDialog', workspaceDialog);
     Alpine.data('tableColumnWidths', tableColumnWidths);

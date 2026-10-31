@@ -136,6 +136,11 @@ class CatalogJourney
             $resolved = $this->resolve($actor, $query['r'], $destination === 'group' ? $id : null, $destination === 'product' ? $id : null);
             $result['r'] = $resolved['state'] === null ? 'invalid' : $this->encode($resolved['state']);
         }
+        if ($destination === 'product' && array_key_exists('configuration', $query)) {
+            $code = self::configurationCodeFromQuery($query, (string) request()->server('QUERY_STRING', ''));
+            $this->require(is_string($code) && strlen($code) <= 32768);
+            $result['configuration'] = $code;
+        }
         if ($destination === 'group') {
             if (array_key_exists('g', $query)) {
                 $this->require(is_array($query['g']) && in_array($query['g']['version'] ?? null, [1, '1'], true)
@@ -163,6 +168,24 @@ class CatalogJourney
         $this->require(strlen(http_build_query($result)) <= 32768);
 
         return $result;
+    }
+
+    /** @param array<string, mixed> $query */
+    public static function configurationCodeFromQuery(array $query, string $rawQuery): mixed
+    {
+        $values = [];
+        foreach (explode('&', $rawQuery) as $part) {
+            [$key, $value] = array_pad(explode('=', $part, 2), 2, '');
+            $key = urldecode($key);
+            if (str_starts_with($key, 'configuration[')) {
+                return [];
+            }
+            if ($key === 'configuration') {
+                $values[] = urldecode($value);
+            }
+        }
+
+        return count($values) > 1 ? [] : ($values[0] ?? ($query['configuration'] ?? null));
     }
 
     /** @param array<string,mixed> $state @return array<string,mixed> */

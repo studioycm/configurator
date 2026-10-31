@@ -40,6 +40,11 @@ class ConfiguratorPreview extends ProductConfigurator implements HasActions, Has
     use InteractsWithActions;
     use InteractsWithSchemas;
 
+    protected function supportsSavedCodeRestoration(): bool
+    {
+        return false;
+    }
+
     #[Locked]
     public int $configuratorId;
 
