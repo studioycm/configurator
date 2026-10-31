@@ -25,6 +25,8 @@ class CatalogNavigation
 
         return DB::transaction(function () use ($actor, $query): array {
             $this->authorizeRead($actor);
+            $shared = $this->presentation->current();
+            $query['mode'] ??= $shared['settings']['sidebar_mode'];
             $graph = $this->graph();
             $groups = $graph['groups'];
             $branchId = $query['branchId'];
@@ -46,10 +48,19 @@ class CatalogNavigation
             $total = count($resultIds);
             $page = $query['page'];
             $slice = $page > max(1, (int) ceil($total / self::CARD_PAGE_SIZE)) ? [] : array_slice($resultIds, ($page - 1) * self::CARD_PAGE_SIZE, self::CARD_PAGE_SIZE);
-            $cards = array_map(function (int $id) use ($groups): array {
+            $cardGroups = $slice === [] ? collect() : Group::query()->whereKey($slice)->get(['id', 'catalog_revision', 'result_settings'])->keyBy('id');
+            $categoryIds = $this->presentation->resolveCategoryIds($shared['settings'], $cardGroups);
+            $cardTags = $this->cardTags($slice, $categoryIds);
+            $cards = array_map(function (int $id) use ($groups, $cardGroups, $shared, $categoryIds, $cardTags): array {
                 $group = $groups[$id];
 
-                return [...$this->identity($group), 'legacyId' => $group->legacy_id, 'description' => $group->description,
+                $effective = $this->presentation->effective($cardGroups[$id], $shared['settings'], $categoryIds);
+                $tags = [];
+                foreach ($effective['group_card_tag_categories'] as $categoryId) {
+                    $tags = [...$tags, ...($cardTags[$id][$categoryId] ?? [])];
+                }
+
+                return [...$this->identity($group), 'url' => route('catalog.groups.show', $id), 'presentation' => $effective, 'tags' => $tags, 'legacyId' => $group->legacy_id, 'description' => $group->description,
                     'productCount' => (int) $group->active_product_count, 'mainImage' => null];
             }, $slice);
             $ancestors = [];
@@ -61,8 +72,12 @@ class CatalogNavigation
             $identity = $query;
             unset($identity['requestId']);
 
-            return ['requestId' => $query['requestId'], 'queryIdentity' => hash('sha256', json_encode($identity, JSON_THROW_ON_ERROR)),
-                'displayVersion' => $this->presentation->current()['version'], 'branch' => $branchId === null ? null : $this->identity($groups[$branchId]),
+            $moreRoots = count($graph['children'][0] ?? []) > self::TREE_PAGE_SIZE;
+
+            return ['query' => $identity, 'presentation' => $shared['settings'], 'presentationRecovery' => $shared['recovery'],
+                'rootTreePagination' => ['page' => 1, 'nextPage' => $moreRoots ? 2 : null, 'hasMore' => $moreRoots],
+                'requestId' => $query['requestId'], 'queryIdentity' => hash('sha256', json_encode($identity, JSON_THROW_ON_ERROR)),
+                'displayVersion' => $shared['version'], 'branch' => $branchId === null ? null : $this->identity($groups[$branchId]),
                 'ancestors' => array_reverse($ancestors), 'treeRows' => $this->treeRows(array_slice($graph['children'][0] ?? [], 0, self::TREE_PAGE_SIZE), $graph),
                 'treeVersion' => $graph['version'], 'tags' => $this->facets($baseIds, $query['tagValueIds']), 'cards' => $cards,
                 'total' => $total, 'page' => $page, 'hasMore' => $page < (int) ceil($total / self::CARD_PAGE_SIZE)];
@@ -177,6 +192,25 @@ class CatalogNavigation
         return array_map(fn (int $id): array => [...$this->identity($graph['groups'][$id]), 'hasChildren' => $graph['physical'][$id], 'modelCount' => $graph['counts'][$id]], $ids);
     }
 
+    /** @param list<int> $groupIds @param list<int> $categoryIds @return array<int,array<int,list<array<string,mixed>>>> */
+    private function cardTags(array $groupIds, array $categoryIds): array
+    {
+        if ($groupIds === [] || $categoryIds === []) {
+            return [];
+        }
+        $rows = DB::table('group_tag_value as p')->join('group_tag_values as v', 'v.id', '=', 'p.group_tag_value_id')
+            ->join('group_tag_categories as c', 'c.id', '=', 'v.group_tag_category_id')
+            ->whereIn('p.group_id', $groupIds)->whereIn('c.id', $categoryIds)
+            ->orderBy('p.position')->orderBy('v.id')->get(['p.group_id', 'v.id', 'v.label', 'c.id as category_id', 'c.label as category_label']);
+        $tags = [];
+        foreach ($rows as $row) {
+            $tags[(int) $row->group_id][(int) $row->category_id][] = ['id' => (int) $row->id, 'label' => (string) $row->label,
+                'categoryId' => (int) $row->category_id, 'categoryLabel' => (string) $row->category_label];
+        }
+
+        return $tags;
+    }
+
     /** @param list<int> $ids @return array<int,int> */
     private function selectedCategories(array $ids): array
     {
@@ -231,19 +265,19 @@ class CatalogNavigation
         return array_values($categories);
     }
 
-    /** @param array<string,mixed> $query @return array{branchId:int|null,search:string,tagValueIds:list<int>,mode:string,page:int,requestId:string} */
+    /** @param array<string,mixed> $query @return array{branchId:int|null,search:string,tagValueIds:list<int>,mode:?string,page:int,requestId:string} */
     private function validateQuery(array $query): array
     {
-        if (array_diff(array_keys($query), ['branchId', 'search', 'tagValueIds', 'mode', 'page', 'requestId']) !== []) {
+        if ((array_key_exists('mode', $query) && $query['mode'] === null) || array_diff(array_keys($query), ['branchId', 'search', 'tagValueIds', 'mode', 'page', 'requestId']) !== []) {
             throw ValidationException::withMessages(['query' => 'Unsupported catalog navigation input.']);
         }
-        $query = array_replace(['branchId' => null, 'search' => '', 'mode' => 'tree', 'requestId' => '', 'tagValueIds' => [], 'page' => 1], $query);
+        $query = array_replace(['branchId' => null, 'search' => '', 'mode' => null, 'requestId' => '', 'tagValueIds' => [], 'page' => 1], $query);
         $search = $query['search'];
         $mode = $query['mode'];
         $requestId = $query['requestId'];
         $ids = $query['tagValueIds'];
-        if (! is_string($search) || mb_strlen($search) > 500 || ! in_array($mode, ['tree', 'tags'], true)
-            || ! is_string($requestId) || mb_strlen($requestId) > 100 || ! is_array($ids) || ! array_is_list($ids) || count($ids) > 200) {
+        if (! is_string($search) || ! mb_check_encoding($search, 'UTF-8') || mb_strlen($search) > 500 || ($mode !== null && ! in_array($mode, ['tree', 'tags'], true))
+            || ! is_string($requestId) || ! mb_check_encoding($requestId, 'UTF-8') || mb_strlen($requestId) > 100 || ! is_array($ids) || ! array_is_list($ids) || count($ids) > 200) {
             throw ValidationException::withMessages(['query' => 'Invalid catalog search, tags, mode or request identity.']);
         }
         $ids = array_map(fn (mixed $id): int => $this->positiveId($id, 'tagValueIds'), $ids);

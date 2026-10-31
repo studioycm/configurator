@@ -1,6 +1,25 @@
 <?php
 
 return [
+    'browse' => [
+        'heading' => 'Catalog', 'select_group' => 'Select group',
+        'search' => 'Search model name or identifier…', 'search_action' => 'Search', 'group_filters' => 'Group filters',
+        'group_tree' => 'Group tree', 'tags' => 'Tags', 'all_models' => 'All models', 'models' => 'Model groups',
+        'no_matches' => 'No model groups match this view', 'matches' => 'matches', 'model_count' => 'Eligible model groups in this branch', 'count_basis' => 'Counts refer to model groups in this branch.',
+        'branch_path' => 'Current branch', 'group_navigation' => 'Group navigation', 'navigation_mode' => 'Navigation mode',
+        'explore' => 'Groups', 'show_hide' => 'Show / hide', 'expand' => 'Expand', 'collapse' => 'Collapse', 'depth' => 'Level',
+        'no_tags' => 'No tags are assigned to model groups in this branch.', 'more_children' => 'More children of', 'more_roots' => 'More root groups',
+        'loading' => 'Loading…', 'retry' => 'Retry', 'reset' => 'Reset choices', 'clear_choices' => 'Clear invalid choices', 'active' => 'Selected',
+        'close' => 'Close', 'refresh' => 'Refresh results', 'no_image' => 'No image', 'direct_products' => 'active direct products',
+        'open_products' => 'View products', 'empty' => 'No model groups match this view. Change the branch or reset your choices.',
+        'invalid' => 'This catalog link is invalid or out of date.', 'return_all' => 'Return to all models',
+        'recovery' => 'Some saved display preferences need review. Valid preferences are still applied.',
+        'page_empty' => 'This page no longer contains results.', 'first_page' => 'Go to the first page', 'page' => 'Page',
+        'pagination' => 'Model group pages', 'previous' => 'Previous', 'next' => 'Next', 'redirecting' => 'Opening this branch in the catalog…',
+        'enable_js' => 'Enable JavaScript for tree navigation and filters. You can still open the model links above.',
+        'messages' => ['failed' => 'Could not load groups. Retry, or clear invalid choices.', 'removed' => 'Unavailable choices removed', 'invalid' => 'This catalog link is invalid or out of date.', 'treeChanged' => 'This branch changed or could not be loaded. Retry.'],
+    ],
+
     'display' => [
         'unsaved' => 'Unsaved changes', 'no_unsaved' => 'No unsaved changes',
         'vocabulary' => 'Group tag vocabulary', 'create_new' => 'Create a new record', 'existing_record' => 'Existing record (leave empty to create)',

@@ -76,13 +76,27 @@ test('saved presentation consumers keep bounded queries and payloads with real c
     expect($reads['cards']['value']['presentation']['group_card_tag_categories'])->toBe([$categories[1]->id]);
     $reads['ssr']['value']->assertOk()->assertSee($shared->version);
     $reads['not_modified']['value']->assertNotModified();
-    $bounds = ['navigation' => ['queries' => 8, 'bytes' => 65536], 'dataset' => ['queries' => 12, 'bytes' => 65536],
+    $bounds = ['navigation' => ['queries' => 9, 'bytes' => 65536], 'dataset' => ['queries' => 12, 'bytes' => 65536],
         'cards' => ['queries' => 12, 'bytes' => 262144], 'ssr' => ['queries' => 24, 'bytes' => 524288], 'not_modified' => ['queries' => 6, 'bytes' => 0]];
     foreach ($reads as $name => $read) {
         expect($read['metrics']['query_count'])->toBeLessThanOrEqual($bounds[$name]['queries']);
         expect($read['metrics']['write_queries'])->toBe(0);
         expect($read['metrics']['reference_queries'])->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(2);
         expect($read['metrics']['payload_bytes'])->toBeLessThanOrEqual($bounds[$name]['bytes']);
+    }
+    $selectedNavigation = $measure(fn (): array => app(CatalogNavigation::class)->get($actor, ['tagValueIds' => [$tag->id]]));
+    expect($selectedNavigation['value']['total'])->toBe($modelCount)
+        ->and($selectedNavigation['metrics']['query_count'])->toBeLessThanOrEqual(11)
+        ->and($selectedNavigation['metrics']['write_queries'])->toBe(0);
+    $evidenceDirectory = getenv('CATALOG_K3_EVIDENCE_DIR');
+    if (is_string($evidenceDirectory) && is_dir($evidenceDirectory)) {
+        file_put_contents($evidenceDirectory.'/query-payload-'.$modelCount.'.json', json_encode([
+            'engine' => DB::connection()->getDriverName(), 'models' => $modelCount, 'products' => $productCount,
+            'version' => $shared->version, 'fixture' => 'Warm business snapshot; real shared and own Group category references',
+            'measurements' => array_map(fn (array $read): array => $read['metrics'], $reads),
+            'selected_navigation' => $selectedNavigation['metrics'],
+            'limit' => 'Synthetic SQLite read counts/payload, not production latency or MySQL optimizer evidence.',
+        ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
     }
     if (getenv('CATALOG_K2_CAPTURE_QUERY_MEASUREMENTS') === '1') {
         fwrite(STDOUT, PHP_EOL.'CATALOG_K2_CONSUMER_MEASUREMENT '.json_encode([
@@ -93,7 +107,7 @@ test('saved presentation consumers keep bounded queries and payloads with real c
             'limit' => 'Synthetic guarded SQLite query/payload measurements; HTTP middleware and SSR template queries included. No production latency or MySQL query-plan claim.',
         ], JSON_THROW_ON_ERROR).PHP_EOL);
     }
-})->with(['one model and Product' => [1, 1], 'multiple card chunks and a full navigation slice' => [25, 30]]);
+})->with(['one model and Product' => [1, 1], 'multiple card chunks and a full navigation slice' => [25, 30], 'sixty models remain bounded' => [60, 60]]);
 
 test('shared-only save updates navigation dataset SSR and card versions without rebuilding business snapshots', function () {
     $actor = User::factory()->create(['email' => 'ycm@data4.work']);

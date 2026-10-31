@@ -4,11 +4,8 @@
 
 <div wire:key="catalog-group-{{ $group->id }}">
     @if ($isBranch)
-        @if ($children->isNotEmpty())
-            <x-catalog.group-tree :groups="$children" />
-        @else
-            <p role="status" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{{ __('catalog.frontend.copy.there_are_no_available_groups_in_this_branch') }}</p>
-        @endif
+        <p role="status">{{ __('catalog.browse.redirecting') }}</p>
+        <a href="{{ route('catalog.index', ['g' => ['version' => 1, 'branch' => $group->id]]) }}">{{ __('catalog.browse.group_navigation') }}</a>
     @else
         <div wire:ignore x-data="catalogFilters" data-catalog-filters :data-catalog-display-version="displayVersion" :data-catalog-product-image-placement="presentation.product_image_placement" data-catalog-labels="{{ \Illuminate\Support\Js::encode(__('catalog.frontend.messages')) }}" data-group-id="{{ $group->id }}" data-dataset-url="{{ route('catalog.groups.dataset', $group) }}">
             <script type="application/json" data-catalog-snapshot>{!! \Illuminate\Support\Js::encode($snapshot?->data) !!}</script>

@@ -6,6 +6,7 @@ use App\DTO\CatalogSnapshot;
 use App\Models\Group;
 use App\Services\CatalogAvailability;
 use App\Services\CatalogCards;
+use App\Services\CatalogNavigation;
 use App\Services\CatalogPresentation;
 use App\Services\CatalogSnapshots;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -37,6 +38,12 @@ class GroupShow extends Component
     public function mount(Group $group): void
     {
         $this->groupId = (string) $group->id;
+        if ($group->children()->exists()) {
+            $query = Index::queryFromUrl(request()->query('g', []), (int) $group->id, (string) request()->server('QUERY_STRING', ''));
+            $navigation = app(CatalogNavigation::class)->get(auth()->user(), $query);
+            $this->redirectRoute('catalog.index', ['g' => Index::urlState($navigation['query'])]);
+        }
+
     }
 
     /** @param array<string, mixed> $criteria @return array<string, mixed> */

@@ -64,12 +64,12 @@ test('signed in users can open the catalog before products are imported', functi
     $this->get(route('catalog.index'))->assertOk()->assertSeeLivewire(Index::class)->assertSee(__('catalog.frontend.copy.the_catalog_is_being_prepared'))->assertDontSee('D060');
 });
 
-test('catalog navigation follows actual ancestors and branches without descendant cards', function () {
+test('catalog navigation shows actual model cards and redirects organizing branch links', function () {
     $root = Group::factory()->create(['name' => 'Actual root']);
     $leaf = Group::factory()->for($root, 'parent')->create(['name' => 'Actual leaf']);
     $product = Product::factory()->for($leaf)->create(['product_name' => 'Actual product']);
-    $this->get(route('catalog.index'))->assertSee('Actual root')->assertDontSee('Actual leaf');
-    $this->get(route('catalog.groups.show', $root))->assertSee('Actual leaf')->assertDontSee('Actual product')->assertDontSee('data-catalog-snapshot');
+    $this->get(route('catalog.index'))->assertSee('Actual root')->assertSee('Actual leaf')->assertSee('data-catalog-model-id="'.$leaf->id.'"', false)->assertDontSee('data-catalog-model-id="'.$root->id.'"', false);
+    $this->get(route('catalog.groups.show', $root))->assertRedirect(route('catalog.index', ['g' => ['version' => 1, 'branch' => $root->id, 'mode' => 'tree']]));
     $this->get(route('catalog.groups.show', $leaf))->assertSeeInOrder(['Actual root', 'Actual leaf'])->assertSee('data-catalog-snapshot')->assertDontSee($product->product_code);
     $this->get(route('catalog.products.show', $product))->assertSee('Actual product')->assertSeeInOrder(['Actual root', 'Actual leaf']);
 });
