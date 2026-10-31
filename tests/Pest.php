@@ -22,9 +22,12 @@ $independentCommitTests = [
     __DIR__.'/Feature/Catalog/CatalogPresentationCommitTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogPresentationConcurrencyTest.php',
 ];
+$nonResettingCommitTests = [
+    __DIR__.'/Feature/Catalog/MySql/GroupAttributesConcurrencyTest.php',
+];
 $transactionalTests = [];
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {
-    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), $independentCommitTests, true)) {
+    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), [...$independentCommitTests, ...$nonResettingCommitTests], true)) {
         $transactionalTests[] = $file->getPathname();
     }
 }

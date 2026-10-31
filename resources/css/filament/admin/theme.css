@@ -5,6 +5,7 @@
 @source '../../../../resources/views/livewire/catalog/**/*';
 
 @source '../../../../app/Filament/**/*';
+@source '../../../../app/Livewire/**/*';
 @source '../../../../resources/views/filament/**/*';
 
 .catalog-configurator-preview { container: preview / inline-size; --preview-line: var(--color-gray-200); --preview-muted: #596675; --preview-surface: #fff; --preview-soft: #f7f8fa; --preview-value-size: 12px; --preview-attribute-size: 14px; }

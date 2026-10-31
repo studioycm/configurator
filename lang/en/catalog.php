@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'group_attributes' => [
+        'title' => 'Group attributes',
+        'labels' => ['operating_pressure' => 'Operating Pressure', 'application' => 'Application', 'system_water_flow_rate' => 'System Water Flow Rate', 'required_function' => 'Required Function', 'fluid_type' => 'Fluid Type', 'installation_type' => 'Installation Type'],
+        'help' => 'Values belong to this Group and are not inherited from a parent or its Products.',
+        'entry_help' => 'Add a named value with Enter or by leaving the field. New values lose surrounding whitespace. Save Group applies changes.',
+        'invalid_values' => 'Use supported attributes with up to 25 distinct named text values, at most 200 characters each, within the 32 KiB document limit.',
+        'invalid_stored' => 'Saved attribute data cannot be edited in this version. Other Group fields can still be saved.',
+        'future_kept' => 'Some saved attributes belong to another version and will be kept.',
+        'stale' => 'Group attributes changed after this editor was opened. Reload the saved Group before trying again.',
+    ],
     'comparison' => [
         'title' => 'Compare Products', 'add' => 'Add to comparison', 'remove' => 'Remove from comparison',
         'compare' => 'Compare', 'close' => 'Close comparison', 'property' => 'Property',

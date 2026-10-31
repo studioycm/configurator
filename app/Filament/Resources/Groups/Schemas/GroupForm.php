@@ -11,16 +11,19 @@ use App\Models\GroupFilter;
 use App\Models\SubGroup;
 use App\Services\CatalogDiscovery;
 use App\Services\CatalogPolicy;
+use App\Services\GroupAttributes;
 use App\Services\ProductFields;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -43,6 +46,7 @@ class GroupForm
                 ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
                 ->helperText(__('admin.workspace.editor.shared_configurator_help')),
             Textarea::make('description')->label(__('catalog.fields.description'))->maxLength(5000)->columnSpanFull(),
+            self::attributesSection($schema->getRecord()),
         ];
         $record = $schema->getRecord();
         if (! $record instanceof Group || $record->children()->exists()) {
@@ -60,6 +64,32 @@ class GroupForm
                 Tab::make(__('catalog.groups.tabs.presets'))->key(fn (Tab $component): string => 'presets::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema($sections[4]->getDefaultChildComponents())->visible($leaf),
                 Tab::make(__('catalog.groups.tabs.presentation'))->key(fn (Tab $component): string => 'presentation::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([$sections[6], $sections[0], $sections[1], $sections[2], $sections[5]])->visible($leaf),
             ])]);
+    }
+
+    private static function attributesSection(?Group $record): Section
+    {
+        $attributes = app(GroupAttributes::class);
+        $state = $record === null ? ['editable' => true, 'message' => null] : $attributes->formState($record);
+        $fields = [
+            Text::make(fn (Component $livewire): string => $livewire->getErrorBag()->first('data.catalog_attributes'))
+                ->color('danger')->columnSpanFull()
+                ->visible(fn (Component $livewire): bool => $livewire->getErrorBag()->has('data.catalog_attributes')),
+            Text::make($state['message'])->columnSpanFull()->visible($state['message'] !== null),
+        ];
+        foreach ($attributes->definitions() as $key => $definition) {
+            $fields[] = TagsInput::make('catalog_attributes.'.$key)->label($definition['label'])
+                ->default([])->trim(false)->splitKeys([])->reorderable()
+                ->rules(['array', 'list', 'max:'.config('group_attributes.limits.values_per_attribute')])
+                ->nestedRecursiveRules(['string', 'max:'.config('group_attributes.limits.value_characters')])
+                ->disabled(! $state['editable'])
+                ->dehydrated(fn (Component $livewire): bool => $state['editable']
+                    && is_array($livewire->data['catalog_attributes'] ?? null)
+                    && array_key_exists($key, $livewire->data['catalog_attributes']));
+        }
+        $fields[] = Text::make(__('catalog.group_attributes.entry_help'))->columnSpanFull()->visible($state['editable']);
+
+        return Section::make(__('catalog.group_attributes.title'))->description(__('catalog.group_attributes.help'))
+            ->schema($fields)->columns(2)->columnSpanFull();
     }
 
     /** @return list<Section> */
