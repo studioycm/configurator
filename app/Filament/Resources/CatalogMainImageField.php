@@ -20,6 +20,9 @@ class CatalogMainImageField
             View::make('filament.forms.catalog-main-image')->columnSpanFull(),
             FileUpload::make('image_upload')->label('Upload an image')->image()
                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])->maxSize(3072)
+                ->extraAlpineAttributes(fn (): array => [
+                    'x-init' => '$el.addEventListener(\'FilePond:init\', ({ detail }) => detail.pond.setOptions({ maxFileSize: '.Js::from((int) config('catalog-assets.image.max_bytes')).' }))',
+                ])
                 ->storeFiles(false)->multiple(false)->previewable()->columnSpanFull()
                 ->helperText('JPEG, PNG or WebP, up to 3 MiB. Upload stays a draft until Save.')
                 ->dehydrated(false),

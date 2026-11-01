@@ -15,6 +15,7 @@ assert.ok(start>=0 && end>start,'Installed pre-effects response path must exist'
 const processPayload=new Function('message','payload','request','Alpine','discardIfSuperseded','supersedeOlderMessages','requestAnimationFrame',requestSource.slice(start,end));
 
 function harness(method='save') {
+    const methods = Array.isArray(method) ? method : [method];
     const actionHooks=new Map(),messageHooks=new Map(),pending=[],effects=[];let draining=[];
     const wire={data:{product_name:'Original draft',image_intent:{operation:'remove',source_token:null,draft_intent_id:'one'}},catalogMainImageCreationSession:null,catalogMainImageOriginal:'original',
         intercept(name,callback){actionHooks.set(name,callback);return()=>actionHooks.delete(name);},
@@ -34,7 +35,7 @@ function harness(method='save') {
             {transaction(callback){const task=callback();draining.push(task);return task;}},()=>false,()=>{},callback=>callback());
         await Promise.all(draining);draining=[];await new Promise(resolve=>setImmediate(resolve));
     }
-    return {wire,pending,effects,reply,controller:createCatalogImageSaveController({wire,methods:[method]})};
+    return {wire,pending,effects,reply,controller:createCatalogImageSaveController({wire,methods})};
 }
 
 test('an obsolete Save response is cancelled before installed Livewire sync effects and morph',async()=>{
@@ -56,6 +57,39 @@ test('a rotated create session cannot receive the prior create-another response'
     await h.reply(0,{outcome:'ready',receipt:'opaque'});h.effects.length=0;h.wire.catalogMainImageCreationSession='newer';
     await h.reply(1,undefined,{product_name:'Old creation',image_intent:{operation:'keep'}});await task;
     assert.deepEqual(h.effects,[]);assert.equal(h.wire.catalogMainImageCreationSession,'newer');assert.equal(h.controller.state().unknown,true);h.controller.destroy();
+});
+
+test('the native createAnother action prepares and replays its exact empty arguments once', async () => {
+    const h = harness(['create', 'createAnother']);
+    await h.wire.$call('createAnother').catch(() => {});
+    assert.deepEqual(h.pending.map(call => call.name), ['prepareImageSave']);
+    await h.reply(0, {outcome: 'ready', receipt: 'current'});
+    assert.deepEqual(h.pending.map(call => call.name), ['prepareImageSave', 'createAnother']);
+    assert.deepEqual(h.pending[1].params, []);
+    await h.reply(1, undefined, {product_name: '', image_intent: {operation: 'keep'}});
+    assert.equal(h.pending.length, 2);
+    assert.equal(h.controller.state().unknown, false);
+    h.controller.destroy();
+});
+
+test('a native createAnother response cannot replace a newer creation session or enable unknown replay', async () => {
+    const h = harness(['create', 'createAnother']);
+    h.wire.catalogMainImageCreationSession = 'first';
+    const task = h.controller.run('createAnother');
+    await h.reply(0, {outcome: 'ready', receipt: 'current'});
+    h.effects.length = 0;
+    h.wire.catalogMainImageCreationSession = 'newer';
+    await h.reply(1, undefined, {product_name: 'Old creation', image_intent: {operation: 'keep'}});
+    await task;
+    assert.deepEqual(h.effects, []);
+    assert.equal(h.wire.catalogMainImageCreationSession, 'newer');
+    assert.equal(h.controller.state().unknown, true);
+    h.controller.resetUnknown();
+    assert.equal(h.controller.state().unknown, true);
+    const requests = h.pending.length;
+    await h.controller.run('createAnother');
+    assert.equal(h.pending.length, requests);
+    h.controller.destroy();
 });
 
 test('ordinary keep actions retain their original native call without preparation',async()=>{

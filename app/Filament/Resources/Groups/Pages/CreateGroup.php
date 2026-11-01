@@ -20,14 +20,24 @@ class CreateGroup extends SplitCreateRecord
 
     protected static string $resource = GroupResource::class;
 
+    protected function catalogMainImageSaveMethods(): array
+    {
+        return $this->canCreateAnother() ? ['create', 'createAnother'] : ['create'];
+    }
+
     public function create(bool $another = false): void
     {
         if ($this->catalogMainImageEnabled() && $this->embedded && $another) {
             throw ValidationException::withMessages(['data.image_intent' => 'Create another is unavailable inside the list editor.']);
         }
+        $creationSession = $this->catalogMainImageCreationSession;
         $this->beginCatalogMainImageWrite();
         try {
             parent::create($another);
+            if ($another && $creationSession !== null && $this->catalogMainImageCreationSession !== null
+                && $this->catalogMainImageCreationSession !== $creationSession && $this->getRecord() === null) {
+                $this->dispatch('catalog-editor-saved')->self();
+            }
         } catch (\Throwable $exception) {
             if ($this->catalogMainImageWriting && DB::transactionLevel() === 0
                 && $this->getRecord() !== null && ! $this->getRecord()->newQuery()->whereKey($this->getRecord()->getKey())->exists()) {

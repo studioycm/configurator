@@ -15,6 +15,9 @@ use App\Services\CatalogAssetSources;
 use App\Services\CatalogCards;
 use App\Services\CatalogNavigation;
 use App\Services\CatalogSnapshots;
+use Filament\Forms\Components\FileUpload;
+use Filament\Resources\Events\RecordCreated;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -113,6 +116,46 @@ function nativeImageUpload(Product|Group|null $product, string $filename = 'synt
     return [$editor, $property, $response->json('paths.0')];
 }
 
+test('native image upload preserves its complete initialization handler in rendered HTML', function (string $pageClass) {
+    $record = match ($pageClass) {
+        EditProduct::class => Product::factory()->create(),
+        EditGroup::class => Group::factory()->create(),
+        default => null,
+    };
+    $editor = Livewire::test($pageClass, $record === null ? [] : ['record' => $record->id]);
+    $field = $editor->instance()->form->getComponent(fn ($component): bool => $component instanceof FileUpload && $component->getStatePath() === 'data.image_upload');
+    $configuredHandler = $field->getExtraAlpineAttributes()['x-init'];
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="UTF-8">'.$editor->html());
+    $uploads = (new DOMXPath($document))->query('//*[contains(@*[name()="x-data"], "fileUploadFormComponent(")]');
+
+    expect($uploads)->toHaveCount(1);
+    expect($configuredHandler)->toContain('FilePond:init', '3145728');
+    expect($uploads->item(0)->getAttribute('x-init'))->toBe($configuredHandler);
+    expect($document->textContent)->not->toContain('detail.pond.setOptions');
+})->with([EditProduct::class, EditGroup::class, CreateGroup::class]);
+
+test('native upload keeps the exact three MiB byte boundary', function (int $extra) {
+    $product = Product::factory()->create();
+    $editor = Livewire::test(EditProduct::class, ['record' => $product->id]);
+    $property = 'data.image_upload.'.Str::uuid();
+    $image = UploadedFile::fake()->image('small.png', 80, 40);
+    $file = UploadedFile::fake()->createWithContent('boundary.png', str_pad(file_get_contents($image->getPathname()), 3145728 + $extra, "\0"));
+    $editor->call('_startUpload', $property, [['name' => 'boundary.png', 'size' => $file->getSize(), 'type' => $file->getMimeType()]], false);
+    $binding = $editor->get('catalogMainImageUploadBinding');
+    $url = URL::temporarySignedRoute('catalog.images.native-upload', now()->addMinutes(5), ['nonce' => $binding['nonce']], false);
+
+    $response = $this->withHeader('Accept', 'application/json')->post($url, ['files' => [$file]]);
+
+    if ($extra === 0) {
+        $response->assertOk()->assertJsonCount(1, 'paths');
+    } else {
+        $response->assertUnprocessable()->assertJsonValidationErrors(['files.0']);
+    }
+    expect($product->fresh()->main_image_id)->toBeNull();
+    $this->assertDatabaseCount('catalog_assets', 0);
+})->with(['exact bytes' => 0, 'one byte over' => 1]);
+
 test('a valid reference uploaded by another actor cannot finish this native image upload', function () {
     $product = Product::factory()->create();
     [$first, $firstProperty, $firstReference] = nativeImageUpload($product);
@@ -172,14 +215,97 @@ test('a native preparation exposes existing stale-record recovery without droppi
 test('image-aware Group create another preserves native parameters and issues a fresh creation session', function () {
     $editor = Livewire::test(CreateGroup::class)->fillForm(['name' => 'First new Group', 'sort_order' => 0])->call('prepareImageSave');
     $firstSession = $editor->get('catalogMainImageCreationSession');
-    $editor->call('create', true)->assertHasNoErrors()->assertSet('data.image_intent.operation', 'keep');
+    $editor->call('create', true)->assertHasNoErrors()->assertSet('data.image_intent.operation', 'keep')
+        ->assertDispatched('catalog-editor-saved');
     expect($editor->get('catalogMainImageCreationSession'))->not->toBe($firstSession);
     expect(Group::where('name', 'First new Group')->count())->toBe(1);
 });
 
+test('the actual create-another button is registered for image preparation and saves one imaged Group', function () {
+    [$editor, $property, $reference] = nativeImageUpload(null, 'group.png', CreateGroup::class);
+    $editor->call('_finishUpload', $property, [$reference], false)->assertHasNoErrors();
+    for ($step = 0; $step < 20 && $editor->get('catalogMainImageSourceProgress.stage') === 'scanning'; $step++) {
+        $editor->call('catalogMainImageAdvanceSource')->assertHasNoErrors();
+    }
+    $editor->assertSet('catalogMainImageSourceProgress.code', null)->assertSet('catalogMainImageSourceProgress.stage', 'ready');
+    $editor->assertSet('data.image_intent.operation', 'set');
+    $session = $editor->get('catalogMainImageCreationSession');
+    $imageIntent = $editor->get('data.image_intent');
+    $editor->fillForm(['name' => null, 'sort_order' => 0])->call('prepareImageSave')
+        ->assertHasFormErrors(['name' => 'required'])->assertNotDispatched('catalog-editor-saved')
+        ->assertSet('catalogMainImageCreationSession', $session)->assertSet('data.image_intent', $imageIntent);
+    $this->assertDatabaseCount('groups', 0);
+    $editor->fillForm(['name' => 'Native wrapper Group', 'sort_order' => 0]);
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="UTF-8">'.$editor->html());
+    $button = (new DOMXPath($document))->query('//*[@*[name()="wire:click"]="createAnother"]')->item(0);
+    expect($button)->toBeInstanceOf(DOMElement::class);
+    $method = $button->getAttribute('wire:click');
+    expect($editor->instance()->catalogMainImageEditorConfig()['methods'])->toContain($method);
+
+    $editor->call('prepareImageSave')->assertHasNoErrors()->call($method)->assertHasNoErrors()
+        ->assertDispatched('catalog-editor-saved');
+
+    $group = Group::where('name', 'Native wrapper Group')->sole();
+    expect($group->main_image_id)->toBe(CatalogAsset::sole()->id);
+    expect($editor->get('catalogMainImageCreationSession'))->not->toBe($session);
+    expect($editor->get('data.name'))->not->toBe('Native wrapper Group');
+    $editor->assertSet('data.image_intent.operation', 'keep')->assertSet('catalogMainImageReceipt', null);
+});
+
+test('an interrupted create-another keeps its image draft without resetting the saved baseline', function (string $fault) {
+    [$editor, $property, $reference] = nativeImageUpload(null, 'retained-group.png', CreateGroup::class);
+    $editor->call('_finishUpload', $property, [$reference], false)->assertHasNoErrors();
+    for ($step = 0; $step < 20 && $editor->get('catalogMainImageSourceProgress.stage') === 'scanning'; $step++) {
+        $editor->call('catalogMainImageAdvanceSource')->assertHasNoErrors();
+    }
+    $editor->assertSet('data.image_intent.operation', 'set')
+        ->fillForm(['name' => 'Retained interrupted Group', 'sort_order' => 0])->call('prepareImageSave')->assertHasNoErrors();
+    $page = $editor->instance();
+    $session = $page->catalogMainImageCreationSession;
+    $draft = $page->data;
+    Event::listen(RecordCreated::class, function () use ($fault): void {
+        throw $fault === 'halt' ? (new Halt)->rollBackDatabaseTransaction() : new RuntimeException('Synthetic interrupted creation');
+    });
+
+    try {
+        if ($fault === 'halt') {
+            $page->createAnother();
+        } else {
+            expect(fn () => $page->createAnother())->toThrow(RuntimeException::class, 'Synthetic interrupted creation');
+        }
+    } finally {
+        Event::forget(RecordCreated::class);
+    }
+
+    expect(Group::where('name', 'Retained interrupted Group')->exists())->toBeFalse();
+    expect($page->data)->toBe($draft);
+    expect($page->catalogMainImageCreationSession)->toBe($session);
+    expect(collect(\Livewire\store($page)->get('dispatched', []))->map(fn ($event) => $event->serialize()['name'])->all())
+        ->not->toContain('catalog-editor-saved');
+})->with(['exception', 'halt']);
+
+test('single Group creation keeps its ordinary redirect without a create-another baseline reset', function () {
+    Livewire::test(CreateGroup::class)->fillForm(['name' => 'Single new Group', 'sort_order' => 0])
+        ->call('prepareImageSave')->assertHasNoErrors()->call('create')->assertHasNoErrors()
+        ->assertRedirect()->assertNotDispatched('catalog-editor-saved');
+    expect(Group::where('name', 'Single new Group')->count())->toBe(1);
+});
+
+test('embedded Group creation does not register or admit the native create-another wrapper', function () {
+    $editor = Livewire::test(CreateGroup::class, ['embedded' => true])->fillForm(['name' => 'No embedded wrapper Group', 'sort_order' => 0]);
+    expect($editor->instance()->catalogMainImageEditorConfig()['methods'])->not->toContain('createAnother');
+
+    $editor->call('prepareImageSave')->call('createAnother')->assertHasErrors(['data.image_intent'])
+        ->assertNotDispatched('catalog-editor-saved');
+
+    expect(Group::where('name', 'No embedded wrapper Group')->exists())->toBeFalse();
+});
+
 test('an embedded image-aware Group cannot invoke create another directly', function () {
     Livewire::test(CreateGroup::class, ['embedded' => true])->fillForm(['name' => 'Do not create', 'sort_order' => 0])
-        ->call('prepareImageSave')->call('create', true)->assertHasErrors(['data.image_intent']);
+        ->call('prepareImageSave')->call('create', true)->assertHasErrors(['data.image_intent'])
+        ->assertNotDispatched('catalog-editor-saved');
     expect(Group::where('name', 'Do not create')->exists())->toBeFalse();
 });
 
