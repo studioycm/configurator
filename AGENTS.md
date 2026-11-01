@@ -179,3 +179,14 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Exit code 0 means no remaining issues; exit code 1 means violations remain after `--fix`. Any reported violation that `--fix` could not resolve MUST be addressed (consult the rule's suggestion message) before continuing the task.
 
 </laravel-boost-guidelines>
+
+## Plain-language project status reporting
+
+- Apply this communication convention to every agent working on this project, including spoken updates, written reports, and task handoffs.
+- Lead with the concrete user-visible state: what changed, where the change exists, what verification ran and passed, what remains unverified, and whether it is integrated into Master.
+- Distinguish defects confirmed in current Master from defects in a retained feature candidate that has not been implemented on Master. Do not imply that an isolated feature defect is a confirmed failure in the current app.
+- State implementation, verification, integration, and delivery separately. Historical candidate tests do not mean the repair is on current Master. Do not call the overall task done when required integration or verification remains.
+- When work is waiting, name the exact remaining action, responsible task, and actual blocker or required approval. Distinguish active testing from work paused for a decision; do not imply integration will happen automatically when it still needs authorization.
+- Avoid unexplained internal shorthand such as "frozen package pending", "checkpoint accepted", or "candidate released". Say, for example: "The retained Writing candidate has historical checks. It is not on Master. Its approved slice still needs current-Master adaptation and verification." If a recorded source snapshot matters, explain its purpose in ordinary language.
+- Identify owner-reported results as reports unless independently verified, and qualify older status with "the latest report" rather than presenting it as a fresh check.
+- Keep routine updates short. Put hashes, paths, artifact labels, and detailed evidence in supporting written references when needed; retain the evidence without making it the main status explanation.
