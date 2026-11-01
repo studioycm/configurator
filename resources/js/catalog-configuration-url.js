@@ -9,19 +9,21 @@ function withConfigurationCode(url, code) {
 
 export function catalogConfigurationUrl(config, browserWindow = window) {
     const productPath = new URL(config.productUrl, browserWindow.location.href).pathname;
-    let active = false, disposed = false, initialized = false, generation = 0, inFlight = false, pendingHistory = null;
+    let root, active = false, disposed = false, initialized = false, generation = 0, inFlight = false, pendingHistory = null;
     const listeners = [];
 
     return {
         configurationBusy: false,
-        configurationDraft: config.code ?? '',
-        publishedCode: config.code ?? null,
+        configurationDraft: '',
+        publishedCode: null,
         configurationError: '',
         configurationCopyStatus: '',
 
         init() {
             if (initialized || disposed) return;
-            initialized = true; active = true;
+            initialized = true; active = true; root = this.$el;
+            this.publishedCode = root?.dataset?.configurationInitialCode || null;
+            this.configurationDraft = this.publishedCode ?? '';
             const on = (name, handler) => { browserWindow.addEventListener(name, handler); listeners.push([name, handler]); };
             on('popstate', () => this.restoreConfigurationUrl());
             on('pagehide', () => { active = false; generation++; pendingHistory = null; });
@@ -67,7 +69,7 @@ export function catalogConfigurationUrl(config, browserWindow = window) {
             const operation = ++generation;
             try {
                 const reply = await command();
-                if (!active || disposed || operation !== generation || browserWindow.location.pathname !== productPath || this.$el?.isConnected === false) return;
+                if (!active || disposed || operation !== generation || browserWindow.location.pathname !== productPath || root?.isConnected === false) return;
                 if (reply?.componentId !== config.componentId || reply?.productId !== config.productId
                     || (this.$wire.$id && this.$wire.$id !== config.componentId)
                     || typeof reply.accepted !== 'boolean' || (reply.code !== null && typeof reply.code !== 'string')) {

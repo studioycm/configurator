@@ -11,11 +11,12 @@ function fixture(initial = '?r=return&d[filter]=001', code = 'A0-B0') {
         addEventListener(name, fn) { listeners.set(name, fn); }, removeEventListener(name, fn) { if (listeners.get(name) === fn) listeners.delete(name); },
         navigator: { clipboard: { async writeText(value) { copied.push(value); } } },
     };
-    const component = catalogConfigurationUrl({ productId: 9, componentId: 'component9', productUrl: '/dashboard/catalog/products/9', code, failureMessage: 'Retry', copySuccess: 'Copied', copyFailure: 'Could not copy' }, browser);
-    component.$el = { isConnected: true };
+    const component = catalogConfigurationUrl({ productId: 9, componentId: 'component9', productUrl: '/dashboard/catalog/products/9', failureMessage: 'Retry', copySuccess: 'Copied', copyFailure: 'Could not copy' }, browser);
+    const root = { isConnected: true, dataset: { configurationInitialCode: code ?? '' } };
+    component.$el = root;
     component.$wire = Object.fromEntries(['loadConfigurationCode', 'restoreConfigurationHistory', 'chooseConfigurationOption', 'reevaluateConfiguration'].map(method => [method, (...args) => new Promise((resolve, reject) => calls.push({ method, args, resolve, reject }))]));
     component.init();
-    return { component, browser, calls, writes, copied, listeners, setUrl(href) { url = new URL(href, url); }, emit(name, event = {}) { return listeners.get(name)?.(event); }, reply(index, changes = {}) { calls[index].resolve({ componentId: 'component9', productId: 9, accepted: true, code: 'A1-B1', ...changes }); } };
+    return { component, root, browser, calls, writes, copied, listeners, setUrl(href) { url = new URL(href, url); }, emit(name, event = {}) { return listeners.get(name)?.(event); }, reply(index, changes = {}) { calls[index].resolve({ componentId: 'component9', productId: 9, accepted: true, code: 'A1-B1', ...changes }); } };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -26,6 +27,42 @@ test('initial entry does not replay query or manufacture history; share uses set
     await f.component.copyConfigurationLink();
     assert.equal(new URL(f.copied[0]).searchParams.get('configuration'), 'A0-B0');
     assert.equal(new URL(f.copied[0]).searchParams.get('r'), 'keep');
+});
+
+test('the server code seeds the owner once without manufacturing history or resetting a draft on reinit', async () => {
+    const f = fixture();
+    assert.equal(f.component.publishedCode, 'A0-B0');
+    assert.equal(f.component.configurationDraft, 'A0-B0');
+    assert.equal(f.writes.length, 0);
+    f.component.configurationDraft = 'pending-edit';
+    f.root.dataset.configurationInitialCode = 'later-server-seed';
+    f.component.init();
+    assert.equal(f.component.configurationDraft, 'pending-edit');
+    assert.equal(f.component.publishedCode, 'A0-B0');
+    assert.equal(f.listeners.size, 3);
+    const request = f.component.loadConfiguration(); f.reply(0); await request;
+    assert.equal(f.component.publishedCode, 'A1-B1');
+    assert.equal(f.component.configurationDraft, 'A1-B1');
+    assert.equal(f.browser.location.searchParams.get('configuration'), 'A1-B1');
+});
+
+test('an incomplete server seed remains unshareable without publishing a code', async () => {
+    const f = fixture('?r=keep', null);
+    assert.equal(f.component.publishedCode, null);
+    assert.equal(f.component.configurationDraft, '');
+    await f.component.copyConfigurationLink();
+    assert.equal(f.copied.length, 0);
+    assert.equal(f.writes.length, 0);
+});
+
+test('a disconnected event element does not discard a valid reply for its connected owner', async () => {
+    const f = fixture();
+    const request = f.component.chooseConfiguration('1', '2');
+    f.component.$el = { isConnected: false };
+    f.reply(0); await request;
+    assert.equal(f.root.isConnected, true);
+    assert.equal(f.browser.location.searchParams.get('configuration'), 'A1-B1');
+    assert.equal(f.writes.length, 1);
 });
 
 test('Load then ordinary choice then refresh publish actual replies with push push replace and preserve other state', async () => {
@@ -89,7 +126,7 @@ test('teardown removes listeners and late replies cannot publish', async () => {
 });
 
 test('changed Product path and disconnected roots ignore old replies', async () => {
-    for (const dispose of [f => f.setUrl('/dashboard/catalog/products/10'), f => { f.component.$el.isConnected = false; }]) {
+    for (const dispose of [f => f.setUrl('/dashboard/catalog/products/10'), f => { f.root.isConnected = false; }]) {
         const f = fixture(); const request = f.component.loadConfiguration(); dispose(f); f.reply(0); await request;
         assert.equal(f.writes.length, 0);
     }

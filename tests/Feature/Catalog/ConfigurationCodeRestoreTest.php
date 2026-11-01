@@ -87,6 +87,41 @@ test('saved Product entry consumes a code once and ordinary refresh does not rep
         ->call('reevaluateConfiguration')->assertSee('A0-B1-C1');
 });
 
+test('Product code changes preserve the Alpine owner initializer while updating the server seed', function () {
+    [$actor, $product] = savedCodeProductFixture();
+    $this->actingAs($actor);
+    $component = Livewire::test(ProductConfigurator::class, ['productId' => $product->id]);
+    $projection = function () use ($component): array {
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$component->html());
+        $xpath = new DOMXPath($document);
+        $owner = $xpath->query('//section[contains(@class, "catalog-product-page")]')->item(0);
+
+        return [
+            'initializer' => $owner->getAttribute('x-data'),
+            'seed' => $owner->getAttribute('data-configuration-initial-code'),
+            'code' => $xpath->query('//*[@data-configuration-code]')->item(0)->textContent,
+        ];
+    };
+    $initial = $projection();
+    $definition = app(ConfiguratorDefinitionLoader::class)->forDashboardProduct($product->id)->definition;
+    $attribute = array_values($definition->attributes)[0];
+
+    $component->call('chooseConfigurationOption', $attribute->id, array_values($attribute->options)[1]->id)->assertHasNoErrors();
+    $chosen = $projection();
+
+    expect($initial['code'])->toBe('A0-B0-C0');
+    expect($chosen['code'])->toBe('A1-B0-C0');
+    expect($chosen['initializer'])->toBe($initial['initializer']);
+    expect($chosen['seed'])->toBe($chosen['code']);
+    $component->call('loadConfigurationCode', $initial['code'])->assertHasNoErrors();
+    $restored = $projection();
+    expect($restored['initializer'])->toBe($initial['initializer']);
+    expect($restored['code'])->toBe($initial['code']);
+    expect($restored['seed'])->toBe($initial['code']);
+    expect($initial['seed'])->toBe($initial['code']);
+});
+
 test('failed Load preserves the whole runtime through render and successful Load clears hidden memory', function () {
     [$actor, $product] = savedCodeProductFixture(function (array &$data) {
         $data['rules'] = [fixtureAdvanced('hide-b', [fixtureCondition('a-zero')])];
