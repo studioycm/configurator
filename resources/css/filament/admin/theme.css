@@ -1,5 +1,6 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 @import '../../shell.css';
+@import './catalog-images.css';
 
 @source '../../../../resources/views/components/catalog/**/*';
 @source '../../../../resources/views/livewire/catalog/**/*';

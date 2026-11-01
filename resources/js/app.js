@@ -7,6 +7,7 @@ import { interpolate } from './ui-wording';
 import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
 import { catalogImage } from './catalog-image';
 import { catalogImageEditor } from './catalog-image-editor';
+import { catalogImagesBrowser } from './catalog-images-browser';
 import { catalogFilters } from './catalog-filters';
 import { catalogNavigation } from './catalog-navigation';
 import { catalogConfigurationUrl } from './catalog-configuration-url';
@@ -59,6 +60,7 @@ function registerComponents(Alpine) {
     Alpine.data('localOrderProfile', localOrderProfile);
     Alpine.data('catalogFilters', catalogFilters);
     Alpine.data('catalogImageEditor', catalogImageEditor);
+    Alpine.data('catalogImagesBrowser', catalogImagesBrowser);
     Alpine.data('catalogImage', catalogImage);
     registeredAlpine.add(Alpine);
 }

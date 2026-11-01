@@ -31,6 +31,7 @@ $nonResettingCommitTests = [
     __DIR__.'/Feature/Catalog/MySql/GroupAttributesConcurrencyTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogAssetPreparationConcurrencyTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogMainImageConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogImagesBrowsingTest.php',
 ];
 $imagesCommitTests = array_map(fn (string $path): string => __DIR__.'/Feature/'.$path, [
     'Catalog/CatalogAssetFoundationTest.php', 'Catalog/CatalogAssetSourcesTest.php', 'Catalog/CatalogAssetStorageTest.php',

@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\CatalogDisplay;
+use App\Filament\Pages\CatalogImages;
 use App\Filament\Pages\ContextSettings;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\DataExchange;
@@ -87,6 +88,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
                 ContextSettings::class,
                 CatalogDisplay::class,
+                CatalogImages::class,
                 DataExchange::class,
                 ManageTags::class,
                 \App\Filament\Pages\AdminAppearance::class,
