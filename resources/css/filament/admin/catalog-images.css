@@ -27,3 +27,6 @@
 .catalog-images-workspace [data-catalog-images-native-table] .fi-ta-ctn { border: 0; border-radius: 0; box-shadow: none; }
 .catalog-images-workspace :is(button,input,select,textarea,h2,[tabindex]):focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 2px; }
 @media (min-width: 1200px) { .catalog-images-layout { grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); } .catalog-images-inspector { position: sticky; top: calc(var(--aquestia-shell-header-min-height, 64px) + 12px); } }
+
+.catalog-images-edit-form { display: grid; gap: 12px; }
+.catalog-images-leave-guard { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--images-line); border-inline-start: 3px solid var(--color-primary-500); border-radius: 8px; }

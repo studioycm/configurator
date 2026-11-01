@@ -25,10 +25,24 @@
             @endif
             @if ($inspector['reference'] !== null)<p class="text-sm">{{ __('catalog-images.reference') }}: {{ $inspector['reference'] }}</p>@endif
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('catalog-images.one_image') }}</p>
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('catalog-images.browsing_only') }}</p>
+            <form x-data="catalogImagesEditor()" wire:key="image-edit-{{ $imageTarget }}-{{ $inspector['id'] }}" x-on:submit.prevent="save()" class="catalog-images-edit-form">
+                <div x-bind:inert="unknown">{{ $this->form }}</div>
+                @include('filament.resources.catalog-images-leave-guard')
+                @if ($imagePendingTransition === null)
+                    <x-filament::button type="submit" x-bind:disabled="saving || unknown">{{ __('catalog-images.save_image') }}</x-filament::button>
+                @endif
+            </form>
             <x-filament::button size="sm" color="gray" x-on:click="$refs.records.focus()">{{ __('catalog-images.back') }}</x-filament::button>
         </div>
     @else
         <p class="catalog-images-inspector-body">{{ $inspector ? __('catalog-images.changed') : __('catalog-images.select_record') }}</p>
+        @if ($imageEditorSession !== null)
+            <div x-data="catalogImagesEditor()" wire:key="image-edit-{{ $imageTarget }}-{{ $imageRecordId }}" class="catalog-images-edit-form catalog-images-inspector-body">
+                @include('filament.resources.catalog-images-leave-guard')
+                @if ($imagePendingTransition === null)
+                    <x-filament::button type="button" color="gray" size="sm" x-on:click="choose('discard')" x-bind:disabled="saving">{{ __('catalog-images.discard') }}</x-filament::button>
+                @endif
+            </div>
+        @endif
     @endif
 </aside>

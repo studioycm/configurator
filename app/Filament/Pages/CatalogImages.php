@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\CatalogImagesTable;
 use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithCatalogImageBrowsing;
+use App\Filament\Resources\InteractsWithCatalogImageEditing;
 use App\Models\Group;
 use App\Models\Product;
 use App\Services\CatalogAssetDisplay;
@@ -32,6 +33,7 @@ class CatalogImages extends Page implements HasTable, HasWorkspaceTable
         InteractsWithCatalogImageBrowsing::updatedTableSort insteadof InteractsWithTable;
         InteractsWithCatalogImageBrowsing::sortTable insteadof InteractsWithTable;
     }
+    use InteractsWithCatalogImageEditing;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedPhoto;
 
@@ -115,7 +117,7 @@ class CatalogImages extends Page implements HasTable, HasWorkspaceTable
 
     protected function getForms(): array
     {
-        return ['imageFilters'];
+        return ['imageFilters', 'form'];
     }
 
     public function imageFilters(Schema $schema): Schema

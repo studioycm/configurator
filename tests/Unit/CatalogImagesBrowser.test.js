@@ -18,25 +18,34 @@ const serializationEnd = requestSource.indexOf('\n        })', serializationStar
 assert.ok(serializationStart >= 0 && serializationEnd > serializationStart);
 const serialize = new Function('message', requestSource.slice(serializationStart, serializationEnd));
 
+const utilsSource=map.sourcesContent[map.sources.indexOf('../js/utils.js')];
+const weakStart=utilsSource.indexOf('class WeakBag'), weakEnd=utilsSource.indexOf('\nexport function dispatch',weakStart);
+const WeakBag=new Function(utilsSource.slice(weakStart,weakEnd)+';return WeakBag;')();
+const registrySource=source('interceptor').slice(source('interceptor').indexOf('export class InterceptorRegistry')).replace('export class','class');
+const InterceptorRegistry=new Function('WeakBag','MessageInterceptor',registrySource+';return InterceptorRegistry;')(WeakBag,MessageInterceptor);
+const registry=new InterceptorRegistry();
+globalThis.Livewire={interceptMessage:callback=>registry.addMessageInterceptor(callback)};
+let nextHost=0;
+
 const state = () => ({ imageTarget: 'product.main_image', imageNavigationMode: 'results', imageRecordId: 1,
     imageBrowserRevision: 0, imageSearch: { query: 'el 6' }, tableSort: null, tableRecordsPerPage: 10, selectedTableRecords: [], paginators: { page: 1 } });
 
 function harness() {
-    const effects = []; let callback, generation = 0, alive = true, removed = false;
-    const wire = { ...state(), interceptMessage(cb) { callback = cb; return () => { removed = true; }; } };
+    const effects = []; let generation = 0, alive = true, removed = false;
+    const component = { id: 'images-'+(++nextHost), mergeNewSnapshot() { effects.push('sync'); }, processEffects() { effects.push('effects'); } };
+    const wire = { ...state(), $id: component.id };
     const remove = imagesMessageGuard(wire, { generation: () => generation, alive: () => alive, onMorphed: () => effects.push('focused') });
-    const component = { id: 'images', mergeNewSnapshot() { effects.push('sync'); }, processEffects() { effects.push('effects'); } };
     const message = new Message(component);
     message.addAction({ name: 'navigateImageRecord', params: ['next'], fingerprint: 'next', rejectPromise() {}, resolvePromise() {}, invokeOnFinish() {}, invokeOnSuccess() {} });
     message.updates = {};
-    message.addInterceptor(callback);
-    const deliver = async () => {
+    message.setInterceptors(registry.getMessageInterceptors(message));
+    const deliver = async (response = message) => {
         const pending = [];
-        processPayload(message, { snapshot: JSON.stringify({ memo: { id: 'images' }, data: state() }), effects: { returns: [null] } }, {},
+        processPayload(response, { snapshot: JSON.stringify({ memo: { id: response.component.id }, data: state() }), effects: { returns: [null] } }, {},
             { transaction(fn) { const promise = fn(); pending.push(promise); return promise; } }, () => false, () => {}, fn => fn());
         await Promise.all(pending);
     };
-    return { wire, message, effects, deliver, supersede: () => generation++, destroy: () => { alive = false; remove(); }, removed: () => removed };
+    return { wire, message, component, effects, deliver, supersede: () => generation++, destroy: () => { alive = false; remove(); removed = true; }, removed: () => removed };
 }
 
 for (const [name, change] of [
@@ -48,7 +57,7 @@ for (const [name, change] of [
     ['teardown', h => h.destroy()],
 ]) test(`obsolete ${name} response is cancelled before installed sync effects morph and focus`, async () => {
     const h = harness(); change(h); await h.deliver();
-    assert.equal(h.message.isCancelled(), true); assert.deepEqual(h.effects, []);
+    assert.equal(h.message.isCancelled(), true); assert.deepEqual(h.effects, []); h.destroy();
 });
 
 test('current message applies native effects then finishes its bound focus callback', async () => {
@@ -142,6 +151,7 @@ async function focusHarness(localFirst = false) {
     const previousStorage = globalThis.localStorage;
     globalThis.localStorage = { getItem() { return null; }, setItem() {} };
     await ui.init();
+    localInterceptor = registry.messageInterceptorCallbacks.at(-1);
     const unsupportedDispatch = () => assert.fail('Unexpected non-component dispatch');
     loadDispatchSupport(callback => { dispatchInterceptor = callback; }, () => {}, installedDispatch,
         unsupportedDispatch, unsupportedDispatch, unsupportedDispatch, unsupportedDispatch);
@@ -243,6 +253,7 @@ test('deferred target watcher cannot let a morph overwrite the previous target p
     }
     try {
         await ui.init();
+        intercept = registry.messageInterceptorCallbacks.at(-1);
         const productKey = [...values.keys()][0], productScope = ui.profileState().scope;
         await commit({ ...state(), imageTarget: 'group.main_image', imageSearch: { query: '' } });
         assert.equal(JSON.parse(values.get(productKey)).scope, productScope);
@@ -273,4 +284,28 @@ test('an already contaminated target profile falls back locally without sending 
         assert.equal(saved.length, 1); assert.equal(saved[0].scope, ui.profileState().scope);
         assert.equal(saved[0].search.query, 'el 6'); assert.equal(ui.clientError, '');
     } finally { ui.destroy(); globalThis.localStorage = previousStorage; }
+});
+
+
+test('outer guard disposal releases its installed callback and leaves a new same-component response intact', async () => {
+    const h=harness();
+    h.destroy();h.destroy();
+    assert.equal(registry.messageInterceptorCallbacks.length,0);
+    const remove=imagesMessageGuard(h.wire);
+    const fresh=new Message(h.component);
+    fresh.addAction({name:'catalogMainImageChooseSource',params:['source:current'],fingerprint:'source',rejectPromise(){},resolvePromise(){},invokeOnFinish(){},invokeOnSuccess(){}});
+    fresh.updates={};fresh.setInterceptors(registry.getMessageInterceptors(fresh));
+    await h.deliver(fresh);assert.equal(fresh.isCancelled(),false);assert.deepEqual(h.effects,['sync','effects']);
+    h.effects.length=0;
+    await h.deliver();assert.equal(h.message.isCancelled(),true);assert.deepEqual(h.effects,[]);
+    remove();remove();assert.equal(registry.messageInterceptorCallbacks.length,0);
+});
+
+test('an outer guard cannot cancel or focus a different component response', async () => {
+    const h=harness(); h.wire.imageSearch.query='newer';
+    const foreign=new Message({...h.component,id:'foreign-page'});
+    foreign.addAction({name:'navigateImageRecord',params:['next'],fingerprint:'foreign',rejectPromise(){},resolvePromise(){},invokeOnFinish(){},invokeOnSuccess(){}});
+    foreign.updates={};foreign.setInterceptors(registry.getMessageInterceptors(foreign));
+    await h.deliver(foreign);
+    assert.equal(foreign.isCancelled(),false);assert.deepEqual(h.effects,['sync','effects']);h.destroy();
 });

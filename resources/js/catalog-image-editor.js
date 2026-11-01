@@ -3,6 +3,24 @@ const imageDraftIdentity = wire => JSON.stringify([wire.data, wire.catalogMainIm
     wire.catalogMainImageSourceProgress?.source_id, wire.catalogMainImageSourceProgress?.scan_version,
     wire.catalogMainImageUploadBinding?.nonce, wire.catalogMainImageRecoverySourceId]);
 
+/** Use the public global registry with a host filter; the installed component disposer is broken. */
+export function interceptCatalogImageMessage(wire, methodOrCallback, maybeCallback) {
+    const componentId = wire.$id;
+    const method = typeof methodOrCallback === 'string' ? methodOrCallback : null;
+    const callback = method ? maybeCallback : methodOrCallback;
+    let disposed = false;
+    const remove = globalThis.Livewire.interceptMessage(payload => {
+        if (disposed || payload.message.component.id !== componentId) return;
+        if (method && !payload.message.getActions().some(action => action.name === method)) return;
+        callback(payload);
+    });
+    return () => {
+        if (disposed) return;
+        disposed = true;
+        remove();
+    };
+}
+
 /** Component-scoped, two-request Save/Create. Preparation is not commit proof. */
 export function createCatalogImageSaveController({ wire, methods, onState = () => {}, onLock = () => {}, canRun = () => true, shouldPrepare = () => {
     const data = wire.data ?? {};
@@ -32,7 +50,7 @@ export function createCatalogImageSaveController({ wire, methods, onState = () =
     const imageMethods = ['prepareImageSave', 'catalogMainImageChooseSource', 'catalogMainImageSourceStatus',
         'catalogMainImageAdvanceSource', 'catalogMainImageStageUpload', 'catalogMainImageSelectCandidate',
         'catalogMainImageRemove', 'catalogMainImageRevert', '_startUpload', '_finishUpload'];
-    const removeMessages = [...imageMethods, ...methods].map(method => wire.interceptMessage(method, ({ message: livewireMessage, cancel, onSuccess }) => {
+    const removeMessages = [...imageMethods, ...methods].map(method => interceptCatalogImageMessage(wire, method, ({ message: livewireMessage, cancel, onSuccess }) => {
         const pending = attempt;
         if (!pending && !imageMethods.includes(method)) return;
         if (['_startUpload', '_finishUpload'].includes(method)
@@ -218,24 +236,28 @@ export function catalogImageEditor(config) {
             catch { this.message = 'The image source could not be opened. Check your access and try again.'; }
         },
         async stageUpload() {
-            if (this.saving || this.scanning || this.uploading) return;
+            if (this.destroyed || this.saving || this.scanning || this.uploading) return;
+            const wire = this.$wire;
             try {
-                const result = await this.$wire.catalogMainImageStageUpload();
+                const result = await wire.catalogMainImageStageUpload();
+                if (this.destroyed) return;
                 this.message = result?.message ?? '';
-                if (result?.stage === 'scanning') await this.scan();
+                if (result?.stage === 'scanning') await this.scan(wire);
             } catch {
                 this.message = 'The uploaded image was not staged. Check the upload or its source status before continuing.';
             }
         },
-        async scan() {
-            if (this.saving || this.scanning || this.uploading) return;
+        async scan(wire = this.$wire) {
+            if (this.destroyed || this.saving || this.scanning || this.uploading) return;
             this.scanning = true;
             this.stopScan = false;
             try {
-                let progress = await this.$wire.catalogMainImageSourceStatus();
+                let progress = await wire.catalogMainImageSourceStatus();
+                if (this.destroyed) return;
                 while (!this.stopScan && !this.destroyed && (progress.stage === 'scanning'
                     || (progress.stage === 'uploading' && progress.file_count > 0 && progress.unsettled_uploads === 0))) {
-                    progress = await this.$wire.catalogMainImageAdvanceSource();
+                    progress = await wire.catalogMainImageAdvanceSource();
+                    if (this.destroyed) return;
                     this.message = progress?.message ?? '';
                     if (progress.outcome === 'busy' || progress.outcome === 'paused' || progress.next_action === 'operator_recovery') break;
                 }

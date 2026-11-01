@@ -8,6 +8,7 @@ import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSecti
 import { catalogImage } from './catalog-image';
 import { catalogImageEditor } from './catalog-image-editor';
 import { catalogImagesBrowser } from './catalog-images-browser';
+import { catalogImagesEditor } from './catalog-images-editor';
 import { catalogFilters } from './catalog-filters';
 import { catalogNavigation } from './catalog-navigation';
 import { catalogConfigurationUrl } from './catalog-configuration-url';
@@ -61,6 +62,7 @@ function registerComponents(Alpine) {
     Alpine.data('catalogFilters', catalogFilters);
     Alpine.data('catalogImageEditor', catalogImageEditor);
     Alpine.data('catalogImagesBrowser', catalogImagesBrowser);
+    Alpine.data('catalogImagesEditor', catalogImagesEditor);
     Alpine.data('catalogImage', catalogImage);
     registeredAlpine.add(Alpine);
 }

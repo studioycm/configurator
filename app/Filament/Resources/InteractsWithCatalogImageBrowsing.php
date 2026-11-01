@@ -111,6 +111,9 @@ trait InteractsWithCatalogImageBrowsing
         if ($targetKey === $this->imageTarget) {
             return;
         }
+        if (! $this->beforeImageBrowserTransition(['kind' => 'target', 'target' => $targetKey])) {
+            return;
+        }
         $this->forgetImagePaste();
         $this->imageTarget = $targetKey;
         $this->imageSearch = $this->searchDefaults();
@@ -123,6 +126,7 @@ trait InteractsWithCatalogImageBrowsing
         $this->tableRecordsPerPage = 10;
         $this->changedImageBrowser();
         $this->resetTable();
+        $this->initializeWorkspaceImageEditor();
         $this->dispatch('catalog-images-target-changed', host: $this->getId(), target: $targetKey);
     }
 
@@ -136,13 +140,22 @@ trait InteractsWithCatalogImageBrowsing
         $this->inspectImageRecord($id, $expectedContext, 'group.main_image');
     }
 
-    protected function inspectImageRecord(int $id, array $expectedContext, string $target): void
+    protected function inspectImageRecord(int $id, array $expectedContext, string $target, bool $sequence = false): void
     {
         $this->admitImageContext($expectedContext);
         if ($target !== $this->imageTarget || $id < 1 || ! $this->imageEligibleQuery()->whereKey($id)->exists()) {
             throw ValidationException::withMessages(['imageBrowser' => __('catalog-images.changed')]);
         }
+        if ($id === $this->imageRecordId) {
+            $this->dispatch('catalog-images-inspected', host: $this->getId(), context: $this->imageBrowserContext());
+
+            return;
+        }
+        if (! $this->beforeImageBrowserTransition(['kind' => 'record', 'target' => $target, 'record' => $id, 'sequence' => $sequence])) {
+            return;
+        }
         $this->imageRecordId = $id;
+        $this->initializeWorkspaceImageEditor();
         $this->changedImageBrowser(false);
         $this->dispatch('catalog-images-inspected', host: $this->getId(), context: $this->imageBrowserContext());
     }
@@ -182,10 +195,10 @@ trait InteractsWithCatalogImageBrowsing
             throw ValidationException::withMessages(['imageBrowser' => __('catalog-images.changed')]);
         }
         $visible = $this->imageNavigationMode === 'results' ? $destination : $sequence->position($this->imageResultsQuery(), $destination['record_id'], $this->imageSort(), (int) $this->getTableRecordsPerPage());
-        if ($visible !== null) {
+        $this->inspectImageRecord($destination['record_id'], $expectedContext, $this->imageTarget, true);
+        if ($visible !== null && $this->imageRecordId === $destination['record_id']) {
             $this->setPage($visible['page'], $this->getTablePaginationPageName());
         }
-        $this->inspectImageRecord($destination['record_id'], $expectedContext, $this->imageTarget);
     }
 
     protected function validateImageChecks(array $values): array

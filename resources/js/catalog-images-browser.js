@@ -1,4 +1,5 @@
 import { browserProfile } from './admin-profile.js';
+import { interceptCatalogImageMessage } from './catalog-image-editor.js';
 
 export const imagesContext = wire => ({ target: wire.imageTarget, mode: wire.imageNavigationMode,
     record: wire.imageRecordId, revision: wire.imageBrowserRevision });
@@ -7,7 +8,7 @@ const browserMeaning = wire => JSON.stringify([imagesContext(wire), wire.imageSe
 
 /** Cancel obsolete responses at the installed Livewire pre-sync boundary. */
 export function imagesMessageGuard(wire, { generation = () => 0, alive = () => true, onMorphed = () => {} } = {}) {
-    return wire.interceptMessage(({ cancel, onSuccess }) => {
+    return interceptCatalogImageMessage(wire, ({ cancel, onSuccess }) => {
         const intent = generation(), meaning = browserMeaning(wire);
         onSuccess(({ onMorphed: afterMorph }) => {
             if (!alive() || intent !== generation() || meaning !== browserMeaning(wire)) {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createCatalogImageSaveController, catalogImageEditor } from '../../resources/js/catalog-image-editor.js';
+import { createCatalogImageSaveController, catalogImageEditor, interceptCatalogImageMessage } from '../../resources/js/catalog-image-editor.js';
 
 // Run the installed framework's message/interceptor and pre-effects response path.
 // This deliberately fails on a changed unsupported API rather than simulating promise timing.
@@ -14,28 +14,37 @@ const requestSource=source('index');const start=requestSource.indexOf('let { sna
 assert.ok(start>=0 && end>start,'Installed pre-effects response path must exist');
 const processPayload=new Function('message','payload','request','Alpine','discardIfSuperseded','supersedeOlderMessages','requestAnimationFrame',requestSource.slice(start,end));
 
+const utilsSource=map.sourcesContent[map.sources.indexOf('../js/utils.js')];
+const weakStart=utilsSource.indexOf('class WeakBag'), weakEnd=utilsSource.indexOf('\nexport function dispatch',weakStart);
+const WeakBag=new Function(utilsSource.slice(weakStart,weakEnd)+';return WeakBag;')();
+const registrySource=source('interceptor').slice(source('interceptor').indexOf('export class InterceptorRegistry')).replace('export class','class');
+const InterceptorRegistry=new Function('WeakBag','MessageInterceptor',registrySource+';return InterceptorRegistry;')(WeakBag,MessageInterceptor);
+const registry=new InterceptorRegistry();
+globalThis.Livewire={interceptMessage:callback=>registry.addMessageInterceptor(callback)};
+let nextHost=0;
+
 function harness(method='save') {
     const methods = Array.isArray(method) ? method : [method];
-    const actionHooks=new Map(),messageHooks=new Map(),pending=[],effects=[];let draining=[];
-    const wire={data:{product_name:'Original draft',image_intent:{operation:'remove',source_token:null,draft_intent_id:'one'}},catalogMainImageCreationSession:null,catalogMainImageOriginal:'original',
+    const actionHooks=new Map(),pending=[],effects=[];let draining=[];
+    const component={id:'host-'+(++nextHost),mergeNewSnapshot(encoded){effects.push('sync');wire.data=JSON.parse(encoded).data;},processEffects(){effects.push('effects');}};
+    const wire={$id:component.id,data:{product_name:'Original draft',image_intent:{operation:'remove',source_token:null,draft_intent_id:'one'}},catalogMainImageCreationSession:null,catalogMainImageOriginal:'original',
         intercept(name,callback){actionHooks.set(name,callback);return()=>actionHooks.delete(name);},
-        interceptMessage(name,callback){messageHooks.set(name,callback);return()=>messageHooks.delete(name);},
+        interceptMessage(name,callback){return registry.addInterceptor(component,({message,...rest})=>{if(message.getActions().some(action=>action.name===name))callback({message,...rest});});},
         prepareImageSave(){return dispatch('prepareImageSave',[]);},$call(name,...params){return dispatch(name,params);}};
     function dispatch(name,params){return new Promise((resolve,reject)=>{
         const action={name,params,fingerprint:name,cancel(){this.cancelled=true;},rejectPromise:reject,resolvePromise:resolve,invokeOnFinish(){},invokeOnSuccess(){}};
         actionHooks.get(name)?.({action});if(action.cancelled){reject({status:null});return;}
-        const component={id:'host',mergeNewSnapshot(encoded){effects.push('sync');wire.data=JSON.parse(encoded).data;},processEffects(){effects.push('effects');}};
         const message=new Message(component);message.addAction(action);message.updates={};
-        if(messageHooks.has(name))message.addInterceptor(messageHooks.get(name));
+        message.setInterceptors(registry.getMessageInterceptors(message));
         message.addInterceptor(({onSuccess})=>onSuccess(({onMorph})=>onMorph(async()=>effects.push('morph'))));
         pending.push({message,name,params});
     });}
     async function reply(index,result,data=structuredClone(wire.data)){
-        const {message}=pending[index];processPayload(message,{snapshot:JSON.stringify({memo:{id:'host'},data}),effects:{returns:[result]}},{},
+        const {message}=pending[index];processPayload(message,{snapshot:JSON.stringify({memo:{id:component.id},data}),effects:{returns:[result]}},{},
             {transaction(callback){const task=callback();draining.push(task);return task;}},()=>false,()=>{},callback=>callback());
         await Promise.all(draining);draining=[];await new Promise(resolve=>setImmediate(resolve));
     }
-    return {wire,pending,effects,reply,controller:createCatalogImageSaveController({wire,methods})};
+    return {wire,pending,effects,reply,component,controller:createCatalogImageSaveController({wire,methods})};
 }
 
 test('an obsolete Save response is cancelled before installed Livewire sync effects and morph',async()=>{
@@ -198,4 +207,88 @@ test('a recovered settled upload can seal then scan without restarting its sourc
     };
     await widget.scan();
     assert.deepEqual(calls, ['same bounded source', 'same bounded source']);
+});
+
+function sourceLifecycle(overrides = {}) {
+    const listeners = new Map(), root = { addEventListener(name, fn) { listeners.set(name, fn); }, removeEventListener(name) { listeners.delete(name); }, getAttribute() {}, contains() { return true; } };
+    const wire = { data: { image_intent: { operation: 'keep' } }, $el: root, $id: 'image',
+        intercept() { return () => {}; }, interceptMessage() { return () => {}; }, ...overrides };
+    const ui = catalogImageEditor({ methods: [] }); ui.$wire = wire;
+    ui.$el = { closest(selector) { return selector === 'form' ? root : null; }, setAttribute() {}, removeAttribute() {}, contains() { return false; } };
+    ui.init();
+    return { ui, wire };
+}
+
+test('destroyed native image field cannot start scanning when its pending stage returns', async () => {
+    let resolve;
+    const calls = [];
+    const h = sourceLifecycle({ catalogMainImageStageUpload() { return new Promise(done => { resolve = done; }); }, async catalogMainImageSourceStatus() { calls.push('status'); return { stage: 'ready' }; }, async catalogMainImageAdvanceSource() { calls.push('advance'); } });
+    const task = h.ui.stageUpload(); h.ui.destroy(); resolve({ stage: 'scanning' }); await task;
+    assert.deepEqual(calls, []);
+});
+
+test('native scan after teardown sends no source status request', async () => {
+    const calls = [], h = sourceLifecycle({ async catalogMainImageSourceStatus() { calls.push('status'); return { stage: 'ready' }; } });
+    h.ui.destroy(); await h.ui.scan(); assert.deepEqual(calls, []);
+});
+
+test('destroying a native scan while status is pending prevents an advance', async () => {
+    let resolve;
+    const calls = [], h = sourceLifecycle({ catalogMainImageSourceStatus() { calls.push('status'); return new Promise(done => { resolve = done; }); }, async catalogMainImageAdvanceSource() { calls.push('advance'); } });
+    const task = h.ui.scan(); h.ui.destroy(); resolve({ stage: 'scanning', outcome: 'ready' }); await task;
+    assert.deepEqual(calls, ['status']);
+});
+
+test('native stage and scan retain the installed memoized wire proxy across the first element morph', async () => {
+    const wireSource = map.sourcesContent[map.sources.indexOf('../js/$wire.js')];
+    const start = wireSource.indexOf("Alpine.magic('wire'"), end = wireSource.indexOf("\nwireProperty('__instance'", start);
+    let magic, connected = true; const calls = [];
+    const h = sourceLifecycle({ async catalogMainImageStageUpload() { calls.push('stage'); connected = false; return { stage: 'scanning' }; },
+        async catalogMainImageSourceStatus() { calls.push('status'); return { stage: 'scanning', outcome: 'ready' }; },
+        async catalogMainImageAdvanceSource() { calls.push('advance'); return { stage: 'ready', outcome: 'ready' }; } });
+    new Function('Alpine', 'findComponentByEl', 'generateEntangleFunction', 'generateWatchFunction', wireSource.slice(start, end))(
+        { magic(name, factory) { magic = factory; } }, () => { if (!connected) throw new Error('Component not found'); return { $wire: h.wire }; }, () => {}, () => {});
+    Object.defineProperty(h.ui, '$wire', { get() { return magic({}, { cleanup() {} }); } });
+    await h.ui.stageUpload(); assert.deepEqual(calls, ['stage', 'status', 'advance']); h.ui.destroy();
+});
+
+
+test('installed registry teardown releases A then B guards and a reopened A retains its current source response', async () => {
+    const h=harness([]);
+    const stale=h.wire.$call('catalogMainImageChooseSource','source:old');
+    const staleRejected=assert.rejects(stale);
+    assert.doesNotThrow(()=>h.controller.destroy());
+    assert.equal(registry.messageInterceptorCallbacksByComponent.get(h.component).length,0);
+    const b=createCatalogImageSaveController({wire:h.wire,methods:[]});
+    assert.doesNotThrow(()=>b.destroy());
+    const a=createCatalogImageSaveController({wire:h.wire,methods:[]});
+    const fresh=h.wire.$call('catalogMainImageChooseSource','source:current');
+    await h.reply(1,{stage:'ready'});await fresh;
+    assert.deepEqual(h.effects,['sync','effects','morph']);
+    h.effects.length=0;
+    await h.reply(0,{stage:'ready'});await staleRejected;
+    assert.deepEqual(h.effects,[]);
+    a.destroy();a.destroy();
+    assert.equal(registry.messageInterceptorCallbacks.length,0);
+    assert.equal(registry.messageInterceptorCallbacksByComponent.get(h.component).length,0);
+});
+
+
+test('the supported registry wrapper filters host and method and removes only its own callback once', () => {
+    let calls=0;
+    const remove=interceptCatalogImageMessage({$id:'own-page'},'catalogMainImageChooseSource',({cancel})=>{calls++;cancel();});
+    const message=(id,name)=>{
+        const result=new Message({id});
+        result.addAction({name,params:[],fingerprint:name,rejectPromise(){},resolvePromise(){},invokeOnFinish(){},invokeOnSuccess(){}});
+        result.setInterceptors(registry.getMessageInterceptors(result));
+        return result;
+    };
+    assert.equal(message('other-page','catalogMainImageChooseSource').isCancelled(),false);
+    assert.equal(message('own-page','unrelatedAction').isCancelled(),false);
+    assert.equal(calls,0);
+    assert.equal(message('own-page','catalogMainImageChooseSource').isCancelled(),true);
+    assert.equal(calls,1);
+    const unrelated=registry.addMessageInterceptor(()=>{});
+    remove();remove();assert.equal(registry.messageInterceptorCallbacks.length,1);
+    unrelated();assert.equal(registry.messageInterceptorCallbacks.length,0);
 });
