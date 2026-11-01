@@ -1,0 +1,909 @@
+diff --git a/app/Actions/SaveConfiguratorOption.php b/app/Actions/SaveConfiguratorOption.php
+--- a/app/Actions/SaveConfiguratorOption.php
++++ b/app/Actions/SaveConfiguratorOption.php
+@@ -5,6 +5,7 @@
+ use App\Models\ConfiguratorAttribute;
+ use App\Models\User;
+ use App\Services\ConfiguratorDefinitionCompiler;
++use App\Services\ConfiguratorInclusionDrafts;
+ use Illuminate\Support\Str;
+ use Illuminate\Validation\ValidationException;
+ 
+@@ -12,7 +13,7 @@
+ {
+     public const FIELDS = ['option_id', 'label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default'];
+ 
+-    public function __construct(private SaveConfiguratorDefinition $save) {}
++    public function __construct(private SaveConfiguratorDefinition $save, private ConfiguratorInclusionDrafts $drafts) {}
+ 
+     /** @param array<string, mixed> $data */
+     public function handle(User $actor, ConfiguratorAttribute $owner, ?int $id, array $data): void
+@@ -37,7 +38,7 @@
+                 }
+             }
+             if ($id === null) {
+-                $attribute['options'][] = [...['id' => 'new:'.Str::uuid(), 'label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false,
++                $attribute['options'][] = [...['id' => 'new:'.Str::uuid(), ...$this->drafts->optionLocalDefaults(),
+                     'display_order' => ($attribute['options'] === [] ? -1 : max(array_column($attribute['options'], 'display_order'))) + 1], ...$data];
+             } else {
+                 $attribute['options'][$index] = [...$attribute['options'][$index], ...$data];
+diff --git a/app/Providers/Filament/AdminPanelProvider.php b/app/Providers/Filament/AdminPanelProvider.php
+--- a/app/Providers/Filament/AdminPanelProvider.php
++++ b/app/Providers/Filament/AdminPanelProvider.php
+@@ -68,6 +68,12 @@
+             ])
+             ->viteTheme('resources/css/filament/admin/theme.css')
+             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => view('filament.resources.appearance-variables'))
++            ->renderHook(PanelsRenderHook::PAGE_START, function () {
++                $appearance = app(AdminAppearance::class);
++                $appearance->current();
++
++                return view('filament.resources.appearance-recovery-notice', ['recovery' => $appearance->recovery()]);
++            })
+             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.resources.workspace-assets'))
+             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class])
+             ->navigationItems([
+diff --git a/app/Services/AdminAppearance.php b/app/Services/AdminAppearance.php
+--- a/app/Services/AdminAppearance.php
++++ b/app/Services/AdminAppearance.php
+@@ -5,6 +5,7 @@
+ use App\Models\AdminAppearanceSettings;
+ use Illuminate\Support\Facades\Cache;
+ use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Log;
+ use Illuminate\Support\Facades\Schema;
+ use Illuminate\Support\Facades\Validator;
+ use Illuminate\Validation\Rule;
+@@ -14,6 +15,11 @@
+ {
+     /** @var array<string, bool|int|string>|null */
+     private ?array $resolved = null;
++
++    /** @var array{defaulted_fields:list<string>,ignored_unknown_count:int,invalid_payload:bool}|null */
++    private ?array $recoveryReport = null;
++
++    private bool $recoveryLogged = false;
+ 
+     public const string CACHE_KEY = 'admin-appearance:singleton:v1';
+ 
+@@ -32,15 +38,7 @@
+     /** @param array<string, mixed> $settings @return array<string, bool|int|string> */
+     public function validate(array $settings): array
+     {
+-        $rules = ['settings' => ['required', 'array:'.implode(',', array_keys($this->defaults()))]];
+-        foreach ($this->ranges() as $key => [$min, $max]) {
+-            $rules['settings.'.$key] = ['required', 'integer', 'between:'.$min.','.$max];
+-        }
+-        foreach (['modal_width', 'slide_over_width'] as $key) {
+-            $rules['settings.'.$key] = ['required', Rule::in(['small', 'medium', 'large'])];
+-        }
+-        $rules['settings.dialog_control_style'] = ['required', Rule::in(['icons', 'icons_text', 'text'])];
+-        $rules['settings.show_configurator_loading_indicator'] = ['required', 'boolean'];
++        $rules = ['settings' => ['required', 'array:'.implode(',', array_keys($this->defaults()))], ...$this->fieldRules()];
+         $validated = Validator::make(['settings' => $settings], $rules)->validate()['settings'];
+         foreach ($this->ranges() as $key => $range) {
+             $validated[$key] = (int) $validated[$key];
+@@ -56,6 +54,62 @@
+         return $validated;
+     }
+ 
++    /** @return array<string, array<int, mixed>> */
++    private function fieldRules(): array
++    {
++        $rules = [];
++        foreach ($this->ranges() as $key => [$min, $max]) {
++            $rules['settings.'.$key] = ['required', 'integer', 'between:'.$min.','.$max];
++        }
++        foreach (['modal_width', 'slide_over_width'] as $key) {
++            $rules['settings.'.$key] = ['required', Rule::in(['small', 'medium', 'large'])];
++        }
++        $rules['settings.dialog_control_style'] = ['required', Rule::in(['icons', 'icons_text', 'text'])];
++        $rules['settings.show_configurator_loading_indicator'] = ['required', 'boolean'];
++
++        return $rules;
++    }
++
++    /** @return array<string, bool|int|string> */
++    private function recoverStored(mixed $stored): array
++    {
++        $defaults = $this->defaults();
++        $report = ['defaulted_fields' => [], 'ignored_unknown_count' => 0, 'invalid_payload' => ! is_array($stored)];
++        $candidate = $defaults;
++        if (is_array($stored)) {
++            $report['ignored_unknown_count'] = count(array_diff_key($stored, $defaults));
++            $candidate = array_replace($defaults, array_intersect_key($stored, $defaults));
++            $validator = Validator::make(['settings' => $candidate], $this->fieldRules());
++            if ($validator->fails()) {
++                foreach (array_keys($validator->failed()) as $path) {
++                    $field = substr($path, strlen('settings.'));
++                    $candidate[$field] = $defaults[$field];
++                    $report['defaulted_fields'][] = $field;
++                }
++            }
++            foreach (['logo_height' => 1, 'page_title_size' => 1.2] as $field => $scale) {
++                if ((int) ceil((int) $candidate[$field] * $scale) > (int) $candidate['header_height'] - 12) {
++                    $candidate[$field] = $defaults[$field];
++                    $report['defaulted_fields'][] = $field;
++                }
++            }
++        }
++        $validated = $this->validate($candidate);
++        $this->recoveryReport = $report['defaulted_fields'] !== [] || $report['ignored_unknown_count'] > 0 || $report['invalid_payload'] ? $report : null;
++        if ($this->recoveryReport !== null && ! $this->recoveryLogged) {
++            Log::warning('Stored admin appearance settings required recovery.', $this->recoveryReport);
++            $this->recoveryLogged = true;
++        }
++
++        return $validated;
++    }
++
++    /** @return array{defaulted_fields:list<string>,ignored_unknown_count:int,invalid_payload:bool}|null */
++    public function recovery(): ?array
++    {
++        return $this->recoveryReport;
++    }
++
+     /** @return array<string, bool|int|string> */
+     public function current(): array
+     {
+@@ -66,11 +120,13 @@
+             return $this->resolved;
+         }
+         if (! Schema::hasTable('admin_appearance_settings')) {
++            $this->recoveryReport = null;
++
+             return $transactional ? $this->defaults() : ($this->resolved = $this->defaults());
+         }
+-        $read = fn (): array => AdminAppearanceSettings::findOrFail(1)->settings;
++        $read = fn (): mixed => AdminAppearanceSettings::findOrFail(1)->settings;
+         $settings = $transactional ? $read() : Cache::remember(self::CACHE_KEY, 3600, $read);
+-        $settings = $this->validate(array_replace($this->defaults(), $settings));
++        $settings = $this->recoverStored($settings);
+ 
+         return $transactional ? $settings : ($this->resolved = $settings);
+     }
+@@ -79,6 +135,7 @@
+     public function rememberSaved(array $settings): void
+     {
+         $this->resolved = DB::transactionLevel() > 0 ? null : $settings;
++        $this->recoveryReport = null;
+     }
+ 
+     /** @param array<string, mixed>|null $draft @return array<string, string> */
+diff --git a/app/Services/ConfiguratorInclusionDrafts.php b/app/Services/ConfiguratorInclusionDrafts.php
+--- a/app/Services/ConfiguratorInclusionDrafts.php
++++ b/app/Services/ConfiguratorInclusionDrafts.php
+@@ -8,10 +8,16 @@
+ 
+ class ConfiguratorInclusionDrafts
+ {
++    /** @return array{label_override:null,subtitle_mode:string,display_value_override:null,hint:null,hidden_by_default:bool,disabled_by_default:bool} */
++    public function optionLocalDefaults(): array
++    {
++        return ['label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
++    }
++
+     /** @return array<string, mixed> */
+     public function option(Option $option): array
+     {
+-        return ['id' => 'new:'.Str::uuid(), 'option_id' => $option->id, 'label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false];
++        return ['id' => 'new:'.Str::uuid(), 'option_id' => $option->id, ...$this->optionLocalDefaults()];
+     }
+ 
+     /** @return array<string, mixed> */
+diff --git a/lang/en/admin.php b/lang/en/admin.php
+--- a/lang/en/admin.php
++++ b/lang/en/admin.php
+@@ -59,6 +59,10 @@
+             'small_640px' => 'Small · 640px',
+         ],
+         'title' => 'Admin Appearance',
++        'recovery' => [
++            'notice' => 'Some saved appearance settings could not be used. Safe defaults are being used where needed; your saved preferences have not been changed.',
++            'repair' => 'Review appearance settings',
++        ],
+         'validation' => [
+             'shared_appearance_storage_is_not_installed_yet' => 'Shared appearance storage is not installed yet. Apply the reviewed Admin Appearance migration before saving. Your preview is still available.',
+             'the_logo_must_fit_within_the_header' => 'The logo must fit within the header with 6 px padding above and below.',
+diff --git a/tests/Feature/ConfiguratorCreationFlowTest.php b/tests/Feature/ConfiguratorCreationFlowTest.php
+--- a/tests/Feature/ConfiguratorCreationFlowTest.php
++++ b/tests/Feature/ConfiguratorCreationFlowTest.php
+@@ -4,6 +4,7 @@
+ use App\Actions\AddConfiguratorValues;
+ use App\Actions\CreateMasterValues;
+ use App\Actions\SaveConfiguratorDefinition;
++use App\Actions\SaveConfiguratorOption;
+ use App\Filament\Resources\Configurators\Pages\EditConfigurator;
+ use App\Filament\Resources\Configurators\RelationManagers\AttributesRelationManager;
+ use App\Filament\Resources\Configurators\RelationManagers\OptionsRelationManager;
+@@ -56,6 +57,56 @@
+ {
+     return [...['ref' => creationRef(), 'label' => 'Shared blue', 'semantic_id' => 'shared_blue', 'tags' => [' blue '], 'description' => 'Specification'], ...$overrides];
+ }
++
++test('new local Values share defaults while preserving saved controls identities and selected Default', function (string $operation) {
++    [$owner, $draft] = canonicalDefinitionFixture();
++    $draft['attributes'][0]['default_configurator_option_id'] = 'new:A1';
++    $draft['attributes'][0]['options'][0] = [...$draft['attributes'][0]['options'][0], 'subtitle_mode' => 'custom', 'display_value_override' => '0', 'hint' => 'Retained hint', 'hidden_by_default' => true];
++    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
++    $otherOwner = Configurator::factory()->create();
++    $otherDraft = [...$draft, 'name' => 'Unrelated shorter configuration', 'attributes' => array_slice($draft['attributes'], 0, 2)];
++    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $otherOwner, $otherDraft);
++    $loader = app(ConfiguratorDefinitionLoader::class);
++    $before = $loader->draft($owner->fresh());
++    $otherBefore = $loader->draft($otherOwner->fresh());
++    $inclusion = $owner->attributes()->orderBy('display_order')->firstOrFail();
++    $option = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'code' => 'Z9']);
++
++    if ($operation === 'ordinary') {
++        app(SaveConfiguratorOption::class)->handle(auth()->user(), $inclusion, null, ['option_id' => $option->id]);
++    } else {
++        app(AddConfiguratorValues::class)->handle(auth()->user(), $owner, $inclusion->id, ['existing_option_ids' => [$option->id]]);
++    }
++
++    $after = $loader->draft($owner->fresh());
++    $created = $inclusion->options()->where('option_id', $option->id)->sole();
++    expect($created->only(['label_override', 'subtitle_mode', 'display_value_override', 'hint', 'hidden_by_default', 'disabled_by_default']))
++        ->toBe(['label_override' => null, 'subtitle_mode' => 'none', 'display_value_override' => null, 'hint' => null, 'hidden_by_default' => false, 'disabled_by_default' => false]);
++    expect($created->display_order)->toBe(2);
++    expect($created->configurator_attribute_id)->toBe($inclusion->id);
++    expect($created->id)->not->toBeIn(array_map('intval', array_column($before['attributes'][0]['options'], 'id')));
++    expect(array_slice($after['attributes'][0]['options'], 0, 2))->toBe($before['attributes'][0]['options']);
++    expect($after['attributes'][0]['default_configurator_option_id'])->toBe($before['attributes'][0]['default_configurator_option_id']);
++    expect(array_slice($after['attributes'], 1))->toBe(array_slice($before['attributes'], 1));
++    expect($loader->draft($otherOwner->fresh()))->toBe($otherBefore);
++})->with(['ordinary', 'batch']);
++
++test('ordinary new local Values retain explicit subtitle intent ahead of creation defaults', function (array $patch, string $mode, ?string $text) {
++    [$owner, $draft] = canonicalDefinitionFixture();
++    app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $owner, $draft);
++    $inclusion = $owner->attributes()->orderBy('display_order')->firstOrFail();
++    $option = Option::factory()->create(['attribute_id' => $inclusion->attribute_id, 'code' => 'Z9']);
++
++    app(SaveConfiguratorOption::class)->handle(auth()->user(), $inclusion, null, ['option_id' => $option->id, ...$patch]);
++
++    expect($inclusion->options()->where('option_id', $option->id)->sole())
++        ->subtitle_mode->toBe($mode)->display_value_override->toBe($text);
++})->with([
++    'explicit none' => [['subtitle_mode' => 'none', 'display_value_override' => 'Ignored'], 'none', null],
++    'explicit custom zero' => [['subtitle_mode' => 'custom', 'display_value_override' => '0'], 'custom', '0'],
++    'legacy custom' => [['display_value_override' => '  Exact  '], 'custom', '  Exact  '],
++    'explicit master' => [['subtitle_mode' => 'master'], 'master', null],
++]);
+ 
+ test('V14 actual Add Attributes includes existing only with empty creation branches', function () {
+     $owner = Configurator::factory()->create();
+@@ -279,7 +330,7 @@
+         if (str_contains($query->sql, 'catalog_context_settings')) {
+             $events[] = 'context';
+         }
+-        if (str_starts_with($query->sql, 'insert into "values"')) {
++        if (str_starts_with($query->sql, 'insert into '.$query->connection->getQueryGrammar()->wrapTable('values'))) {
+             $events[] = 'master';
+         }
+     });
+@@ -289,6 +340,7 @@
+ 
+         return $draft;
+     });
++    expect($events)->toContain('context', 'callback', 'master');
+     expect(array_search('context', $events, true))->toBeLessThan(array_search('callback', $events, true));
+     expect(array_search('callback', $events, true))->toBeLessThan(array_search('master', $events, true));
+ });
+diff --git a/tests/Feature/Filament/AdminAppearanceTest.php b/tests/Feature/Filament/AdminAppearanceTest.php
+--- a/tests/Feature/Filament/AdminAppearanceTest.php
++++ b/tests/Feature/Filament/AdminAppearanceTest.php
+@@ -1,18 +1,172 @@
+ <?php
+ 
+ use App\Actions\SaveAdminAppearanceSettings;
++use App\Filament\Pages\Dashboard;
+ use App\Models\AdminAppearanceSettings;
+ use App\Models\User;
+ use App\Services\AdminAppearance;
+ use Illuminate\Database\DatabaseTransactionsManager;
++use Illuminate\Database\Eloquent\ModelNotFoundException;
+ use Illuminate\Support\Facades\Cache;
+ use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Log;
+ use Illuminate\Validation\ValidationException;
+ use Livewire\Livewire;
+ 
++/** @param array<string, mixed> $settings @return array<string, mixed> */
++function appearanceSettingsByKey(array $settings): array
++{
++    ksort($settings, SORT_STRING);
++
++    return $settings;
++}
++
+ beforeEach(function () {
+     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+ });
++
++test('invalid stored appearance recovers affected fields without changing valid preferences or storage', function (array $overrides, array $replacements) {
++    $appearance = app(AdminAppearance::class);
++    $stored = [...$appearance->defaults(), 'sidebar_width' => 288, 'control_height' => 34, ...$overrides];
++    $record = AdminAppearanceSettings::findOrFail(1);
++    $record->update(['settings' => $stored]);
++    $record->refresh();
++    $raw = $record->getRawOriginal('settings');
++    $version = $record->version;
++
++    $resolved = $appearance->current();
++
++    expect($resolved)->toBe([...$stored, ...$replacements]);
++    expect($appearance->recovery())->toBe(['defaulted_fields' => array_keys($replacements), 'ignored_unknown_count' => 0, 'invalid_payload' => false]);
++    expect($record->fresh()->getRawOriginal('settings'))->toBe($raw);
++    expect($record->fresh()->version)->toBe($version);
++})->with([
++    'sidebar range' => [['sidebar_width' => 999], ['sidebar_width' => 216]],
++    'invalid integer type' => [['workspace_gap' => []], ['workspace_gap' => 8]],
++    'invalid dialog choice' => [['dialog_control_style' => 'hidden'], ['dialog_control_style' => 'icons']],
++    'invalid boolean' => [['show_configurator_loading_indicator' => 'yes'], ['show_configurator_loading_indicator' => false]],
++    'logo range' => [['logo_height' => 99], ['logo_height' => 28]],
++    'logo fit' => [['header_height' => 40, 'logo_height' => 32], ['logo_height' => 28]],
++    'logo and title fit' => [['header_height' => 40, 'logo_height' => 32, 'page_title_size' => 30], ['logo_height' => 28, 'page_title_size' => 20]],
++]);
++
++test('stored appearance recovery ignores unknown keys without exposing their content and logs once', function () {
++    Log::spy();
++    $appearance = app(AdminAppearance::class);
++    $stored = [...$appearance->defaults(), 'sidebar_width' => 288, 'untrusted-secret-name' => 'private raw content'];
++    AdminAppearanceSettings::findOrFail(1)->update(['settings' => $stored]);
++
++    expect($appearance->current())->toBe([...$appearance->defaults(), 'sidebar_width' => 288]);
++    expect($appearance->current())->toBe([...$appearance->defaults(), 'sidebar_width' => 288]);
++    $report = ['defaulted_fields' => [], 'ignored_unknown_count' => 1, 'invalid_payload' => false];
++    expect($appearance->recovery())->toBe($report);
++    Log::shouldHaveReceived('warning')->once()->with('Stored admin appearance settings required recovery.', $report);
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($stored));
++});
++
++test('unusable stored appearance payload falls back without silently repairing it', function (mixed $stored) {
++    DB::table('admin_appearance_settings')->where('id', 1)->update(['settings' => json_encode($stored, JSON_THROW_ON_ERROR)]);
++    $record = AdminAppearanceSettings::findOrFail(1);
++    $raw = $record->getRawOriginal('settings');
++    $appearance = app(AdminAppearance::class);
++
++    expect($appearance->current())->toBe($appearance->defaults());
++    expect($appearance->recovery())->toBe(['defaulted_fields' => [], 'ignored_unknown_count' => 0, 'invalid_payload' => true]);
++    expect($record->fresh()->getRawOriginal('settings'))->toBe($raw);
++})->with(['JSON null' => [null], 'JSON string' => ['not a settings map'], 'JSON integer' => [3]]);
++
++test('legacy omissions and valid coercible appearance values do not trigger recovery', function () {
++    $appearance = app(AdminAppearance::class);
++    $stored = ['sidebar_width' => '288', 'show_configurator_loading_indicator' => '0'];
++    AdminAppearanceSettings::findOrFail(1)->update(['settings' => $stored]);
++
++    expect($appearance->current())->toBe([...$appearance->defaults(), 'sidebar_width' => 288]);
++    expect($appearance->recovery())->toBeNull();
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($stored));
++});
++
++test('cold ordinary admin page renders recovery notice and manager repair link', function () {
++    $appearance = new AdminAppearance;
++    app()->instance(AdminAppearance::class, $appearance);
++    $stored = [...$appearance->defaults(), 'sidebar_width' => 999];
++    AdminAppearanceSettings::findOrFail(1)->update(['settings' => $stored]);
++
++    $response = $this->get(Dashboard::getUrl());
++
++    $response->assertSee(__('admin.appearance.recovery.notice'));
++    $response->assertSee(__('admin.appearance.recovery.repair'));
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($stored));
++});
++
++test('appearance recovery notice does not offer repair permission to ordinary readers', function () {
++    $this->actingAs(User::factory()->create());
++
++    $html = view('filament.resources.appearance-recovery-notice', ['recovery' => ['defaulted_fields' => ['sidebar_width'], 'ignored_unknown_count' => 0, 'invalid_payload' => false]])->render();
++
++    expect($html)->toContain(__('admin.appearance.recovery.notice'))->not->toContain(__('admin.appearance.recovery.repair'));
++});
++
++test('recovery metadata is query free and repair page can explicitly save validated settings', function () {
++    $appearance = app(AdminAppearance::class);
++    AdminAppearanceSettings::findOrFail(1)->update(['settings' => [...$appearance->defaults(), 'sidebar_width' => 999]]);
++    $appearance->current();
++    DB::enableQueryLog();
++    DB::flushQueryLog();
++    $appearance->recovery();
++    expect(DB::getQueryLog())->toBe([]);
++    DB::disableQueryLog();
++
++    Livewire::test(App\Filament\Pages\AdminAppearance::class)->fillForm(['sidebar_width' => 288])->call('save')->assertHasNoFormErrors();
++
++    expect($appearance->current()['sidebar_width'])->toBe(288);
++    expect($appearance->recovery())->toBeNull();
++    expect(AdminAppearanceSettings::findOrFail(1)->version)->toBe(2);
++    expect(fn () => $appearance->validate([...$appearance->defaults(), 'unknown' => true]))->toThrow(ValidationException::class);
++    $this->get(App\Filament\Pages\AdminAppearance::getUrl())->assertDontSee(__('admin.appearance.recovery.notice'));
++});
++
++test('appearance recovery does not hide missing singleton or cache failures', function (string $failure) {
++    withConsolidationAppearanceConnection(function (AdminAppearance $appearance) use ($failure): void {
++        if ($failure === 'missing row') {
++            AdminAppearanceSettings::whereKey(1)->delete();
++
++            expect(fn () => $appearance->current())->toThrow(ModelNotFoundException::class);
++        } else {
++            $cache = Mockery::mock(Cache::getFacadeRoot());
++            $cache->shouldReceive('remember')->once()->andThrow(new RuntimeException('Cache unavailable'));
++            Cache::swap($cache);
++
++            expect(fn () => $appearance->current())->toThrow(RuntimeException::class, 'Cache unavailable');
++        }
++        expect($appearance->recovery())->toBeNull();
++    });
++})->with(['missing row', 'cache failure']);
++
++test('appearance recovery follows repair rollback and committed repair without publishing fallback to cache', function (bool $warm) {
++    withConsolidationAppearanceConnection(function (AdminAppearance $appearance) use ($warm): void {
++        $invalid = [...$appearance->defaults(), 'sidebar_width' => 999, 'control_height' => 34];
++        AdminAppearanceSettings::findOrFail(1)->update(['settings' => $invalid]);
++        Cache::put(AdminAppearance::CACHE_KEY, $invalid);
++        if ($warm) {
++            $appearance->current();
++        }
++        DB::beginTransaction();
++        $appearance->current();
++        expect($appearance->recovery()['defaulted_fields'])->toBe(['sidebar_width']);
++        app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), [...$appearance->defaults(), 'sidebar_width' => 288]);
++        expect($appearance->current()['sidebar_width'])->toBe(288);
++        expect($appearance->recovery())->toBeNull();
++        expect(Cache::get(AdminAppearance::CACHE_KEY))->toBe($invalid);
++        DB::rollBack();
++        expect($appearance->current()['control_height'])->toBe(34);
++        expect($appearance->recovery()['defaulted_fields'])->toBe(['sidebar_width']);
++        expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($invalid));
++        app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), [...$appearance->defaults(), 'sidebar_width' => 288]);
++        expect($appearance->current()['sidebar_width'])->toBe(288);
++        expect($appearance->recovery())->toBeNull();
++        expect(AdminAppearanceSettings::findOrFail(1)->version)->toBe(2);
++    });
++})->with([true, false]);
+ 
+ test('dialog display preferences backfill old settings without rewriting them and cannot hide every control', function () {
+     $record = AdminAppearanceSettings::findOrFail(1);
+@@ -22,12 +176,12 @@
+     Cache::forget(AdminAppearance::CACHE_KEY);
+     $service = new AdminAppearance;
+     expect($service->current()['dialog_control_style'])->toBe('icons');
+-    expect($record->fresh()->settings)->toBe($stored);
++    expect(appearanceSettingsByKey($record->fresh()->settings))->toBe(appearanceSettingsByKey($stored));
+     foreach (['icons', 'icons_text', 'text'] as $style) {
+         Livewire::test(App\Filament\Pages\AdminAppearance::class)->fillForm(['dialog_control_style' => $style, 'dialog_control_radius' => 8])
+             ->call('savePersonal')->assertHasNoFormErrors()->assertDispatched('admin-personal-appearance-saved');
+     }
+-    expect($record->fresh()->settings)->toBe($stored);
++    expect(appearanceSettingsByKey($record->fresh()->settings))->toBe(appearanceSettingsByKey($stored));
+     expect(fn () => $service->validate([...$service->defaults(), 'dialog_control_style' => 'hidden']))->toThrow(ValidationException::class);
+ });
+ 
+@@ -44,14 +198,14 @@
+     expect($action->handle(auth()->user(), $changed)->version)->toBe(2);
+     expect(fn () => $action->handle(auth()->user(), [...$changed, 'cell_padding_inline' => 2]))->toThrow(ValidationException::class);
+     expect(fn () => $action->handle(auth()->user(), [...$changed, 'header_height' => 40, 'logo_height' => 32]))->toThrow(ValidationException::class);
+-    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($changed);
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($changed));
+ });
+ 
+ test('ordinary accounts cannot edit shared appearance and Reset only stages a draft', function () {
+     $original = AdminAppearanceSettings::findOrFail(1)->settings;
+     $page = Livewire::test(App\Filament\Pages\AdminAppearance::class)
+         ->fillForm(['cell_padding_block' => 4])->call('resetDefaults')->assertSet('data.cell_padding_block', 6);
+-    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($original));
+     $this->actingAs(User::factory()->create());
+     $page->call('save')->assertForbidden();
+ });
+@@ -61,7 +215,7 @@
+     Cache::put(AdminAppearance::CACHE_KEY, $original);
+ 
+     expect((new AdminAppearance)->current()['show_configurator_loading_indicator'])->toBeFalse();
+-    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($original));
+ 
+     Livewire::test(App\Filament\Pages\AdminAppearance::class)
+         ->fillForm(['show_configurator_loading_indicator' => true])->call('save')->assertHasNoFormErrors();
+@@ -79,7 +233,7 @@
+     Cache::put(AdminAppearance::CACHE_KEY, $original);
+ 
+     expect((new AdminAppearance)->current()['page_title_size'])->toBe(20);
+-    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($original));
+ });
+ 
+ test('admins can preview and save a page title size that fits the header', function () {
+@@ -87,7 +241,7 @@
+     $page = Livewire::test(App\Filament\Pages\AdminAppearance::class)
+         ->fillForm(['page_title_size' => 28, 'logo_height' => 28, 'header_height' => 48]);
+ 
+-    expect(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($original);
++    expect(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($original));
+     $preview = app(AdminAppearance::class)->variables($page->get('data'));
+     expect($preview['--aquestia-shell-heading-size'])->toBe('28px');
+     expect($preview['--aquestia-shell-heading-line-height'])->toBe('34px');
+@@ -217,6 +371,6 @@
+         $next = [...$changed, 'workspace_gap' => 12];
+         app(SaveAdminAppearanceSettings::class)->handle(auth()->user(), $next);
+         expect($appearance->current())->toBe($next)
+-            ->and(AdminAppearanceSettings::findOrFail(1)->settings)->toBe($next);
+-    });
+-});
++            ->and(appearanceSettingsByKey(AdminAppearanceSettings::findOrFail(1)->settings))->toBe(appearanceSettingsByKey($next));
++    });
++});
+diff --git a/resources/views/filament/resources/appearance-recovery-notice.blade.php b/resources/views/filament/resources/appearance-recovery-notice.blade.php
+new file mode 100644
+--- /dev/null
++++ b/resources/views/filament/resources/appearance-recovery-notice.blade.php
+@@ -0,0 +1,12 @@
++@if ($recovery !== null)
++    <x-filament::section>
++        <div role="status" aria-live="polite">
++            <p>{{ __('admin.appearance.recovery.notice') }}</p>
++            @can('manage-catalog')
++                <x-filament::link :href="\App\Filament\Pages\AdminAppearance::getUrl()">
++                    {{ __('admin.appearance.recovery.repair') }}
++                </x-filament::link>
++            @endcan
++        </div>
++    </x-filament::section>
++@endif
+diff --git a/tests/Feature/Catalog/CatalogSnapshotCommandTest.php b/tests/Feature/Catalog/CatalogSnapshotCommandTest.php
+new file mode 100644
+--- /dev/null
++++ b/tests/Feature/Catalog/CatalogSnapshotCommandTest.php
+@@ -0,0 +1,106 @@
++<?php
++
++use App\Models\Group;
++use App\Models\Product;
++use App\Services\CatalogSnapshots;
++use Illuminate\Cache\Lock;
++use Illuminate\Contracts\Cache\LockTimeoutException;
++use Illuminate\Contracts\Console\Kernel;
++use Illuminate\Support\Facades\Cache;
++use Illuminate\Support\Facades\DB;
++use Symfony\Component\Console\Input\ArrayInput;
++use Symfony\Component\Console\Output\BufferedOutput;
++
++/** @return array{status:int,output:string} */
++function snapshotTerminal(string $group, bool $invalidate = false): array
++{
++    $input = new ArrayInput(['command' => 'catalog:snapshot', 'group' => $group, '--invalidate' => $invalidate, '--no-ansi' => true]);
++    $output = new BufferedOutput;
++    $status = app(Kernel::class)->handle($input, $output);
++
++    return ['status' => $status, 'output' => $output->fetch()];
++}
++
++test('snapshot terminal rejects malformed IDs without changing data', function () {
++    $group = Group::factory()->create();
++    DB::disableQueryLog();
++
++    $result = snapshotTerminal('not-an-id', true);
++
++    expect($result['status'])->toBe(2);
++    expect($result['output'])->toContain('Provide a positive internal Group ID.');
++    expect((string) $group->fresh()->catalog_revision)->toBe('1');
++    expect(DB::logging())->toBeFalse();
++});
++
++test('snapshot terminal renders rejected Group admission before invalidation', function (string $kind) {
++    $group = Group::factory()->create(['is_active' => $kind !== 'unavailable']);
++    if ($kind === 'branch') {
++        Group::factory()->create(['parent_id' => $group->id]);
++    }
++    $snapshots = app(CatalogSnapshots::class);
++    $key = $snapshots->key($group->id);
++    Cache::put($key, ['unchanged' => true]);
++    DB::disableQueryLog();
++
++    $result = snapshotTerminal((string) $group->id, true);
++
++    expect($result['status'])->toBe(1);
++    expect(trim($result['output']))->not->toBeEmpty();
++    expect((string) $group->fresh()->catalog_revision)->toBe('1');
++    expect(Cache::get($key))->toBe(['unchanged' => true]);
++    expect(DB::logging())->toBeFalse();
++})->with(['unavailable', 'branch']);
++
++test('snapshot terminal returns valid leaf JSON and disables diagnostic query logging', function () {
++    $group = Group::factory()->create();
++    Product::factory()->for($group)->create();
++    DB::disableQueryLog();
++
++    $result = snapshotTerminal((string) $group->id);
++
++    expect($result['status'])->toBe(0);
++    $data = json_decode($result['output'], true, flags: JSON_THROW_ON_ERROR);
++    expect($data)->toMatchArray(['group_id' => (string) $group->id, 'revision' => '1', 'products' => 1]);
++    expect($data['json_bytes'])->toBeGreaterThan(0);
++    expect(DB::logging())->toBeFalse();
++});
++
++test('snapshot terminal reports lock contention and retains already applied invalidation', function (bool $invalidate) {
++    $group = Group::factory()->create();
++    $snapshots = app(CatalogSnapshots::class);
++    $key = $snapshots->key($group->id);
++    $lock = Mockery::mock(Lock::class);
++    $lock->shouldReceive('block')->once()->andThrow(new LockTimeoutException);
++    $cache = Mockery::mock(Cache::getFacadeRoot());
++    $cache->shouldReceive('lock')->once()->with($key.':rebuild', 60)->andReturn($lock);
++    Cache::swap($cache);
++    DB::disableQueryLog();
++
++    $result = snapshotTerminal((string) $group->id, $invalidate);
++
++    expect($result['status'])->toBe(1);
++    expect($result['output'])->toContain(__('catalog.messages.the_catalog_is_being_prepared_please_retry'));
++    expect((string) $group->fresh()->catalog_revision)->toBe($invalidate ? '2' : '1');
++    expect(Cache::has($key))->toBeFalse();
++    expect(DB::logging())->toBeFalse();
++})->with([false, true]);
++
++test('snapshot terminal renders unexpected failures without misclassifying them as contention', function () {
++    $group = Group::factory()->create();
++    $key = app(CatalogSnapshots::class)->key($group->id);
++    $lock = Mockery::mock(Lock::class);
++    $lock->shouldReceive('block')->once()->andThrow(new RuntimeException('Unexpected snapshot cache failure'));
++    $cache = Mockery::mock(Cache::getFacadeRoot());
++    $cache->shouldReceive('lock')->once()->with($key.':rebuild', 60)->andReturn($lock);
++    Cache::swap($cache);
++    DB::disableQueryLog();
++
++    $result = snapshotTerminal((string) $group->id);
++
++    expect($result['status'])->toBe(1);
++    expect($result['output'])->toContain('Unexpected snapshot cache failure');
++    expect($result['output'])->not->toContain(__('catalog.messages.the_catalog_is_being_prepared_please_retry'));
++    expect((string) $group->fresh()->catalog_revision)->toBe('1');
++    expect(DB::logging())->toBeFalse();
++});
+diff --git a/tests/Feature/Filament/ConfiguratorWorkspaceTest.php b/tests/Feature/Filament/ConfiguratorWorkspaceTest.php
+--- a/tests/Feature/Filament/ConfiguratorWorkspaceTest.php
++++ b/tests/Feature/Filament/ConfiguratorWorkspaceTest.php
+@@ -599,7 +599,11 @@
+ })->with(['active' => false, 'stashed' => true]);
+ 
+ test('V20 saved table defaults preserve active and stashed Attribute and Value edits through separate saves', function (bool $stash) {
+-    Option::factory()->count(3)->create();
++    Option::factory()->count(3)->sequence(
++        ['code' => 'X0'],
++        ['code' => 'X1'],
++        ['code' => 'X2'],
++    )->create();
+     [$configurator, $draft] = canonicalDefinitionFixture();
+     app(SaveConfiguratorDefinition::class)->handle(auth()->user(), $configurator, $draft);
+     $attributes = $configurator->attributes()->orderBy('display_order')->get();
+diff --git a/tests/TestDatabaseSafety.php b/tests/TestDatabaseSafety.php
+--- a/tests/TestDatabaseSafety.php
++++ b/tests/TestDatabaseSafety.php
+@@ -15,6 +15,35 @@
+         'driver' => 'mysql', 'host' => '127.0.0.1', 'port' => '3307',
+         'database' => 'configurator_catalog_test', 'username' => 'configurator_catalog_test',
+     ];
++
++    /** @var array<string, array<string, string>> */
++    private const MYSQL_PROFILES = [
++        'catalog' => self::MYSQL,
++        'rules' => [...self::MYSQL, 'database' => 'configurator_rules_test', 'username' => 'configurator_rules_test'],
++        'reconciliation' => [...self::MYSQL, 'database' => 'configurator_reconciliation_test', 'username' => 'configurator_reconciliation_test'],
++    ];
++
++    /** @param list<array<string, mixed>> $sources @return array<string, string> */
++    private static function mysqlTarget(array $sources): array
++    {
++        $profiles = [];
++        foreach ($sources as $source) {
++            if (! isset($source['CATALOG_MYSQL_TEST_PROFILE']) || $source['CATALOG_MYSQL_TEST_PROFILE'] === false) {
++                continue;
++            }
++            $profile = $source['CATALOG_MYSQL_TEST_PROFILE'];
++            if (! is_string($profile) || ! array_key_exists($profile, self::MYSQL_PROFILES)) {
++                self::refuse('unknown MySQL test profile', true);
++            }
++            $profiles[] = $profile;
++        }
++        $profiles = array_values(array_unique($profiles));
++        if (count($profiles) > 1) {
++            self::refuse('conflicting MySQL test profiles', true);
++        }
++
++        return self::MYSQL_PROFILES[$profiles[0] ?? 'catalog'];
++    }
+ 
+     public static function assertBeforeBootstrap(bool $mysqlRun = false): void
+     {
+@@ -38,10 +67,11 @@
+         }
+         $expected = ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => ':memory:'];
+         if ($mysqlRun) {
++            $target = self::mysqlTarget($sources);
+             $expected = [
+                 'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql',
+-                'DB_HOST' => self::MYSQL['host'], 'DB_PORT' => self::MYSQL['port'],
+-                'DB_DATABASE' => self::MYSQL['database'], 'DB_USERNAME' => self::MYSQL['username'],
++                'DB_HOST' => $target['host'], 'DB_PORT' => $target['port'],
++                'DB_DATABASE' => $target['database'], 'DB_USERNAME' => $target['username'],
+             ];
+         }
+         foreach ($expected as $key => $value) {
+@@ -73,7 +103,7 @@
+             return;
+         }
+         if ($mysqlRun) {
+-            foreach (self::MYSQL as $key => $expected) {
++            foreach (self::mysqlTarget([$_ENV, $_SERVER, getenv()]) as $key => $expected) {
+                 if (! isset($connection[$key]) || ! is_scalar($connection[$key]) || (string) $connection[$key] !== $expected) {
+                     self::refuse('resolved connection '.$key.' differs from the disposable target', true);
+                 }
+diff --git a/tests/Unit/ReconciliationTestDatabaseSafetyTest.php b/tests/Unit/ReconciliationTestDatabaseSafetyTest.php
+new file mode 100644
+--- /dev/null
++++ b/tests/Unit/ReconciliationTestDatabaseSafetyTest.php
+@@ -0,0 +1,116 @@
++<?php
++
++use Symfony\Component\Process\Process;
++use Tests\TestDatabaseSafety;
++
++/** @return array<string, string|false> */
++function reconciliationTestEnvironment(): array
++{
++    return [
++        'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3307',
++        'DB_DATABASE' => 'configurator_reconciliation_test', 'DB_USERNAME' => 'configurator_reconciliation_test',
++        'CATALOG_MYSQL_TEST_PROFILE' => 'reconciliation',
++        'DB_URL' => false, 'DATABASE_URL' => false, 'DB_SOCKET' => false, 'APP_CONFIG_CACHE' => false,
++        'APP_BASE_PATH' => false, 'LARAVEL_STORAGE_PATH' => false,
++    ];
++}
++
++test('reconciliation bootstrap admits only its exact disposable test target before application boot', function (array $override, bool $accepted) {
++    $process = new Process([PHP_BINARY, 'tests/bootstrap-mysql.php'], dirname(__DIR__, 2), [...reconciliationTestEnvironment(), ...$override]);
++    $process->run();
++    expect($process->isSuccessful())->toBe($accepted);
++    if (! $accepted) {
++        expect($process->getErrorOutput().$process->getOutput())->toContain('Unsafe catalog MySQL test configuration');
++    }
++})->with([
++    'exact test target' => [[], true],
++    'browser database' => [['DB_DATABASE' => 'configurator_reconciliation_qa'], false],
++    'browser user' => [['DB_USERNAME' => 'configurator_reconciliation_qa'], false],
++    'catalog database' => [['DB_DATABASE' => 'configurator_catalog_test'], false],
++    'rules user' => [['DB_USERNAME' => 'configurator_rules_test'], false],
++    'development database' => [['DB_DATABASE' => 'configurator_catalog_dev'], false],
++    'admin account' => [['DB_USERNAME' => 'root'], false],
++    'other host' => [['DB_HOST' => 'localhost'], false],
++    'other port' => [['DB_PORT' => '3306'], false],
++    'unselected profile' => [['CATALOG_MYSQL_TEST_PROFILE' => false], false],
++    'other profile' => [['CATALOG_MYSQL_TEST_PROFILE' => 'rules'], false],
++    'unknown profile' => [['CATALOG_MYSQL_TEST_PROFILE' => 'qa'], false],
++    'url override' => [['DB_URL' => 'mysql://root@127.0.0.1/live'], false],
++    'socket override' => [['DB_SOCKET' => '/tmp/mysql.sock'], false],
++    'configuration override' => [['APP_CONFIG_CACHE' => '/tmp/config.php'], false],
++]);
++
++test('reconciliation profile refuses conflicting environment sources', function () {
++    expect(fn () => TestDatabaseSafety::assertEnvironment(reconciliationTestEnvironment(), ['CATALOG_MYSQL_TEST_PROFILE' => 'catalog'], [], true))
++        ->toThrow(RuntimeException::class, 'conflicting MySQL test profiles');
++    expect(fn () => TestDatabaseSafety::assertEnvironment(reconciliationTestEnvironment(), [], ['DB_DATABASE' => 'configurator_reconciliation_qa'], true))
++        ->toThrow(RuntimeException::class, 'differs from the disposable target');
++});
++
++test('reconciliation profile checks resolved targets and overrides independently of the connection alias without opening PDO', function (array $override, bool $accepted) {
++    $connection = [
++        'driver' => 'mysql', 'host' => '127.0.0.1', 'port' => '3307',
++        'database' => 'configurator_reconciliation_test', 'username' => 'configurator_reconciliation_test', 'name' => 'custom_alias',
++    ];
++    $code = 'require "tests/bootstrap-mysql.php"; Tests\\TestDatabaseSafety::assertConnection(json_decode($argv[1], true), true); echo "SAFE_TARGET";';
++    $process = new Process([PHP_BINARY, '-r', $code, json_encode([...$connection, ...$override], JSON_THROW_ON_ERROR)], dirname(__DIR__, 2), reconciliationTestEnvironment());
++    $process->run();
++    expect($process->isSuccessful())->toBe($accepted);
++    if ($accepted) {
++        expect($process->getOutput())->toBe('SAFE_TARGET');
++    } else {
++        expect($process->getErrorOutput().$process->getOutput())->toContain('Unsafe catalog MySQL test configuration');
++    }
++})->with([
++    'exact target through alias' => [[], true],
++    'browser database' => [['database' => 'configurator_reconciliation_qa'], false],
++    'browser user' => [['username' => 'configurator_reconciliation_qa'], false],
++    'rules database' => [['database' => 'configurator_rules_test'], false],
++    'root account' => [['username' => 'root'], false],
++    'other port' => [['port' => 3306], false],
++    'read override' => [['read' => ['database' => 'configurator_reconciliation_qa']], false],
++    'write override' => [['write' => ['database' => 'configurator_reconciliation_qa']], false],
++    'direct override' => [['direct' => ['database' => 'configurator_reconciliation_qa']], false],
++    'url override' => [['url' => 'mysql://root@127.0.0.1/live'], false],
++    'socket override' => [['unix_socket' => '/tmp/mysql.sock'], false],
++    'PDO options override' => [['options' => [1002 => 'USE live']], false],
++]);
++
++test('adding reconciliation keeps existing catalog and rules target selection strict', function (string $profile, string $target) {
++    $environment = [...reconciliationTestEnvironment(), 'CATALOG_MYSQL_TEST_PROFILE' => $profile, 'DB_DATABASE' => $target, 'DB_USERNAME' => $target];
++    TestDatabaseSafety::assertEnvironment($environment, [], [], true);
++    expect(fn () => TestDatabaseSafety::assertEnvironment([...$environment, 'DB_DATABASE' => 'configurator_reconciliation_test'], [], [], true))
++        ->toThrow(RuntimeException::class);
++})->with([
++    'catalog' => ['catalog', 'configurator_catalog_test'],
++    'rules' => ['rules', 'configurator_rules_test'],
++]);
++
++test('a late QA alias is refused by the real connection factory before PDO is opened', function () {
++    $code = <<<'PHP'
++require 'tests/bootstrap-mysql.php';
++$container = new Illuminate\Container\Container;
++$target = ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => '3307', 'database' => 'configurator_reconciliation_test', 'username' => 'configurator_reconciliation_test'];
++$container->instance('config', new Illuminate\Config\Repository(['database' => ['connections' => ['qa_alias' => [...$target, 'database' => 'configurator_reconciliation_qa']]]]));
++$factory = new Tests\TestDatabaseConnectionFactory($container, true);
++$factory->make($target, 'qa_alias');
++echo 'PDO_REACHED';
++PHP;
++    $process = new Process([PHP_BINARY, '-r', $code], dirname(__DIR__, 2), reconciliationTestEnvironment());
++    $process->run();
++    expect($process->isSuccessful())->toBeFalse();
++    expect($process->getErrorOutput().$process->getOutput())
++        ->toContain('resolved connection database differs from the disposable target')
++        ->not->toContain('PDO_REACHED');
++});
++
++test('the persistent QA tuple cannot enter any test environment mode', function (?string $profile) {
++    $environment = [...reconciliationTestEnvironment(), 'DB_DATABASE' => 'configurator_reconciliation_qa', 'DB_USERNAME' => 'configurator_reconciliation_qa'];
++    if ($profile === null) {
++        unset($environment['CATALOG_MYSQL_TEST_PROFILE']);
++    } else {
++        $environment['CATALOG_MYSQL_TEST_PROFILE'] = $profile;
++    }
++    expect(fn () => TestDatabaseSafety::assertEnvironment($environment, [], [], $profile !== null))
++        ->toThrow(RuntimeException::class);
++})->with(['SQLite' => [null], 'catalog' => ['catalog'], 'rules' => ['rules'], 'reconciliation' => ['reconciliation']]);
+diff --git a/phpunit.reconciliation-mysql.xml b/phpunit.reconciliation-mysql.xml
+new file mode 100644
+--- /dev/null
++++ b/phpunit.reconciliation-mysql.xml
+@@ -0,0 +1,40 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
++         bootstrap="tests/bootstrap-mysql.php" colors="true">
++    <testsuites>
++        <testsuite name="Reconciliation MySQL">
++            <file>tests/Feature/Catalog/MySql/CatalogBatchConcurrencyTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogCreationConcurrencyTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogDiscoveryTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogExportPublicationTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogImportTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogNativeImportConcurrencyTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogSchemaTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogSnapshotTest.php</file>
++            <file>tests/Feature/Catalog/MySql/CatalogStatusConcurrencyTest.php</file>
++            <file>tests/Feature/Catalog/MySql/ConfiguratorIntegrityTest.php</file>
++            <file>tests/Feature/Catalog/MySql/ConfiguratorPreviewSaveConcurrencyTest.php</file>
++            <file>tests/Feature/Catalog/MySql/ProductFieldReferenceMigrationTest.php</file>
++            <!-- RetainedDataTransfer requires the original catalog target; its seven MySQL cases remain unrun here. -->
++            <file>tests/Feature/ConfiguratorCreationFlowTest.php</file>
++            <file>tests/Feature/Filament/AdminAppearanceTest.php</file>
++            <file>tests/Feature/Catalog/CatalogSnapshotCommandTest.php</file>
++        </testsuite>
++    </testsuites>
++    <source><include><directory>app</directory></include></source>
++    <php>
++        <env name="CATALOG_MYSQL_TEST_PROFILE" value="reconciliation"/>
++        <env name="APP_ENV" value="testing"/>
++        <env name="DB_CONNECTION" value="mysql"/>
++        <env name="DB_HOST" value="127.0.0.1"/>
++        <env name="DB_PORT" value="3307"/>
++        <env name="DB_DATABASE" value="configurator_reconciliation_test"/>
++        <env name="DB_USERNAME" value="configurator_reconciliation_test"/>
++        <env name="BCRYPT_ROUNDS" value="4"/>
++        <env name="CACHE_STORE" value="array"/>
++        <env name="SESSION_DRIVER" value="array"/>
++        <env name="QUEUE_CONNECTION" value="sync"/>
++        <env name="MAIL_MAILER" value="array"/>
++    </php>
++</phpunit>

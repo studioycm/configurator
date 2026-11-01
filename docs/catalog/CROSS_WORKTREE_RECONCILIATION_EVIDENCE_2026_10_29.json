@@ -1,0 +1,2040 @@
+{
+  "format_version": 1,
+  "title": "Cross-worktree reconciliation evidence and coverage",
+  "review_date": "2026-10-29",
+  "timezone": "Asia/Jerusalem",
+  "application_baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+  "repair_merge": "5788905a4a0ac95f26cf435cac4d82c09b576dd0",
+  "authority": "Four new audit documentation files only; no code/test/runtime/DB/Git/checkout/outbound operations",
+  "report": "/Users/studioycm/Herd/configurator/docs/catalog/CROSS_WORKTREE_RECONCILIATION_2026_10_29.md",
+  "scope": "Original four streams; Writing is downstream additional feature. Connected source/assertion and finding-family reconciliation, not all changed lines or all historical clause/runtime coverage.",
+  "protected_documents_before": {
+    "docs/README.md": "babc7cc5030ec674d781c146bc681800be14843858100b49ef576a46e58b1470",
+    "docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md": "ab7174e56a85cbaddad186ee589fd8b5b0b3d62bdee176a4924a951a50c4c340",
+    "docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md": "1a17540928213ab0c8bd14fe7fb4e44f9665541d78dc87d7979b118b448c38ca",
+    "docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md": "02abc202356d8fc922c131b476b1af2afe2d711e8e0e7b83c7b14e0212159cd6",
+    "docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md": "149e34765bb5b9f358b354d3462426ea99add001139f48fc994c632ac308434c",
+    "docs/catalog/CATALOG_AND_IMAGES_PREMERGE_PLAN.md": "773506acc26208b8c7d0b972e504817839bfc08daaa6b940742128f645f65d3a",
+    "docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md": "7988f20d4a5c9d629eb38f1495daf0a7a50bc308658e0e1ef4cc57666beadd4e",
+    "docs/catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md": "9c66dcbf1120ad72fd89de7fb9be85e2c51134ebb0f02124649f04d5f90a5855",
+    "docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md": "d612d850655f4d084edf240d8e15e63c559967b5f8258513b31f012ac2c2650c"
+  },
+  "initial_status": [
+    " M docs/README.md",
+    " M docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md",
+    " M docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md",
+    "?? docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+    "?? docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md",
+    "?? docs/catalog/CATALOG_AND_IMAGES_PREMERGE_PLAN.md",
+    "?? docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md",
+    "?? docs/catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md",
+    "?? docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md"
+  ],
+  "preservation_receipt_original": {
+    "path": "/private/tmp/catalog-images-docs-20261028/before.json",
+    "availability": "present at this review; selected Images/prototype hashes embedded below; primary safe-source aggregate verified separately"
+  },
+  "protected_roots": {
+    "images": {
+      "root": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator",
+      "head": "244b305d083a90c731cd4bde23d996b4db0f8f3d",
+      "hashes": {
+        "app/Actions/SaveCatalogGroup.php": "97ba81b9f34f4b1da1a960fe0b0ad1532ae86dcd395070bd08d3756d190cd5c4",
+        "app/Actions/SaveCatalogMainImage.php": "f65271081b32196a3368c026c60186b21cef015d4dccf04fc3cd8efe7b495cc8",
+        "app/Actions/SaveCatalogProduct.php": "c9f2c7dce210ac4e8e3a8d33c6bbbe781eb7904078474a205c0de882d2df1b47",
+        "app/DTO/CatalogAssetChange.php": "522d79e87b48517ea807a2da1d1c315e3b7483c4b6f74a57cbbad5a68be2caaf",
+        "app/Filament/Pages/CatalogImages.php": "72118ae157ddd5c45348698de6bec20c7e25ee595695f5f4a47d5d35fbcc9986",
+        "app/Filament/Resources/CatalogMainImageField.php": "7a92715cd39657c7df1e84b5efa5b22da4b4a4dc0517d8efe32e094f2547f5b2",
+        "app/Filament/Resources/Groups/Pages/CreateGroup.php": "10867c23d38beae18ed8e0b88cacb9d5ac38414618e09ea64c4f631557b70d8f",
+        "app/Filament/Resources/Groups/Pages/EditGroup.php": "0e33b56cffd62560f8869e5d522235702064ed11bbc4ce9850e83e895bd1a2be",
+        "app/Filament/Resources/Groups/Schemas/GroupForm.php": "946112e28a07f377297770c3f1e5dc77b18deb3a2421949f068bca58f0c27c30",
+        "app/Filament/Resources/InteractsWithCatalogAssetBrowsing.php": "dca755d277edde7735add4b69f4a574128af76e572ae2cd7da34d3cae845fdc0",
+        "app/Filament/Resources/InteractsWithCatalogMainImage.php": "4fec569b1dd498707df71ed0356c5785cfbb80641eb9efc58aa9fbaf75eb9dd2",
+        "app/Filament/Resources/Products/Pages/EditProduct.php": "c22c1d359a59628790a106f50c833fdcb4e88fb5869cacbc15ab0653cccb887c",
+        "app/Filament/Resources/Products/Schemas/ProductForm.php": "638a1d61a1db6d1408134e5eb52a81771ab88c72f76d7fe1404a054a9efdf59b",
+        "app/Filament/Resources/SplitCreateRecord.php": "121fe2a2f3c159e77c68d57249fb0999751fc226d6f5d7ff8157f8c15dfe1ac1",
+        "app/Filament/Resources/TableBrowserProfile.php": "20e10be520cd0c51d83e8bb2504c97bd53eaad8da49cb802a8e9a8bf3dd0f6f4",
+        "app/Http/Controllers/CatalogAssetSourcePreviewController.php": "7799391fbf091196eea62ae9b40d07c7b62fdc16b487b41c4bb16d20bae935ff",
+        "app/Http/Controllers/CatalogMainImageUploadController.php": "582f50d30a605f20e2512992ecdb9328a9b7ae65d35c31cda19fe88629438af5",
+        "app/Models/CatalogAsset.php": "b87b39d27602674c0349254cd04dc90014a79b97b756567c1076c06ec695bd66",
+        "app/Models/CatalogAssetBatch.php": "c780fd5ab8bfd804760047a94573de9b36376fe91ac18510620f4405272f62d0",
+        "app/Models/CatalogAssetBatchItem.php": "a8c35413d1505055e9471556220ee2c98c2c9609dc868b8e3264cb3529ca2589",
+        "app/Models/CatalogAssetImportSource.php": "14fd524b110c6c70a928c3e57f47167880fc7fc2161af119e1b4d5879aab0c84",
+        "app/Models/Group.php": "3f74b6a5e2204b13f065d016414ad0f507bd8446dc2ad09b054465551bfffa62",
+        "app/Models/Product.php": "5a2aca682cdb69f53b5ee32b7f85705cdb6d269fb5ba5b32aae0416b0f54e0ff",
+        "app/Providers/AppServiceProvider.php": "ad2d60a99872af0e1f705da5ae48f22df99315d57cfc1df2635f9ef71402a5f1",
+        "app/Providers/Filament/AdminPanelProvider.php": "a5dae5fcb07f3e7fb8b1eec173c2419316ab5dc12cb4b070559d55d33ec55fad",
+        "app/Services/CatalogAssetAssignments.php": "95ed42bfd01e81c221e9066106cdc7bfe71b4561ce1b80f7e63dab7ea36bb8b6",
+        "app/Services/CatalogAssetDisplay.php": "6f96d2694dbadcba3573a9329492b6cfc93e6cba83f09f908950285d07d6ff55",
+        "app/Services/CatalogAssetFiles.php": "aa3943d0410e12cb395dfff89f1d8713e14b37f9554957a62446858b804635c5",
+        "app/Services/CatalogAssetPathGenerator.php": "319329ade21dc5c699125db43d6a5ef694be3ec3c9c3e327e70778733f21eaee",
+        "app/Services/CatalogAssetRecordSearch.php": "951ce75403d97945835e26450cbe1287c04eb8ba5dac3341527279fa7c4a9a7b",
+        "app/Services/CatalogAssetRecordSequence.php": "4dde3e6699c510a41fb461aff66f07bb6899dd22a9c1274da1e2d3a4dd932e7f",
+        "app/Services/CatalogAssetSourceFiles.php": "335562075cd52fb58278864f10745e3329366a9a3aad5c3deea51988e29081e8",
+        "app/Services/CatalogAssetSources.php": "2ccb14586f26704becd853f009ff648bb3c4d0813645fa3e9193a50fc1367765",
+        "app/Services/CatalogAssetStorage.php": "eb6325e2742fb5e569597aa28609428dc012d6aa87ed456aaea3a46c91eb2e28",
+        "app/Services/CatalogAssetTargets.php": "836b4b44b2a6a9b8bf7c2348fb8a52dc930a75492112372c1367ade7e7bf8596",
+        "app/Services/CatalogMainImageEdits.php": "c21a51b11a8dd68fadac33b9e8a1211ba164761043cb487f8c828e78ec9d40c7",
+        "config/catalog-assets.php": "39a653a6525a56c7edf715d7a6c43c710041298a9e7dfd491be9bbb5452d7ae4",
+        "config/filesystems.php": "ff7d2911a7be9132aacb5a9285ab9f1ba393f12274455cc9f1aca8009d8e4fac",
+        "config/media-library.php": "f0603e78db14695b8ca3634baba6669dfad4ee9a044d0bae523d24971ec83c39",
+        "database/factories/CatalogAssetBatchFactory.php": "3b5de1468556b213b565671b76e8308787c351d645f6aaabbed933d7eb70600f",
+        "database/factories/CatalogAssetBatchItemFactory.php": "91c1e2d6743b60ee41e67b58e031c78e66d84e44ed5d1884328816fef7628486",
+        "database/factories/CatalogAssetFactory.php": "5ab3b63c8d0700eca9077a5dcd3af65511f316ad63ffb52658cf19f36e958ac9",
+        "database/factories/CatalogAssetImportSourceFactory.php": "b0da5cd3afe0bf0fac26459ccfff38ed8d429abb144ffdb3a8b154f7b1b7e636",
+        "database/migrations/2026_10_23_155712_create_catalog_assets_table.php": "bd60d5c5cc48dfee95bcaafbd294643a3e0178a39c35440bd68cdf046a08f0fa",
+        "database/migrations/2026_10_23_155713_create_catalog_asset_import_sources_table.php": "055139e7c3709fdc07faf1f5f21f190318e419e7c87b9769be1a9f11d0e5604a",
+        "database/migrations/2026_10_23_155714_create_catalog_asset_batches_table.php": "f72674de6da980fc679c0b75b8fdcb3c6fd7277feeda574860576dbac072dbfd",
+        "database/migrations/2026_10_23_155715_create_catalog_asset_batch_items_table.php": "c6596baf81b1632f73fb35f7076f80bbe476959e56a97186c969ff4f1adf8d57",
+        "database/migrations/2026_10_23_155716_add_main_image_id_to_catalog_records.php": "01784f8fde3e64fcf167416d36fd72545f5d1b928af42eed04f96c002a959e37",
+        "docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md": "c7bfe575bc87d4e97ee2c131c1e7a2c441cde5c9fa8b8d8e8ff7e12a82aba159",
+        "docs/catalog/CATALOG_IMAGES_CONTINUATION_CHECKLIST_2026_10_28.md": "47dfc3ce0336c2e9049f9d44de61fc1fd21e7d5c8f3024aa6ce18bd9150a1b75",
+        "docs/catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md": "fd98061976383846edbb32c115d62cfdaaa68c1404377d871d844f45af5eda01",
+        "docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md": "4eec13df21545ac8362fdee9acb80be1e3bb19b1734311a514fa1e62e1d0ca76",
+        "docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md": "42fb76df7b36d23383ed8cdc3508b7a68f5280d8cdca13ca922d7ed23f17bedc",
+        "docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md": "cc2146099ab9f8771ab350e04c582f6a544d6013b7098ba0eb23e9f8babf6a41",
+        "lang/en/catalog-assets.php": "6fdb48cb7680fb48ecd6106094312afc4d77d3662c23b96f8e932147b94ac0c3",
+        "resources/css/filament/admin/theme.css": "6fbd4dbcca75a610430c5ea9eb987863199d2b1f71e3a8a2eb76de94354e4829",
+        "resources/js/admin-profile.js": "ead6d261cee514648cb99004fbfa6893423da74632f645d6435c2c45302944ae",
+        "resources/js/app.js": "94ed2138492a1191a5af8102164fa676387597ce601b49b7d809d4b980b5390e",
+        "resources/js/catalog-asset-search-highlight.js": "ca3f2fceaa3d74f3c0d0e82c57e2873fcf9f81eb3372df121c569f90f6586095",
+        "resources/js/catalog-asset-upload.js": "ba4c9f9460fdebb118e6860e926479fa01917f778b2274aed14165b5156d4486",
+        "resources/js/catalog-image-editor.js": "b978dc257acaf7719aea47caf5fb929c8850205319816c6ef5823e3039e9686f",
+        "resources/views/components/catalog/main-image.blade.php": "7e282d97acedbb84ea70bf5ea0bedf7b956847561f3f3ee04549041e2954783c",
+        "resources/views/filament/forms/catalog-main-image.blade.php": "b3cb2833c632ce94dac563375dfcbb3e3dfce5c137691872c1d1f18e4098e1d8",
+        "resources/views/filament/pages/catalog-images-table-header.blade.php": "2d5f2b0291e7dc44ba74bc3fa930d50523d7a14f05b7e13627d0c1d595789137",
+        "resources/views/filament/pages/catalog-images.blade.php": "3d722d2468f4d02ba237e4d7628fb72ea9e47c5acefecd9fd6d473da53994529",
+        "resources/views/filament/resources/catalog-asset-pagination.blade.php": "07bfdeb4de51aa90128855237014a6866fefd2cfec0106710f6c2d774585e398",
+        "resources/views/filament/resources/catalog-asset-search-status.blade.php": "21fa0cbe57f257b1ebb829f74cc662bae42977d5171b822038bf61510c4b40ee",
+        "resources/views/filament/resources/catalog-asset-search.blade.php": "481f783d69be3a9857e7d2a6aa528cf0f96214ad5a9517d14c7b6cb031d4e5f0",
+        "routes/web.php": "2db1655f6bcb8e13e5085dc34533af3541ef94c68e055ee5a20b4173f3cab5f9",
+        "tests/Feature/Catalog/CatalogAssetAssignmentTest.php": "d660152f03a9a28e351b56b33bc97a322c6a5e931eb3ffe674d21f1c70f08e6a",
+        "tests/Feature/Catalog/CatalogAssetDisplayTest.php": "8373aac17dd9982d77430a50f33e95daa067723c2acbc9dd811b87472807320e",
+        "tests/Feature/Catalog/CatalogAssetFoundationTest.php": "ed99a3e64d2fb6d04dd31718d78149e5c00e462eb2cbce7dace3a574b1c7b1b5",
+        "tests/Feature/Catalog/CatalogAssetRecordSearchTest.php": "f9982040533afadf8eac04d478009aa2948c3ca3a7d5792299a2b51479afbc71",
+        "tests/Feature/Catalog/CatalogAssetRecordSequenceTest.php": "b9e547ece574d805790a2e3ef16afb593a7904b2ed25aa9d0e2ae835c26a1c96",
+        "tests/Feature/Catalog/CatalogAssetSourceFilesTest.php": "5a8d66c0ecd43be76b07eb5e73e1dee7a1308a0a1386f5696c7f9ea159877e7b",
+        "tests/Feature/Catalog/CatalogAssetSourcePreviewTest.php": "d767b81d1f9c26e4667ca8c3974ed42b7da9239da9d17c1dff695ff6496cacbe",
+        "tests/Feature/Catalog/CatalogAssetSourcesTest.php": "b8226223add46a214abb0e77c872bf9849d611c262675c021c4b75ac8f8e5b07",
+        "tests/Feature/Catalog/CatalogAssetStorageTest.php": "046c2de6f43e238510ca3b0a4fdbb9924e8f8da29c0b27bc34c80d56da85e16c",
+        "tests/Feature/Catalog/CatalogAssetTargetsTest.php": "17ee5d88af5df8cec298b4b336bf69468063ce2ec4c9f28538d47a82f45de75d",
+        "tests/Feature/Catalog/CatalogMainImageEditsTest.php": "2b41ec46c6f520f9d99b1f269ebe2c5d85fc8865f84d63061cbf354374c17f33",
+        "tests/Feature/Catalog/MySql/CatalogAssetConcurrencyTest.php": "511059e0b2a264053c8971e3364d2868b04880ada42b0f8d9c9e4e5d2ea95b92",
+        "tests/Feature/CatalogAssetTransactionScopeTest.php": "b4e5a4545f693cb66f8c71958fd7dd2a4ba375177bd420d165d7539b6a033c1f",
+        "tests/Feature/Filament/CatalogAssetBrowsingTest.php": "8a5094d9d929b5fea297286af52047f190db6a170b92a54eb74348950e70f3ae",
+        "tests/Feature/Filament/CatalogImagesEditingTest.php": "053d90f8e8f9acc855650480e3192bf4e87d866fead439b25f11fe01db8e9373",
+        "tests/Feature/Filament/CatalogImagesNavigationTest.php": "db617241f8911d8156dc0cc09e9f18d749dbe466b770563ce593abc5dc93ae7c",
+        "tests/Feature/Filament/CatalogMainImageFieldTest.php": "0a37428a9b52e8fcbb171602d4d1c762f80ce183e7e39356a19b8ea2ec99f506",
+        "tests/Pest.php": "47144851907f95ca6ceb18edd32e5f6160df0c66aca07b077b257666d6047dcf",
+        "tests/Unit/AdminProfile.test.js": "71a311ce048fb9578666a63deef403443dbc9abf54b8ee5fd1be609753134940",
+        "tests/Unit/CatalogAssetChangeTest.php": "7d7e3218de74b98b2cc3fff1267a9c0043eccbbd1832952157cef41a587e6938",
+        "tests/Unit/CatalogAssetSearchHighlight.test.js": "89d7c11e3d3d1cb7ea8c4fc5d0ef8546770f698171f8b7b4590e640521cc125e",
+        "tests/Unit/CatalogAssetUpload.test.js": "cba0d0fa2588b21e9c920b89d00cf9f90539b6cb96afd1321573d1057ac7ff72",
+        "tests/Unit/CatalogImageEditor.test.js": "236378a25114de855ec3fce91a8aee83d7849ef2203aad57a64a70172853f4bb"
+      },
+      "status": [
+        " M app/Actions/SaveCatalogGroup.php",
+        " M app/Actions/SaveCatalogProduct.php",
+        " M app/Filament/Resources/Groups/Pages/CreateGroup.php",
+        " M app/Filament/Resources/Groups/Pages/EditGroup.php",
+        " M app/Filament/Resources/Groups/Schemas/GroupForm.php",
+        " M app/Filament/Resources/Products/Pages/EditProduct.php",
+        " M app/Filament/Resources/Products/Schemas/ProductForm.php",
+        " M app/Filament/Resources/SplitCreateRecord.php",
+        " M app/Filament/Resources/TableBrowserProfile.php",
+        " M app/Models/Group.php",
+        " M app/Models/Product.php",
+        " M app/Providers/AppServiceProvider.php",
+        " M app/Providers/Filament/AdminPanelProvider.php",
+        " M config/filesystems.php",
+        " M config/media-library.php",
+        " M docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md",
+        " M resources/css/filament/admin/theme.css",
+        " M resources/js/admin-profile.js",
+        " M resources/js/app.js",
+        " M routes/web.php",
+        " M tests/Pest.php",
+        " M tests/Unit/AdminProfile.test.js",
+        "?? app/Actions/SaveCatalogMainImage.php",
+        "?? app/DTO/CatalogAssetChange.php",
+        "?? app/Filament/Pages/CatalogImages.php",
+        "?? app/Filament/Resources/CatalogMainImageField.php",
+        "?? app/Filament/Resources/InteractsWithCatalogAssetBrowsing.php",
+        "?? app/Filament/Resources/InteractsWithCatalogMainImage.php",
+        "?? app/Http/Controllers/CatalogAssetSourcePreviewController.php",
+        "?? app/Http/Controllers/CatalogMainImageUploadController.php",
+        "?? app/Models/CatalogAsset.php",
+        "?? app/Models/CatalogAssetBatch.php",
+        "?? app/Models/CatalogAssetBatchItem.php",
+        "?? app/Models/CatalogAssetImportSource.php",
+        "?? app/Services/CatalogAssetAssignments.php",
+        "?? app/Services/CatalogAssetDisplay.php",
+        "?? app/Services/CatalogAssetFiles.php",
+        "?? app/Services/CatalogAssetPathGenerator.php",
+        "?? app/Services/CatalogAssetRecordSearch.php",
+        "?? app/Services/CatalogAssetRecordSequence.php",
+        "?? app/Services/CatalogAssetSourceFiles.php",
+        "?? app/Services/CatalogAssetSources.php",
+        "?? app/Services/CatalogAssetStorage.php",
+        "?? app/Services/CatalogAssetTargets.php",
+        "?? app/Services/CatalogMainImageEdits.php",
+        "?? config/catalog-assets.php",
+        "?? database/factories/CatalogAssetBatchFactory.php",
+        "?? database/factories/CatalogAssetBatchItemFactory.php",
+        "?? database/factories/CatalogAssetFactory.php",
+        "?? database/factories/CatalogAssetImportSourceFactory.php",
+        "?? database/migrations/2026_10_23_155712_create_catalog_assets_table.php",
+        "?? database/migrations/2026_10_23_155713_create_catalog_asset_import_sources_table.php",
+        "?? database/migrations/2026_10_23_155714_create_catalog_asset_batches_table.php",
+        "?? database/migrations/2026_10_23_155715_create_catalog_asset_batch_items_table.php",
+        "?? database/migrations/2026_10_23_155716_add_main_image_id_to_catalog_records.php",
+        "?? docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md",
+        "?? docs/catalog/CATALOG_IMAGES_CONTINUATION_CHECKLIST_2026_10_28.md",
+        "?? docs/catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md",
+        "?? docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md",
+        "?? docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md",
+        "?? lang/en/catalog-assets.php",
+        "?? resources/js/catalog-asset-search-highlight.js",
+        "?? resources/js/catalog-asset-upload.js",
+        "?? resources/js/catalog-image-editor.js",
+        "?? resources/views/components/catalog/main-image.blade.php",
+        "?? resources/views/filament/forms/catalog-main-image.blade.php",
+        "?? resources/views/filament/pages/catalog-images-table-header.blade.php",
+        "?? resources/views/filament/pages/catalog-images.blade.php",
+        "?? resources/views/filament/resources/catalog-asset-pagination.blade.php",
+        "?? resources/views/filament/resources/catalog-asset-search-status.blade.php",
+        "?? resources/views/filament/resources/catalog-asset-search.blade.php",
+        "?? tests/Feature/Catalog/CatalogAssetAssignmentTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetDisplayTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetFoundationTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetRecordSearchTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetRecordSequenceTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetSourceFilesTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetSourcePreviewTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetSourcesTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetStorageTest.php",
+        "?? tests/Feature/Catalog/CatalogAssetTargetsTest.php",
+        "?? tests/Feature/Catalog/CatalogMainImageEditsTest.php",
+        "?? tests/Feature/Catalog/MySql/CatalogAssetConcurrencyTest.php",
+        "?? tests/Feature/CatalogAssetTransactionScopeTest.php",
+        "?? tests/Feature/Filament/CatalogAssetBrowsingTest.php",
+        "?? tests/Feature/Filament/CatalogImagesEditingTest.php",
+        "?? tests/Feature/Filament/CatalogImagesNavigationTest.php",
+        "?? tests/Feature/Filament/CatalogMainImageFieldTest.php",
+        "?? tests/Unit/CatalogAssetChangeTest.php",
+        "?? tests/Unit/CatalogAssetSearchHighlight.test.js",
+        "?? tests/Unit/CatalogAssetUpload.test.js",
+        "?? tests/Unit/CatalogImageEditor.test.js"
+      ]
+    },
+    "prototype": {
+      "root": "/Users/studioycm/.codex/visualizations/2026/10/18/01a14fee-762d-7661-acdc-8d5213474de9/catalog-review-site",
+      "head": "b6395c56d4ab845baf2d80a89bbb115058db7573",
+      "hashes": {
+        ".gitignore": "a39855a63e3a84e8497f865c3b1ffe4d7fbc1798570c6c9b5f81db9018c3bf3a",
+        ".openai/hosting.json": "1420d51ce9d885d4d1465f56dca7489891eb0f7ab15122c35a303855882a75a5",
+        "dist/app.mjs": "4784d578115ec782478f838b51ec9fda2b4cf7b46494e8c547beaaff5e3a94fe",
+        "dist/assets/aquestia-logo-dark.png": "198735eb32b9a4e3314f7bec2db54aa9f2601a91f7917c1bc3f0abc0e3ea3e5e",
+        "dist/assets/aquestia-logo.png": "9b92eafd3192d6dccd792df7e2f4e7d3a4f0b4c046d2212b8201fcfd8a85ca4d",
+        "dist/assets/ari-air-release.jpg": "417469dd79cc5670b09fa3c0a112778ce192d81b891099acb4e2e488cef51061",
+        "dist/assets/ari-d025.jpg": "cd181dcd498ffe1a9b582b284d39defb4d651fe1804ef0040225d26b58bd777d",
+        "dist/assets/ari-d060.jpg": "6271f55bb933fc0f494496c57759dcf7836de39767831665e1f99fc57210c68d",
+        "dist/assets/ari-kinetic.jpg": "24c8f4ce815ce453bcb7af2c7a8f96b2caa63d475a76c1060e41461231d203d3",
+        "dist/assets/d60-demo-p1.jpg": "c1c287d94003574f62ff0637f321b3861cdc45e7904e8c7cde59d87b4e6e90f4",
+        "dist/assets/d60-demo-p2.jpg": "68d8e0b28a1ae2b246436a8a07409d0f79e18d347112ca051693609f347a6635",
+        "dist/assets/d60-demo-p3.jpg": "d29bcf693e10bcc8dc7ad00de3563b2310e0ce22588809e90ba979ea9cc0a671",
+        "dist/assets/d60-demo-p4.jpg": "84d2a4789fd2c3bcde7baee0970701d1c82c8292ef623b885671dea4231f67e6",
+        "dist/assets/d60-demo-p5.jpg": "1c892b344204deed83fdc59068743ad8e7fe585a502b5d90c94b944e489fec61",
+        "dist/assets/d60-demo-p6.jpg": "4665f854492e2ab69ad5ca31637f60c55e177665ab1fae06bc21b6835c8add02",
+        "dist/assets/d60-demo-p7.jpg": "ab020d54559d79351a0dc77dbcfd2e50f3e4e147ed2b497d10ed668d135b6b34",
+        "dist/assets/d60-demo-p8.jpg": "d26e9babc84b9d1b5b72bd76fa3d243384d5e069ce83bb314a4620d1704837fc",
+        "dist/assets/image-import/D60EL01.jpg": "caba653325c62763ed02ba5e154316d3cbc1840d2ca2865347dd010ca4c7283e",
+        "dist/assets/image-import/D60EL02.jpg": "5b72733b5bb96e34d89202ffce30645f21248036bfe9c2bc6fbee1db7990c24f",
+        "dist/assets/image-import/D60EL03.jpg": "ece8f37cd25cf75d5bd54e64f3e15a1bf2a384654bd066641ae01c2ab955d773",
+        "dist/assets/image-import/D60EL06.jpg": "aa71e251a622e5643f09a49f43c87ec39770e07897bbb4fe3c646d50e13263b2",
+        "dist/assets/image-import/D60ELT1.jpg": "107fde609236bbeacf5396ac61eae93f4ebab851f956765ab494df114e5d8a9d",
+        "dist/assets/image-import/D60ELT2.jpg": "9a190cc7e5c35dfd51f26c1d052b8b82fe8291032513a6262112a7d44dc6579b",
+        "dist/assets/image-import/D60LOT1.jpg": "f3d92905a04ef5f6837f128e8962b376dab3be7ae68cbf2733861dfff0d9c3ba",
+        "dist/assets/image-import/D60T2.jpg": "c1c287d94003574f62ff0637f321b3861cdc45e7904e8c7cde59d87b4e6e90f4",
+        "dist/assets/review-mark.svg": "c002c6e8ff6044adb27dfb40905223a75f6e526578ddc1c1543208d7e1aeaaaa",
+        "dist/assets/valve-sample.svg": "ee87bdcd9ff1078c57fc4e98f8fe8ab2424614bd28f4a3e7e2f3328f6cc5c53c",
+        "dist/catalog-domain.mjs": "e2bb0c6451c53b0c23873ca6297919d955c59234985235ee6a60204f63142563",
+        "dist/explorer-options.css": "66510ca3b5e35447e1ee8de08759e5372781e0279042d1f8c1ea086d30e01201",
+        "dist/image-assignment-model.mjs": "930a9da263156eebf79023603b2b67c79d0555a8857ff994dd70a0cdc32cc682",
+        "dist/image-assignment.css": "05fa9f49292b163b09530bd5a6a8111d18f85462decfe8b737c65301ef05fee9",
+        "dist/image-assignment.html": "366a37013ea6d6a610f84f59df6c65abdcea4e3013a00510aa23cac48de79ebd",
+        "dist/image-assignment.mjs": "60d67ef1de616a4c9c506702a66b9b635d7633409a8496ff8442f6b168c946fa",
+        "dist/image-product-controls.mjs": "400d2975db6af2282c8988b3761fc561470d49855aced4cf99d0fe6db6d76f72",
+        "dist/image-product-search.mjs": "76838ed23e4ea40c1908ce4b0af179d00255cd40b2d9f2ac3a68e4943d923538",
+        "dist/index.html": "4e4fb830a2b5be2d19d3a3af91ab14847432d0fd86efc6c6c5481ca8f06b4310",
+        "dist/model.mjs": "41958bfecdfb3cf1670bb08e357668b0740ee14bfefdb323612b1b90d3b15847",
+        "dist/product-images.mjs": "8f6ea80af2f4e0e342baed8dceef82e2b7c7b80dc2737f460dc22c29a7dfae0f",
+        "dist/review-controls.css": "81ef43abe42def8bf2d417ea72d5ec0e4291c0c471905d5149b4815332e3cdc8",
+        "dist/review-state.mjs": "c95d97bde6c3c952ffa7a876401436eb56d2e953a742051118a93f7d74261e3d",
+        "dist/style.css": "20f91bd3c5e880e9c793a611db698962952a767c74c62d58705da6b4c7143c0d",
+        "dist/tag-designs.css": "dc03aa78eb4c23696668b726640492e5dbd33d8df44ffffb46dc28fed1e3a908",
+        "dist/tag-icons.mjs": "2d5aa644d663e4c2596743b96efca3759a1edee55e07bd04c01db2d29043a68b",
+        "docs/superpowers/plans/2026-10-26-catalog-prototype-repairs.md": "b23b68106a626dfb3601df5da7235806920457c098115a40edd098943b100b5d",
+        "package.json": "27c733fd154d152db38a5456cb33ff08530159d4131ae4bc78a32de5bcbf715c",
+        "tests/catalog-domain.test.mjs": "8952b01f6ee0d748cda6d2113456ed25f41908939e93f3d15bfea3465b0b61af",
+        "tests/image-assignment.test.mjs": "aa9e3893bd5b16f730a367d9dfaba7073c529a6bf2f9baf4eb8dbc0ca52f187e",
+        "tests/image-finalized.test.mjs": "ff33d0c0240e40f89fc9011d4001e5e9ccd461bf42118dfce551a40156d72982",
+        "tests/image-pagination.test.mjs": "f681438985cfdedca759a8e9572ca0c5f69b39400c3be3b65443469d0163d915",
+        "tests/image-product-search.test.mjs": "88c06604f7f519fcf5487096d9b0b6c4b602f62d27f9e50a47d95d261a70762f",
+        "tests/model.test.mjs": "d8370016d46e8bf53d9fff74565a37d3e62e4f0eb9023fd616a7df495b15c851",
+        "tests/review-state.test.mjs": "53472575a647fa60efd5a1ff1a9d916bf3622071053d552c905a0d6063e1ba32",
+        "tests/tag-icons.test.mjs": "d2e81787bb3c70ce7aa6fc0081dbdf7e9d267c0ee42d72823576a28ccc1c5a9a"
+      },
+      "status": [
+        "?? docs/superpowers/plans/2026-10-26-catalog-prototype-repairs.md"
+      ]
+    },
+    "primary": {
+      "root": "/Users/studioycm/Herd/configurator",
+      "head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+      "original_safe_file_count": 1075,
+      "hash_algorithm": "sha256",
+      "note": "Original non-document safe hashes are compared in final verification; nine owner documents excluded from the drift accusation. New audit/coordinator docs are separately attributed."
+    }
+  },
+  "owner_artifacts_reviewed": [
+    {
+      "owner": "Plan catalog configuration and UX",
+      "revision": "R3",
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+      "sha256": "0f372310f34808fd7f09c64c94bc0589a511fd270ecee41bf78c9f360df13d17",
+      "verdict": "ready for human execution approval with I3a hard stop;not runtime acceptance"
+    },
+    {
+      "owner": "Plan catalog configuration and UX",
+      "revision": "R3",
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md",
+      "sha256": "abcb7d3666ebd614bee309ad3b796a07926d35bdf199db8235ccd16197c191df"
+    },
+    {
+      "owner": "Research Rules import and export",
+      "revision": "refreshed29Oct",
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/15/01a13fcd-eb48-7aa1-ada0-9b055a261de1/WRITING_WORKSPACE_APP_IMPLEMENTATION_PLAN.md",
+      "sha256": "5b31fc418bbf428022684adb6a687e50823bb0bd330f9376eb4d0c278f83296d"
+    },
+    {
+      "owner": "Research Rules import and export",
+      "revision": "Slice1",
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/15/01a13fcd-eb48-7aa1-ada0-9b055a261de1/WRITING_WORKSPACE_SLICE_1_EXECUTION_SPEC.md",
+      "sha256": "c45ae9185217001a3eeb94b7306d488c8f25406a5d7dcff8fbae3e7147b35844",
+      "verdict": "ready for human execution approval of W1-0..W1-4 only;not runtime acceptance"
+    }
+  ],
+  "review_history": {
+    "catalog_R2": [
+      "02abc202356d8fc922c131b476b1af2afe2d711e8e0e7b83c7b14e0212159cd6",
+      "7988f20d4a5c9d629eb38f1495daf0a7a50bc308658e0e1ef4cc57666beadd4e"
+    ],
+    "correction": "XWR-01 = COORD-01 closed by explicit per-process environments/preflight/refusal/private credential/exclusive-window contract; none executed",
+    "independent_audit_package_check": "Fulfilled29Oct by Plan bulk creation forms, different task; completed bounded four-artifact check acceptable for human-decision handoff; no further immediate planning correction. Human implementation/runtime/release approval absent."
+  },
+  "coverage_families": [
+    {
+      "name": "Original integration",
+      "ids": [
+        "INT-01",
+        "INT-02",
+        "INT-03",
+        "INT-04",
+        "INT-05",
+        "INT-06",
+        "INT-07"
+      ],
+      "coverage": "report G.1; A/B",
+      "status": "01/02/03/04/06 repaired;05 deferred CI;07 partly reconciled Product-plan drift"
+    },
+    {
+      "name": "Original lanes/gates",
+      "ids": [
+        "BULK-F01",
+        "BULK-F02",
+        "BULK-F03",
+        "BULK-F04",
+        "BULK-F05",
+        "BULK-F06",
+        "PRV-INT-01",
+        "PRV-INT-02",
+        "PRV-INT-03",
+        "PF-R01",
+        "PF-R02",
+        "PF-L01",
+        "IMG-01",
+        "IMG-02",
+        "IMG-03",
+        "IMG-04",
+        "IMG-05",
+        "IMG-06",
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "P-01",
+        "P-02",
+        "P-03",
+        "P-04",
+        "P-05",
+        "P-06"
+      ],
+      "coverage": "report G.1/G.6 and A/B/C",
+      "status": "complete disposition; aliases not additional defects"
+    },
+    {
+      "name": "Architecture recommendations",
+      "ids": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ],
+      "coverage": "report G.3 individual R01–R18 rows",
+      "status": "repaired/retired/retained/measured/deferred individually; no blanket refactor"
+    },
+    {
+      "name": "Optional organization",
+      "ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O07",
+        "O08",
+        "O09"
+      ],
+      "coverage": "report G.3 individual O01–O09",
+      "status": "optional/separate dependency or compatibility decision"
+    },
+    {
+      "name": "Verification recommendations",
+      "ids": [
+        "V01",
+        "V02",
+        "V03",
+        "V04",
+        "V05"
+      ],
+      "coverage": "report G.3 individual V01–V05",
+      "status": "V02 repaired; CI V01/V03/V04 deferred; V05 benefit-led"
+    },
+    {
+      "name": "Consolidation nodes",
+      "ids": [
+        "N1",
+        "N2",
+        "N3",
+        "N4",
+        "N5",
+        "N6",
+        "N7",
+        "N8",
+        "N9",
+        "N10",
+        "N11",
+        "N12",
+        "N13",
+        "N14",
+        "N15",
+        "N16"
+      ],
+      "coverage": "report G.2 sixteen dispositions",
+      "status": "implemented selected graph/retained/legacy retired"
+    },
+    {
+      "name": "Later master findings",
+      "ids": [
+        "SA-01",
+        "RL-01",
+        "RL-02",
+        "AD-01"
+      ],
+      "coverage": "report G.4; current source/assertion references",
+      "status": "repaired on master; historical merged execution not rerun"
+    },
+    {
+      "name": "Security",
+      "ids": [
+        "SEC-00",
+        "SEC-01",
+        "SEC-02",
+        "SEC-03",
+        "SEC-04",
+        "SEC-05",
+        "SEC-06",
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07",
+        "S08",
+        "S09",
+        "S10",
+        "S11",
+        "S12",
+        "F01",
+        "F02",
+        "F03",
+        "E1",
+        "B1"
+      ],
+      "coverage": "report G.5 and frozen Catalog audit security table",
+      "status": "deferred unless repaired aliases or superseded policy; no new advisory/probe"
+    },
+    {
+      "name": "Creation category findings",
+      "ids": [
+        "CA01",
+        "CA02",
+        "CA03",
+        "CA04",
+        "CA05",
+        "CA06",
+        "CA07",
+        "CA08",
+        "CA09",
+        "CA10",
+        "CA11",
+        "CA12",
+        "CA13",
+        "CA14",
+        "CA15",
+        "CA16",
+        "CA17",
+        "CA18"
+      ],
+      "coverage": "report C individual rows; repository structure/nested/container/postimplementation reports",
+      "status": "implemented controls;CA14 custom guard rejected;CA16/17/18 corrected"
+    },
+    {
+      "name": "Creation evidence limits",
+      "ids": [
+        "EX1",
+        "NV1",
+        "NV2",
+        "NV4"
+      ],
+      "coverage": "report C individual rows and original conformance report",
+      "status": "bounded read duplication and disclosed unverified hardware/matrix/capacity; no 1155-clause fresh certificate"
+    },
+    {
+      "name": "Preview architecture",
+      "ids": [
+        "PVS-01",
+        "PVS-02",
+        "PVS-03",
+        "PVS-04",
+        "PVS-05",
+        "PVS-06",
+        "PVS-07",
+        "PVS-08",
+        "PVS-09",
+        "PVS-10",
+        "PVS-11",
+        "DA-01",
+        "DA-02",
+        "DA-03",
+        "DA-04",
+        "DA-05",
+        "DA-06",
+        "DA-07",
+        "LB-01",
+        "LB-02",
+        "LB-03",
+        "LB-04",
+        "LB-05"
+      ],
+      "coverage": "report C; Preview repo/external subreports",
+      "status": "implemented/narrowed/superseded; current source/assertion chain; historical/runtime limits explicit"
+    },
+    {
+      "name": "Preview UI/framework",
+      "ids": [
+        "UI-1",
+        "UI-2",
+        "UI-3",
+        "UI-4",
+        "UI-5",
+        "UI-BP-01",
+        "UI-BP-02",
+        "UI-BP-03",
+        "UI-BP-04",
+        "UI-BP-05",
+        "UI-BP-06",
+        "UI-BP-07",
+        "UI-BP-08",
+        "UI-BP-09",
+        "UI-BP-10",
+        "UI-BP-11",
+        "UI-BP-12",
+        "UI-BP-13",
+        "UI-BP-14",
+        "UI-BP-15",
+        "UI-BP-16",
+        "UI-BP-17",
+        "UI-BP-18",
+        "UI-BP-19",
+        "UI-BP-20",
+        "UI-BP-21",
+        "UI-BP-22",
+        "UI-BP-23",
+        "UI-BP-24",
+        "UI-BP-25",
+        "UI-BP-26",
+        "UI-BP-27",
+        "UI-BP-28",
+        "UI-BP-29",
+        "UI-BP-30",
+        "PRV-01",
+        "PRV-02",
+        "Preview:F1",
+        "Preview:F2",
+        "Preview:F3"
+      ],
+      "coverage": "report C and Preview UI ledger/delta/framework reports",
+      "status": "five UI and two inspection findings corrected;30-row historical ledger remains provenance, not fresh exhaustive browser acceptance"
+    },
+    {
+      "name": "Historical quality-gap IDs",
+      "ids": [
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4"
+      ],
+      "coverage": "report C; original temp source unavailable",
+      "status": "Q1 narrow patch known repaired; exact Q2–Q4 text/alias reconstruction not certified; substantive R/O/V recommendations tracked individually"
+    },
+    {
+      "name": "Images integration/recovery",
+      "ids": [
+        "IMG-A01",
+        "IMG-A02",
+        "IMG-A03",
+        "IMG-A04",
+        "IMG-A05",
+        "IMG-A06",
+        "IMG-A07",
+        "IMG-R01",
+        "IMG-B01",
+        "IMG-B02",
+        "U01"
+      ],
+      "coverage": "report G.6;D first-group remedies in audit execution spec section5",
+      "status": "A06 docs reconciled;coupled/semantic adaptations and native/recovery code pending"
+    },
+    {
+      "name": "Images original plan audits",
+      "ids": [
+        "IA-01",
+        "IA-02",
+        "IA-03",
+        "IA-04",
+        "IA-05",
+        "IA-06",
+        "IA-07",
+        "IA-08",
+        "LA-01",
+        "LA-02",
+        "AR-01",
+        "AR-02",
+        "AR-03",
+        "AR-04",
+        "AR-05",
+        "AR-06",
+        "AR-07",
+        "AR-08",
+        "EX-01"
+      ],
+      "coverage": "report C individual current dispositions; Images plan13.6/14.2; blueprint failure matrix",
+      "status": "standalone implemented controls vs unfinished P7/P8/P9 proof separated"
+    },
+    {
+      "name": "Catalog planning",
+      "ids": [
+        "CAT-01",
+        "CAT-02",
+        "CAT-03",
+        "CAT-04",
+        "CAT-05",
+        "CAT-06",
+        "CAT-07",
+        "CAT-08",
+        "CAT-09",
+        "CAT-S08-01",
+        "CAT-S08-02",
+        "CAT-S08-03",
+        "CAT-S08-04",
+        "CAT-S08-05",
+        "CAT-S08-06",
+        "CB-P01",
+        "CB-P02"
+      ],
+      "coverage": "report G.7",
+      "status": "feature contracts/unimplemented adapters;three scoped decisions; prototype repair not app acceptance"
+    },
+    {
+      "name": "Writing downstream",
+      "ids": [
+        "Rules:R-01",
+        "Rules:R-02",
+        "Rules:R-03",
+        "Rules:R-04",
+        "Rules:R-05",
+        "Rules:R-06",
+        "Rules:R-07",
+        "Rules:R-08",
+        "RW-P01",
+        "RW-R01",
+        "RW-G01",
+        "RW-M01",
+        "RW-F01",
+        "RW-G02"
+      ],
+      "coverage": "report G.8;D Writing W1 review",
+      "status": "runtime exchange landed; Writing first slice proposed;later drafts/UI not W1 blockers"
+    },
+    {
+      "name": "Current bounded review",
+      "ids": [
+        "XWR-01",
+        "COORD-01"
+      ],
+      "coverage": "report D",
+      "status": "same cause;closed by Catalog R3 source/command review;no command run"
+    }
+  ],
+  "aliases": [
+    {
+      "canonical": "INT-01",
+      "aliases": [
+        "BULK-F01",
+        "V02",
+        "security:S07",
+        "CA08:safety",
+        "SEC-00"
+      ]
+    },
+    {
+      "canonical": "INT-02",
+      "aliases": [
+        "BULK-F02",
+        "PRV-INT-01",
+        "R02"
+      ]
+    },
+    {
+      "canonical": "INT-03",
+      "aliases": [
+        "Rules:R-02:ordinary form"
+      ]
+    },
+    {
+      "canonical": "INT-04",
+      "aliases": [
+        "BULK-F03",
+        "PF-R01",
+        "R01",
+        "Q1"
+      ]
+    },
+    {
+      "canonical": "INT-05",
+      "aliases": [
+        "BULK-F04",
+        "V01",
+        "V03:CI",
+        "V04",
+        "S12"
+      ]
+    },
+    {
+      "canonical": "INT-06",
+      "aliases": [
+        "BULK-F05",
+        "R17"
+      ]
+    },
+    {
+      "canonical": "INT-07",
+      "aliases": [
+        "IMG-04",
+        "PF-R02"
+      ]
+    },
+    {
+      "canonical": "IMG-B02",
+      "aliases": [
+        "U01"
+      ]
+    },
+    {
+      "canonical": "IMG-A05",
+      "aliases": [
+        "CAT-S08-05"
+      ]
+    },
+    {
+      "canonical": "XWR-01",
+      "aliases": [
+        "COORD-01"
+      ]
+    }
+  ],
+  "namespace_notes": [
+    "Architecture R01 differs from IMG-R01 and Rules:R-01.",
+    "Creation filter-work S07 differs from security:S07.",
+    "Preview F1/F2/F3 differs from security F01/F02/F03.",
+    "Family IDs count provenance, not independent defects; related combined causes are not multiplied."
+  ],
+  "sources": [
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "149e34765bb5b9f358b354d3462426ea99add001139f48fc994c632ac308434c",
+      "bytes": 74934,
+      "lines": 483
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CATALOG_AND_IMAGES_PREMERGE_PLAN.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "773506acc26208b8c7d0b972e504817839bfc08daaa6b940742128f645f65d3a",
+      "bytes": 17628,
+      "lines": 100
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "0f372310f34808fd7f09c64c94bc0589a511fd270ecee41bf78c9f360df13d17",
+      "bytes": 80134,
+      "lines": 410
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "abcb7d3666ebd614bee309ad3b796a07926d35bdf199db8235ccd16197c191df",
+      "bytes": 20132,
+      "lines": 110
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/COORDINATION_REVIEW_PACKAGE.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "f624f59ea2a6f336f93976cc5ff547dd801a587262222a496992b11cc27b322d",
+      "bytes": 13296,
+      "lines": 85
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CONSOLIDATION_CHANGELOG.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "8b8934152bdde9006b638081fe55f74cae0553d09a72f21acb11d8529f137b03",
+      "bytes": 118730,
+      "lines": 415
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/APP_CONSOLIDATION_EXECUTION_SPEC.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "12f9314cd0886899137b7501c668ad76a546f468111176f857efa9775b4d0325",
+      "bytes": 65287,
+      "lines": 404
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "701a95b8b89fb62776ee95862a528205e0395f17e39dea2253f379fc3456be18",
+      "bytes": 43972,
+      "lines": 297
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/MASTER_APP_AUDIT_2026_10_26.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "c028c07b4ee7037edab227290b2b0206955229c31ecdf2423cec324f1b786ffd",
+      "bytes": 28316,
+      "lines": 203
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "14250697b0f9fd086159a7b99388c7bb473ee40858c0afc64982ad5a8f9ac026",
+      "bytes": 29056,
+      "lines": 182
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "1a17540928213ab0c8bd14fe7fb4e44f9665541d78dc87d7979b118b448c38ca",
+      "bytes": 185815,
+      "lines": 947
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "ab7174e56a85cbaddad186ee589fd8b5b0b3d62bdee176a4924a951a50c4c340",
+      "bytes": 133476,
+      "lines": 833
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "d612d850655f4d084edf240d8e15e63c559967b5f8258513b31f012ac2c2650c",
+      "bytes": 11695,
+      "lines": 103
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/PRODUCT_DATA_IMPLEMENTATION_PLAN.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "4548b6b9cc591e89072526861db0c5e511361a3ee4fecdb2273a54fc86493586",
+      "bytes": 55020,
+      "lines": 448
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/MASTER_VALUES_ATTRIBUTES_CREATION_STRUCTURE_AUDIT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "d6c19fb61ed100a9ab24e49583328ee15a1787e53253c5d2a11222227d847cdc",
+      "bytes": 26123,
+      "lines": 132
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/MASTER_VALUES_ATTRIBUTES_CREATION_NESTED_REUSE_AUDIT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "ebf1eff77385e4e9a410f307ce68e64e2be25da04ff31c20f795954e733deaac",
+      "bytes": 20072,
+      "lines": 131
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/MASTER_VALUES_ATTRIBUTES_CREATION_CONTAINER_RESEARCH.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "46df4ef659f32c7df88a15a5af6bd101fcd212484cc32a94393d7cad10f27efd",
+      "bytes": 17969,
+      "lines": 128
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/MASTER_VALUES_ATTRIBUTES_CREATION_POST_IMPLEMENTATION_STRUCTURE_AUDIT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "79080f228edecf0b12eba97edf22192585f2e5335cb8fb11e1b7a08865a83618",
+      "bytes": 39462,
+      "lines": 161
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/MASTER_VALUES_ATTRIBUTES_CREATION_IMPLEMENTATION_REVIEW.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "5a8f2b2c6ce49aea0e0ae57f492d7bf75323908ee97b93f13d3f13750a9890f3",
+      "bytes": 351900,
+      "lines": 1284
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/PREVIEW_TEST_WORKSPACE_STRUCTURE_AUDIT.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "a625e470b1f4886fc74e34849d899dddefc58be3686dc34b1b3702ec44b63cc1",
+      "bytes": 36641,
+      "lines": 196
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/SECURITY_FIXES_EXECUTION_SPEC.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "85c46694eb73e48574be6a859a30722ebdb191090c3decd31b5e3dc94e9821f7",
+      "bytes": 42403,
+      "lines": 353
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/SECURITY_FIXES_IMPLEMENTATION_PLAN.md",
+      "available": true,
+      "inspection_scope": "finding/contract sections inspected across completed review; no fresh execution",
+      "sha256": "049f944fcb358fd57830875ffbcabedb2c209a064e59ef7ce4e964ebd33f7a63",
+      "bytes": 23803,
+      "lines": 208
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/research/laravel-architecture/AUDIT_1_ORIGINAL_ANSWER.md",
+      "available": true,
+      "inspection_scope": "original finding/register content inspected; historical proposals reconciled",
+      "sha256": "43c3bf8df0657b8a2ca4b219734d32862fa9da1a7410da31877d9bb6d3b4cc7c",
+      "bytes": 10897,
+      "lines": 82
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/research/laravel-architecture/AUDIT_2_ORIGINAL_ANSWER.md",
+      "available": true,
+      "inspection_scope": "original finding/register content inspected; historical proposals reconciled",
+      "sha256": "9ca4f4c350f930eb3c9643e8292f863512f9bceada854c52428b29f4350d6a24",
+      "bytes": 20723,
+      "lines": 203
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/research/laravel-architecture/AUDIT_3_SECURITY_FINDINGS.md",
+      "available": true,
+      "inspection_scope": "original finding/register content inspected; historical proposals reconciled",
+      "sha256": "376603af4e17227eb6290b36d9d51501fc33e10d67b2fc885f4d65a6b9623889",
+      "bytes": 18237,
+      "lines": 116
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/research/laravel-architecture/FINDINGS_REGISTER.md",
+      "available": true,
+      "inspection_scope": "original finding/register content inspected; historical proposals reconciled",
+      "sha256": "edb172229ac662271f418774b6846d6d116f2d5065825bac9d8b08291c0801d5",
+      "bytes": 17092,
+      "lines": 80
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-deep-architecture-audit.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "82b8060f4f77d680bef840e7ea8deeb5318c83e8623a8fd4996da1653e0ffbae",
+      "bytes": 60717,
+      "lines": 289
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-laravel-audit.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "f504ddf9f3bdda2b467c30ad27a0d267b15f2fb6b5d09cc84142138594225cca",
+      "bytes": 14547,
+      "lines": 108
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-livewire-audit.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "5db9df8c315ce189558212fa27c07a753f40bd3981a545cc75c3a42da3196e7b",
+      "bytes": 11800,
+      "lines": 61
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-filament-audit.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "cb7f1f26e530cfa27517036b8aaed730812e0e318f47458d6a2f9ea44bfbb580",
+      "bytes": 12399,
+      "lines": 69
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-framework-audit-2026-10-23.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "a0bbb1273b5dc7a05c2e94162006082ad8f355962a517679d9183ae98f4fd970",
+      "bytes": 13829,
+      "lines": 91
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-structure-audit-2026-10-23.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "68a66f57042d2cc203146865268da848468277c29b81860bcc161e939a459e54",
+      "bytes": 14401,
+      "lines": 99
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-ui-final-review.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "dc6cf87ab5666067311f1d22858a3200336a5ec888af2a25641194ff2e08abad",
+      "bytes": 13888,
+      "lines": 103
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-ui-final-delta-review.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "00c388bfb7311c22105d6940e6013e096c90a28f22b33063916fe95431cf8e07",
+      "bytes": 5793,
+      "lines": 25
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-implementation-final-review.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "68dd031edf1c66b1c355ca374325d0fbab8887f278f7e6ad626f85d88635ccc4",
+      "bytes": 11214,
+      "lines": 77
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-inventory-service-report.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "f63398cb207d20cd692be8778ea387e75f29ff2c5a5ddbb6a8c459d75c0a6dcd",
+      "bytes": 3323,
+      "lines": 29
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-inspection-implementation-report.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "9f12b927b990e4bba8b6778402f9d65c015f43705196a8a637b023802f117526",
+      "bytes": 2995,
+      "lines": 36
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-presentation-fixwave-report.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "04c2240656804866d1a9a732c2662e8becc0cf4e515d2320886ff2290f4ec879",
+      "bytes": 3368,
+      "lines": 41
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-reconciliation-report.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "44e97b29f5c5dfcb80339a4b488e507b6d6d416b428d4ade5356c38b9ca66911",
+      "bytes": 5097,
+      "lines": 50
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/17/01a148a4-3c0d-76f2-a6ee-6e32957a6e22/preview-concurrency-report.md",
+      "available": true,
+      "inspection_scope": "finding sections and later dispositions inspected; historical commands/results not rerun",
+      "sha256": "35646d9bcd0a7a3133d4aec8aad3780b21392baaccccd189792d14b67d8c77c9",
+      "bytes": 4053,
+      "lines": 52
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/15/01a13fcd-eb48-7aa1-ada0-9b055a261de1/WRITING_WORKSPACE_APP_IMPLEMENTATION_PLAN.md",
+      "available": true,
+      "inspection_scope": "29-Oct exact first-slice review: full Slice 1 spec; relevant complete-plan baseline/grammar/writer/outcome/acceptance sections",
+      "sha256": "5b31fc418bbf428022684adb6a687e50823bb0bd330f9376eb4d0c278f83296d",
+      "bytes": 68897,
+      "lines": 414
+    },
+    {
+      "path": "/Users/studioycm/.codex/visualizations/2026/10/15/01a13fcd-eb48-7aa1-ada0-9b055a261de1/WRITING_WORKSPACE_SLICE_1_EXECUTION_SPEC.md",
+      "available": true,
+      "inspection_scope": "29-Oct exact first-slice review: full Slice 1 spec; relevant complete-plan baseline/grammar/writer/outcome/acceptance sections",
+      "sha256": "c45ae9185217001a3eeb94b7306d488c8f25406a5d7dcff8fbae3e7147b35844",
+      "bytes": 22784,
+      "lines": 150
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Actions/SaveConfiguratorDefinition.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "7baeab9b5eb292b4a7609de43f8f66e4c4489f1b091cb03fb7699a24451cdb56",
+      "bytes": 19844,
+      "lines": 365
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Actions/SaveCatalogGroup.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "0fcfe99d839f45877895426f40e47b5b9d6dcf1c9aee09d523d8a30b4eea5d93",
+      "bytes": 2524,
+      "lines": 54
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Actions/SaveCatalogProduct.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "0c2e980a81da95cc3a343392760ef646d6af63906ec66e01cc57b8fc42ec6fd0",
+      "bytes": 4065,
+      "lines": 75
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Actions/SaveGroupSettings.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "9968e4b8c1b63dedb4ef3617f672d5f8f05a78d60ae67261b1b7b2bc24c91e63",
+      "bytes": 14123,
+      "lines": 232
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Actions/SaveTestedConfiguratorChanges.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "d0a5e6178afeb6f967cc6be18f2cf6e86f6f1004e35a9109c79a8a9dab2d3b9f",
+      "bytes": 4135,
+      "lines": 89
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/CanonicalUsage.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "db5944704ba5afd3e2a2defcc284c793ec6c6eaa6dc95285b3e616fabd83bb32",
+      "bytes": 9465,
+      "lines": 162
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/CatalogRevisions.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "61145b9e62e67779525cf7b6a61101569bd8e36c34827c0327104e5a67863b5e",
+      "bytes": 2059,
+      "lines": 66
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/ConfiguratorDefinitionLoader.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "85fa06f7c10007502f40fe19af4f70e21401bf96f79c47e1704559253d7aead6",
+      "bytes": 14645,
+      "lines": 231
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/ConfiguratorDefinitionCompiler.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "fa46f8e62880ef969468c9bf3ee1f341bcaf46047bf72344d1933090e2b500d4",
+      "bytes": 32278,
+      "lines": 483
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/ConfiguratorEditorChanges.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "9ae0e86e95c03b41d561e3ac41e8dac72073fbae60be454c42858dbe0f80e802",
+      "bytes": 34256,
+      "lines": 693
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/ConfiguratorPreviewInspection.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "cc51ef42acd8fa13c2e3a29850e15bf3dc4d4aaa5d669edab270a74935b9dccc",
+      "bytes": 25131,
+      "lines": 411
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/ProductEditorData.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "06932140290930922abccaf43ffa2bbc56857af82d0345a536886160fab80402",
+      "bytes": 8693,
+      "lines": 197
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/ProductFields.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "e5828fb515e2078b1c0829a80eeac0286f3631863ef8a910285f896a463b414f",
+      "bytes": 3342,
+      "lines": 77
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/AdminAppearance.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "28afb7dd9cff48ec866fa3460bf53ca54fdc1e02707d00d9469c34b751ba07c0",
+      "bytes": 6207,
+      "lines": 111
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Services/CatalogSnapshots.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "b993eeeb846eeec761daf53948330fef21ed6ea47cc97c0b8da13ca761b961b8",
+      "bytes": 3104,
+      "lines": 76
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Console/Commands/CatalogSnapshotCommand.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "6012b736e2f168741eead0582dbb14f83736138e9f93cd5b077c1a2c9132fab5",
+      "bytes": 2030,
+      "lines": 48
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Filament/Resources/TableBrowserProfile.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "cc52a38b7f83b2349edce2c10ba71998f30073af76086b770637a78f6ef6454e",
+      "bytes": 4944,
+      "lines": 102
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Filament/Resources/HasWorkspaceTable.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "c0f4c9f8ea1af95b855d1aa644c0212e753f90c7d42e072102680b57d212010d",
+      "bytes": 697,
+      "lines": 24
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Filament/Resources/SplitCreateRecord.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "5bf0684419289f74ee40bb48e4834b9c38bd2b899eaa97f1348afcc5b0ec3ac7",
+      "bytes": 1478,
+      "lines": 48
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/app/Providers/AppServiceProvider.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "b9290184a9b7fdb03d774560576c9a700f04da2138b15a2c0e0c41557cdaa339",
+      "bytes": 6374,
+      "lines": 123
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/resources/js/app.js",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "8104c6753714c33a5fa5224ba1a95c460e0f7f47a54ab13a9dd42ee8c0230be9",
+      "bytes": 3241,
+      "lines": 57
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/resources/js/configurator-preview-workspace.js",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "5cab0242e8f4f50d4ea42c8be670b9ab51973afd02569afdd4ba93c72b8a9819",
+      "bytes": 18324,
+      "lines": 379
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/artisan",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "1a910770287722778b5a9a458ddcb67fb2bea20d5add4bc234d8b92478b9b540",
+      "bytes": 707,
+      "lines": 29
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/TestDatabaseSafety.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "6614f73e6b3ae950a6d8108cf814f74f5573cc0cd47390d91dfc7aa717bc0421",
+      "bytes": 5193,
+      "lines": 115
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/bootstrap.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "9699f9d8d7168ed7b1795969ac17512f44369192d1ad5ce274c5b358c94441e5",
+      "bytes": 187,
+      "lines": 9
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/bootstrap-mysql.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "22d3403b219cfc187c48698319694f1d566e161500c75bbafc55914a0d89fea3",
+      "bytes": 512,
+      "lines": 21
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/CreatesApplication.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "03331923533f14bb8ab62cc4d1a262a5af706cf3a74f1c02c32eba4602f75c4b",
+      "bytes": 562,
+      "lines": 21
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Pest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "d89a927f97202d42843888d8f05e3c8d3708e01433725eb6ce7b57d199e8b9ba",
+      "bytes": 1596,
+      "lines": 47
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/phpunit.xml",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "97daac6089f7a496cf9d78012e4dc984286ce26f0de1c77523f5877c8917afe6",
+      "bytes": 1343,
+      "lines": 36
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/phpunit.mysql.xml",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "7d0594389943a1df1b63867a8fa58d2cae4b773df79bc7617052cfbb478dfeb9",
+      "bytes": 1067,
+      "lines": 24
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/phpunit.safety.xml",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "40f115b9bbc57a1c9db9c0799a8064e40a98880e382e22eee994a9c9a8ac0a5b",
+      "bytes": 413,
+      "lines": 10
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/ProductProfileEditingTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "760ffcb625f98b922c50c000dafdd1b5a9f893088130946c1bea7897afe9e9a6",
+      "bytes": 18333,
+      "lines": 285
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/ProductProfileMigrationTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "764f8622a34888a348d6adb77d423f61305867d55e4fc3e3ad9af660c48b85db",
+      "bytes": 7277,
+      "lines": 133
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/ConfiguratorEditorChangesTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "89b467cee740f6a3bad96b830fffd72b4e987cecd0a039473b1994663e371e33",
+      "bytes": 46814,
+      "lines": 703
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/ConfiguratorPreviewSnapshotTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "22e9c4b9c3ca9215c255580a86b9363547e9a15566128c133b902a04dd65122a",
+      "bytes": 23841,
+      "lines": 362
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/ConfiguratorSubtitleTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "f7c0a1a3777276de2da1231ac749582e21217fa4f7c5aa87d40b21bc708a0f67",
+      "bytes": 7931,
+      "lines": 108
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/SharedAttributeCreationBatchTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "7e2076bad0ea5b6c053910166dd8aacd66abe9e172a0ae3bc4ef788185be8ebd",
+      "bytes": 21896,
+      "lines": 308
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/Catalog/ProductConfiguratorAvailabilityTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "7142c766fb9de3538c74dec666c238577b0ac17672b1dbe43071e0357e86a93e",
+      "bytes": 5522,
+      "lines": 100
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/CatalogNativeImportTransactionTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "9143b957cc78cee7a76e411627c18a907d836d409e1255ba807c73005f141f0a",
+      "bytes": 8891,
+      "lines": 177
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/CatalogExportStorageFailureTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "5405b5e2b1a1a2538236c9dee9fb777c07b410c9681580193db08f0b9e8b3dfe",
+      "bytes": 8043,
+      "lines": 151
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/tests/Feature/CatalogExportTransactionTest.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "1b7bcba64c4b8fac9d7960df44b5456eb96d23edb888b188a63df9eeefb36cef",
+      "bytes": 25703,
+      "lines": 408
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/vendor/filament/filament/src/Resources/Pages/CreateRecord.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "a2b10956d7973d0beeb73e3bfa396dcfb3d486a1d89e417574675cee360a11ae",
+      "bytes": 12900,
+      "lines": 445
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/vendor/filament/filament/src/Resources/Pages/EditRecord.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "369fce445119a7042aa7fff2b324ec4d11a65f4da5c482dd98f5f09feeee2221",
+      "bytes": 14978,
+      "lines": 501
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/vendor/laravel/framework/src/Illuminate/Database/Concerns/ManagesTransactions.php",
+      "available": true,
+      "inspection_scope": "relevant connected methods or assertion bodies inspected; not whole-file audit or runtime execution",
+      "sha256": "ef4d06e1b405485b1285b402760aa53ecb6f0a2f033025e39cc0cf58ea5c70ad",
+      "bytes": 10327,
+      "lines": 379
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Filament/Pages/CatalogImages.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "72118ae157ddd5c45348698de6bec20c7e25ee595695f5f4a47d5d35fbcc9986",
+      "bytes": 27715,
+      "lines": 581
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Filament/Resources/Products/Pages/EditProduct.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "c22c1d359a59628790a106f50c833fdcb4e88fb5869cacbc15ab0653cccb887c",
+      "bytes": 3887,
+      "lines": 102
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Filament/Resources/Groups/Pages/EditGroup.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "0e33b56cffd62560f8869e5d522235702064ed11bbc4ce9850e83e895bd1a2be",
+      "bytes": 4504,
+      "lines": 113
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Filament/Resources/Groups/Pages/CreateGroup.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "10867c23d38beae18ed8e0b88cacb9d5ac38414618e09ea64c4f631557b70d8f",
+      "bytes": 1832,
+      "lines": 48
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Services/CatalogMainImageEdits.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "c21a51b11a8dd68fadac33b9e8a1211ba164761043cb487f8c828e78ec9d40c7",
+      "bytes": 18589,
+      "lines": 325
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Services/CatalogAssetDisplay.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "6f96d2694dbadcba3573a9329492b6cfc93e6cba83f09f908950285d07d6ff55",
+      "bytes": 4898,
+      "lines": 94
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Services/CatalogAssetSources.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "2ccb14586f26704becd853f009ff648bb3c4d0813645fa3e9193a50fc1367765",
+      "bytes": 43868,
+      "lines": 763
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Services/CatalogAssetStorage.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "eb6325e2742fb5e569597aa28609428dc012d6aa87ed456aaea3a46c91eb2e28",
+      "bytes": 21044,
+      "lines": 419
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/app/Actions/SaveCatalogGroup.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "97ba81b9f34f4b1da1a960fe0b0ad1532ae86dcd395070bd08d3756d190cd5c4",
+      "bytes": 2801,
+      "lines": 61
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/tests/Pest.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "47144851907f95ca6ceb18edd32e5f6160df0c66aca07b077b257666d6047dcf",
+      "bytes": 2916,
+      "lines": 79
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/tests/Feature/Filament/CatalogMainImageFieldTest.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "0a37428a9b52e8fcbb171602d4d1c762f80ce183e7e39356a19b8ea2ec99f506",
+      "bytes": 14185,
+      "lines": 236
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/tests/Feature/Filament/CatalogImagesEditingTest.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "053d90f8e8f9acc855650480e3192bf4e87d866fead439b25f11fe01db8e9373",
+      "bytes": 8103,
+      "lines": 143
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/tests/Feature/Catalog/CatalogAssetSourcesTest.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "b8226223add46a214abb0e77c872bf9849d611c262675c021c4b75ac8f8e5b07",
+      "bytes": 39165,
+      "lines": 677
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/tests/Feature/Catalog/MySql/CatalogAssetConcurrencyTest.php",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "511059e0b2a264053c8971e3364d2868b04880ada42b0f8d9c9e4e5d2ea95b92",
+      "bytes": 11267,
+      "lines": 244
+    },
+    {
+      "path": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator/docs/catalog/CATALOG_IMAGES_CONTINUATION_CHECKLIST_2026_10_28.md",
+      "available": true,
+      "inspection_scope": "28-Oct connected pending-source/assertion review; standalone historical evidence, no combined acceptance",
+      "sha256": "47dfc3ce0336c2e9049f9d44de61fc1fd21e7d5c8f3024aa6ce18bd9150a1b75",
+      "bytes": 67506,
+      "lines": 438
+    }
+  ],
+  "original_temporary_manifest": {
+    "path": "/private/tmp/ari-integration-audit/REPORT_MANIFEST.json",
+    "sha256": "4f276a2dc1531b15299733b7e50e5c80026f9066613fe93e959b170fa1df98bf",
+    "entries": [
+      {
+        "path": "/private/tmp/ari-integration-audit/code-quality-addendum.md",
+        "historical_sha256": "573fc7850c350548e13c45a1d7f48ef5a6f1acf8452b0e052c1dbed4ecbb8a96",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-history-sanitized.json",
+        "historical_sha256": "ab0680060d4526a6d62ec3294d245c28c8fa3393469015dce19ddc98a7997f13",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/bulk-chat-sanitized.json",
+        "historical_sha256": "c522de0d8b27f91f1fac04a2860d00a7282bd95f373c381f493ee49d37bfec71",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/preview-skill-evidence.json",
+        "historical_sha256": "24a66cc410b88ceaf3c1d19756baa5dc22a19e07468478067ed6d8999bb6bd08",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-synthesis.md",
+        "historical_sha256": "ed99b8dedf0f984ab651cf8c96c132718b30078d1cd46612c62c73758c4054d2",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/rules-final-check.json",
+        "historical_sha256": "8e6d58e7f44c6fc41d2f9f288bf468bb8e992ecfdcb389b72132394cf1935eb0",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/preview-history-sanitized.json",
+        "historical_sha256": "78aba3a4f44af056e3f43517387488cb9ecd3dc762cf3a04077e12b9704ac994",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-midpoint.json",
+        "historical_sha256": "171c8de3ce172515b5bdeeaa11fe52b6e1a4e0ec4986747cc6727e78c7bba8ac",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/lane-product.md",
+        "historical_sha256": "523b7b029f676f3e39c8821a94db3b3fc612efa70eee6c888c1edfc007e5182d",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/architecture-gap-check.md",
+        "historical_sha256": "44853e361958162f05788cbc26d90a88a8880fc0943dd7c3b2c4268df431b97f",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/product-primary-before.json",
+        "historical_sha256": "73ecd9c8ec5edfd69bc1ee333e1786708cf92d1b62b22effb1c9a9cababd68de",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/bulk-three-way.json",
+        "historical_sha256": "6ced4c13058b4a02cd09cd4cb80d722a940fdade0c774df87257030777cc23a0",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-baseline.json",
+        "historical_sha256": "bb6d4ad23f6170dde654f32b170a366b9b71330fee119c78e272473ef25dc0b8",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-final-snapshot.json",
+        "historical_sha256": "44fa95887d8a64272c252838847b24b084e45f0e2c7200a828fb6993e26ce4bb",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-final.json",
+        "historical_sha256": "50a5614fea290c609b81b4696b7526cf61a511da56c1a747d67bdc6b0c4039cf",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/lane-images.md",
+        "historical_sha256": "d535832eab1f55ff4f4d2f0ff08c9d230ef6ddf16b3e9862f2906a3dd4bdf711",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/coordinator-skill-crosscheck.json",
+        "historical_sha256": "94eb5de876fc616b53ebad678f3a06d4cef6c679774ef174e9f6b39acf6f2797",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-snapshot-extended.json",
+        "historical_sha256": "30a8d6a63055ed11845327347d76d5fedb712328af87bdebb3ff888a7f9db9db",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/preview-inventory.json",
+        "historical_sha256": "4df1dce6bdfc3b48c068aadf8a4cab1a5067dcf221217752bbb23a07d1f285f0",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/lane-preview.md",
+        "historical_sha256": "ea3ebd561f12e36f7418631a822639f305485a7cc0bceb3a374c353d8e2b172c",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-overlaps.json",
+        "historical_sha256": "960abbd92c5f5993e880754300505a18b0e704a7f9f23f5612068ec5a0ca449b",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/lane-bulk.md",
+        "historical_sha256": "04d8e6c3efdaf9448616f2ca9be63272f9d9b2d3fac6d0d22b6714df34c08c38",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/preview-source-after.json",
+        "historical_sha256": "70a864532072dbb69e9e12b7cc67572c11ac2f4fa84f920e69e6c261ee406779",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/code-quality-addendum-check.json",
+        "historical_sha256": "8439f7f052006a66acda65926d1a0cfa9be143dcda36c9ed7ff2b78340df9502",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/code-quality-scope-gap.md",
+        "historical_sha256": "7946fb5eabe35ed48615a18473a5651767d73792e5b00811277684984c67ea17",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-inventory.json",
+        "historical_sha256": "7a009295a54e744b59c69a829953a4068b011a359abd25b406fa43d9581a0fb7",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-initial.json",
+        "historical_sha256": "525dcd0a033ba104e74b87f028209d7a4ed152aaea4cdd7445d619bec1f24bba",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/lane-rules.md",
+        "historical_sha256": "f7951a689a24d97dceeb2272aedf7411b2defa445e303bc6c5cd18108409973a",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/architecture-gap-evidence.json",
+        "historical_sha256": "6deb2a2e63df0e3bc1f99e4f2a1ffd1831f1fc35b6561bde99c55de11ce1813d",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/product-lane-before.json",
+        "historical_sha256": "8d9ea9ca83f10e71176f9d6d53a2405d56abdb36b813138a49611d72b2287c79",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/rules-inventory.json",
+        "historical_sha256": "5ebf02e3fa4aef9b36019cb069d93de418ec574d844571c3f6d211cfadc669bb",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/bulk-skills-evidence.json",
+        "historical_sha256": "f90ead06ca16808eb78080cd39787b3be4728e84a41ad77f2c74e9b3a49a9516",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/bulk-initial.json",
+        "historical_sha256": "b86a1be28fd3f8b9d60cd787a841364ff18c6e3b93cfc8fe30998ddf34966690",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/coordinator-challenge.md",
+        "historical_sha256": "21a234d88e3cd337c5a7a501dc2df11ccf376aa80b20eb5ba4946137f39bcd5d",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/preview-final-state.json",
+        "historical_sha256": "458896132b6f2ca5fd5ba0c263bc14c21e90187d010b67f142110fb033d2c298",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-owner-status.json",
+        "historical_sha256": "b9063187ac74816460c0cbd8c9f8d91d7cea7e4ee2898821d8ec653deedc7db9",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-drift.json",
+        "historical_sha256": "cb8dd9140059918c5a147c98b009752f9d50c899585a8869be2f6243487ba7b7",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/images-skills.json",
+        "historical_sha256": "92b93e3a70776382753d940cc87a7471546a7549faf14bcc2d0e07c92406af69",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/product-lane-after.json",
+        "historical_sha256": "db3a2168bae07a3c49aec62e1a8aad14a90880c57d0a3fbfab27fb2fe358dbf3",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/preview-source-before.json",
+        "historical_sha256": "70a864532072dbb69e9e12b7cc67572c11ac2f4fa84f920e69e6c261ee406779",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/product-primary-after.json",
+        "historical_sha256": "d20cff0c8fe24c1934c6692aef06a9d8a9770a0feedb7b0c32caa98ccad7fd40",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-notes.md",
+        "historical_sha256": "e82802ee107faf85b89a8067a674bc39814a88e61af5a87880bc35b63df31e32",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/master-skills.json",
+        "historical_sha256": "96b44e4584108c179f3df2a54d448c929c3b9e0440a7207e6cd7c98c8b69134b",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      },
+      {
+        "path": "/private/tmp/ari-integration-audit/bulk-final.json",
+        "historical_sha256": "5c4798317bdde8b77cea2ae32a5c6328eac75618c5dc406eb9ed0bb70e0b510a",
+        "available_now": false,
+        "coverage_note": "historical source cited/inspected by the completed original audit; hash is not content-read proof; absent content cannot be reopened now"
+      }
+    ]
+  },
+  "available_full_prior_report": {
+    "path": "/private/tmp/configurator-full-audit-findings-20261028.md",
+    "sha256": "e99518c3010fc7970425ffafbbae8764c9969977515bd2e46cff76c047ee1540",
+    "lines": 384
+  },
+  "limits": [
+    "No application/runtime/build/test/DB/browser/service or Git/checkout operations executed for this packet.",
+    "Old temporary44 evidence files are now unavailable; original manifest survives. Hash presence is not read coverage and raw report reconstruction is not certified.",
+    "Exact Q2/Q3/Q4 original local aliases/text cannot be reopened; underlying R/O/V findings have individual durable coverage.",
+    "Original Bulk1155 clauses and all changed code lines/historical logs not independently recertified.",
+    "Source/assertion inspection and historical26Oct master or older standalone Images passes are not fresh combined acceptance.",
+    "Hardware IME,full viewport/zoom/max/loading matrices,raw heap/listener metrics and populated capacity remain bounded disclosed gaps.",
+    "XLSX HTTP/file checks are distinct from client-blocked browser saving.",
+    "Native I3a feasibility and Writing identity/no-op/rollback/concurrency remain implementation proofs.",
+    "Main/ignored runtime contents and private credentials/DB were not read/copied; eventual preservation/isolation still needed.",
+    "Technical verdict is not human implementation/merge/push/security approval."
+  ],
+  "verification": {
+    "date_utc": "2026-10-29T00:01:32.957304+00:00",
+    "application_commands_run": false,
+    "head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "roots": {
+      "primary": {
+        "head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+        "checked_original_files": 1072,
+        "hash_differences": [],
+        "aggregate_current_sha256": "a19012d30b3e8957f8201a9cabb214ab71c0466a3011eb592c9b3def816b9b0b",
+        "status_count": 14,
+        "original_status_unchanged": false
+      },
+      "images": {
+        "head": "244b305d083a90c731cd4bde23d996b4db0f8f3d",
+        "checked_original_files": 92,
+        "hash_differences": [],
+        "aggregate_current_sha256": "b42df1dd8b6e0b158986ce38218fdf9e9ede1b617b4b5de70a30480843b3d822",
+        "status_count": 92,
+        "original_status_unchanged": true
+      },
+      "prototype": {
+        "head": "b6395c56d4ab845baf2d80a89bbb115058db7573",
+        "checked_original_files": 53,
+        "hash_differences": [],
+        "aggregate_current_sha256": "c3d8bb1cde4202220f0ce35d733b5b10949fb1772932a10b4c925c12a2594eb5",
+        "status_count": 1,
+        "original_status_unchanged": true
+      }
+    },
+    "owner_document_changes": [
+      {
+        "path": "docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+        "before_sha256": "02abc202356d8fc922c131b476b1af2afe2d711e8e0e7b83c7b14e0212159cd6",
+        "current_sha256": "0f372310f34808fd7f09c64c94bc0589a511fd270ecee41bf78c9f360df13d17",
+        "attribution": "Catalog owner coordinated R2/R3 revisions, exact R3 reviewed"
+      },
+      {
+        "path": "docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md",
+        "before_sha256": "7988f20d4a5c9d629eb38f1495daf0a7a50bc308658e0e1ef4cc57666beadd4e",
+        "current_sha256": "abcb7d3666ebd614bee309ad3b796a07926d35bdf199db8235ccd16197c191df",
+        "attribution": "Catalog owner coordinated R2/R3 revisions, exact R3 reviewed"
+      }
+    ],
+    "artifact_links": {
+      "checked": 26,
+      "missing_current_targets": [],
+      "note": "Local :line suffixes stripped before existence check; missing old temporary pointers explicitly recorded as unavailable rather than required to resolve."
+    },
+    "trailing_whitespace": [],
+    "status_after": [
+      " M docs/README.md",
+      " M docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md",
+      " M docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md",
+      "?? docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+      "?? docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md",
+      "?? docs/catalog/CATALOG_AND_IMAGES_PREMERGE_PLAN.md",
+      "?? docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md",
+      "?? docs/catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md",
+      "?? docs/catalog/COORDINATION_REVIEW_PACKAGE.md",
+      "?? docs/catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_EXECUTION_SPEC.md",
+      "?? docs/catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_PLAN.md",
+      "?? docs/catalog/CROSS_WORKTREE_RECONCILIATION_2026_10_29.md",
+      "?? docs/catalog/CROSS_WORKTREE_RECONCILIATION_EVIDENCE_2026_10_29.json",
+      "?? docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md"
+    ],
+    "coordinator_addition": {
+      "path": "docs/catalog/COORDINATION_REVIEW_PACKAGE.md",
+      "sha256_at_check": "231a9fcde793abea2ae825bc438ddaee9ccadfef87d35f60b5805b04c91cdf73",
+      "attribution": "coordinator-owned concurrent addition; not an audit edit"
+    }
+  },
+  "audit_artifacts_sha256_except_self": [
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_PLAN.md",
+      "sha256": "262a75d96e020b739bb996a97ee564fc2f5e7842af2c28baf80091a4eb3dfb0d",
+      "lines": 79
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_EXECUTION_SPEC.md",
+      "sha256": "eaa52fe95e8119eefb9a843a32ee943b4f18157bd06f9309e026010f4ca3eaf0",
+      "lines": 116
+    },
+    {
+      "path": "/Users/studioycm/Herd/configurator/docs/catalog/CROSS_WORKTREE_RECONCILIATION_2026_10_29.md",
+      "sha256": "68a624f83bac1a5036b3eac40ce7fb2103cccea2d04cb4185d262de2623ad62e",
+      "lines": 525
+    }
+  ],
+  "source_entries_note": "Source hashes record the named read snapshot, not a requirement that concurrently coordinated owner status records never change. Owner approval tuples above are pinned and checked.",
+  "independent_review_receipt": {
+    "reviewer_task": "Plan bulk creation forms",
+    "reviewer_thread_id": "01a154ae-2ef4-7163-a3f7-c484195c8f7e",
+    "date": "2026-10-29",
+    "gate": "fulfilled_at_bounded_planning_review_scope",
+    "verdict": "acceptable_for_coordination_human_decision_handoff",
+    "reviewed_snapshot_sha256": {
+      "CROSS_WORKTREE_FIRST_STEP_REVIEW_PLAN.md": "cf88329ac989a90ead477bac39f99a19d3cb63afee60ed9b4694e1bd4a522924",
+      "CROSS_WORKTREE_FIRST_STEP_REVIEW_EXECUTION_SPEC.md": "255ffd25b2b46e787c94492a0acd03e7f0fa43283034ee2f1ee94f545b6a8250",
+      "CROSS_WORKTREE_RECONCILIATION_2026_10_29.md": "66c0f64af296b90d080d7a62fc6236708ab324da670d41cffc5b9cd5f473cd9d",
+      "CROSS_WORKTREE_RECONCILIATION_EVIDENCE_2026_10_29.json": "a0d43f320d54926b93507a8961dc28b9971583a840184ab25c4adec61f111331"
+    },
+    "coordinator_record": "/Users/studioycm/Herd/configurator/docs/catalog/COORDINATION_REVIEW_PACKAGE.md",
+    "reported_checks": [
+      "Independently read review plan/spec and reconciliation sectionsA-F,current feature verdicts and prior full inventory",
+      "Checked machine-readable coverage and authority limits",
+      "Verified all four current feature-owner artifact hashes",
+      "Verified all92 Images and53 prototype hashes+HEADs",
+      "Verified all11 Writing dependency fingerprints",
+      "Confirmed no tracked app/resources/routes/config/database/test/dependency changes",
+      "Checked current packet links;none missing"
+    ],
+    "qualifications": [
+      "Coordinator did not rerun the audit retained primary1075-path receipt comparison in full; audit verified1072 original files outside three original protected documentation paths",
+      "Unavailable original logs and exact Q2-Q4 reconstruction remain explicitly qualified",
+      "W1 scope clarification incorporated;no shared-draft/batch/UI/Preview implementation prerequisite for W1",
+      "COORD-01=XWR-01 closed at CatalogR3",
+      "Native I3a feasibility and Writing identity/no-op/rollback/concurrency remain future implementation proofs",
+      "No implementation,runtime,whole-app,merge,push,security or release approval"
+    ],
+    "final_update_scope": "Receipt,status and validation metadata only;substantive findings and feature scopes unchanged;coordinator will verify final receipt-only hashes"
+  },
+  "receipt_only_final_validation": {
+    "at_utc": "2026-10-29T00:04:20.320218+00:00",
+    "head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "current_local_links_checked": 27,
+    "missing_current_targets": [],
+    "trailing_whitespace": [],
+    "new_source_investigations": false,
+    "application_tests_or_runtime_commands": false,
+    "substantive_corrections": false,
+    "note": "Only coordinator receipt and resulting audit-doc hashes/status updated. Prior source/preservation/evidence claims retained at their original dates and scope."
+  }
+}

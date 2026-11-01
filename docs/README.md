@@ -1,16 +1,78 @@
-# Catalog rebuild: start here
+# Catalog rebuild: current documentation and history
 
-**Current handoff — 26 October 2026:** the selected consolidation repairs and complete legacy retirement are committed and merged into local master. R16 is retired with its sole consumer. Merged-result automated checks and the human-assisted CSV/current-app browser checks passed; the dedicated Consolidation QA runtime is retired, while its worktree and evidence remain. **Pushing is prohibited.** Earlier publication instructions below are dated history, not current authorization.
+**Current record — 1 November 2026:** application delivery baseline `d44ecb609d17a67afabe0960d8704f9ef267ac79` contains accepted K1–K7, GA1/GA2 and the minimum Images producer/native individual fields CODE+TEST. Later documentation/tooling-only commits do not change that application baseline. This is not an overall feature-completion or runtime-release claim. **No push/deployment is authorized by these documents.** Root remains the sole assigned Master writer/committer; [coordination §12](catalog/COORDINATION_REVIEW_PACKAGE.md#12-current-delivery-state--1-november-2026) carries the current owner/readiness handoff; unrelated pending work and archived sources are preserved.
 
-Read the [fresh master application audit](catalog/MASTER_APP_AUDIT_2026_10_26.md) for new findings, historical dispositions and evidence limits, and the [catalog/Images review handoff](catalog/CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md) for the sixteen completed-step dispositions, changed contracts and unfinished feature boundaries. New application fixes require review and approval. The [consolidation journal](catalog/CONSOLIDATION_CHANGELOG.md) is the current execution history.
+Actual existing-QA progress is now recorded:51tables/61migration rows, reviewed private facade/configuration and retained owned Group112/Products109,110/Configurator2; baseline/create/backend readback passed with pre-existing rows/pivots/settings/schema/history preserved. No image is assigned to those owners. Nine local synthetic files exist; their generation is not served/FPM proof. Both general QA transports remain disabled, browser access is policy-denied, and native served/FPM plus conditional Main rollout remain unrun. Root fixture receipt `/private/tmp/catalog-k7-runtime-preparation-20261101/owner-runtime/draft-20261101T042744Z-f594d7c4/ROOT_QA_FIXTURE_EXECUTION_RECEIPT.json`, SHA256 `ec7a95660334fcd794cb2b8ca88d405299024ffc582ec4fcc42ec0118b8be845`.
 
-The [post-consolidation repairs execution spec](catalog/POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md) is proposed for steps 5–7: availability, CSV/readiness and exact `"0"` presentation. The human selected standard CSV A and readiness B, requested one central exchange-policy owner, and accepted investigating an optional queued streaming mode. Application implementation still awaits approval. Security/package work stays in the audit backlog until explicitly requested; step 8's catalog/Images alignment remains with its feature task. AD-01 may be a separate one-writer checkpoint while CSV review proceeds.
+Current QA schema/configuration and the local/backend fixture evidence are separate from actual served image behavior. Root's QA schema receipt is `3f25e249…`; the fixture receipt above records closed windows and preservation. The retained fixtures have null image pointers and no Asset/source/Media rows. Browser/FPM checks remain NOT RUN while the connector explicitly denies the origin; no alternate browser/origin/CDP/HTTP workaround is permitted. Conditional Main schema/storage/activation has not run. Nine local synthetic controls are not served capacity proof.
+
+## Current Catalog and Images reading order
+
+1. [Complete Catalog plan and execution spec §27](catalog/CATALOG_REBUILD_COMPLETE_PLAN_AND_EXECUTION_SPEC.md#27-k8-combined-acceptance-and-remaining-images-handoff--1-november-2026): current K8 evidence, remaining runtime steps and owners. Earlier accepted stage evidence is reused within its recorded limits.
+2. [Master Catalog/Images specification](catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md): shared boundaries and delivery policy; the current status overrides older dated preparation narratives.
+3. [Images blueprint §23](catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md#23-current-master-remaining-images-handoff--1-november-2026): remaining dedicated workspace packages. The native image fields/backend producer and Catalog display are already delivered; the workspace is not.
+4. [K7 display package](catalog/CATALOG_K7_IMAGE_DISPLAY_EXECUTION_PACKAGE.md) and [minimum producer package](catalog/IMAGE_ASSIGNMENT_MINIMUM_PRODUCER_EXECUTION_PACKAGE.md): accepted CODE+TEST contracts and receipts, followed by explicitly incomplete runtime checks. Do not rerun completed work steps from their original checklists.
+5. Follow repository instructions/installed skills and only the contract needed for the assigned bounded task. Current human/coordinator scope and fresh resource windows govern execution; dated plans do not grant authority by themselves.
+
+The remaining sequence is K8 actual Catalog runtime acceptance → dedicated Images browsing/sequence → image-only inspector/continuation → Product folder recipe/review → explicit≤50 Apply → remaining bulk/source acceptance → Writing. Group attributes filter Group cards; independent custom tags do not transfer into Product criteria; Product properties retain their own matcher. Preserve the current K/GA identifiers, Group limits and ordinary Product/Group UX except approved image fields. Shared library/global replacement is phase2; attachments/PDF/gallery/other entities and actual D60 access/import remain outside the current delivery. Cosmetic/mobile review is deferred;200%zoom is excluded.
+
+## Current delivery and historical records
+
+**Publication snapshot — 1 November 2026:** the application-code baseline is Master `d44ecb609d17a67afabe0960d8704f9ef267ac79`. Groups One and Two were delivered in `07701045e4dda35213e24b078eba19675d697fc6`; K1–K7, GA1/GA2 and the minimum Images producer are locally committed. The [stage protocol](catalog/STAGE_AUDIT_AND_DOWNSTREAM_REPLAN_PROTOCOL.md) and [complete Catalog/Images plan §27](catalog/CATALOG_REBUILD_COMPLETE_PLAN_AND_EXECUTION_SPEC.md#27-k8-combined-acceptance-and-remaining-images-handoff--1-november-2026) govern current sequencing and the remaining K8 work. This snapshot does not authorize a push, deployment or resource operation.
+
+QA additive schema preparation, local synthetic image generation and owned fixture creation/readback have accepted execution evidence. Fixtures are retained, with no images assigned and both general QA transports disabled. Actual native-browser/FPM/per-image acceptance and conditional Main rollout remain unrun. Browser access is policy-blocked; old browser results do not replace that missing proof. The private runtime receipts are host-local supporting evidence, not bundled repository artifacts.
+
+The dated 26/28 October handoffs and older implementation-session instructions elsewhere on this page are history. Their former pending approvals, worktree/merge steps, database leases and test commands neither reopen delivered work nor grant a new execution window. Read the current references above before historical material.
+
+| Historical record | Disposition and evidence limits |
+| --- | --- |
+| [App proposal](catalog/APP_RECONCILIATION_AND_ROBUSTNESS_PROPOSAL.md) and [execution spec](catalog/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC.md) | October pre-delivery planning. Shared repairs were delivered in `07701045`; retain design reasoning, do not repeat implementation. |
+| [Combined acceptance proposal](catalog/COMBINED_REGRESSION_ACCEPTANCE_PROPOSAL.md), [dated verification report](catalog/COMBINED_REGRESSION_VERIFICATION_REPORT_2026_10_29.md) and [JSON evidence](catalog/COMBINED_REGRESSION_VERIFICATION_EVIDENCE_2026_10_29.json) | Separate historical source/runtime lanes. Their test counts, old CSV/browser results and unresolved XLSX finalization describe those exact versions; none certifies the current Catalog/Images runtime. Preserve JSON bytes. |
+| [First-step review plan](catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_PLAN.md) and [review spec](catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_EXECUTION_SPEC.md) | Historical first-package review/decision handoff, superseded by later accepted delivery and direct-Master stage sequencing. |
+| [Reconciliation report](catalog/CROSS_WORKTREE_RECONCILIATION_2026_10_29.md) and [JSON evidence](catalog/CROSS_WORKTREE_RECONCILIATION_EVIDENCE_2026_10_29.json) | Dated cross-worktree findings/dispositions. Unfinished features and old evidence gaps retain their historical meaning; use current plans for what remains. Preserve JSON bytes. |
+| [Groups One/Two spec](catalog/GROUPS_ONE_TWO_CURRENT_MASTER_EXECUTION_SPEC.md), [manifest](catalog/GROUPS_ONE_TWO_CURRENT_MASTER_INTEGRATION_MANIFEST.json) and [reviewed patch](catalog/GROUPS_ONE_TWO_CURRENT_MASTER_REVIEWED.patch) | Delivered historical 13-file packet. Preserve all three files byte-for-byte, including the original pending status. Delivery in `07701045` supersedes that status; do not reapply the patch or reuse its old authority. |
+
+Historical absolute paths, accounts and hashes identify the recorded local evidence. Private `/private/tmp` or `/var/folders` targets may be unavailable on another machine and are not missing source dependencies. No workbook, database dump, credentials, raw browser session or environment file is added by this documentation batch. The records are publication history, not current runtime acceptance.
+
+## Delivered-stage contract records
+
+These documents retain their original execution contracts and dated preparation evidence. The delivered status/index takes precedence over a preserved “Preparation only” paragraph. No new declaration of browser/FPM/Main acceptance is implied.
+
+| Contract | Local application delivery |
+| --- | --- |
+| [K4-J1 journey](catalog/CATALOG_K4_JOURNEY_EXECUTION_PACKAGE.md) | `5d0f9ad7` |
+| [K4 Product presentation](catalog/CATALOG_K4_PRODUCT_PRESENTATION_EXECUTION_PACKAGE.md) | `eb82a02b` |
+| [K5 saved code](catalog/CATALOG_K5_SAVED_CODE_EXECUTION_PACKAGE.md) | `ed3f2c05` |
+| [K6 comparison](catalog/CATALOG_K6_PRODUCT_COMPARISON_EXECUTION_PACKAGE.md) | `07e6a74c` |
+| [GA1 Group JSON/native authoring](catalog/CATALOG_GROUP_ATTRIBUTES_JSON_EXECUTION_PACKAGE.md) | `d51a0f6e` |
+| [GA2 Group consumers](catalog/CATALOG_GA2_GROUP_ATTRIBUTE_CONSUMERS_EXECUTION_PACKAGE.md) | `5497c091` |
+| [Domain clarification](catalog/CATALOG_GROUP_PROPERTIES_AND_TAGS_RECONCILIATION.md) | Settled Group attributes / Product properties / independent tags; implemented through GA1/GA2 |
+
+## Historical Catalog/Images references
+
+The seven files below are preserved historical planning/audit/reuse snapshots. Their original text—including stale then-current HEADs, pending approvals, old source inventories and worktree integration proposals—is retained for traceability, not current execution. Read the current index/specifications above first. They are not merge/port manifests and do not reopen closed findings or grant schema resets. The archived92Images paths remain read-only references; current delivery uses fresh bounded slices on Master.
+
+| Historical reference | Purpose |
+| --- | --- |
+| [Plan audit](catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md) | Original findings/dispositions and evidence levels |
+| [Premerge plan](catalog/CATALOG_AND_IMAGES_PREMERGE_PLAN.md) | Superseded integration proposal |
+| [Reuse assessment](catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md) | Dated selective-reuse reasoning |
+| [Complete source audit](catalog/CATALOG_REBUILD_COMPLETE_SOURCE_AUDIT.md) | Scoped CR1/CR2 source/planning record |
+| [UX/settings plan](catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md) | Original design and settled-contract provenance |
+| [Image implementation plan](catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md) | Original requirements/research and archive checkpoints |
+| [Post-consolidation amendments](catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md) | Prior transition/recovery decisions, superseded status |
+
+Historical JSON evidence and reviewed patches remain byte-for-byte records; publication does not relabel them as current source or replay instructions. Other integration/audit/Writing documents retain their accountable owners; this Catalog/Images index does not assume their authorship or completion. Current plans may be committed as reviewed plans/status records even while their explicitly listed runtime work remains unfinished. Root controls the exact allowlist and separate readiness of other owners' files.
+
+## Historical consolidation and release index
+
+The remaining sections retain earlier implementation/release context, dates, URLs, datasets and instructions. They do not supersede the current record above or authorize a repeat promotion, task restart, reset, push or remote verification. The [26October audit](catalog/MASTER_APP_AUDIT_2026_10_26.md), [consolidation handoff](catalog/CONSOLIDATION_HANDOFF_FOR_CATALOG_IMAGES_REVIEW.md), [consolidation journal](catalog/CONSOLIDATION_CHANGELOG.md) and [repair spec](catalog/POST_CONSOLIDATION_REPAIRS_EXECUTION_SPEC.md) are historical repair/retirement evidence. R16 is retired; no repeated whole-app audit is implied. Optional queued exports, security/CI and other owners' work remain separately scoped.
 
 Updated 2026-09-24. **T01–T12 are implemented; the local fresh-database and rollback rehearsal passed.** The user authorized promotion on 2026-09-24: `master` is the primary development branch in `/Users/studioycm/Herd/configurator`, with `ari.data4.work` as its remote development site. The preserved old application is on `codex/legacy-pre-rebuild`; its database and private files remain separate. See [release evidence](catalog/RELEASE_REHEARSAL.md) for the actual cutover status and workflow.
 
 Manage uses Overview / Groups / Attributes / Rules / Preview & Test. Preview & Test is implemented; representative saved-definition rendering and selection were verified during the later consolidation. The original September rehearsal left D060 unassigned; that historical condition is not the current editor/Preview status. The September promotion authority is recorded below; the current no-push boundary above controls this task. Current sample/verification evidence does not certify every client configuration or Product combination.
 
-## Read in this order
+## Historical implementation reading order
 
 1. The repository's [AGENTS.md](../AGENTS.md), relevant installed skills, and `.ai/rules/index.md` if that directory now exists.
 2. [Implementation plan](catalog/IMPLEMENTATION_PLAN.md): execution order, exact task boundaries, verification and progress.
@@ -25,7 +87,7 @@ The [Admin and shared Filament UX implementation plan](catalog/ADMIN_FILAMENT_IM
 
 The [Product card appearance implementation plan](catalog/CARD_APPEARANCE_IMPLEMENTATION_PLAN.md) records the 2026-10-07 local implementation of compact whole-card links, all-match differing-property comparison, native Group appearance/spacing controls and guarded result notices. Its evidence section includes focused checks, 100-click local/remote baseline measurements, all-501 completion and remaining verification gaps. Publication and verification of the new appearance remotely remain pending.
 
-The [Phase 1 image assignment implementation plan](catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md) (2026-10-23) covers compact search, explicit table selection, configurable pagination, Previous/Next and Save & next, managed storage, individual image fields, folder matching and reviewed batch actions. Prototype version 11 demonstrates the finalized workflow (92 prior prototype tests). The plan includes UX/framework research and the confirmed association design: reusable `CatalogAsset` plus nullable `main_image_id` fields on Products/Groups now; reusable attachments later. The quiz decisions set separator-insensitive search, default 10 / Custom 1–500, 3 MiB / 25 MP images, and at most 50 assignments per on-screen Apply within a 5000-record selection/review set. The refreshed sub-agent audits add fenced file preparation, incremental on-screen folder scans/review building, current Product-field/writer integration and classified retry/error handling. Background assignment/conversion jobs are excluded; foreground failures use the image journal, not failed jobs. The shared library manager remains phase 2. These committed planning snapshots are older than the Images worktree's later P6 amendments: P0–P6 source exists there, still uncommitted and unmerged; P7–P10 remain unfinished. Preserve those later amendments and review the complete overlay against consolidated master. The current consultation grants read-only review, not further implementation. The companion [deep execution blueprint](catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md) gives persistence/command contracts; the new handoff above records the chronology, integration obligations and acceptance gaps.
+The [Phase1 image plan](catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md) retains the original quiz, research and archived P0–P6 history: one main image, shared library phase2, default10/custom1–500 rows,3MiB/25MP and explicit≤50 foreground assignments. Its old worktree/R0–R3 status is historical. Current accepted producer/K7 and the remaining dedicated workspace/recipe/Apply scope are indexed above; no old overlay, merge, reset, D60 dry run or automatic task restart follows from this record.
 
 For the next “Research Filament 5 admin UX” session, read the [Group/card appearance handoff](catalog/CARD_APPEARANCE_ADMIN_UX_HANDOFF.md) before applying the earlier admin plan. It maps the new controls, save/revision rules and runtime ownership to the affected admin phases.
 

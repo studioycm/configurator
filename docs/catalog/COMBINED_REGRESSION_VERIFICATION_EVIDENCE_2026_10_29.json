@@ -1,0 +1,2216 @@
+{
+  "baseline_head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+  "current_head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+  "installed_versions": {
+    "laravel/framework": "v13.35.0",
+    "filament/filament": "v5.9.0",
+    "livewire/livewire": "v4.4.7",
+    "pestphp/pest": "v5.3.0",
+    "spatie/laravel-medialibrary": "11.23.9"
+  },
+  "source_files_before": 671,
+  "source_files_after": 671,
+  "source_path_or_content_changes": [],
+  "source_inventory_sha256": "460fbe2f010e0887461a7a87a7670afc968f960c59d1256694e956551c49d0f8",
+  "initial_pending_docs": 14,
+  "preexisting_pending_doc_changes": [
+    "docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+    "docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md"
+  ],
+  "primary_manifest_sha256": "b2a7ec1eb33fdc2c19852a0a3acb98390d1975c5f69091210b623c805d35ae4a",
+  "logs": {
+    "js": {
+      "path": "/private/tmp/configurator-oct29-js-verification.log",
+      "sha256": "4690d3b2e1d8f7e16064bed10ba7823bc96c84971f4659285db63eceb09608fa",
+      "decisive_output": [
+        "# suites 0",
+        "# pass 253",
+        "# fail 0",
+        "# cancelled 0",
+        "# skipped 0",
+        "# todo 0",
+        "# duration_ms 220.19175"
+      ]
+    },
+    "safety_initial": {
+      "path": "/private/tmp/configurator-oct29-safety-verification.log",
+      "sha256": "6ed230b6241ebe65a739d16ed9dc16675b63cfadcdc86862c95b4aa4d8af8df6",
+      "decisive_output": [
+        "  Tests:    3 warnings, 24 passed (56 assertions)",
+        "  Duration: 0.64s"
+      ]
+    },
+    "safety_warning_details": {
+      "path": "/private/tmp/configurator-oct29-safety-warning-details.log",
+      "sha256": "6b95286a8972550cb3f0462eae99bbfaa6e0e2709b3738f1bbf74a089a37aa01",
+      "decisive_output": [
+        "     76▕             return Str::utf8($content, $encoding)->mapError(static function (string $error) {",
+        "     77▕                 throw new InvalidEncodingException($error);",
+        "      +7 vendor frames ",
+        "  8   tests/CreatesApplication.php:16",
+        "  9   tests/TestCase.php:13",
+        "  Tests:    3 warnings, 24 passed (56 assertions)",
+        "  Duration: 0.65s"
+      ]
+    },
+    "safety_final": {
+      "path": "/private/tmp/configurator-oct29-safety-final.log",
+      "sha256": "0653cd7476f814bbbb30fae6f43d6a9262f4b1330fd68797be7695ba57bd3422",
+      "decisive_output": [
+        "  Tests:    27 passed (56 assertions)",
+        "  Duration: 0.66s"
+      ]
+    },
+    "php_full_initial": {
+      "path": "/private/tmp/configurator-oct29-php-full.log",
+      "sha256": "ee2985bb741d2be2ca735597be3c75a3d93417159d45ca3788beaf7361c3d2cd",
+      "decisive_output": [
+        "  ➜ 209▕     expect(hash_file('sha256', $path))->toBe('5a8adbd4439bb1f020ab625d84fa6fde3a62ce67fbd74f94cf2b2e3b19758f72');",
+        "    210▕ ",
+        "    211▕     $result = applyCatalogFixture($actor, $path);",
+        "    212▕     $repeat = applyCatalogFixture($actor, $path);",
+        "    213▕",
+        "  Tests:    2 failed, 1464 passed (9227 assertions)",
+        "  Duration: 108.22s"
+      ]
+    },
+    "php_fixture_rerun": {
+      "path": "/private/tmp/configurator-oct29-php-fixture-rerun.log",
+      "sha256": "298bebe193079785992b8ed965181dc1b3b200c40194be0f8692f35348e27104",
+      "decisive_output": [
+        "  Tests:    2 passed (14 assertions)",
+        "  Duration: 1.06s"
+      ]
+    }
+  },
+  "date": "2026-10-29",
+  "authority": "Original baseline was read-only existing-code verification. Later direct human authority approved isolated synthetic QA browser checks and separate coordinator implementation; no audit application fixes, merge or push.",
+  "snapshot_initial": {
+    "source_head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "target": "/private/tmp/configurator-regression-20261029-t746vfu4",
+    "env_file_present": false,
+    "config_cache_present": false,
+    "autoload": {
+      "App": [
+        "/private/tmp/configurator-regression-20261029-t746vfu4/app",
+        "/private/tmp/configurator-regression-20261029-t746vfu4/vendor/laravel/pint/app"
+      ],
+      "Tests": [
+        "/private/tmp/configurator-regression-20261029-t746vfu4/tests"
+      ]
+    }
+  },
+  "snapshot_final_empty_env_bytes": 0,
+  "results": {
+    "js": {
+      "exit_code": 0,
+      "passed": 253,
+      "failed": 0,
+      "skipped": 0
+    },
+    "safety_final": {
+      "exit_code": 0,
+      "passed": 27,
+      "assertions": 56,
+      "included_in_full_suite": true
+    },
+    "php_full_initial": {
+      "exit_code": 2,
+      "passed": 1464,
+      "failed_missing_fixture": 2,
+      "assertions": 9227
+    },
+    "php_fixture_rerun": {
+      "exit_code": 0,
+      "passed": 2,
+      "assertions": 14
+    },
+    "unique_standard_php_across_runs": {
+      "passed": 1466,
+      "assertions": 9241,
+      "single_uninterrupted_green_run": false
+    },
+    "mysql": "NOT RUN",
+    "browser": "NOT RUN",
+    "future_features": "NOT IMPLEMENTED/NOT RUN"
+  },
+  "private_fixture": {
+    "bytes": 484540,
+    "sha256": "5a8adbd4439bb1f020ab625d84fa6fde3a62ce67fbd74f94cf2b2e3b19758f72",
+    "copied_to_disposable_snapshot_only": true,
+    "contents_included": false
+  },
+  "runtime_versions": {
+    "php": "8.4.27",
+    "node": "22.23.4",
+    "npm": "10.9.9"
+  },
+  "limits": [
+    "Selected source inventory, not all ignored/runtime files or a recoverable backup.",
+    "Owner master specification and reuse assessment changed concurrently; other initial pending docs unchanged.",
+    "Raw temporary logs may expire; their digests do not reconstruct content.",
+    "Original baseline lane only: Original baseline excludes Writing; later bounded combined checkpoints are separate. No combined MySQL, browser file saving, served bundles or unbuilt feature acceptance established.",
+    "Latest W6, restricted-engine, physical-commit and QA-browser records below supersede only their named current-state limits; earlier records retain historical identities. Native XLSX finalization remains blocked; received partial bytes are separately parsed."
+  ],
+  "protected_source_recheck": {
+    "images": {
+      "files": 92,
+      "changed": 0,
+      "head_matches": true
+    },
+    "prototype": {
+      "files": 53,
+      "changed": 0,
+      "head_matches": true
+    },
+    "ignored_runtime_backup_or_inventory_proven": false
+  },
+  "current_coordination_handoff": {
+    "date": "2026-10-29",
+    "primary_head": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "source_files": 671,
+    "source_changes": [],
+    "pending_paths": [
+      "docs/README.md",
+      "docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_EXECUTION_BLUEPRINT.md",
+      "docs/catalog/IMAGE_ASSIGNMENT_PHASE_1_IMPLEMENTATION_PLAN.md",
+      "docs/catalog/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC.md",
+      "docs/catalog/APP_RECONCILIATION_AND_ROBUSTNESS_PROPOSAL.md",
+      "docs/catalog/CATALOG_AND_IMAGES_MASTER_EXECUTION_SPEC.md",
+      "docs/catalog/CATALOG_AND_IMAGES_PLAN_AUDIT.md",
+      "docs/catalog/CATALOG_AND_IMAGES_PREMERGE_PLAN.md",
+      "docs/catalog/CATALOG_AND_IMAGES_REUSE_ASSESSMENT.md",
+      "docs/catalog/CATALOG_REBUILD_COMPLETE_PLAN_AND_EXECUTION_SPEC.md",
+      "docs/catalog/CATALOG_REBUILD_COMPLETE_SOURCE_AUDIT.md",
+      "docs/catalog/CATALOG_REDESIGN_UX_AND_SETTINGS_PLAN.md",
+      "docs/catalog/COMBINED_REGRESSION_ACCEPTANCE_PROPOSAL.md",
+      "docs/catalog/COMBINED_REGRESSION_VERIFICATION_EVIDENCE_2026_10_29.json",
+      "docs/catalog/COMBINED_REGRESSION_VERIFICATION_REPORT_2026_10_29.md",
+      "docs/catalog/COORDINATION_REVIEW_PACKAGE.md",
+      "docs/catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_EXECUTION_SPEC.md",
+      "docs/catalog/CROSS_WORKTREE_FIRST_STEP_REVIEW_PLAN.md",
+      "docs/catalog/CROSS_WORKTREE_RECONCILIATION_2026_10_29.md",
+      "docs/catalog/CROSS_WORKTREE_RECONCILIATION_EVIDENCE_2026_10_29.json",
+      "docs/catalog/IMAGE_ASSIGNMENT_POST_CONSOLIDATION_PLAN_AMENDMENTS.md"
+    ],
+    "pending_all_documentation": true,
+    "protected_source": [
+      {
+        "root": "/Users/studioycm/.codex/worktrees/catalog-images-p0-p1/configurator",
+        "files": 92,
+        "changed": [],
+        "head_matches": true
+      },
+      {
+        "root": "/Users/studioycm/.codex/visualizations/2026/10/18/01a14fee-762d-7661-acdc-8d5213474de9/catalog-review-site",
+        "files": 53,
+        "changed": [],
+        "head_matches": true
+      }
+    ],
+    "audit_active_test_processes": false,
+    "audit_active_db_window": null,
+    "group12_authority": "Execute after technical readiness review; Plan bulk creation forms sole implementation writer in separate isolated checkout; this chat remains independent. No additional routine human approval. Stop for genuine new issue/decision/blocker. No merge/push/security/Catalog implementation.",
+    "group12_independent_review": "Coordinator reports independent readiness PASS G1-A/G2-A; PAGE_START current-before-recovery and effective read/Save/rollback metadata clarified. Exact reviewer artifact hashes not supplied here. No implemented-candidate/runtime acceptance inferred.",
+    "writing_latest_owner_report": {
+      "scope": "frozen W1-W5 backend, excludes native UI/transport and Review/Test",
+      "receipt": {
+        "path": "/private/tmp/rules-writing-w5/W5_FROZEN_20261029/receipt.json",
+        "sha256": "5b29410225af4ff88ba0e0b089905a92979cf5285110ac48b9691cfdf8dd6fcb"
+      },
+      "php": {
+        "passed": 1656,
+        "assertions": 10106
+      },
+      "Rules_MySQL": {
+        "passed": 171,
+        "assertions": 985
+      },
+      "window": "closed; dedicated configurator_rules_test only",
+      "independently_executed_here": false
+    },
+    "mysql_target_window": "Coordinator reports R2 serial reconciliation window CLOSED. Rules window closed separately. Audit has no DB connection/reservation. QA browser lease remains with Root until explicit release.",
+    "group12_implementation_checkout_reported": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator",
+    "implementation_checkout_accessed_by_this_update": false,
+    "s10_terminal_characterization": {
+      "cases": 7,
+      "assertions": 44,
+      "owner_recorded_focused_exit_code": 0,
+      "raw_focused_log_retained": false,
+      "complete_combined_result": {
+        "tests": 1611,
+        "assertions": 9943,
+        "guard_exit_code": 0,
+        "suite_exit_code": 0
+      },
+      "unexpected_RuntimeException_case": true,
+      "production_command_or_services_changed": false,
+      "independently_executed_here": false,
+      "physical_commit_proof": false
+    },
+    "writing_historical_w1_owner_report": {
+      "db": "configurator_rules_test",
+      "mysql_tests": 32,
+      "mysql_assertions": 144,
+      "sqlite_safety_compatibility_tests": 219,
+      "sqlite_safety_compatibility_assertions": 1067,
+      "independently_executed_here": false
+    },
+    "writing_historical_w1_w2_owner_report": {
+      "scope": "frozen W1/W2 receipt, excludes W3",
+      "db": "configurator_rules_test",
+      "mysql_tests": 62,
+      "mysql_assertions": 391,
+      "full_php_tests": 1547,
+      "full_php_assertions": 9661,
+      "mysql_window": "closed",
+      "receipt_path": "/private/tmp/rules-writing-w1/W1_W2_FROZEN_20261029/receipt.json",
+      "receipt_sha256": "52f5e0b8abb2ef552e9be4c9feccd5a9bcd51aa95b2ef60c1b0e1ef716575aeb",
+      "independently_executed_here": false
+    },
+    "writing_historical_w1_w2_w3_owner_report": {
+      "scope": "frozen W1/W2/W3 receipt; excludes W4",
+      "db": "configurator_rules_test",
+      "full_php_tests": 1567,
+      "full_php_assertions": 9743,
+      "mysql_tests": 86,
+      "mysql_assertions": 517,
+      "mysql_window": "closed",
+      "receipt_path": "/private/tmp/rules-writing-w3/W3_FROZEN_20261029/receipt.json",
+      "receipt_sha256": "6f8f51dc5f1f5d3ff29c674a8116daf7633a12c20b29ef608d011bdc9cb730ca",
+      "independently_executed_here": false
+    },
+    "historical_s10_terminal_characterization": "Coordinator frozen receipt reports six Kernel::handle cases passing; no production command patch needed. This audit checked source fingerprints, not terminal runtime; operation effects are not independent commit proof.",
+    "runtime_resource_decision": {
+      "human_choice": "fresh reconciliation test and separate QA DB/users approved per coordinator",
+      "question_status": "resolved; no duplicate approval/source question",
+      "server": "MySQL8.0.46/127.0.0.1:3307",
+      "test_profile": "reconciliation",
+      "test_database_and_user": "configurator_reconciliation_test",
+      "qa_database_and_user": "configurator_reconciliation_qa",
+      "qa_rejected_by_PHPUnit": true,
+      "provisioning": "completed by sole coordinator writer",
+      "preflight": {
+        "path": "/private/tmp/configurator-reconciliation-private-20261029/preflight.json",
+        "sha256": "f2293eab071f6ede0a3c6cfebc2cd8e6d6ed598ba6d8444b5b9b40fd275d7666"
+      },
+      "verification": {
+        "path": "/private/tmp/configurator-reconciliation-private-20261029/verification.json",
+        "sha256": "aaef6a03a0990d777b1f24f7c1be6a1a74fe3eb514f0fe256f22b08209eaef8c"
+      },
+      "live_verification_provenance": "coordinator execution; audit inspected nonsecret receipts, not live queried",
+      "preflight_data": {
+        "targets": [
+          "configurator_reconciliation_test",
+          "configurator_reconciliation_qa"
+        ],
+        "host": "127.0.0.1",
+        "port": 3307,
+        "server": "8.0.46",
+        "all_targets_absent": true,
+        "partial_revokes": 0,
+        "mutations": false
+      },
+      "verification_data": [
+        {
+          "database": "configurator_reconciliation_test",
+          "identity_matches": true,
+          "grant_scope_exact": true,
+          "other_database_denied": true,
+          "partial_revokes": 0
+        },
+        {
+          "database": "configurator_reconciliation_qa",
+          "identity_matches": true,
+          "grant_scope_exact": true,
+          "other_database_denied": true,
+          "partial_revokes": 0
+        }
+      ],
+      "credential_files_metadata_only": {
+        "modes": "0600",
+        "symlinks": false,
+        "contents_read_by_audit": false
+      },
+      "temporary_helper_environment_absent": true,
+      "main_Writing_env_and_existing_resource_preservation": "coordinator-reported",
+      "original_provision_source_sha256": "4690cdcd2dc1d4a44dca7cd2a498a1ee5da6583e53c579a46fd5b6592076c5ca",
+      "later_IO_correction_source_sha256": "172b203346366df47b916b410084aa1545b7fa9a22b11415e045b86c1774d298",
+      "IO_correction_review": "PASS; complete private persistence before DDL; no provisioning rerun",
+      "existing_account_reset": false,
+      "service_or_global_setting_change": false,
+      "audit_provisioning_or_DB_connection": false
+    },
+    "historical_native_resource_choice": {
+      "date": "2026-10-29",
+      "source_thread": "01a154ae-2ef4-7163-a3f7-c484195c8f7e",
+      "provenance": "coordinator-reported native read-only inspection; not independently queried by audit",
+      "native_preparation": "complete",
+      "mysql_reported_version": "8.0.46",
+      "mysql_reported_port": 3307,
+      "existing_catalog_target": {
+        "database": "configurator_catalog_test",
+        "table_count_reported": 45,
+        "matching_account_host_reported": "127.0.0.1",
+        "database_created_or_modified": false,
+        "account_reset_or_grants_changed": false,
+        "usable_private_profile_obtained": false
+      },
+      "helper_reported": {
+        "no_PHP_entrypoint": true,
+        "unmanaged_unlinked_removed": true
+      },
+      "main_and_Writing_environment_hashes_reported_unchanged": true,
+      "DB_user_grant_data_or_service_mutation_reported": false,
+      "tests_or_DB_window_started": false,
+      "pending_question_owner": "Plan bulk creation forms coordinator only; audit must not duplicate",
+      "supersedes": "earlier generic Herd-versus-existing-private-profile source question",
+      "proposed_resources_not_provisioned": [
+        {
+          "database_and_user": "configurator_reconciliation_test",
+          "purpose": "guarded destructive verification",
+          "privilege_scope": "own database only"
+        },
+        {
+          "database_and_user": "configurator_reconciliation_qa",
+          "purpose": "separate persistent synthetic browser QA",
+          "privilege_scope": "own database only"
+        }
+      ],
+      "alternative": "Human supplies an existing restricted private profile path, without a password in chat",
+      "required_before_new_profile_use": [
+        "concrete resource decision",
+        "reviewed strict fenced profile support",
+        "applicable setup and exclusive test-window coordination"
+      ],
+      "existing_catalog_and_Rules_guards_unchanged": true,
+      "Writing_profile_reuse": false,
+      "old_QA_or_admin_profile_reuse": false,
+      "combined_MySQL_status": "BLOCKED: concrete resource/profile decision pending",
+      "browser_runtime_status": "BLOCKED: approved separate QA resource and bounded synthetic fixture setup pending",
+      "audit_provisioning_or_DB_connection": false,
+      "audit_active_window": null,
+      "W5_dependency_on_new_resources": false
+    },
+    "writing_historical_w1_w2_w3_w4_owner_report": {
+      "scope": "frozen W1-W4 backend, excludes future slices/native UI",
+      "db": "configurator_rules_test",
+      "full_php_tests": 1579,
+      "full_php_assertions": 9790,
+      "mysql_tests": 106,
+      "mysql_assertions": 655,
+      "mysql_window": "closed",
+      "receipt_path": "/private/tmp/rules-writing-w4/W4_FROZEN_20261029/receipt.json",
+      "receipt_sha256": "77482d1205d3d10564cac2ab41a1ffb0e3cd49c994f34ccfbf87d60af6845e7f",
+      "owner_logs_inspected": true,
+      "independently_executed_here": false
+    }
+  },
+  "frozen_group12_candidate": {
+    "root": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator",
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "receipt_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/implementation-receipt.json",
+    "receipt_sha256": "c572c2c34dab2c99f150005754afb86d4669bf494826df2906cabc52afd243e6",
+    "file_fingerprints": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "947d52071b69e7e8208a0495b4512698e0f50db9c6ad081983ca5e791d786a80"
+    },
+    "fingerprints_verified": 9,
+    "fingerprint_mismatches": [],
+    "owner_reported_focused_results": {
+      "g1": [
+        74,
+        336
+      ],
+      "g2": [
+        31,
+        178
+      ],
+      "cli_cases": 6
+    },
+    "owner_reported_full_php": {
+      "passed": 1497,
+      "assertions": 9387,
+      "seconds": 100.63
+    },
+    "owner_reported_code_review": "g12_implementation_review: no actionable correctness findings",
+    "independently_executed_here": false,
+    "cli_production_patch": false,
+    "cli_evidence_limit": "RefreshDatabase operation effects, not independent physical commit",
+    "mysql": "NOT RUN; approved credential source and exclusive window pending",
+    "browser": "NOT RUN; separate isolated persistent runtime pending",
+    "human_credential_source_question": "Pending answer; no password requested; no elapsed-time approval inferred",
+    "audit_active_window": null,
+    "implementation_files_edited_by_audit": false,
+    "coordinator_reported_native_herd_setup": {
+      "target": "configurator_catalog_test",
+      "outcome": "SQL1044 restricted development account cannot create/access intended test DB",
+      "database_changes_reported": false,
+      "profile_obtained": false,
+      "admin_credentials_read_or_emitted_reported": false,
+      "approval_review_rejection": false,
+      "required_source": "Authorized service-level connection or supplied restricted target profile",
+      "human_source_question": "One pending; no duplicate question",
+      "attempted_by_this_audit": false
+    }
+  },
+  "combined_candidate_checkpoint": {
+    "kind": "non-Git test-only combined snapshot",
+    "candidate": "/private/tmp/configurator-combined-20261029-6187007e",
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "manifest_sha256": "6d05156d1ad1144a9610e841b9c41e62a779b6b59654b50167d481d74d561abd",
+    "root_overlay": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "947d52071b69e7e8208a0495b4512698e0f50db9c6ad081983ca5e791d786a80"
+    },
+    "writing_w1_w2_overlay": {
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "289ce8a7e6252a119573e534f2edceed6c051192da7a23f0e01ac4aed667d7f0",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "c2c90396e306a4d47eb0a2a7035592279182aa18dd57bf2fa78235129f694704",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.rules-mysql.xml": "d780b00773bbc9781bb1c230b25e5bdb9cc6575688d0e0a077a8a54607b64e6a",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "app/Actions/SaveConfiguratorDefinition.php": "d0d903927e89878e9e224cca8b2af646fb5e45eea892914b9bbcaeeac6321b59",
+      "phpunit.mysql.xml": "bec5ea7db2da758b7d106c48b7f2dfab621c1c9b5b0c09cb2af1209109d1fccc",
+      "tests/TestDatabaseSafety.php": "b468d837238e5437e94e5e5cbebb3ca6ff80d946cc8a4b97560c1b2eee7f93ad",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47"
+    },
+    "overlap": [],
+    "owner_frozen_receipts_matched": true,
+    "after_run_overlay_files_checked": 26,
+    "after_run_selected_project_files_checked": 674,
+    "selected_project_mismatches": [],
+    "excluded_finder_metadata_entries": 13,
+    "run_receipt_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-acceptance-receipt.json",
+    "run_receipt_sha256": "6e227591f0bc8c432cd29a8bda777f8495e289e1387e822337c1a3ae3cc619c2",
+    "log_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-full-suite.log",
+    "log_sha256": "173768bdeaf1a9680a2bc8673c234e81a80361abac8b4986f3669741d048a110",
+    "observed_summary": {
+      "passed": 1578,
+      "assertions": 9807,
+      "seconds": 101.19,
+      "failed_reported": 0
+    },
+    "engine": "SQLite memory, guarded APP_ENV=testing",
+    "shell_exit_code": null,
+    "terminal_status": "process completed; original shell exit response unavailable after compaction; completed green log summary inspected",
+    "accepted_scope": "Observed completed passing test-summary checkpoint; original process exit unavailable, not inferred exit0",
+    "independently_inspected_log_and_fingerprints": true,
+    "rerun_by_this_audit": false,
+    "k1_dependencies_compared": [
+      "app/Models/Group.php",
+      "app/Models/Product.php",
+      "app/Models/GroupFilter.php",
+      "app/Models/SubGroup.php",
+      "app/Services/CatalogAvailability.php",
+      "app/Services/CatalogIntegrity.php",
+      "app/Services/CatalogSnapshots.php",
+      "app/Services/BuildCatalogSnapshot.php",
+      "app/Services/CatalogPolicy.php",
+      "app/Services/CatalogRevisions.php",
+      "app/Actions/SaveCatalogGroup.php",
+      "app/Actions/SaveCatalogProduct.php",
+      "app/Actions/SaveGroupSettings.php",
+      "app/Actions/AssignConfiguratorGroups.php",
+      "app/Actions/ImportCatalogProducts.php",
+      "app/Livewire/Catalog/Index.php",
+      "app/Livewire/Catalog/GroupShow.php"
+    ],
+    "k1_dependency_changes": [],
+    "k1_gate_released": false,
+    "not_verified": [
+      "MySQL locking/combined actual-engine acceptance",
+      "real browser notice/repair/reload",
+      "future Writing W3",
+      "Catalog K1 runtime",
+      "merged master"
+    ],
+    "merge_or_push": false,
+    "credential_source_question": "Pending; no response or approval inferred",
+    "audit_active_db_window": null,
+    "writing_next_window": "Coordinator reports W3 Rules-only window now open after focused85 green; W1/W2 frozen window is closed. W3 is outside this candidate and grants no catalog/audit reservation."
+  },
+  "writing_w3_status_report": {
+    "source": "frozen W3 owner receipt",
+    "full_php_tests": 1567,
+    "full_php_assertions": 9743,
+    "mysql_tests": 86,
+    "mysql_assertions": 517,
+    "mysql_window_reported": "closed",
+    "historical_focused_tests": 85,
+    "historical_window_report": "open before final frozen acceptance; now closed per receipt",
+    "included_in_combined_w3_checkpoint": true,
+    "included_in_prior_W1_W2_checkpoint": false,
+    "executed_by_this_audit": false,
+    "W4": "outside both frozen combined checkpoints",
+    "catalog_credential_source_question": "pending"
+  },
+  "combined_w3_checkpoint": {
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "candidate": "/private/tmp/configurator-combined-w3-20261029-810b7a7e",
+    "manifest_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w3-candidate.json",
+    "manifest_sha256": "2d76d06667c101a0afe454b190be8c926a7f86623b4bf1f809d1c40b231a89e1",
+    "root_overlay": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "947d52071b69e7e8208a0495b4512698e0f50db9c6ad081983ca5e791d786a80"
+    },
+    "writing_w1_w2_w3_overlay": {
+      "app/Actions/SaveConfiguratorDefinition.php": "cf605ca017fcb9d1458cf3d6927a5de27c0752a5cbe0aad352c212b1b5d373b5",
+      "app/Actions/SaveConfiguratorRuleWritingBatch.php": "4f72f562fd32dbc17647c0961a204553cff45b6dcb3d703ef9e6c8fb2c771d4a",
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "004a8b78d7357836468c1b598c4df26b4cea32c4b3e464dc0d750b936a288fae",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "c2c90396e306a4d47eb0a2a7035592279182aa18dd57bf2fa78235129f694704",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.mysql.xml": "452556f3b46afe8c63c859f50747eaecfbe659c45187445d133b65939b9b1847",
+      "phpunit.rules-mysql.xml": "fee7647fe2ee4a6e11d65ba0adc94c4806e95b5cfa8dba27aaf9b4d52e98cc87",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php": "ffd7229b08777055c9db87807158457fd7b00abeb1eefe439d0280786bcc7b80",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php": "55d4ab10890353655f82081f9b995c5fe9edadf649c5e6b6fc69399c6a892d37",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/TestDatabaseSafety.php": "b468d837238e5437e94e5e5cbebb3ca6ff80d946cc8a4b97560c1b2eee7f93ad",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47"
+    },
+    "overlap": [],
+    "owner_frozen_receipt_matched": true,
+    "after_run_overlay_files_checked": 29,
+    "after_run_selected_project_files_checked": 677,
+    "selected_project_mismatches": [],
+    "extra_checked_source_files": [],
+    "receipt_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w3-acceptance-receipt.json",
+    "receipt_sha256": "e99637d0b8dadd3ad2d5755d4024d050151659e151b170bf74fb8eba758e5f99",
+    "process_result_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w3-process-result.json",
+    "process_result_sha256": "403956e1f54c59ad2fe96f8cb0632eb4d81de17744ae39bc2d6f5be99121c477",
+    "log_path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w3-full-suite.log",
+    "log_sha256": "c0698b0af0121463c8e53a37a0100be0ff8945e5c857906938d5188ece5e59b6",
+    "receipt_linked_hashes_match": true,
+    "engine": "SQLite memory",
+    "result": {
+      "passed": 1598,
+      "assertions": 9889,
+      "seconds": 106.45,
+      "suite_exit_code": 0,
+      "guard_exit_code": 0
+    },
+    "guard_exit_code": 0,
+    "suite_exit_code": 0,
+    "process_elapsed_seconds": 106.8,
+    "command": [
+      "php",
+      "artisan",
+      "test",
+      "--compact",
+      "--display-warnings"
+    ],
+    "independently_inspected_log_and_fingerprints": true,
+    "rerun_by_this_audit": false,
+    "consumed_contract_checks": {
+      "writer_handle_change_prefix_unchanged": true,
+      "private_persistence_helpers_unchanged": true,
+      "codec_existing_public_declarations_preserved": true,
+      "single_rule_wrapper_delegates_locked_batch": "changed behavioral path covered by retained regressions; not signature-only proof"
+    },
+    "not_verified": [
+      "combined MySQL locking/physical-commit acceptance",
+      "real browser notice/repair/reload",
+      "Catalog K1 runtime",
+      "Writing W4",
+      "merged master"
+    ],
+    "merge_or_push": false,
+    "prior_W1_W2_missing_exit_qualification_preserved": true,
+    "credential_source_question": "Pending; no new source/window authority inferred",
+    "audit_active_db_window": null
+  },
+  "latest_completed_combined_checkpoint": "combined_w6_checkpoint",
+  "combined_w4_failed_checkpoint": {
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "candidate": "/private/tmp/configurator-combined-w4-20261029-ce3dc29c",
+    "manifest": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-candidate.json",
+      "sha256": "ec0f2335e81a51cd66bd8c15449558b5f2a65d5593fac08c1335f8e73b31d049"
+    },
+    "root_overlay": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "947d52071b69e7e8208a0495b4512698e0f50db9c6ad081983ca5e791d786a80"
+    },
+    "writing_overlay": {
+      "app/Actions/SaveConfiguratorDefinition.php": "441ec24f4dcffbc2252273b832014b8458fe17541896183bdaeb17d0c72f30fa",
+      "app/Actions/SaveConfiguratorRuleWritingBatch.php": "6f1a9f7a1765503dc3387c570f072bfe249d791278c3fd2996cabdba50ff2684",
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorRuleRecords.php": "85c522ec022d37ef3355b70c9f7b2093469ff04888382aa4c496bc3416ae6e65",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "004a8b78d7357836468c1b598c4df26b4cea32c4b3e464dc0d750b936a288fae",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingInspection.php": "c9e1ac0937d7ea38a3133fd710e3b48863a76708027e6c90d65d4da9358bbb0d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "c2c90396e306a4d47eb0a2a7035592279182aa18dd57bf2fa78235129f694704",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.mysql.xml": "0963f867a43d37c1e074ef84b40ea634dbbd59699f5a0c8659196e380a9f66a8",
+      "phpunit.rules-mysql.xml": "be5324e69e6a706b5f97ec07e36cfa469f7b7bcd10d829d20d40cfd0f9a6020d",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php": "ffd7229b08777055c9db87807158457fd7b00abeb1eefe439d0280786bcc7b80",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingInspectionTest.php": "ada3b376a830089005012f4f70706630c18824d79a259793696a197cdda181ef",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php": "55d4ab10890353655f82081f9b995c5fe9edadf649c5e6b6fc69399c6a892d37",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingInspectionConcurrencyTest.php": "a06d7250c7a1ee4e4fca6efcc46bbae32aa5254449b4aa1317eef7172bf81cf8",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/TestDatabaseSafety.php": "b468d837238e5437e94e5e5cbebb3ca6ff80d946cc8a4b97560c1b2eee7f93ad",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47"
+    },
+    "overlay_paths": 33,
+    "overlap": [],
+    "process_result": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-process-result.json",
+      "sha256": "afc45c1132fc46b237b8ed2de4549c95aa09aad6aa907d54bd1d37ac215edcab"
+    },
+    "log": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-full-suite.log",
+      "sha256": "b4b922c174158dd7600f4366502aba73d57947858fdc8428d0bb32b38040502a"
+    },
+    "engine": "SQLite memory",
+    "guard_exit_code": 0,
+    "suite_exit_code": 2,
+    "observed_log_summary": {
+      "passed": 1609,
+      "failed": 1,
+      "assertions": 9909,
+      "seconds": 101.97
+    },
+    "status": "RED; preserved unchanged; never accepted as green",
+    "failure": "Fixed C0 insertion in tests/ConfiguratorFixtures.php:60, called from V20 Workspace setup before application behavior",
+    "original_in_memory_rows_available": false,
+    "executed_by_this_audit": false
+  },
+  "fixture_collision_diagnosis": {
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/fixture-collision-diagnostic.json",
+      "sha256": "60d7982fca3fe5f51654d4aab47b4475b2aff8640c234ae331f6f03a287188e8"
+    },
+    "snapshot": "/private/tmp/configurator-fixture-collision-8b3e858d",
+    "controlled_red": {
+      "log": {
+        "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/fixture-collision-red-precondition.log",
+        "sha256": "e43e5f027f74731ad4c24b5dd74f1f9e20b939524557a14af96aa8dfe7cd99fb"
+      },
+      "passed": 0,
+      "failed": 2,
+      "assertions": 4,
+      "seconds": 0.31,
+      "owner_recorded_exit_code": 2,
+      "preconditions": "empty options table, then exactly C0/X1/X2 setup rows"
+    },
+    "controlled_green": {
+      "log": {
+        "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/fixture-collision-green-disjoint.log",
+        "sha256": "d89443189df70aa7ca0fca64e4c4ac9443e8895deb12582e890bdfb0825505a9"
+      },
+      "passed": 2,
+      "assertions": 57,
+      "seconds": 1.34,
+      "owner_recorded_exit_code": 0,
+      "preconditions": "empty options table, then exactly X0/X1/X2 setup rows"
+    },
+    "diagnostic_assertions": 4,
+    "original_behavior_assertions_and_datasets_preserved": true,
+    "source_mechanism": "Three random Option setup codes can overlap later explicit A0-A1/B0-B1/C0-C1 fixture codes; Faker uniqueness does not reserve explicit DB codes",
+    "workspace_fixture_factory_baseline_identical_before_correction": true,
+    "writing_tests_run_in_controlled_process": false,
+    "W4_implementation_files_present_in_diagnostic_snapshot": true,
+    "original_in_memory_rows_recovered": false,
+    "claim_limit": "Original failed process in-memory rows are unavailable; controlled diagnosis establishes the baseline fixture collision mechanism, not a recovered original row dump.",
+    "audit_inspected_source_and_logs": true,
+    "executed_by_this_audit": false
+  },
+  "frozen_root10_fixture_correction": {
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/ROOT10_FROZEN_20261029/receipt.json",
+      "sha256": "f1e26cbfab9d7b7317f2395cb04fd4d9767b86b197e7b53dfb197e83847f2818"
+    },
+    "files": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "947d52071b69e7e8208a0495b4512698e0f50db9c6ad081983ca5e791d786a80",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846"
+    },
+    "parent_root9_receipt_sha256": "c572c2c34dab2c99f150005754afb86d4669bf494826df2906cabc52afd243e6",
+    "original9_unchanged": true,
+    "delta_from_root9": [
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php"
+    ],
+    "production_delta_from_root9": [],
+    "correction": "same three unrelated V20 setup records with legal disjoint X0/X1/X2 codes, same position; all behavior assertions and both datasets unchanged",
+    "baseline_test_sha256": "4e39996f8284e2f1042821182ea488e7601514724902c13c872ae413bf8437b0",
+    "affected_tests": {
+      "file": "tests/Feature/Filament/ConfiguratorWorkspaceTest.php",
+      "passed": 43,
+      "assertions": 429,
+      "seconds": 9.67,
+      "guard_exit_code": 0,
+      "suite_exit_code": 0,
+      "log": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/fixture-fix-workspace-suite.log"
+    },
+    "affected_log": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/fixture-fix-workspace-suite.log",
+      "sha256": "90c1516f0a95afe5177382077acf2137baa26a687153c6e12dcdafdd393d2e12"
+    },
+    "review": "PASS for setup-only diff; count3, position, ID-offset purpose, original assertions and datasets preserved",
+    "audit_reran_tests": false
+  },
+  "combined_w4_fixturefix_checkpoint": {
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "candidate": "/private/tmp/configurator-combined-w4-fixturefix-20261029-f3c3e414",
+    "manifest": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-fixturefix-candidate.json",
+      "sha256": "ff3e5fe14dfecaed4bee48d8f9be828e6c539bd72a3b2b73e9b86e99165d71b3"
+    },
+    "root_overlay": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "947d52071b69e7e8208a0495b4512698e0f50db9c6ad081983ca5e791d786a80",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846"
+    },
+    "writing_overlay": {
+      "app/Actions/SaveConfiguratorDefinition.php": "441ec24f4dcffbc2252273b832014b8458fe17541896183bdaeb17d0c72f30fa",
+      "app/Actions/SaveConfiguratorRuleWritingBatch.php": "6f1a9f7a1765503dc3387c570f072bfe249d791278c3fd2996cabdba50ff2684",
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorRuleRecords.php": "85c522ec022d37ef3355b70c9f7b2093469ff04888382aa4c496bc3416ae6e65",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "004a8b78d7357836468c1b598c4df26b4cea32c4b3e464dc0d750b936a288fae",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingInspection.php": "c9e1ac0937d7ea38a3133fd710e3b48863a76708027e6c90d65d4da9358bbb0d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "c2c90396e306a4d47eb0a2a7035592279182aa18dd57bf2fa78235129f694704",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.mysql.xml": "0963f867a43d37c1e074ef84b40ea634dbbd59699f5a0c8659196e380a9f66a8",
+      "phpunit.rules-mysql.xml": "be5324e69e6a706b5f97ec07e36cfa469f7b7bcd10d829d20d40cfd0f9a6020d",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php": "ffd7229b08777055c9db87807158457fd7b00abeb1eefe439d0280786bcc7b80",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingInspectionTest.php": "ada3b376a830089005012f4f70706630c18824d79a259793696a197cdda181ef",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php": "55d4ab10890353655f82081f9b995c5fe9edadf649c5e6b6fc69399c6a892d37",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingInspectionConcurrencyTest.php": "a06d7250c7a1ee4e4fca6efcc46bbae32aa5254449b4aa1317eef7172bf81cf8",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/TestDatabaseSafety.php": "b468d837238e5437e94e5e5cbebb3ca6ff80d946cc8a4b97560c1b2eee7f93ad",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47"
+    },
+    "root_receipt_sha256": "f1e26cbfab9d7b7317f2395cb04fd4d9767b86b197e7b53dfb197e83847f2818",
+    "writing_receipt_sha256": "77482d1205d3d10564cac2ab41a1ffb0e3cd49c994f34ccfbf87d60af6845e7f",
+    "overlay_paths_checked_after_run": 34,
+    "selected_source_files_checked_after_run": 681,
+    "overlap": [],
+    "overlay_mismatches": [],
+    "selected_source_mismatches": [],
+    "outside_original_selected_inventory_paths": [
+      "bootstrap/cache/.gitignore",
+      "bootstrap/cache/packages.php",
+      "bootstrap/cache/services.php",
+      "bootstrap/providers.php",
+      "lang/en/admin-ux.php",
+      "lang/en/attribute-options.php",
+      "lang/en/catalog.php",
+      "lang/en/configurator.php",
+      "lang/en/data_exchange.php",
+      "lang/en/item-lists.php",
+      "lang/en/tags.php",
+      "lang/en/ui.php",
+      "lang/he/catalog.php",
+      "lang/he/data_exchange.php"
+    ],
+    "outside_inventory_predecessor_mismatches": [],
+    "checked_source_tree_delta_vs_red33": [
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php"
+    ],
+    "excluded_finder_metadata_entries": 13,
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-fixturefix-acceptance-receipt.json",
+      "sha256": "5e5cda06937bd430cb63d52ca35efddfea0618912e19af533b2cb5771d8c3539"
+    },
+    "process_result": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-fixturefix-process-result.json",
+      "sha256": "a4fd417de1cffeec0a4ff3c2f65aa46c8927d330b112f7d8b88a6855a1da00d9"
+    },
+    "log": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-fixturefix-full-suite.log",
+      "sha256": "2e88455367a38e131f0afe1682a839ec12d9fbc283663f291e367bea990d09ac"
+    },
+    "linked_hashes_verified": true,
+    "engine": "SQLite memory",
+    "result": {
+      "passed": 1610,
+      "assertions": 9936,
+      "seconds": 120.19,
+      "guard_exit_code": 0,
+      "suite_exit_code": 0
+    },
+    "process_elapsed_seconds": 120.54,
+    "status": "Accepted bounded guarded SQLite checkpoint",
+    "executed_by": "Plan bulk creation forms coordinator",
+    "rerun_by_this_audit": false,
+    "independently_inspected_result_log_and_fingerprints": true,
+    "consumed_contract_review": {
+      "raw_reader_sql_body_identical_to_prior_private_reader": true,
+      "recursive_fingerprint_ordering_preserved": true,
+      "parent_lock_protocol_retained": true,
+      "normal_writer_and_caller_files_matched_to_master": 9,
+      "K1_dependencies_baseline_identical": 17,
+      "K1_hold_released": false,
+      "inspection_lock_is_cooperative_not_recursive": true
+    },
+    "source_only_provenance_limits": [
+      "selected source inventory, not ignored runtime backup",
+      "no config cache; non-Git candidate; vendor not symlink"
+    ],
+    "not_verified": [
+      "combined MySQL/physical-commit acceptance",
+      "real browser Groups1/2 notice/repair/reload",
+      "Catalog K1 runtime",
+      "future Writing slices",
+      "merged master"
+    ],
+    "merge_or_push": false,
+    "credential_source_question": "pending",
+    "audit_active_db_window": null
+  },
+  "general_loader_isolation_conditional_risk": {
+    "source_paths": [
+      "app/Services/ConfiguratorDefinitionLoader.php:118",
+      "app/Services/ConfiguratorRuleExchange.php:32"
+    ],
+    "finding": "session default check does not establish effective active transaction isolation",
+    "preconditions": "upstream same-connection weaker next-transaction override or weaker ambient transaction, plus interleaved committed writes",
+    "normal_supported_configuration": "REPEATABLE READ; no ordinary app isolation downgrade setter found",
+    "supported_writer_barrier_applies_to": "W4 owned raw Rule/draft projection only",
+    "normal_app_regression_demonstrated": false,
+    "general_patch_authorized": false,
+    "general_patch_implemented": false,
+    "database_execution_by_audit": false,
+    "coordinator_informed": true
+  },
+  "frozen_root10_r2_cli_proof": {
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/ROOT10_R2_FROZEN_20261029/receipt.json",
+      "sha256": "01c7d969342d81b0e322b29396a7e2fad67fb712d7b56be86eb5e8d533e23dbd"
+    },
+    "files": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "dd2380580f423251188bfc91bce793f95bf7d92a590db2e679a583add276cfee",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846"
+    },
+    "parent_root10_receipt_sha256": "f1e26cbfab9d7b7317f2395cb04fd4d9767b86b197e7b53dfb197e83847f2818",
+    "delta_from_parent": [
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php"
+    ],
+    "production_delta_from_parent": [],
+    "new_case": "RuntimeException at real cache lock seam renders through Kernel::handle, differs from contention, leaves revision1 and disables query logging",
+    "focused_result": {
+      "passed": 7,
+      "assertions": 44,
+      "seconds": 0.43,
+      "exit_code": 0,
+      "provenance": "observed exec_command result; no raw narrow-run log saved"
+    },
+    "focused_result_raw_log_retained": false,
+    "independent_review": "g12_implementation_review bounded source PASS, no findings; source only, does not prove every infrastructure failure or physical commit",
+    "audit_bounded_source_review": "PASS; only appended unexpected failure case, no production change",
+    "audit_test_execution": false,
+    "limits": [
+      "Kernel::handle with ArrayInput/BufferedOutput, not independent subprocess or physical commit",
+      "single RuntimeException seam does not prove every infrastructure failure"
+    ]
+  },
+  "combined_w4_cli_proof_checkpoint": {
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "candidate": "/private/tmp/configurator-combined-w4-cli-proof-20261029-646abdda",
+    "manifest": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-cli-proof-candidate.json",
+      "sha256": "9484e6d76671091ac9cfc27a3054ffb3aa9ed8fcacda487829aa86186373b0c6"
+    },
+    "root_overlay": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "dfbaee224a424a01b80aed1dd3bc5222bf6830bcae285e363dcf768e81a7a01b",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "38c76f77dd34883abb30a0bc7a1c9246c9f1906e9076cf5bd4212e67e3522332",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "dd2380580f423251188bfc91bce793f95bf7d92a590db2e679a583add276cfee",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846"
+    },
+    "writing_overlay": {
+      "app/Actions/SaveConfiguratorDefinition.php": "441ec24f4dcffbc2252273b832014b8458fe17541896183bdaeb17d0c72f30fa",
+      "app/Actions/SaveConfiguratorRuleWritingBatch.php": "6f1a9f7a1765503dc3387c570f072bfe249d791278c3fd2996cabdba50ff2684",
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorRuleRecords.php": "85c522ec022d37ef3355b70c9f7b2093469ff04888382aa4c496bc3416ae6e65",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "004a8b78d7357836468c1b598c4df26b4cea32c4b3e464dc0d750b936a288fae",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingInspection.php": "c9e1ac0937d7ea38a3133fd710e3b48863a76708027e6c90d65d4da9358bbb0d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "c2c90396e306a4d47eb0a2a7035592279182aa18dd57bf2fa78235129f694704",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.mysql.xml": "0963f867a43d37c1e074ef84b40ea634dbbd59699f5a0c8659196e380a9f66a8",
+      "phpunit.rules-mysql.xml": "be5324e69e6a706b5f97ec07e36cfa469f7b7bcd10d829d20d40cfd0f9a6020d",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php": "ffd7229b08777055c9db87807158457fd7b00abeb1eefe439d0280786bcc7b80",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingInspectionTest.php": "ada3b376a830089005012f4f70706630c18824d79a259793696a197cdda181ef",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php": "55d4ab10890353655f82081f9b995c5fe9edadf649c5e6b6fc69399c6a892d37",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingInspectionConcurrencyTest.php": "a06d7250c7a1ee4e4fca6efcc46bbae32aa5254449b4aa1317eef7172bf81cf8",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/TestDatabaseSafety.php": "b468d837238e5437e94e5e5cbebb3ca6ff80d946cc8a4b97560c1b2eee7f93ad",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47"
+    },
+    "root_receipt_sha256": "01c7d969342d81b0e322b29396a7e2fad67fb712d7b56be86eb5e8d533e23dbd",
+    "writing_receipt_sha256": "77482d1205d3d10564cac2ab41a1ffb0e3cd49c994f34ccfbf87d60af6845e7f",
+    "overlay_paths_checked_after_run": 34,
+    "selected_source_files_checked_after_run": 681,
+    "overlap": [],
+    "overlay_mismatches": [],
+    "selected_source_mismatches": [],
+    "checked_source_tree_delta_vs_accepted1610": [
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php"
+    ],
+    "production_files_unchanged": true,
+    "Writing24_unchanged": true,
+    "prior1610_run_artifacts_preserved": true,
+    "original_RED33_artifacts_preserved": true,
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-cli-proof-acceptance-receipt.json",
+      "sha256": "b7afa42caf44c8fe1f9ee2cb1ed32cb7f487f8ff715f5f4e8d2fcd2ed093d7af"
+    },
+    "process_result": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-cli-proof-process-result.json",
+      "sha256": "25aca766159b7a68aa37bb3fbaab183e50928c188dc593dba736c9d13e410d85"
+    },
+    "log": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w4-cli-proof-full-suite.log",
+      "sha256": "5a95c3a4a6dd12f0ce17f1945853c1a2b8a3c2eaccaea77fae6255fdd7492692"
+    },
+    "linked_hashes_verified": true,
+    "engine": "SQLite memory",
+    "result": {
+      "passed": 1611,
+      "assertions": 9943,
+      "seconds": 114.6,
+      "guard_exit_code": 0,
+      "suite_exit_code": 0
+    },
+    "process_elapsed_seconds": 115.02,
+    "status": "Accepted bounded guarded SQLite checkpoint",
+    "independently_inspected_source_delta_receipts_log_and_fingerprints": true,
+    "executed_by": "Plan bulk creation forms coordinator",
+    "rerun_by_this_audit": false,
+    "not_verified": [
+      "combined MySQL/physical commit",
+      "Groups1/2 browser notice/repair/reload",
+      "Catalog K1 runtime",
+      "Writing W5",
+      "merged master"
+    ],
+    "non_git": true,
+    "vendor_symlink": false,
+    "config_cache_present": false,
+    "merge_or_push": false,
+    "credential_source_question": "pending",
+    "audit_active_db_window": null,
+    "W5_plan_review_separate": true,
+    "documentation_update_preservation": {
+      "audit_edited_paths": [
+        "docs/catalog/COMBINED_REGRESSION_VERIFICATION_REPORT_2026_10_29.md",
+        "docs/catalog/COMBINED_REGRESSION_VERIFICATION_EVIDENCE_2026_10_29.json"
+      ],
+      "other_pending_document_changes_observed": {
+        "docs/catalog/COORDINATION_REVIEW_PACKAGE.md": {
+          "before_sha256": "ef5d4d2eb166d04437184cb594db9475f9855284c76e75a27e109686ef6a4b24",
+          "after_sha256": "30ae65ddc0b0080b259009c807ac6e3624307bb05b75f7f0da571a6be8646c86",
+          "edited_by_this_audit": false
+        }
+      },
+      "concurrent_owner_documents_not_overwritten": true,
+      "main_source_inventory_paths_checked": 671,
+      "main_source_changes": []
+    }
+  },
+  "root13_profile_review": {
+    "initial_frozen_receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/ROOT13_PROFILE_FROZEN_20261029/receipt.json",
+      "sha256": "961b2416a15df38781342d426aa818b88870d2d3de6db24b1756d0e102d0884a"
+    },
+    "R2_frozen_receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/ROOT13_PROFILE_R2_FROZEN_20261029/receipt.json",
+      "sha256": "3c60bf504f11abcee80e30a13214462802185450a731d9b47a0bae986a2e80b9"
+    },
+    "R2_files": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "f087876b6317e68e489cf5f27976b3940501947731780b2a5479a068c2331861",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "24b811a6c44a98167780036865108ba8977e003e992d6f332b5d6bdb274f79b9",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "dd2380580f423251188bfc91bce793f95bf7d92a590db2e679a583add276cfee",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846",
+      "tests/TestDatabaseSafety.php": "3f4979b1ac75a2956a33cec3770c96096fd664393027442d91e5ac73f09d86c1",
+      "tests/Unit/ReconciliationTestDatabaseSafetyTest.php": "cfb45d12f24d8af66b1a56dc7e5847721d3c2b466dbd6515701339bdfe5f759e",
+      "phpunit.reconciliation-mysql.xml": "e6b8ef43afb6228db05afc9f04a4fd48546bb24b714900beb8ef138a823c758c"
+    },
+    "shared_guard": "accepted W4/W5 exact guard plus one literal reconciliation profile entry",
+    "profile_config": "phpunit.reconciliation-mysql.xml",
+    "QA_excluded": true,
+    "old_root_Unit_Feature_factory_bootstrap_catalog_XML": "unchanged from root HEAD; Writing overlay carries its own old Unit and Rules/catalog XML",
+    "source_layer_correction": "Earlier statement that all root files matched W4 overlay was corrected; no root Rules XML exists before Writing composition",
+    "safety_tests_owner_reported": "62/122/exit0; audit did not rerun",
+    "provision_helper_IO_P2": "closed by later source-only correction; original successful provisioning provenance retained"
+  },
+  "combined_w5_reconciliation_R1_runs": {
+    "candidate": "/private/tmp/configurator-combined-w5-reconciliation-20261029-961b2416",
+    "manifest": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-candidate.json",
+      "sha256": "3e71b8ed7f536a948fc2705e68f491438a94b18e14e5df821e5f2b5a678b1803"
+    },
+    "sqlite": {
+      "passed": 1723,
+      "assertions": 10325,
+      "seconds": 110.39,
+      "guard_exit_code": 0,
+      "suite_exit_code": 0,
+      "log": {
+        "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-sqlite.log",
+        "sha256": "64f06bb4c4401158656e6b02fc9f725a7203631c50b4f1bb83368cb354f19c3f"
+      },
+      "process": {
+        "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-sqlite-process.json",
+        "sha256": "453f07637ea3e0fe34e20f8d561d3e4a000f269bdeece9180be2a3f5e7a87b18"
+      }
+    },
+    "mysql": {
+      "passed": 143,
+      "failed": 14,
+      "assertions": 937,
+      "seconds": 19.3,
+      "guard_exit_code": 0,
+      "suite_exit_code": 2,
+      "log": {
+        "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-mysql.log",
+        "sha256": "ceb4c4b86901b5f4fe8805d1dacee8d8c6e870c7b11e45b86fab4d90679faa75"
+      },
+      "process": {
+        "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-mysql-process.json",
+        "sha256": "52816704f3d62662c4652f542ebf07bc6172f7b8ecc2b140f72968afb174330c"
+      }
+    },
+    "diagnosis": {
+      "retained_target_refusals": 3,
+      "C08_SQL_quoting_listener": 1,
+      "appearance_raw_JSON_or_map_order": 10,
+      "retained_wrapper_false_precondition_passes": 4
+    },
+    "status": "R1 MySQL FAIL preserved; do not rewrite as pass",
+    "window": "closed per coordinator",
+    "audit_execution": false
+  },
+  "combined_w5_reconciliation_r2_checkpoint": {
+    "baseline": "8e1f640219ec8dbd2ee4c739041907aba4c4224d",
+    "candidate": "/private/tmp/configurator-combined-w5-reconciliation-r2-20261029",
+    "manifest": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-r2-candidate.json",
+      "sha256": "2bad5d1741a5489d359cddfe9b720dc24e3c3907d099c292fec83b1b7e959362"
+    },
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-r2-acceptance-receipt.json",
+      "sha256": "cd7bf3b7fd3d7209e4fcb1a6410c7610dd488dfcea0a6baf4fe1cc18960ce123"
+    },
+    "root_receipt_sha256": "3c60bf504f11abcee80e30a13214462802185450a731d9b47a0bae986a2e80b9",
+    "writing_receipt_sha256": "5b29410225af4ff88ba0e0b089905a92979cf5285110ac48b9691cfdf8dd6fcb",
+    "root_files": {
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "f087876b6317e68e489cf5f27976b3940501947731780b2a5479a068c2331861",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "24b811a6c44a98167780036865108ba8977e003e992d6f332b5d6bdb274f79b9",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "dd2380580f423251188bfc91bce793f95bf7d92a590db2e679a583add276cfee",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846",
+      "tests/TestDatabaseSafety.php": "3f4979b1ac75a2956a33cec3770c96096fd664393027442d91e5ac73f09d86c1",
+      "tests/Unit/ReconciliationTestDatabaseSafetyTest.php": "cfb45d12f24d8af66b1a56dc7e5847721d3c2b466dbd6515701339bdfe5f759e",
+      "phpunit.reconciliation-mysql.xml": "e6b8ef43afb6228db05afc9f04a4fd48546bb24b714900beb8ef138a823c758c"
+    },
+    "writing_files": {
+      "app/Actions/SaveConfiguratorDefinition.php": "441ec24f4dcffbc2252273b832014b8458fe17541896183bdaeb17d0c72f30fa",
+      "app/Actions/SaveConfiguratorRuleWritingBatch.php": "d319644be3a0d428d989addc1f6aba8e74c124136acd7c67f0d4508a3a09bfb7",
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorDefinitionLoader.php": "274a1132d47112910187ff7a6fd9e396ef9fefbafbfed2df678d4f2299519905",
+      "app/Services/ConfiguratorRuleRecords.php": "85c522ec022d37ef3355b70c9f7b2093469ff04888382aa4c496bc3416ae6e65",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "004a8b78d7357836468c1b598c4df26b4cea32c4b3e464dc0d750b936a288fae",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingInspection.php": "c9e1ac0937d7ea38a3133fd710e3b48863a76708027e6c90d65d4da9358bbb0d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "969efbb60cb8478f0c46603b219124c654c092a627356b5a159a2d3b132d2b18",
+      "app/Services/ConfiguratorRuleWritingReconciliation.php": "dadae9573681d13d0db81e6b67e781cc17d602a5695f55798fd0ab537847abfb",
+      "app/Services/ConfiguratorRuleWritingSections.php": "9a706f4453d00f4614f39d5ed2bfbc802ac6e7e09e71afa5b51a15c99ad6baf2",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.mysql.xml": "9d2c711192d5db8212b2847fdaaae728ab3abbba7cf55269a5d078e0a2d5ba5c",
+      "phpunit.rules-mysql.xml": "6cf4365dbfe68fbe04a133b607c2345636504f06f2b616f856e6eebcfa4ca6ad",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php": "ffd7229b08777055c9db87807158457fd7b00abeb1eefe439d0280786bcc7b80",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingInspectionTest.php": "ada3b376a830089005012f4f70706630c18824d79a259793696a197cdda181ef",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingLoaderTest.php": "b97cce4e4332c1afa89e189d914c85ec86af44779c4eadae3b130d06f321ae9b",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingReconciliationTest.php": "4bb6218e7d025935d70011d76497f489d68ce74f82ec07158735ed5d393d1a95",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php": "55d4ab10890353655f82081f9b995c5fe9edadf649c5e6b6fc69399c6a892d37",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingInspectionConcurrencyTest.php": "a06d7250c7a1ee4e4fca6efcc46bbae32aa5254449b4aa1317eef7172bf81cf8",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingReconciliationConcurrencyTest.php": "f20585729471462f55b03642402cb2f6a816dad79b7e19b1ce8f35965a455bce",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/TestDatabaseSafety.php": "b468d837238e5437e94e5e5cbebb3ca6ff80d946cc8a4b97560c1b2eee7f93ad",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "tests/Unit/ConfiguratorRuleWritingSectionsTest.php": "1c7e964a01b31d9ea9ecc1da781d95ddd358a419635761a5722cac2c32c8f9dc",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47"
+    },
+    "merged_files": {
+      "app/Actions/SaveConfiguratorDefinition.php": "441ec24f4dcffbc2252273b832014b8458fe17541896183bdaeb17d0c72f30fa",
+      "app/Actions/SaveConfiguratorRuleWritingBatch.php": "d319644be3a0d428d989addc1f6aba8e74c124136acd7c67f0d4508a3a09bfb7",
+      "app/Models/ConfiguratorRuleWritingDraft.php": "3da0b77b02164ae16255f16d5c96bc70ee6bc6fd383189959006ff032adf07a0",
+      "app/Services/ConfiguratorDefinitionLoader.php": "274a1132d47112910187ff7a6fd9e396ef9fefbafbfed2df678d4f2299519905",
+      "app/Services/ConfiguratorRuleRecords.php": "85c522ec022d37ef3355b70c9f7b2093469ff04888382aa4c496bc3416ae6e65",
+      "app/Services/ConfiguratorRuleWritingCodec.php": "004a8b78d7357836468c1b598c4df26b4cea32c4b3e464dc0d750b936a288fae",
+      "app/Services/ConfiguratorRuleWritingDrafts.php": "870be28b87f10bedcaff3fd10e3dd29050badddad13c4dab9360c029e304a48d",
+      "app/Services/ConfiguratorRuleWritingInspection.php": "c9e1ac0937d7ea38a3133fd710e3b48863a76708027e6c90d65d4da9358bbb0d",
+      "app/Services/ConfiguratorRuleWritingParser.php": "969efbb60cb8478f0c46603b219124c654c092a627356b5a159a2d3b132d2b18",
+      "app/Services/ConfiguratorRuleWritingReconciliation.php": "dadae9573681d13d0db81e6b67e781cc17d602a5695f55798fd0ab537847abfb",
+      "app/Services/ConfiguratorRuleWritingSections.php": "9a706f4453d00f4614f39d5ed2bfbc802ac6e7e09e71afa5b51a15c99ad6baf2",
+      "database/factories/ConfiguratorRuleWritingDraftFactory.php": "59d9baf5cdde1a284ed7d0bc17f4488edb55fa5e9dcf20a76a55c1567e4b431a",
+      "database/migrations/2026_10_29_145034_create_configurator_rule_writing_drafts_table.php": "f31c286cbcfc741396d7c0fe8735f6648e72a48e67c5fce37dfa8c0946114b8d",
+      "phpunit.mysql.xml": "9d2c711192d5db8212b2847fdaaae728ab3abbba7cf55269a5d078e0a2d5ba5c",
+      "phpunit.rules-mysql.xml": "6cf4365dbfe68fbe04a133b607c2345636504f06f2b616f856e6eebcfa4ca6ad",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php": "ffd7229b08777055c9db87807158457fd7b00abeb1eefe439d0280786bcc7b80",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php": "e576db99dc1348ee2ebad6251adaead80f521ea65d9df491fc1c92e5e840bcb0",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingInspectionTest.php": "ada3b376a830089005012f4f70706630c18824d79a259793696a197cdda181ef",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingLoaderTest.php": "b97cce4e4332c1afa89e189d914c85ec86af44779c4eadae3b130d06f321ae9b",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingPersistenceTest.php": "08051e70f2da754782e0a3797802e3246f9c1a9e7ef2b8ee10243954fb2b4a5e",
+      "tests/Feature/Catalog/ConfiguratorRuleWritingReconciliationTest.php": "4bb6218e7d025935d70011d76497f489d68ce74f82ec07158735ed5d393d1a95",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php": "55d4ab10890353655f82081f9b995c5fe9edadf649c5e6b6fc69399c6a892d37",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php": "61534830242e945ff8e970de0514418c05acda9f930bc15d3177cce0affb78db",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php": "8152e797e1655a94b1eca1fb430f0355b6a2658eabb75906a2595b99b5f77cb6",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingInspectionConcurrencyTest.php": "a06d7250c7a1ee4e4fca6efcc46bbae32aa5254449b4aa1317eef7172bf81cf8",
+      "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingReconciliationConcurrencyTest.php": "f20585729471462f55b03642402cb2f6a816dad79b7e19b1ce8f35965a455bce",
+      "tests/RuleWritingFixtures.json": "ca6d1bc2fdba55b49f39de8f7dfef5ca75e01b478052f6d2a734ea7a0ee90d3e",
+      "tests/TestDatabaseSafety.php": "3f4979b1ac75a2956a33cec3770c96096fd664393027442d91e5ac73f09d86c1",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php": "29485a4dbf1aae0a7ae2ba8720662642bf59e5efc36e9a7a90f69bcefe10b691",
+      "tests/Unit/ConfiguratorRuleWritingSectionsTest.php": "1c7e964a01b31d9ea9ecc1da781d95ddd358a419635761a5722cac2c32c8f9dc",
+      "tests/Unit/TestDatabaseSafetyTest.php": "084bcf539289bf48e1090d8e4f517d05a0439115722dd7ab245b013524833e47",
+      "app/Actions/SaveConfiguratorOption.php": "16968b7194d6a870137c9c5efed12d353636dde75780e6944668993f26557fcd",
+      "app/Providers/Filament/AdminPanelProvider.php": "1d270d1796b549d74cdc77f43e6013dc003a93d2b4a0f3edbc9acccbb33914b9",
+      "app/Services/AdminAppearance.php": "59de0c9238d0c39cbcf3b372ff7400d0d922bf4fb58ee1c3596781333ff27ac2",
+      "app/Services/ConfiguratorInclusionDrafts.php": "e5649d81893a1c00675e883350901f08e1228fe801426ce35776402d7bc46435",
+      "lang/en/admin.php": "40c4f3a99e65a677a8830c2ba80b17885e2cce08a3f37d1b57ba96c63a3b45e9",
+      "tests/Feature/ConfiguratorCreationFlowTest.php": "f087876b6317e68e489cf5f27976b3940501947731780b2a5479a068c2331861",
+      "tests/Feature/Filament/AdminAppearanceTest.php": "24b811a6c44a98167780036865108ba8977e003e992d6f332b5d6bdb274f79b9",
+      "resources/views/filament/resources/appearance-recovery-notice.blade.php": "63e502fe957679f6e605505cb2dac3a3eea9cda72667491a15e459eeea07087d",
+      "tests/Feature/Catalog/CatalogSnapshotCommandTest.php": "dd2380580f423251188bfc91bce793f95bf7d92a590db2e679a583add276cfee",
+      "tests/Feature/Filament/ConfiguratorWorkspaceTest.php": "d17c358f5f7b5e6de9d590c513f703d2ff2fd0d16ee404b88cd1600f9b52c846",
+      "tests/Unit/ReconciliationTestDatabaseSafetyTest.php": "cfb45d12f24d8af66b1a56dc7e5847721d3c2b466dbd6515701339bdfe5f759e",
+      "phpunit.reconciliation-mysql.xml": "e6b8ef43afb6228db05afc9f04a4fd48546bb24b714900beb8ef138a823c758c"
+    },
+    "overlay_paths_checked_after_run": 43,
+    "selected_source_paths_checked_after_run": 689,
+    "source_mismatches": [],
+    "overlap": [
+      "tests/TestDatabaseSafety.php"
+    ],
+    "overlap_resolution": "W5 guard byte-identical to W4; Root adds only exact reconciliation profile entry",
+    "results": {
+      "sqlite": {
+        "passed": 1723,
+        "assertions": 10328,
+        "seconds": 109.7,
+        "guard_exit_code": 0,
+        "suite_exit_code": 0,
+        "process_wall_seconds": 110.18,
+        "log": {
+          "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-r2-sqlite.log",
+          "sha256": "589d16aa0ddde87731165772e5e3f4cae6a31d02c6d544b5d25d0681071827c8"
+        },
+        "process_result": {
+          "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-r2-sqlite-process.json",
+          "sha256": "033ef3cd5f9cc2757263593cd57aec5237d14958f70ff6f50be67bda229373d3"
+        }
+      },
+      "mysql": {
+        "passed": 150,
+        "assertions": 939,
+        "seconds": 19.11,
+        "guard_exit_code": 0,
+        "suite_exit_code": 0,
+        "process_wall_seconds": 19.18,
+        "log": {
+          "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-r2-mysql.log",
+          "sha256": "6bc18fbbd59c26c0b75859c9a0fba8eb2d5d54a2c9370520f3a5912c65b796f2"
+        },
+        "process_result": {
+          "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w5-reconciliation-r2-mysql-process.json",
+          "sha256": "169d4e9dbf381f22a93d3865f01ac22fadb0fc7099ea17e20e8a66c4d347b90a"
+        }
+      }
+    },
+    "bounded_source_review": "PASS current-consumer contracts and R2 test-only delta; not repeat full W5 audit",
+    "R2_delta": [
+      "tests/Feature/ConfiguratorCreationFlowTest.php",
+      "tests/Feature/Filament/AdminAppearanceTest.php",
+      "phpunit.reconciliation-mysql.xml"
+    ],
+    "R2_production_delta": false,
+    "excluded_mysql_cases": {
+      "count": 7,
+      "file": "tests/Feature/Catalog/MySql/RetainedDataTransferTest.php",
+      "reason": "Productionaction intentionally fixed to originalcatalogtest target, not widened",
+      "initial_run": "3failed precondition;4expectednegativecasesnot meaningful acceptedbehavior"
+    },
+    "retained_cases_status": "all7 BLOCKED on preserved target requirement, never accepted by this lane",
+    "engine_limit": "selected reconciliation launch includes explicit SQLite-memory appearance aliases; not all150pureMySQL or universal physical-commit proof",
+    "consumed_contracts": {
+      "Loader_preload_unchanged": true,
+      "Loader_serialization_expression_lines_unchanged": true,
+      "selected_serialization_guards_no_lazy_SQL": true,
+      "existing_parser_and_tokenizer_methods_unchanged": true,
+      "W3_identity_anchor_separate_from_expected_stale_base": true,
+      "normal_writer_Preview_ProductConfigurator_RuleExchange_W4_inspector_unchanged": true,
+      "source_and_assertion_review_only": true,
+      "general_isolation_repair": false
+    },
+    "scope": "accepted bounded fullSQLite +selected reconciliation launch, exact frozen candidate",
+    "audit_rerun": false,
+    "audit_DB_or_browser_action": false,
+    "prior_checkpoints_preserved": true,
+    "browser_lease": "Root only; audit waits explicit release",
+    "not_verified": [
+      "browser",
+      "CatalogK1",
+      "Imagesimplementation",
+      "WritingUI",
+      "mergedmaster"
+    ],
+    "merge_or_push": false
+  },
+  "browser_V3_handoff_preparation": {
+    "status": "NOT RUN by audit; awaiting explicit Root lease release after G2",
+    "exclusive_QA_writer": "Root coordinator",
+    "B1": "typed Product profile/Parts save/reload, stale challenge, fingerprints and unselected controls",
+    "B2": "nested shared Master staging, late Code failure retention, exact selected persistence",
+    "B3": "included Values/default/subtitle actions with canonical/local identity and draft preservation",
+    "B4": "ordinary saved/unsaved Preview, Review/Save, stale snapshot/duplicate response without new Writing UI",
+    "B5": "stale owner visibility admission and separate administrator Preview",
+    "B6": "native CSV download/upload/import and saved readback; actual XLSX saving/bytes; no HTTP-only save claim",
+    "constraints": [
+      "same pinned R2 source/assets and QA profile only",
+      "synthetic normal UI writes after lease only",
+      "no source fixes/builds/testDB resets/main/retained/Rules data",
+      "ask actual sign-in/chooser/download permission when encountered"
+    ],
+    "browser_started_by_audit": false,
+    "historical": true
+  },
+  "combined_w6_checkpoint": {
+    "status": "PASS bounded artifact/composition acceptance",
+    "receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w6-acceptance-receipt.json",
+      "sha256": "5d518e8e8c081caf48f69b0e92b9b9c4f6a5b0bfdeaf08b66f54d26bc725fa6b"
+    },
+    "manifest": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w6-candidate.json",
+      "sha256": "7650c0fc05dc55bc727c7e4ca28819723706a8677e1ca5f176011171252c0891"
+    },
+    "process": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w6-process.json",
+      "sha256": "84412b0c6f5b67b28ea37f99224fe3aafd44d3415d2a9ad5b9f3dc5bc5b158bd"
+    },
+    "results": {
+      "node": {
+        "passed": 316,
+        "exit_code": 0
+      },
+      "php": {
+        "passed": 1723,
+        "assertions": 10599,
+        "guard_exit_code": 0,
+        "exit_code": 0,
+        "seconds": 112.72
+      }
+    },
+    "logs": {
+      "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w6-node.log": "8c535ffe0eb0b1f93a2a6c2dab4607a7478dfcc518c33d66a679a261459db1a5",
+      "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/combined-w6-php.log": "b162641bf054579e773a6a440f5f14a5e2b33df1a670edd0c4a3e9a42cc9437f"
+    },
+    "root_receipt_sha256": "3c60bf504f11abcee80e30a13214462802185450a731d9b47a0bae986a2e80b9",
+    "writing_receipt_sha256": "bbbb33edc7e6941d476e62ab8af12ae0f4d37b6671b71b0d96c5fcd9e305dbf3",
+    "merged_paths": 45,
+    "actual_hash_mismatches": [],
+    "independent_parent_comparison_paths": 693,
+    "actual_delta_from_R2": [
+      "resources/js/configurator-rule-writing-model.js",
+      "tests/RuleWritingFixtures.json",
+      "tests/Unit/ConfiguratorRuleWritingModel.test.js",
+      "tests/Unit/ConfiguratorRuleWritingParserTest.php"
+    ],
+    "only_guard_overlap": "tests/TestDatabaseSafety.php; explicit unchanged reconciliation entry",
+    "all_application_PHP_dependencies_registered_JS_unchanged": true,
+    "executed_by": "coordinator",
+    "rerun_by_audit": false,
+    "mysql": "Prior R2/W5 150/939 retained at original identity; no W6 rerun",
+    "browser": "R2/W5 pinned runtime, not W6/W7 UI",
+    "not_accepted": [
+      "merged master",
+      "Catalog/Images implementation",
+      "new Writing UI",
+      "universal regression absence"
+    ]
+  },
+  "cli_independent_physical_commit_checkpoint": {
+    "status": "PASS bounded artifact acceptance; no audit execution",
+    "acceptance": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/cli-physical-commit-proof/acceptance.json",
+      "sha256": "0f07dcdc379059140452760d3d10d06c6fa28bfd44e2dad446636e770878ed6f"
+    },
+    "result": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/cli-physical-commit-proof/result.json",
+      "sha256": "bde5a25e2b5bd66ce5d352e56e3e7e0080a301675943f2aca7b75c4b9b2713a8"
+    },
+    "source_review": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/cli-physical-commit-proof/source-review.json",
+      "sha256": "9c6caff7128a0984a6571b4480986ef7bb3f3d70ce6eb557b43ef4728c4696f3"
+    },
+    "four_log_and_two_helper_hashes_matched": true,
+    "source_identity": "Frozen Root13 R2/W5 candidate; exact43 hashes retained",
+    "target": "mysql/127.0.0.1:3307/configurator_reconciliation_test",
+    "guard_exit_code": 0,
+    "actual_steps": [
+      {
+        "mode": "prepare",
+        "tag": "01-prepare",
+        "expected_exit": 0,
+        "actual_exit": 0,
+        "log_sha256": "ca4cecad70d17c6da4b61d72fa95355bf7614f7173de1ec52bded6b1db971a36",
+        "observed": {
+          "mode": "prepare",
+          "pid": 91195,
+          "fixture": {
+            "subject": {
+              "id": 29,
+              "name": "CLI proof subject 212c455cb773789e",
+              "catalog_revision": "1"
+            },
+            "control": {
+              "id": 30,
+              "name": "CLI proof control 212c455cb773789e",
+              "catalog_revision": "1"
+            }
+          },
+          "pdo_in_transaction": false
+        }
+      },
+      {
+        "mode": "observe",
+        "tag": "02-independent-before",
+        "expected_exit": 0,
+        "actual_exit": 0,
+        "log_sha256": "b9e497ba6cfae2265c88ee10237cd40f1d09e23ca1dd5c01331e9cf0ecac1d15",
+        "observed": {
+          "mode": "observe",
+          "pid": 91196,
+          "identity": [
+            "configurator_reconciliation_test@127.0.0.1",
+            "configurator_reconciliation_test"
+          ],
+          "rows": {
+            "subject": {
+              "id": 29,
+              "name": "CLI proof subject 212c455cb773789e",
+              "catalog_revision": 1,
+              "is_active": 1,
+              "parent_id": null
+            },
+            "control": {
+              "id": 30,
+              "name": "CLI proof control 212c455cb773789e",
+              "catalog_revision": 1,
+              "is_active": 1,
+              "parent_id": null
+            }
+          },
+          "pdo_in_transaction": false
+        }
+      },
+      {
+        "mode": "fail-after-invalidate",
+        "tag": "03-real-kernel-failure",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "log_sha256": "84eb14b7b9d6b22d7b08330bb92af79effe560bc2693655a5c03ea2fc7e969af",
+        "observed": {
+          "mode": "fail-after-invalidate",
+          "pid": 91197,
+          "kernel_status": 1,
+          "terminal_output": "\nIn CatalogSnapshots.php line 73:\n                                                \n  The catalog is being prepared. Please retry.  \n                                                \n\nIn configurator-cli-commit-proof-20261029.php line 67:\n                                                     \n  [Illuminate\\Contracts\\Cache\\LockTimeoutException]  \n                                                     \n\n",
+          "expected_failure_rendered": true,
+          "query_log_disabled": true,
+          "transaction_level": 0,
+          "pdo_in_transaction": false,
+          "old_cache_sentinel_removed": true,
+          "failure_seam": "only cache lock block timeout; real command/revision/services/database and exception renderer"
+        }
+      },
+      {
+        "mode": "observe",
+        "tag": "04-independent-after",
+        "expected_exit": 0,
+        "actual_exit": 0,
+        "log_sha256": "05492e3c2064c9e8aadcf63eaa371cec52848eaca4972c4584b769a3a714aa4f",
+        "observed": {
+          "mode": "observe",
+          "pid": 91214,
+          "identity": [
+            "configurator_reconciliation_test@127.0.0.1",
+            "configurator_reconciliation_test"
+          ],
+          "rows": {
+            "subject": {
+              "id": 29,
+              "name": "CLI proof subject 212c455cb773789e",
+              "catalog_revision": 2,
+              "is_active": 1,
+              "parent_id": null
+            },
+            "control": {
+              "id": 30,
+              "name": "CLI proof control 212c455cb773789e",
+              "catalog_revision": 1,
+              "is_active": 1,
+              "parent_id": null
+            }
+          },
+          "pdo_in_transaction": false
+        }
+      }
+    ],
+    "window": "closed per coordinator receipt",
+    "claim": "Independent fresh PDO process after real-kernel expected OS1 sees subject revision2 from1 and unchanged control1; physical commit survived snapshot lock-timeout failure",
+    "limits": [
+      "Only the cache-lock block timeout is injected; this does not prove all cache/network failures or cross-process lock exclusion.",
+      "Cache sentinel is process-local array cache; independent physical proof concerns the MySQL revision commit."
+    ]
+  },
+  "browser_V3_checkpoint": {
+    "status": "B1-B5 and native CSV PASS; XLSX generated/received-workbook integrity PASS; completed native download BLOCKED at browser finalization",
+    "runtime": "/private/tmp/configurator-reconciliation-browser-20261029",
+    "url": "http://configurator-reconciliation-qa.test",
+    "identity": "mysql/127.0.0.1:3307/configurator_reconciliation_qa; same restricted user",
+    "source_identity": "Root13 R2 plus Writing W5; browser runtime not updated to W6 or W7",
+    "runtime_receipt": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/browser-runtime-receipt.json",
+      "sha256": "259979ebf6ca56d53a440e074f02e3ab10b4b3b3aeee508ecf9d757baed23dab"
+    },
+    "lease": {
+      "path": "/Users/studioycm/.codex/worktrees/app-reconciliation/configurator/.superpowers/sdd/APP_RECONCILIATION_AND_ROBUSTNESS_EXECUTION_SPEC/browser-qa-lease.json",
+      "sha256": "72faa6d405617feb155d6952ebae0c9c7bb5f63b09a067a738cbf3c72d17db4a",
+      "owner": "Cross-worktree integration audit; manual XLSX assistance pending; no transfer"
+    },
+    "normal_synthetic_login": true,
+    "source_and_asset_hashes_checked_before_and_after": 47,
+    "hash_mismatches": [],
+    "B1": {
+      "status": "PASS",
+      "saved": {
+        "pressure": "001.00",
+        "Part1": "0007",
+        "Part2": ""
+      },
+      "null_empty_object_list_custom_key_preserved": true,
+      "stale_classification": "second-tab editor_properties changed; saved Product unchanged and losing draft retained",
+      "stale_record": "competing Product-name save; all snapshotted storage unchanged by rejected save; losing draft retained"
+    },
+    "B2": {
+      "status": "PASS",
+      "staging_and_late_code_conflict_all_snapshotted_rows_unchanged": true,
+      "correction": "A0 conflict corrected to Z2; Z1 retained",
+      "created": {
+        "master_value_id": 10,
+        "canonical_attribute_ids": [
+          4,
+          5
+        ],
+        "canonical_option_ids": [
+          8,
+          9
+        ],
+        "included_attribute_ids": [
+          4,
+          5
+        ],
+        "included_option_ids": [
+          7,
+          8
+        ]
+      },
+      "both_defaults_explicit": true,
+      "shared_master_created_once": true
+    },
+    "B3": {
+      "status": "PASS",
+      "add_value_kept_default": 1,
+      "independent_default_changed_to": 9,
+      "modes": [
+        "custom string 0",
+        "none with null override",
+        "master with null override"
+      ],
+      "canonical_master_id": 1,
+      "canonical_rename": "QA renamed canonical Master",
+      "local_label": "QA linked local value",
+      "retained_unsaved_hint_then_saved": "QA retained local hint",
+      "local_record_id_preserved": 1,
+      "reload_and_preview_observed": true
+    },
+    "B4": {
+      "status": "PASS",
+      "saved_mapping_and_hint_evaluated": true,
+      "new_rule_unsaved_before_review": true,
+      "review_and_double_click_save": "one Rule3/effect2 only; not proof of two admitted network requests",
+      "later_text": "QA later edit retained identity",
+      "external_text": "QA external snapshot change",
+      "snapshot_before_rebuild": "QA later edit retained identity",
+      "snapshot_after_explicit_rebuild": "QA external snapshot change",
+      "rule_and_effect_ids_preserved": true
+    },
+    "B5": {
+      "status": "PASS within admission/authorization scope",
+      "retained_child_refresh": "404 Not Found",
+      "fresh_child_reload": "404 Not Found",
+      "admin_preview": "panel remains authorized; selected Product explicitly unavailable, not successful inactive-Product evaluation",
+      "parent_group_id": 1,
+      "parent_restored_active": true
+    },
+    "B6": {
+      "status": "PARTIAL: CSV PASS; XLSX received-workbook byte integrity PASS; completed native download BLOCKED",
+      "CSV": "PASS native saved file, native filechooser upload, normal import and persisted readback",
+      "downloaded_path": "/Users/studioycm/Downloads/export-1-values (3).csv",
+      "evidence_copy": "/private/tmp/audit-b6-values-downloaded.csv",
+      "bytes": 473,
+      "sha256": "f9ace100d73ca34ca3e23ca74f27e84361c1b09bdb39c6e279fda195468a1a28",
+      "rows": 10,
+      "import_processed": 10,
+      "import_successful": 10,
+      "recorded_rejections": 0,
+      "restore_protected_export_text": true,
+      "update_existing_explicit": true,
+      "edge_text_restored": [
+        "comma",
+        "trailing backslash",
+        "embedded double quote",
+        "CRLF U+000D U+000A",
+        "string 0",
+        "tags strings 0 and 001"
+      ],
+      "blank_mapped_field_effects": "null description to empty string; null tags to empty JSON list; expected updated_at changes. Not a byte-identical no-op.",
+      "XLSX": "Four Unconfirmed .crdownload files each contain all4891bytes and exactly match the existing server artifact. ZIP CRC and worksheet parsing pass; native browser entries remain in progress. Browser finalization cause remains unproven. No rename, force-complete, cancel, policy bypass or additional request.",
+      "per_format_failure_injection": "NOT RUN in browser; no new fault/config/source changes",
+      "manual_download_report": "downloaded",
+      "manual_file_location": "Resolved to four attributable Unconfirmed .crdownload files in Downloads; completed .xlsx filename still absent",
+      "completed_named_xlsx_file_accepted": false,
+      "partial_workbook_parse_verified": true,
+      "stalled_partial_evidence": {
+        "path": "/private/tmp/audit-b6-xlsx-stalled-partials.json",
+        "sha256": "8eefd8f92d958fd422779c3a81da70b656f1673741c771cd20356f6ca46e112e",
+        "server": {
+          "path": "/private/tmp/configurator-reconciliation-browser-20261029/storage/app/private/filament_exports/1/export-1-values.xlsx",
+          "bytes": 4891,
+          "sha256": "930f944bedc088395a05df144c0526bddf1818fa27142716b2fa71a8ade7dee1"
+        },
+        "received_files": [
+          {
+            "path": "/Users/studioycm/Downloads/Unconfirmed 300714.crdownload",
+            "bytes": 4891,
+            "sha256": "930f944bedc088395a05df144c0526bddf1818fa27142716b2fa71a8ade7dee1",
+            "matches_server_bytes": true,
+            "zip_valid": true,
+            "worksheet_rows": 11,
+            "header": [
+              {
+                "cell": "A1",
+                "type": "inlineStr",
+                "value": "import",
+                "formula": false
+              },
+              {
+                "cell": "B1",
+                "type": "inlineStr",
+                "value": "semantic_id",
+                "formula": false
+              },
+              {
+                "cell": "C1",
+                "type": "inlineStr",
+                "value": "label",
+                "formula": false
+              },
+              {
+                "cell": "D1",
+                "type": "inlineStr",
+                "value": "description",
+                "formula": false
+              },
+              {
+                "cell": "E1",
+                "type": "inlineStr",
+                "value": "tags",
+                "formula": false
+              }
+            ],
+            "edge_rows": [
+              [
+                {
+                  "cell": "A9",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B9",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_first",
+                  "formula": false
+                },
+                {
+                  "cell": "C9",
+                  "type": "inlineStr",
+                  "value": "Pressure, path\\",
+                  "formula": false
+                },
+                {
+                  "cell": "D9",
+                  "type": "inlineStr",
+                  "value": "Line one\nLine two",
+                  "formula": false
+                },
+                {
+                  "cell": "E9",
+                  "type": "inlineStr",
+                  "value": "[\"0\",\"001\"]",
+                  "formula": false
+                }
+              ],
+              [
+                {
+                  "cell": "A10",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B10",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_second",
+                  "formula": false
+                },
+                {
+                  "cell": "C10",
+                  "type": "inlineStr",
+                  "value": "He said \"Open\"",
+                  "formula": false
+                },
+                {
+                  "cell": "D10",
+                  "type": "inlineStr",
+                  "value": "0",
+                  "formula": false
+                }
+              ]
+            ]
+          },
+          {
+            "path": "/Users/studioycm/Downloads/Unconfirmed 400513.crdownload",
+            "bytes": 4891,
+            "sha256": "930f944bedc088395a05df144c0526bddf1818fa27142716b2fa71a8ade7dee1",
+            "matches_server_bytes": true,
+            "zip_valid": true,
+            "worksheet_rows": 11,
+            "header": [
+              {
+                "cell": "A1",
+                "type": "inlineStr",
+                "value": "import",
+                "formula": false
+              },
+              {
+                "cell": "B1",
+                "type": "inlineStr",
+                "value": "semantic_id",
+                "formula": false
+              },
+              {
+                "cell": "C1",
+                "type": "inlineStr",
+                "value": "label",
+                "formula": false
+              },
+              {
+                "cell": "D1",
+                "type": "inlineStr",
+                "value": "description",
+                "formula": false
+              },
+              {
+                "cell": "E1",
+                "type": "inlineStr",
+                "value": "tags",
+                "formula": false
+              }
+            ],
+            "edge_rows": [
+              [
+                {
+                  "cell": "A9",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B9",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_first",
+                  "formula": false
+                },
+                {
+                  "cell": "C9",
+                  "type": "inlineStr",
+                  "value": "Pressure, path\\",
+                  "formula": false
+                },
+                {
+                  "cell": "D9",
+                  "type": "inlineStr",
+                  "value": "Line one\nLine two",
+                  "formula": false
+                },
+                {
+                  "cell": "E9",
+                  "type": "inlineStr",
+                  "value": "[\"0\",\"001\"]",
+                  "formula": false
+                }
+              ],
+              [
+                {
+                  "cell": "A10",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B10",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_second",
+                  "formula": false
+                },
+                {
+                  "cell": "C10",
+                  "type": "inlineStr",
+                  "value": "He said \"Open\"",
+                  "formula": false
+                },
+                {
+                  "cell": "D10",
+                  "type": "inlineStr",
+                  "value": "0",
+                  "formula": false
+                }
+              ]
+            ]
+          },
+          {
+            "path": "/Users/studioycm/Downloads/Unconfirmed 403760.crdownload",
+            "bytes": 4891,
+            "sha256": "930f944bedc088395a05df144c0526bddf1818fa27142716b2fa71a8ade7dee1",
+            "matches_server_bytes": true,
+            "zip_valid": true,
+            "worksheet_rows": 11,
+            "header": [
+              {
+                "cell": "A1",
+                "type": "inlineStr",
+                "value": "import",
+                "formula": false
+              },
+              {
+                "cell": "B1",
+                "type": "inlineStr",
+                "value": "semantic_id",
+                "formula": false
+              },
+              {
+                "cell": "C1",
+                "type": "inlineStr",
+                "value": "label",
+                "formula": false
+              },
+              {
+                "cell": "D1",
+                "type": "inlineStr",
+                "value": "description",
+                "formula": false
+              },
+              {
+                "cell": "E1",
+                "type": "inlineStr",
+                "value": "tags",
+                "formula": false
+              }
+            ],
+            "edge_rows": [
+              [
+                {
+                  "cell": "A9",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B9",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_first",
+                  "formula": false
+                },
+                {
+                  "cell": "C9",
+                  "type": "inlineStr",
+                  "value": "Pressure, path\\",
+                  "formula": false
+                },
+                {
+                  "cell": "D9",
+                  "type": "inlineStr",
+                  "value": "Line one\nLine two",
+                  "formula": false
+                },
+                {
+                  "cell": "E9",
+                  "type": "inlineStr",
+                  "value": "[\"0\",\"001\"]",
+                  "formula": false
+                }
+              ],
+              [
+                {
+                  "cell": "A10",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B10",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_second",
+                  "formula": false
+                },
+                {
+                  "cell": "C10",
+                  "type": "inlineStr",
+                  "value": "He said \"Open\"",
+                  "formula": false
+                },
+                {
+                  "cell": "D10",
+                  "type": "inlineStr",
+                  "value": "0",
+                  "formula": false
+                }
+              ]
+            ]
+          },
+          {
+            "path": "/Users/studioycm/Downloads/Unconfirmed 547752.crdownload",
+            "bytes": 4891,
+            "sha256": "930f944bedc088395a05df144c0526bddf1818fa27142716b2fa71a8ade7dee1",
+            "matches_server_bytes": true,
+            "zip_valid": true,
+            "worksheet_rows": 11,
+            "header": [
+              {
+                "cell": "A1",
+                "type": "inlineStr",
+                "value": "import",
+                "formula": false
+              },
+              {
+                "cell": "B1",
+                "type": "inlineStr",
+                "value": "semantic_id",
+                "formula": false
+              },
+              {
+                "cell": "C1",
+                "type": "inlineStr",
+                "value": "label",
+                "formula": false
+              },
+              {
+                "cell": "D1",
+                "type": "inlineStr",
+                "value": "description",
+                "formula": false
+              },
+              {
+                "cell": "E1",
+                "type": "inlineStr",
+                "value": "tags",
+                "formula": false
+              }
+            ],
+            "edge_rows": [
+              [
+                {
+                  "cell": "A9",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B9",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_first",
+                  "formula": false
+                },
+                {
+                  "cell": "C9",
+                  "type": "inlineStr",
+                  "value": "Pressure, path\\",
+                  "formula": false
+                },
+                {
+                  "cell": "D9",
+                  "type": "inlineStr",
+                  "value": "Line one\nLine two",
+                  "formula": false
+                },
+                {
+                  "cell": "E9",
+                  "type": "inlineStr",
+                  "value": "[\"0\",\"001\"]",
+                  "formula": false
+                }
+              ],
+              [
+                {
+                  "cell": "A10",
+                  "type": "inlineStr",
+                  "value": "1",
+                  "formula": false
+                },
+                {
+                  "cell": "B10",
+                  "type": "inlineStr",
+                  "value": "qa_exchange_second",
+                  "formula": false
+                },
+                {
+                  "cell": "C10",
+                  "type": "inlineStr",
+                  "value": "He said \"Open\"",
+                  "formula": false
+                },
+                {
+                  "cell": "D10",
+                  "type": "inlineStr",
+                  "value": "0",
+                  "formula": false
+                }
+              ]
+            ]
+          }
+        ],
+        "completed_native_save": false,
+        "XML_newline_note": "Server/received sheet XML contains literal CRLF bytes; XML parser normalizes them to LF. CSV actual CRLF preservation is separate; no exact parsed-XLSX newline convention claim.",
+        "UI_evidence": "Human screenshot shows four4891-byte XLSX downloads still progressing with pause/cancel; CSV explicitly Downloaded.",
+        "network_evidence_limit": "Buffered CDP history truncated; no attributable export headers/EOF sequence retained. No new request initiated.",
+        "native_inspection_limit": "Codex native-app inspection refused by tool as protected; no alternate access attempted."
+      }
+    },
+    "readback": {
+      "helper": "/private/tmp/audit-b1b6-readback.php",
+      "helper_final_sha256": "0ce7fb6040ddc9dedde4921a0b12ff5342e3b4fe4361125bf312ad071db6d1a6",
+      "guard": "exact QA profile and CURRENT_USER/DATABASE identity; READ ONLY transaction; domain allowlist excludes users/auth",
+      "version_note": "Initial snapshots cover Product/inclusion domain; B4 adds Rule/mapping children; final snapshot also reads appearance and import/export accounting. No same-coverage claim across versions.",
+      "files": {
+        "/private/tmp/audit-b1b6-b1-classified.json": "19d95ce1b9106f364bcbb41983bf0d96c67d674f744d1f7de7bee3a364e567ad",
+        "/private/tmp/audit-b1b6-b1-competing.json": "8b6ef54ecdb3e304369c9b0c5f419e6a317eedd4df8f60b3ed7e072d7c876405",
+        "/private/tmp/audit-b1b6-b1-final.json": "32b09158cd257cec659f33560766f3766ec578d69879ec825bfa6a760a8b9210",
+        "/private/tmp/audit-b1b6-b1-saved.json": "126f9b18c726f3438189a36170fe2f118b41cfb370c96a6859cff58538dd29e7",
+        "/private/tmp/audit-b1b6-b1-stale.json": "055ebba7ca9e10767ac9a0209caf37f8935b1e47cb48ba2380b24b5a31de23df",
+        "/private/tmp/audit-b1b6-b2-conflict.json": "844fab0001753f5689debb2dafbdfe769e0d782aae43a809667504168e5e25f7",
+        "/private/tmp/audit-b1b6-b2-saved.json": "fbe89c74bcbb9683985b0f81a9797536fd31278d471b82e59704598b99d4b8f3",
+        "/private/tmp/audit-b1b6-b2-staged.json": "2ad257ef2f8e153f3e7db76d2a380c301184822a5ade1bd01581f71eb3f504c2",
+        "/private/tmp/audit-b1b6-b3-custom.json": "68bf90365f325f1c409f49b94c3a4428623e74fcf71d07ac4ba77d89e33536eb",
+        "/private/tmp/audit-b1b6-b3-default.json": "5e9e731dd95650c0f3e752a7c4136095071274686b2e9fd22c5f405c5d05b0a4",
+        "/private/tmp/audit-b1b6-b3-included.json": "5fc4a77de232648918cbdd5fbee93aa9482e55e8c1a9a49fab2b93615b9000bf",
+        "/private/tmp/audit-b1b6-b3-master.json": "a7ae1bd1c7da4a11e516d222514c70dd68c4c9ee97813db3e99e5d1a58d644b0",
+        "/private/tmp/audit-b1b6-b3-none.json": "fa4ab6c33bbef64af5a77135957a6754026f4fc5e3e633ab28f99a0263d45f68",
+        "/private/tmp/audit-b1b6-b3-renamed.json": "429bb5adf4134432ce3767e2834804e9c33051770b4e388337dce4b899c028a7",
+        "/private/tmp/audit-b1b6-b4-before.json": "fa59b66b4016c765a60b93ec68b21c97965603dcb74dcfe890ee2a7803e92028",
+        "/private/tmp/audit-b1b6-b4-external.json": "7e1c4ed81db378220c36871a99d3f47761b0ed46d163e5de756f5015bcde960c",
+        "/private/tmp/audit-b1b6-b4-later.json": "99b10ef26920adbf5a55cb2f7314e87d1b97ee992f0214ad9610dc36cd6d496d",
+        "/private/tmp/audit-b1b6-b4-saved.json": "e0e2778f6d3a080881701dfd4f8f7689902526fe7dd07def0d634922620b08d9",
+        "/private/tmp/audit-b1b6-b4-staged.json": "b6d30fabe2cf15e92912d1c79ba7b182d2aa0335a3067e974cd18e9611aba16b",
+        "/private/tmp/audit-b1b6-b5-disabled.json": "e38d6fc3062f778449ece418ae5486f81bb4de4d2c65eb5a20c8bae69bf79063",
+        "/private/tmp/audit-b1b6-b6-before.json": "84c848c4067bcc419ad63a8e9820ac28c4fd0d5d9d2c6607ef65683615e52e47",
+        "/private/tmp/audit-b1b6-b6-final.json": "68af2284b14d7d18e96ed7458528b11e58354dd6702191912bac5ddaa8c163f3",
+        "/private/tmp/audit-b1b6-b6-imported.json": "7844315695bbe229cd0c6467a59cc782024587a344c5bae2ba6dfc269ea467ef",
+        "/private/tmp/audit-b1b6-baseline.json": "9c67f9b9a9ccf5a70f41870e4e99ec357115273f21d0a08176e2fa53105e74f9"
+      }
+    },
+    "screenshots_viewed_and_recorded": {
+      "/private/tmp/audit-b1-parts-reloaded.png": "4aa8f79a2d3315240dad9062db7b4dfda7f5e1c2976eae9baece8555586f203f",
+      "/private/tmp/audit-b1-record-rejected.png": "b137f1ee4587018446c801deb8f8d228434995b7374676cbd079d3a86baf6c0e",
+      "/private/tmp/audit-b1-stale-rejected.png": "dbda45a85685923c5da26ac8e1d0cdf172a4f6be4b7cccbf6aaad953b4f74075",
+      "/private/tmp/audit-b2-code-conflict.png": "f438d1434d98a94e50cc3f4af1f86d6683d37b53ca48d7c272632dd675273120",
+      "/private/tmp/audit-b2-created-graph.png": "b713589ffe2e2a48f534f14bcf9cd772b4f8e6a01fb85db477c64a8483011122",
+      "/private/tmp/audit-b3-linked-preserved.png": "52b24ec24a2e5dd5bd53fbd306830976a40b6c6217e5eece961a8cfe8cc7bb2f",
+      "/private/tmp/audit-b4-rebuilt.png": "45dc2fb12f05a23ad93a8e985504e5c528f30a565d1f11d7a03d8b7b617e896c",
+      "/private/tmp/audit-b4-review-new-rule.png": "737665ac69c0d550605b6be15e591bc865625f2e47f248f46904b11d9c3d5925",
+      "/private/tmp/audit-b4-snapshot-before-rebuild.png": "429f110ba43289b77f90727602e2a1551867c6f73a0b6c2f0b231ecdc9cacf42",
+      "/private/tmp/audit-b5-admin-preview.png": "afcf15e00aab76793f0c5dcc24f445a58c36343440fe31693cbde0629d28bfec",
+      "/private/tmp/audit-b5-stale-child-denied.png": "3fecdc8723bab5a40a99f25c17a6f224e9aadba9208e9e36a00b765b1c5f6b1c",
+      "/private/tmp/audit-b6-download-handoff.png": "f00a1e6b1f151cf804aa3f64eadaafa53dfdd7cd8499c0698974d223c5479688",
+      "/private/tmp/audit-b6-import-success.png": "f00a1e6b1f151cf804aa3f64eadaafa53dfdd7cd8499c0698974d223c5479688"
+    },
+    "final_controls": {
+      "unrelated_group_3_exact_unchanged": true,
+      "unrelated_product_2_exact_unchanged": true,
+      "appearance_raw_row_exact_unchanged_from_root_g2_repair": true,
+      "synthetic_parent_1_active_restored": true,
+      "CSV_all_exported_Masters_explicitly_in_update_scope": true
+    },
+    "console": {
+      "exchange": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "configurator": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "child": {
+        "errors": 0,
+        "warnings": 0,
+        "expected_404_UI_recorded_separately": true
+      }
+    },
+    "restrictions_preserved": [
+      "no application/source/build/config edits",
+      "no main/retained/Rules/TEST DB mutation by audit",
+      "no PHPUnit or QA resets",
+      "no new Writing/Catalog/Images UI acceptance",
+      "no merge/push/security change"
+    ],
+    "manual_XLSX_question": "Human clarified downloads are stuck and supplied screenshot. Attributable partial files found and parsed without renaming; filename question resolved. Completion remains blocked, no new permission or retry requested."
+  },
+  "w7_v2_cross_contract_review": {
+    "status": "PASS source/planning only",
+    "spec_sha256": "535d747ae5bd3865cb4e22b669483130c32db592f9274ab1ba5fa3bd2331feb3",
+    "receipt_sha256": "82fb39964f07f9527b9562cd53fed10c7afaaac956aa14adac20fad3512367d8",
+    "all33_W6_active_dependency_hashes_verified_unchanged": true,
+    "no_material_contract_collision": true,
+    "mandatory_later_acceptance": [
+      "actual20MiB FPM/proxy HTTP boundaries",
+      "real auth/token/origin routing",
+      "owned level0 SQL lifecycle/cleanup",
+      "two-actor native editor/CRLF undo/caret/lifecycle",
+      "independent exact-source implementation review"
+    ],
+    "QA_runtime_not_updated": true,
+    "implementation_authority": "coordinator release, not this audit verdict"
+  },
+  "latest_documentation_update_preservation": {
+    "owned_edited_paths": [
+      "docs/catalog/COMBINED_REGRESSION_ACCEPTANCE_PROPOSAL.md",
+      "docs/catalog/COMBINED_REGRESSION_VERIFICATION_REPORT_2026_10_29.md",
+      "docs/catalog/COMBINED_REGRESSION_VERIFICATION_EVIDENCE_2026_10_29.json"
+    ],
+    "selected_source_files_checked": 660,
+    "selected_source_changes": [],
+    "concurrent_other_doc_drift_observed": [
+      "docs/catalog/COORDINATION_REVIEW_PACKAGE.md"
+    ],
+    "other_doc_not_edited_by_audit": true,
+    "original671_scope_not_relabelled": true
+  }
+}
