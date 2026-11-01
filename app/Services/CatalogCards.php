@@ -10,7 +10,7 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 class CatalogCards
 {
-    public function __construct(private CatalogSnapshots $snapshots, private CatalogSnapshotMatcher $matcher, private CatalogCardDisplay $display, private CatalogPresentation $presentation) {}
+    public function __construct(private CatalogSnapshots $snapshots, private CatalogSnapshotMatcher $matcher, private CatalogCardDisplay $display, private CatalogPresentation $presentation, private CatalogAssetDisplay $images) {}
 
     /** @param array<string, mixed> $criteria @return array<string, mixed> */
     public function get(int $groupId, array $criteria, string $revision, string $requestId, ?string $expectedDisplayVersion = null): array
@@ -44,9 +44,16 @@ class CatalogCards
                 if ($response['status'] !== 'ready') {
                     return ['response' => $response];
                 }
-                $products = Product::query()->where('group_id', $groupId)->where('is_active', true)->whereIn('id', $ids)->orderBy('product_code')->orderBy('id')->get(['id', 'product_code', 'profile_fields']);
+                $imagesEnabled = config('catalog-assets.enabled');
+                $columns = ['id', 'product_code', 'profile_fields'];
+                if ($imagesEnabled) {
+                    $columns[] = 'main_image_id';
+                }
+                $products = Product::query()->where('group_id', $groupId)->where('is_active', true)->whereIn('id', $ids)->orderBy('product_code')->orderBy('id')->get($columns);
+                $images = $imagesEnabled ? $this->images->forIds($products->pluck('main_image_id')->filter()->values()->all()) : [];
+                $mainImages = $products->mapWithKeys(fn (Product $product): array => [$product->id => $imagesEnabled ? ($images[$product->main_image_id] ?? null) : null])->all();
 
-                return ['response' => $response, 'products' => $products, 'group' => $group, 'snapshot' => $snapshot, 'settings' => $settings];
+                return ['response' => $response, 'products' => $products, 'mainImages' => $mainImages, 'group' => $group, 'snapshot' => $snapshot, 'settings' => $settings];
             });
             if ($read !== null) {
                 if (isset($read['products'])) {
@@ -63,7 +70,7 @@ class CatalogCards
                         default => null,
                     };
                     foreach ($read['products']->chunk(24) as $products) {
-                        $read['response']['htmlChunks'][] = view('components.catalog.card-chunk', ['products' => $products, 'group' => $group, 'mainGroup' => $mainGroup, 'fields' => $display['fields'], 'appearance' => $appearance, 'presentation' => $read['response']['presentation']])->render();
+                        $read['response']['htmlChunks'][] = view('components.catalog.card-chunk', ['products' => $products, 'mainImages' => $read['mainImages'], 'group' => $group, 'mainGroup' => $mainGroup, 'fields' => $display['fields'], 'appearance' => $appearance, 'presentation' => $read['response']['presentation']])->render();
                     }
                 }
 

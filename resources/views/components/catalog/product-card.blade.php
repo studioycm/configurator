@@ -1,4 +1,4 @@
-@props(['product', 'group', 'fields', 'appearance', 'mainGroup' => null, 'presentation' => null, 'comparisonEnabled' => false])
+@props(['product', 'group', 'fields', 'appearance', 'mainGroup' => null, 'presentation' => null, 'comparisonEnabled' => false, 'mainImage' => null])
 @php
     $identity = $group->id.'-'.$product->id;
     $properties = $product->profile_fields ?? [];
@@ -15,7 +15,7 @@
         data-property-layout="{{ $appearance['card_property_layout'] }}"
         data-property-labels="{{ $appearance['card_show_labels'] ? 'shown' : 'hidden' }}"
         style="--catalog-card-padding-block:{{ $appearance['card_padding_block'] }}px;--catalog-card-padding-inline:{{ $appearance['card_padding_inline'] }}px;@if ($comparisonEnabled)height:auto;flex:1;@endif">
-        <x-catalog.image-placeholder class="catalog-product-card__image" />
+        <x-catalog.main-image :image="$mainImage" class="catalog-product-card__image" />
         <div class="catalog-product-card__body">
             <header class="catalog-product-card__header">
                 <div class="catalog-product-card__heading">

@@ -1,9 +1,6 @@
 @props(['card' => null, 'dynamic' => false])
 <article class="catalog-model-card" @if (! $dynamic) x-data="{ card: @js($card) }" data-catalog-model-id="{{ $card['id'] }}" data-placement="{{ $card['presentation']['group_image_placement'] }}" data-scale="{{ $card['presentation']['group_image_scale'] }}" @endif :data-placement="card.presentation.group_image_placement" :data-scale="card.presentation.group_image_scale">
-    <div class="catalog-model-image" aria-hidden="true">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 21h24v18H12zM19 21V9h10v12M9 27H5v8h4m30-8h4v8h-4M17 9h14M19 14h10M18 39v4m12-4v4"/><path d="M20 29h8m-4-4v8"/></svg>
-        <span>{{ __('catalog.browse.no_image') }}</span>
-    </div>
+    <x-catalog.main-image :image="$card['mainImage'] ?? null" class="catalog-model-image" x-effect="setImage(card.mainImage)" />
     <div class="catalog-model-copy">
         <h2><a @if (! $dynamic) href="{{ $card['url'] }}" @endif :href="modelHref(card)" :data-catalog-focus="'model-' + card.id" x-text="card.name">{{ $card['name'] ?? '' }}</a></h2>
         @if ($dynamic)

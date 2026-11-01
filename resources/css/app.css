@@ -255,6 +255,9 @@ select:focus[data-flux-control] {
 .catalog-image-placeholder svg { inline-size: min(32px, 70%); block-size: 32px; max-block-size: 70%; flex-shrink: 0; }
 .catalog-image-placeholder span { max-inline-size: 100%; padding-inline: 3px; font-size: 10px; line-height: 14px; text-align: center; overflow-wrap: anywhere; }
 .dark .catalog-image-placeholder { background: #e7edf0; color: #668390; border-color: #8ba1ab; }
+.catalog-main-image img { width: auto; height: auto; max-inline-size: 100%; max-block-size: 100%; object-fit: contain; flex: none; }
+.catalog-main-image[data-image-state='loading'], .catalog-main-image[data-image-state='ready'],
+.dark .catalog-main-image[data-image-state='loading'], .dark .catalog-main-image[data-image-state='ready'] { background: white; border-style: solid; }
 .catalog-product-page {
     --catalog-page-image-max: 240px;
     display: grid;
@@ -383,7 +386,7 @@ select:focus[data-flux-control] {
 .catalog-model-grid { display:grid; grid-template-columns:repeat(var(--model-columns,3),minmax(0,1fr)); gap:.75rem; }
 .catalog-model-card { min-width:0; display:flex; align-items:stretch; gap:.8rem; background:white; border:1px solid #d0dce4; border-radius:.6rem; padding:.9rem; }
 .catalog-model-card:focus-within { border-color:#16808a; }
-.catalog-model-image { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.4rem; flex:0 1 96px; width:96px; min-width:0; max-width:100%; padding:.65rem .3rem; border-radius:.4rem; background:#f1f5f7; color:#7b909c; align-self:start; }
+.catalog-model-image { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.4rem; flex:0 1 96px; width:96px; height:96px; min-width:0; max-width:100%; overflow:hidden; padding:.65rem .3rem; border-radius:.4rem; background:#f1f5f7; color:#7b909c; align-self:start; }
 .catalog-model-image svg { width:36px; max-width:100%; height:44px; }
 .catalog-model-image span { font-size:.6rem; text-align:center; }
 .catalog-model-copy { flex:1; min-width:0; display:flex; flex-direction:column; gap:.4rem; }
@@ -398,11 +401,11 @@ select:focus[data-flux-control] {
 .catalog-model-card[data-placement=above] { flex-direction:column; }
 .catalog-model-card[data-placement=below] { flex-direction:column-reverse; }
 .catalog-model-card[data-placement=above] .catalog-model-image,.catalog-model-card[data-placement=below] .catalog-model-image { width:100%; flex-basis:auto; min-height:96px; }
-.catalog-model-card[data-scale=small] .catalog-model-image { width:64px; flex-basis:64px; }
-.catalog-model-card[data-scale=large] .catalog-model-image { width:128px; flex-basis:128px; }
-.catalog-model-card:is([data-placement=above],[data-placement=below])[data-scale=small] .catalog-model-image { width:100%; min-height:96px; flex-basis:auto; }
-.catalog-model-card:is([data-placement=above],[data-placement=below])[data-scale=medium] .catalog-model-image { min-height:144px; }
-.catalog-model-card:is([data-placement=above],[data-placement=below])[data-scale=large] .catalog-model-image { width:100%; min-height:192px; flex-basis:auto; }
+.catalog-model-card[data-scale=small] .catalog-model-image { width:64px; height:64px; flex-basis:64px; }
+.catalog-model-card[data-scale=large] .catalog-model-image { width:128px; height:128px; flex-basis:128px; }
+.catalog-model-card:is([data-placement=above],[data-placement=below])[data-scale=small] .catalog-model-image { width:100%; height:96px; min-height:96px; flex-basis:auto; }
+.catalog-model-card:is([data-placement=above],[data-placement=below])[data-scale=medium] .catalog-model-image { height:144px; min-height:144px; }
+.catalog-model-card:is([data-placement=above],[data-placement=below])[data-scale=large] .catalog-model-image { width:100%; height:192px; min-height:192px; flex-basis:auto; }
 .catalog-model-grid[data-density=comfortable] { gap:1rem; }
 .catalog-model-grid[data-density=comfortable] .catalog-model-card { padding:1.2rem; }
 .catalog-model-pagination { display:flex; align-items:center; justify-content:flex-end; gap:.8rem; padding:1rem 0; font-size:.8rem; }

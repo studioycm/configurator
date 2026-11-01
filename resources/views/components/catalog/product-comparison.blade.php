@@ -38,7 +38,7 @@
                     <thead><tr>
                         <th scope="col" class="w-1/3 border border-slate-300 p-3 text-start dark:border-zinc-600">{{ __('catalog.comparison.property') }}</th>
                         @foreach ([0, 1] as $column)
-                            <th scope="col" class="w-1/3 border border-slate-300 p-3 text-start align-top dark:border-zinc-600"><x-catalog.image-placeholder class="mb-2 h-20 w-24" /><span class="break-all font-mono" x-text="comparisonResult?.products[{{ $column }}]?.code ?? ''"></span></th>
+                            <th scope="col" class="w-1/3 border border-slate-300 p-3 text-start align-top dark:border-zinc-600"><x-catalog.main-image class="mb-2 h-20 w-24" x-effect="setImage(comparisonResult?.products[{{ $column }}]?.mainImage ?? null)" /><span class="break-all font-mono" x-text="comparisonResult?.products[{{ $column }}]?.code ?? ''"></span></th>
                         @endforeach
                     </tr></thead>
                     <template x-for="section in {{ \Illuminate\Support\Js::from([['key' => 'differences', 'label' => __('catalog.comparison.differences')], ['key' => 'same', 'label' => __('catalog.comparison.same')]]) }}" :key="section.key">

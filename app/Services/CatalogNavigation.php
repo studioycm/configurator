@@ -16,7 +16,7 @@ class CatalogNavigation
 
     private const TREE_PAGE_SIZE = 50;
 
-    public function __construct(private CatalogAvailability $availability, private CatalogPresentation $presentation, private GroupAttributes $attributes) {}
+    public function __construct(private CatalogAvailability $availability, private CatalogPresentation $presentation, private GroupAttributes $attributes, private CatalogAssetDisplay $images) {}
 
     /** @param array<string, mixed> $query @return array<string, mixed> */
     public function get(User $actor, array $query): array
@@ -51,10 +51,17 @@ class CatalogNavigation
             $total = count($resultIds);
             $page = $query['page'];
             $slice = $page > max(1, (int) ceil($total / self::CARD_PAGE_SIZE)) ? [] : array_slice($resultIds, ($page - 1) * self::CARD_PAGE_SIZE, self::CARD_PAGE_SIZE);
-            $cardGroups = $slice === [] ? collect() : Group::query()->whereKey($slice)->get(['id', 'catalog_revision', 'result_settings'])->keyBy('id');
+            $imagesEnabled = config('catalog-assets.enabled');
+            $columns = ['id', 'catalog_revision', 'result_settings'];
+            if ($imagesEnabled) {
+                $columns[] = 'main_image_id';
+            }
+            $cardGroups = $slice === [] ? collect() : Group::query()->whereKey($slice)->get($columns)->keyBy('id');
+            $images = $imagesEnabled ? $this->images->forIds($cardGroups->pluck('main_image_id')->filter()->values()->all()) : [];
+            $mainImages = $cardGroups->mapWithKeys(fn (Group $group): array => [$group->id => $imagesEnabled ? ($images[$group->main_image_id] ?? null) : null])->all();
             $categoryIds = $this->presentation->resolveCategoryIds($shared['settings'], $cardGroups);
             $cardTags = $this->cardTags($slice, $categoryIds);
-            $cards = array_map(function (int $id) use ($groups, $cardGroups, $shared, $categoryIds, $cardTags, $attributeDocuments): array {
+            $cards = array_map(function (int $id) use ($groups, $cardGroups, $shared, $categoryIds, $cardTags, $attributeDocuments, $mainImages): array {
                 $group = $groups[$id];
 
                 $effective = $this->presentation->effective($cardGroups[$id], $shared['settings'], $categoryIds);
@@ -71,7 +78,7 @@ class CatalogNavigation
                 }
 
                 return [...$this->identity($group), 'url' => route('catalog.groups.show', $id), 'presentation' => $effective, 'tags' => $tags, 'legacyId' => $group->legacy_id, 'description' => $group->description,
-                    'productCount' => (int) $group->active_product_count, 'mainImage' => null,
+                    'productCount' => (int) $group->active_product_count, 'mainImage' => $mainImages[$id],
                     'ancestors' => $this->ancestors($group, $groups), 'attributesStatus' => $attributeDocuments[$id]['status'], 'attributes' => $attributes];
             }, $slice);
             $ancestors = [];

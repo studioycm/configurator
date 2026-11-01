@@ -49,7 +49,7 @@ test('actual card chunks bind shared and own leaf image settings without ancesto
         ->and($link->getAttribute(':href'))->toContain('productHref')
         ->and($xp->query('//article//a')->length)->toBe(1)
         ->and($xp->query('//article//*[contains(@class,"catalog-image-placeholder")]')->length)->toBe(1)
-        ->and($xp->query('//article//img')->length)->toBe(0);
+        ->and($xp->query('//article//img[not(ancestor::template)]')->length)->toBe(0);
     expect($response['total'])->toBe(1)->and($html)->toContain('IMAGE-001');
     $ownPlacement = $placement === 'above' ? 'below' : 'above';
     $group->update(['result_settings' => ['catalog_presentation' => ['product_image_placement' => $ownPlacement, 'product_image_scale' => 'small']]]);
@@ -86,7 +86,7 @@ test('Product page and independent child bind shared page settings rather than r
         ->and($root->getAttribute('data-product-page-image-scale'))->toBe($scale)
         ->and($root->getAttribute('data-catalog-display-version'))->toBe($saved->version)
         ->and($xp->query('.//*[@role="tablist"]', $root)->length)->toBe(1)
-        ->and($xp->query('.//img', $root)->length)->toBe(0)
+        ->and($xp->query('.//img[not(ancestor::template)]', $root)->length)->toBe(0)
         ->and($xp->query('.//*[contains(@class,"catalog-image-placeholder")]', $root)->length)->toBe(1);
     Livewire::test(ProductConfigurator::class, ['productId' => $product->id])
         ->assertViewHas('pagePresentation', fn (array $value): bool => $value === ['layout' => $layout, 'scale' => $scale, 'displayVersion' => $saved->version]);

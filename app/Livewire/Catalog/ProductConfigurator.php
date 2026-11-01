@@ -6,6 +6,7 @@ use App\DTO\ConfiguratorEvaluationInput;
 use App\DTO\ConfiguratorEvaluationResult;
 use App\Models\Product;
 use App\Services\AdminAppearance;
+use App\Services\CatalogAssetDisplay;
 use App\Services\CatalogAvailability;
 use App\Services\CatalogJourney;
 use App\Services\CatalogPresentation;
@@ -162,10 +163,15 @@ class ProductConfigurator extends Component
         $product = Product::with('group.filters')->findOrFail($this->productId);
         app(CatalogAvailability::class)->assertProduct($product);
         $shared = app(CatalogPresentation::class)->current();
+        $mainImage = null;
+        if (config('catalog-assets.enabled') && $product->main_image_id !== null) {
+            $mainImage = app(CatalogAssetDisplay::class)->forIds([$product->main_image_id])[$product->main_image_id] ?? null;
+        }
 
         return view('livewire.catalog.product-configurator', [
             'result' => $this->result(),
             'product' => $product,
+            'mainImage' => $mainImage,
             'propertyFields' => ProductEditorData::groupFields($product),
             'showLoadingIndicator' => app(AdminAppearance::class)->current()['show_configurator_loading_indicator'],
             'pagePresentation' => ['layout' => $shared['settings']['product_page_layout'], 'scale' => $shared['settings']['product_page_image_scale'], 'displayVersion' => $shared['version']],

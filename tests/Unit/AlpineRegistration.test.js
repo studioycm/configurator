@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const appSource = readFileSync(new URL('../../resources/js/app.js', import.meta.url), 'utf8');
 const filtersSource = readFileSync(new URL('../../resources/js/catalog-filters.js', import.meta.url), 'utf8');
-const names = ['suggestedIdentifier', 'masterValueBatch', 'attributeCreationGuard', 'configuratorCreationGuard', 'workspaceTableSelection', 'configuratorProductSearch', 'configuratorPreviewWorkspace', 'catalogShell', 'itemCountPreview', 'workspaceDialog', 'tableColumnWidths', 'workspaceSplit', 'tablePagination', 'localTableProfile', 'adminBrowserProfile', 'configuratorPreviewDisplay', 'localSectionProfile', 'localOrderProfile', 'catalogFilters', 'catalogNavigation', 'catalogConfigurationUrl', 'catalogProductComparison', 'catalogImageEditor'];
+const names = ['suggestedIdentifier', 'masterValueBatch', 'attributeCreationGuard', 'configuratorCreationGuard', 'workspaceTableSelection', 'configuratorProductSearch', 'configuratorPreviewWorkspace', 'catalogShell', 'itemCountPreview', 'workspaceDialog', 'tableColumnWidths', 'workspaceSplit', 'tablePagination', 'localTableProfile', 'adminBrowserProfile', 'configuratorPreviewDisplay', 'localSectionProfile', 'localOrderProfile', 'catalogFilters', 'catalogNavigation', 'catalogConfigurationUrl', 'catalogProductComparison', 'catalogImageEditor', 'catalogImage'];
 
 function startup(alreadyPresent) {
     const registrations = [];

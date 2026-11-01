@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SaveCatalogPresentationSettings;
+use App\Models\CatalogAsset;
 use App\Models\Group;
 use App\Models\GroupTagCategory;
 use App\Models\GroupTagValue;
@@ -114,3 +115,30 @@ test('navigation rejects explicit null mode and malformed Unicode without fallin
     $actor = User::factory()->create();
     app(CatalogNavigation::class)->get($actor, $query);
 })->with([[['mode' => null]], [['search' => "\xFF"]], [['page' => true]], [['tagValueIds' => ['01']]]])->throws(ValidationException::class);
+
+test('enabled Group image reads are limited to the returned card page and absent pages do not query assets', function () {
+    config(['catalog-assets.enabled' => true]);
+    $actor = User::factory()->create();
+    $images = CatalogAsset::factory()->count(2)->create();
+    for ($index = 0; $index < 25; $index++) {
+        $group = Group::factory()->create(['sort_order' => $index]);
+        Product::factory()->for($group)->create();
+        $group->forceFill(['main_image_id' => $images[$index < 24 ? 0 : 1]->id])->save();
+    }
+    foreach ([1, 2, 3] as $page) {
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $reply = app(CatalogNavigation::class)->get($actor, ['page' => $page]);
+        $queries = array_values(array_filter(DB::getQueryLog(), fn (array $query): bool => str_contains($query['query'], 'catalog_assets')));
+        DB::disableQueryLog();
+        expect(count($reply['cards']))->toBe(match ($page) {
+            1 => 24, 2 => 1, default => 0
+        });
+        if ($page < 3) {
+            expect($queries)->toHaveCount(1);
+            expect($queries[0]['bindings'])->toContain($images[$page - 1]->id)->not->toContain($images[2 - $page]->id);
+        } else {
+            expect($queries)->toBe([]);
+        }
+    }
+});

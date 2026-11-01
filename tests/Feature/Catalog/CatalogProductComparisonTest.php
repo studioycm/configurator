@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Catalog\GroupShow;
+use App\Models\CatalogAsset;
 use App\Models\Configurator;
 use App\Models\Group;
 use App\Models\GroupFilter;
@@ -136,3 +137,22 @@ test('Group comparison controls stay outside the single Product link and dialog 
     expect($html)->toContain(__('catalog.comparison.differences'), __('catalog.comparison.same'), 'catalogFilters', 'catalogProductComparison')
         ->not->toContain('wire:click="choose', 'catalog_attributes');
 });
+
+test('enabled comparison never projects image metadata for a foreign or inactive pair member', function (bool $inactive) {
+    config(['catalog-assets.enabled' => true]);
+    [$actor, $group, $a, $b] = savedProductComparisonFixture();
+    $image = CatalogAsset::factory()->create();
+    $b->forceFill(['main_image_id' => $image->id, ...($inactive ? ['is_active' => false] : ['group_id' => Group::factory()->create()->id])])->save();
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    try {
+        app(CatalogProductComparison::class)->get($actor, $group->id, [$a->id, $b->id]);
+        $this->fail('Unavailable pair member must be rejected before image projection.');
+    } catch (HttpException $exception) {
+        expect($exception->getStatusCode())->toBe(404);
+    }
+
+    expect(array_filter(DB::getQueryLog(), fn (array $query): bool => str_contains($query['query'], 'catalog_assets')))->toBe([]);
+    DB::disableQueryLog();
+})->with([true, false]);

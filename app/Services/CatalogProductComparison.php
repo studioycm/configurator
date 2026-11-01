@@ -10,11 +10,11 @@ use Illuminate\Validation\ValidationException;
 
 final class CatalogProductComparison
 {
-    public function __construct(private CatalogAvailability $availability) {}
+    public function __construct(private CatalogAvailability $availability, private CatalogAssetDisplay $images) {}
 
     /**
      * @param  list<int|string>  $productIds
-     * @return array{groupId: string, pairIds: list<string>, groupRevision: string, products: list<array{id: string, code: string}>, differences: list<array{key: string, label: string, values: list<?string>}>, same: list<array{key: string, label: string, values: list<?string>}>}
+     * @return array{groupId: string, pairIds: list<string>, groupRevision: string, products: list<array{id: string, code: string, mainImage: ?array}>, differences: list<array{key: string, label: string, values: list<?string>}>, same: list<array{key: string, label: string, values: list<?string>}>}
      */
     public function get(User $actor, int $groupId, array $productIds): array
     {
@@ -38,9 +38,15 @@ final class CatalogProductComparison
             $visible = $this->availability->group($groupId);
             abort_if($visible->children_exists, 404);
             $group = Group::with('filters')->findOrFail($groupId);
+            $imagesEnabled = config('catalog-assets.enabled');
+            $columns = ['id', 'group_id', 'product_code', 'profile_fields'];
+            if ($imagesEnabled) {
+                $columns[] = 'main_image_id';
+            }
             $products = Product::query()->where('group_id', $groupId)->where('is_active', true)->whereIn('id', $ids)
-                ->get(['id', 'group_id', 'product_code', 'profile_fields'])->keyBy('id');
+                ->get($columns)->keyBy('id');
             abort_unless($products->count() === 2, 404);
+            $images = $imagesEnabled ? $this->images->forIds($products->pluck('main_image_id')->filter()->values()->all()) : [];
             $pair = array_map(fn (int $id): Product => $products[$id], $ids);
             $pair[0]->setRelation('group', $group);
             $fields = ProductEditorData::groupFields($pair[0]);
@@ -51,7 +57,7 @@ final class CatalogProductComparison
             }
             $result = ['groupId' => (string) $groupId, 'pairIds' => array_map(strval(...), $ids),
                 'groupRevision' => (string) $group->catalog_revision,
-                'products' => array_map(fn (Product $product): array => ['id' => (string) $product->id, 'code' => $product->product_code], $pair),
+                'products' => array_map(fn (Product $product): array => ['id' => (string) $product->id, 'code' => $product->product_code, 'mainImage' => $imagesEnabled ? ($images[$product->main_image_id] ?? null) : null], $pair),
                 'differences' => [], 'same' => []];
             $profiles = array_map(fn (Product $product): array => is_array($product->profile_fields) ? $product->profile_fields : [], $pair);
             foreach ($keys as $key) {

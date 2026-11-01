@@ -3,13 +3,18 @@
 use App\Filament\Resources\Groups\Pages\CreateGroup;
 use App\Filament\Resources\Groups\Pages\EditGroup;
 use App\Filament\Resources\Products\Pages\EditProduct;
+use App\Livewire\Catalog\ProductConfigurator;
 use App\Models\CatalogAsset;
 use App\Models\CatalogAssetImportSource;
 use App\Models\Group;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CatalogAssetDisplay;
 use App\Services\CatalogAssetSourceFiles;
 use App\Services\CatalogAssetSources;
+use App\Services\CatalogCards;
+use App\Services\CatalogNavigation;
+use App\Services\CatalogSnapshots;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -377,4 +382,87 @@ test('a remounted settled upload seals and continues its own journal without a n
     $remount->assertSet('catalogMainImageSourceProgress.stage', 'ready')->assertSet('catalogMainImageSourceProgress.source_id', $source->id)
         ->assertSet('catalogMainImageSourceProgress.scan_version', 1);
     expect(CatalogAssetImportSource::count())->toBe(1)->and($remount->instance()->catalogMainImageCandidates()['entries'])->toHaveCount(1);
+});
+
+function k7NativeImageSave(Product|Group $record, string $filename, string $pageClass): Testable
+{
+    [$editor, $property, $reference] = nativeImageUpload($record, $filename, $pageClass);
+    $editor->call('_finishUpload', $property, [$reference], false)->assertHasNoErrors();
+    for ($step = 0; $step < 20 && $editor->get('catalogMainImageSourceProgress.stage') === 'scanning'; $step++) {
+        $editor->call('catalogMainImageAdvanceSource')->assertHasNoErrors();
+    }
+    $editor->assertSet('catalogMainImageSourceProgress.stage', 'ready')
+        ->assertSet('data.image_intent.operation', 'set')
+        ->call('prepareImageSave')->assertHasNoErrors()
+        ->call('save', false, false)->assertHasNoErrors()->assertDispatched('catalog-image-save-committed');
+
+    return $editor;
+}
+
+test('K7 native Product image Save replace and remove reach cards and the real configurator child', function () {
+    $group = Group::factory()->create();
+    $product = Product::factory()->for($group)->create(['product_code' => 'K7-VALVE', 'profile_fields' => ['0' => '001', 'product_pic' => '/not-managed.jpg']]);
+    $revision = $group->fresh()->catalog_revision;
+    k7NativeImageSave($product, 'first.png', EditProduct::class);
+    $firstId = $product->fresh()->main_image_id;
+    $first = app(CatalogAssetDisplay::class)->forIds([$firstId])[$firstId];
+    expect($group->fresh()->catalog_revision)->not->toBe($revision);
+    $snapshot = app(CatalogSnapshots::class)->get($group->id);
+    $cards = app(CatalogCards::class)->get($group->id, ['version' => 1, 'filters' => [], 'subGroupId' => null, 'precedence' => []], $snapshot->revision(), 'k7-native');
+    expect(implode('', $cards['htmlChunks']))->toContain($first['thumbnail_url']);
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertViewHas('mainImage', $first)->assertSeeHtml('src="'.$first['thumbnail_url'].'"');
+    $revision = $group->fresh()->catalog_revision;
+
+    k7NativeImageSave($product, 'replacement.png', EditProduct::class);
+    $nextId = $product->fresh()->main_image_id;
+    expect($nextId)->not->toBe($firstId);
+    expect($group->fresh()->catalog_revision)->not->toBe($revision);
+    $replacement = app(CatalogAssetDisplay::class)->forIds([$nextId])[$nextId];
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertViewHas('mainImage', $replacement)->assertDontSeeHtml($first['thumbnail_url']);
+    $stale = app(CatalogCards::class)->get($group->id, ['version' => 1, 'filters' => [], 'subGroupId' => null, 'precedence' => []], $snapshot->revision(), 'k7-stale');
+    expect($stale['status'])->toBe('refresh_required')->and($stale['htmlChunks'])->toBe([]);
+    $freshSnapshot = app(CatalogSnapshots::class)->get($group->id);
+    $freshCards = app(CatalogCards::class)->get($group->id, ['version' => 1, 'filters' => [], 'subGroupId' => null, 'precedence' => []], $freshSnapshot->revision(), 'k7-replacement');
+    expect(implode('', $freshCards['htmlChunks']))->toContain($replacement['thumbnail_url'])->not->toContain($first['thumbnail_url']);
+    $revision = $group->fresh()->catalog_revision;
+
+    Livewire::test(EditProduct::class, ['record' => $product->id])->call('catalogMainImageRemove')->call('prepareImageSave')->assertHasNoErrors()->call('save', false, false)->assertHasNoErrors();
+    expect($product->fresh()->main_image_id)->toBeNull()->and($product->fresh()->profile_fields)->toBe(['0' => '001', 'product_pic' => '/not-managed.jpg']);
+    expect($group->fresh()->catalog_revision)->not->toBe($revision);
+    Livewire::test(ProductConfigurator::class, ['productId' => $product->id])->assertViewHas('mainImage', null)->assertDontSeeHtml($replacement['thumbnail_url']);
+    $removedSnapshot = app(CatalogSnapshots::class)->get($group->id);
+    $removedCards = app(CatalogCards::class)->get($group->id, ['version' => 1, 'filters' => [], 'subGroupId' => null, 'precedence' => []], $removedSnapshot->revision(), 'k7-removed');
+    expect(implode('', $removedCards['htmlChunks']))->not->toContain($replacement['thumbnail_url'], '/not-managed.jpg');
+    expect(CatalogAsset::query()->whereKey([$firstId, $nextId])->count())->toBe(2);
+});
+
+test('K7 native Group image Save replace and remove refresh only its own card without changing topology', function () {
+    $parent = Group::factory()->create();
+    $group = Group::factory()->for($parent, 'parent')->create(['name' => 'K7 image Group']);
+    Product::factory()->for($group)->create();
+    $navigation = app(CatalogNavigation::class);
+    $before = $navigation->get(auth()->user(), []);
+    $revision = $group->fresh()->catalog_revision;
+
+    k7NativeImageSave($group, 'group-first.png', EditGroup::class);
+    $firstId = $group->fresh()->main_image_id;
+    $first = $navigation->get(auth()->user(), []);
+    expect($first['cards'][0]['mainImage']['id'])->toBe($firstId)->and($first['treeVersion'])->toBe($before['treeVersion']);
+    expect($group->fresh()->catalog_revision)->not->toBe($revision);
+    expect(view('components.catalog.group-card', ['card' => $first['cards'][0]])->render())->toContain($first['cards'][0]['mainImage']['thumbnail_url']);
+    $revision = $group->fresh()->catalog_revision;
+
+    k7NativeImageSave($group, 'group-next.png', EditGroup::class);
+    $next = $navigation->get(auth()->user(), []);
+    expect($next['cards'][0]['mainImage']['id'])->toBe($group->fresh()->main_image_id)->not->toBe($firstId);
+    expect($group->fresh()->catalog_revision)->not->toBe($revision);
+    expect($next['treeVersion'])->toBe($before['treeVersion']);
+    $revision = $group->fresh()->catalog_revision;
+
+    Livewire::test(EditGroup::class, ['record' => $group->id])->call('catalogMainImageRemove')->call('prepareImageSave')->assertHasNoErrors()->call('save', false, false)->assertHasNoErrors();
+    $removed = $navigation->get(auth()->user(), []);
+    expect($removed['cards'][0]['mainImage'])->toBeNull()->and($removed['treeVersion'])->toBe($before['treeVersion']);
+    expect($group->fresh()->catalog_revision)->not->toBe($revision);
+    expect($group->fresh()->name)->toBe('K7 image Group')->and($group->fresh()->parent_id)->toBe($parent->id);
+    expect(CatalogAsset::count())->toBe(2);
 });
