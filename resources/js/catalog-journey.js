@@ -8,32 +8,57 @@ const text = value => {
     if(typeof value!=='string' || [...value].some(c=>c.codePointAt(0)>=0xd800 && c.codePointAt(0)<=0xdfff)) invalid();
     return value;
 };
+const keys = (value, expected) => {
+    if (!object(value) || Object.keys(value).length !== expected.length || expected.some(key=>!Object.hasOwn(value,key))) invalid();
+};
+export function normalizeCatalogQuery(input, defaultMode = 'tree') {
+    if (!object(input) || Object.keys(input).some(key=>!['branchId','search','tagValueIds','attributeValues','mode','page','requestId'].includes(key))) invalid();
+    const positive = value => { const result=Number(id(value)); if(!Number.isSafeInteger(result)) invalid(); return result; };
+    const search = Object.hasOwn(input,'search') ? text(input.search) : '';
+    const tags = Object.hasOwn(input,'tagValueIds') ? input.tagValueIds : [];
+    const attributes = Object.hasOwn(input,'attributeValues') ? input.attributeValues : {};
+    const mode = Object.hasOwn(input,'mode') ? input.mode : defaultMode;
+    if([...search].length>500 || !Array.isArray(tags) || tags.length>200 || !object(attributes) || !['tree','tags'].includes(mode)) invalid();
+    const tagValueIds=Array.from(tags,positive).sort((a,b)=>a-b);
+    if(new Set(tagValueIds).size!==tagValueIds.length) invalid();
+    const entries=[];
+    for(const key of Object.keys(attributes).sort()) {
+        if(!/^[a-z][a-z0-9_]{0,99}$/.test(key)) invalid();
+        const values=attributes[key];
+        if(!Array.isArray(values) || values.length>25) invalid();
+        const selected=Array.from(values,value=>{text(value);if(value==='' || value.includes('\0') || [...value].length>200)invalid();return value;});
+        if(new Set(selected).size!==selected.length)invalid();
+        entries.push([key,selected]);
+    }
+    if(new TextEncoder().encode(JSON.stringify(Object.fromEntries(entries))).length>32768)invalid();
+    const attributeValues=Object.fromEntries(entries.filter(([,values])=>values.length));
+    return {branchId:input.branchId==null?null:positive(input.branchId),search,tagValueIds,attributeValues,mode,page:positive(Object.hasOwn(input,'page')?input.page:1)};
+}
 const criteria = raw => {
-    if(!object(raw) || raw.version!==1 || !object(raw.filters) || !Array.isArray(raw.precedence)) invalid();
+    keys(raw,['version','filters','subGroupId','precedence']);
+    if(raw.version!==1 || !object(raw.filters) || !Array.isArray(raw.precedence)) invalid();
     const filters=Object.fromEntries(Object.entries(raw.filters).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>[text(key),text(value)]));
     if(raw.subGroupId!==null && (typeof raw.subGroupId!=='string' || id(raw.subGroupId)!==raw.subGroupId)) invalid();
     return {version:1,filters,subGroupId:raw.subGroupId,precedence:raw.precedence.map(text)};
 };
 
 export function encodeJourney(raw) {
-    if(!object(raw) || raw.version!==1) invalid();
+    keys(raw,['version','groupId','productId','catalog','products']);
+    if(![1,2].includes(raw.version)) invalid();
     const groupId=id(raw.groupId), productId=raw.productId===null?null:id(raw.productId);
     let catalog=null,products=null;
     if(raw.catalog!==null) {
-        if(!object(raw.catalog) || !object(raw.catalog.query)) invalid();
-        const q=raw.catalog.query;
-        if(!['tree','tags'].includes(q.mode) || [...text(q.search)].length>500 || !Array.isArray(q.tagValueIds) || q.tagValueIds.length>200) invalid();
-        const tags=q.tagValueIds.map(value=>{id(value);return value;});
-        if(new Set(tags.map(String)).size!==tags.length || (raw.catalog.anchor!==null && raw.catalog.anchor!==`model-${groupId}`)) invalid();
-        if(q.branchId!==null) id(q.branchId);
-        id(q.page);
-        catalog={query:{branchId:q.branchId,search:q.search,tagValueIds:tags,mode:q.mode,page:q.page},anchor:raw.catalog.anchor};
+        keys(raw.catalog,['query','anchor']);
+        keys(raw.catalog.query,raw.version===1?['branchId','search','tagValueIds','mode','page']:['branchId','search','tagValueIds','attributeValues','mode','page']);
+        if(raw.catalog.anchor!==null && raw.catalog.anchor!==`model-${groupId}`)invalid();
+        catalog={query:normalizeCatalogQuery(raw.catalog.query),anchor:raw.catalog.anchor};
     }
     if(raw.products!==null) {
-        if(!object(raw.products) || (raw.products.anchor!==null && (productId===null || raw.products.anchor!==`product-${productId}`))) invalid();
+        keys(raw.products,['criteria','anchor']);
+        if((raw.products.anchor!==null && (productId===null || raw.products.anchor!==`product-${productId}`))) invalid();
         products={criteria:criteria(raw.products.criteria),anchor:raw.products.anchor};
     }
-    const json=JSON.stringify({version:1,groupId,productId,catalog,products});
+    const json=JSON.stringify({version:2,groupId,productId,catalog,products});
     if(json.length>8192) invalid();
     const encoded=btoa(String.fromCharCode(...new TextEncoder().encode(json))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
     if(encoded.length>8192) invalid();

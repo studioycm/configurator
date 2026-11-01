@@ -76,7 +76,7 @@ test('saved presentation consumers keep bounded queries and payloads with real c
     expect($reads['cards']['value']['presentation']['group_card_tag_categories'])->toBe([$categories[1]->id]);
     $reads['ssr']['value']->assertOk()->assertSee($shared->version);
     $reads['not_modified']['value']->assertNotModified();
-    $bounds = ['navigation' => ['queries' => 9, 'bytes' => 65536], 'dataset' => ['queries' => 12, 'bytes' => 65536],
+    $bounds = ['navigation' => ['queries' => 10, 'bytes' => 65536], 'dataset' => ['queries' => 12, 'bytes' => 65536],
         'cards' => ['queries' => 12, 'bytes' => 262144], 'ssr' => ['queries' => 24, 'bytes' => 524288], 'not_modified' => ['queries' => 6, 'bytes' => 0]];
     foreach ($reads as $name => $read) {
         expect($read['metrics']['query_count'])->toBeLessThanOrEqual($bounds[$name]['queries']);
@@ -86,7 +86,7 @@ test('saved presentation consumers keep bounded queries and payloads with real c
     }
     $selectedNavigation = $measure(fn (): array => app(CatalogNavigation::class)->get($actor, ['tagValueIds' => [$tag->id]]));
     expect($selectedNavigation['value']['total'])->toBe($modelCount)
-        ->and($selectedNavigation['metrics']['query_count'])->toBeLessThanOrEqual(11)
+        ->and($selectedNavigation['metrics']['query_count'])->toBeLessThanOrEqual(12)
         ->and($selectedNavigation['metrics']['write_queries'])->toBe(0);
     $evidenceDirectory = getenv('CATALOG_K3_EVIDENCE_DIR');
     if (is_string($evidenceDirectory) && is_dir($evidenceDirectory)) {

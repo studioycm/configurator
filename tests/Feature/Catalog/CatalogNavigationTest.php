@@ -92,7 +92,7 @@ test('navigation projects saved defaults and real card overrides without leaking
     $navigation = app(CatalogNavigation::class);
     $reply = $navigation->get($actor, ['search' => 'שסתום /', 'tagValueIds' => [(string) $high->id, (string) $low->id], 'requestId' => 'unicode']);
     expect($reply['displayVersion'])->toBe($saved->version)
-        ->and($reply['query'])->toBe(['branchId' => null, 'search' => 'שסתום /', 'tagValueIds' => [$low->id, $high->id], 'mode' => 'tags', 'page' => 1])
+        ->and($reply['query'])->toBe(['branchId' => null, 'search' => 'שסתום /', 'tagValueIds' => [$low->id, $high->id], 'attributeValues' => [], 'mode' => 'tags', 'page' => 1])
         ->and($reply['presentation']['sidebar_mode'])->toBe('tags')
         ->and($reply['cards'][0]['presentation']['group_image_placement'])->toBe('right')
         ->and(array_column($reply['cards'][0]['tags'], 'id'))->toBe([$high->id, $low->id])

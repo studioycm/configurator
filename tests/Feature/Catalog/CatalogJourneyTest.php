@@ -19,12 +19,64 @@ function journeyFixture(): array
     GroupFilter::factory()->for($group)->create(['property_key' => 'pressure']);
     GroupFilter::factory()->for($group)->create(['property_key' => 'code']);
     $product = Product::factory()->for($group)->create(['profile_fields' => ['pressure' => '0', 'code' => '001']]);
-    $state = ['version' => 1, 'groupId' => (string) $group->id, 'productId' => (string) $product->id,
-        'catalog' => ['query' => ['branchId' => $root->id, 'search' => 'שסתום é', 'tagValueIds' => [$tag->id], 'mode' => 'tags', 'page' => 2], 'anchor' => 'model-'.$group->id],
+    $state = ['version' => 2, 'groupId' => (string) $group->id, 'productId' => (string) $product->id,
+        'catalog' => ['query' => ['branchId' => $root->id, 'search' => 'שסתום é', 'tagValueIds' => [$tag->id], 'attributeValues' => [], 'mode' => 'tags', 'page' => 2], 'anchor' => 'model-'.$group->id],
         'products' => ['criteria' => ['version' => 1, 'filters' => ['pressure' => '0', 'code' => '001'], 'subGroupId' => null, 'precedence' => ['filter:code', 'filter:pressure']], 'anchor' => 'product-'.$product->id]];
 
     return [$actor, $root, $group, $product, $state];
 }
+
+test('legacy return links upgrade while r2 attributes retain exact values through the real route chain', function () {
+    [$actor, , $group, $product, $state] = journeyFixture();
+    $this->actingAs($actor);
+    $journey = app(CatalogJourney::class);
+    $legacy = $state;
+    $legacy['version'] = 1;
+    unset($legacy['catalog']['query']['attributeValues']);
+    $raw = fn (mixed $wire): string => rtrim(strtr(base64_encode(json_encode($wire, JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+    expect($journey->decode($raw($legacy)))->toBe($state);
+    $legacy['catalog']['query']['attributeValues'] = [];
+    expect(fn () => $journey->decode($raw($legacy)))->toThrow(ValidationException::class);
+    $state['catalog']['query']['attributeValues'] = ['application' => [' 0 ', '001', 'Case', 'case', 'מים']];
+    $encoded = $journey->encode($state);
+    expect($journey->decode($encoded))->toBe($state);
+    $html = $this->get(route('catalog.products.show', ['product' => $product, 'r' => $encoded, 'configuration' => '001-raw']))->assertOk()->getContent();
+    $dom = new DOMDocument;
+    @$dom->loadHTML($html);
+    $hrefs = [];
+    foreach ((new DOMXPath($dom))->query('//nav[@aria-label="Breadcrumb"]//a') as $link) {
+        $hrefs[] = $link->getAttribute('href');
+    }
+    expect($hrefs)->toContain($journey->catalogUrl($state), $journey->groupUrl($state));
+    $this->get($journey->groupUrl($state))->assertOk()->assertDontSee(__('catalog.journey.reset'));
+    $this->get($journey->catalogUrl($state))->assertOk()->assertDontSee(__('catalog.journey.reset'));
+    $wire = $journey->forClient($state);
+    $wire['catalog']['query']['attributeValues'] = [];
+    expect(fn () => $journey->decode($raw($wire)))->toThrow(ValidationException::class);
+});
+
+test('raw r2 attribute collections retain JSON list identity at the Group return entry', function (string $collection, bool $valid) {
+    [$actor, , $group, , $state] = journeyFixture();
+    $journey = app(CatalogJourney::class);
+    $wire = $journey->forClient($state);
+    $values = json_decode($collection, flags: JSON_THROW_ON_ERROR);
+    $wire['catalog']['query']['attributeValues']->application = $values;
+    $encoded = rtrim(strtr(base64_encode(json_encode($wire, JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+    $response = $this->actingAs($actor)->get(route('catalog.groups.show', ['group' => $group, 'r' => $encoded]))->assertOk();
+    if (! $valid) {
+        $response->assertSee(__('catalog.journey.reset'));
+        expect(fn () => $journey->decode($encoded))->toThrow(ValidationException::class);
+
+        return;
+    }
+    $response->assertDontSee(__('catalog.journey.reset'));
+    expect($journey->decode($encoded)['catalog']['query']['attributeValues'])->toBe($values === [] ? [] : ['application' => $values]);
+})->with([
+    'indexed object' => ['{"0":"literal"}', false],
+    'empty object' => ['{}', false],
+    'empty list' => ['[]', true],
+    'exact string list' => ['[" 0 ","001","Case","case","מים"]', true],
+]);
 
 test('journeys retain Unicode exact values and chronology without writing or querying each encoded link', function () {
     [$actor, , $group, $product, $state] = journeyFixture();
@@ -207,7 +259,7 @@ test('numeric property key zero remains a map through validation transport and t
     $group = Group::factory()->create();
     GroupFilter::factory()->for($group)->create(['property_key' => '0']);
     $product = Product::factory()->for($group)->create(['profile_fields' => ['0' => '001']]);
-    $state = ['version' => 1, 'groupId' => (string) $group->id, 'productId' => (string) $product->id, 'catalog' => null,
+    $state = ['version' => 2, 'groupId' => (string) $group->id, 'productId' => (string) $product->id, 'catalog' => null,
         'products' => ['criteria' => ['version' => 1, 'filters' => ['0' => '001'], 'subGroupId' => null, 'precedence' => ['filter:0']], 'anchor' => 'product-'.$product->id]];
     $j = app(CatalogJourney::class);
     $validated = $j->validate($actor, $state);

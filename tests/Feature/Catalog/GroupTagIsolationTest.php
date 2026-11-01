@@ -34,7 +34,7 @@ test('branch links redirect to validated first-page context and route identity w
     $leaf = Group::factory()->for($root, 'parent')->create();
     Product::factory()->for($leaf)->create();
     $this->get(route('catalog.groups.show', ['group' => $root, 'g' => ['version' => '1', 'branch' => (string) $leaf->id, 'mode' => 'tags']]))
-        ->assertRedirect(route('catalog.index', ['g' => ['version' => 1, 'branch' => $root->id, 'mode' => 'tags']]));
+        ->assertRedirect(route('catalog.index', ['g' => ['version' => 2, 'branch' => $root->id, 'mode' => 'tags']]));
     $this->get(route('catalog.groups.show', $leaf))->assertOk()->assertSee('data-catalog-snapshot');
 });
 
@@ -159,4 +159,11 @@ test('K3-URL-CODEC-001 actual SSR validates the raw Group namespace and array sp
     'duplicate value' => ['g[version]=1&g[tags][]=31&g[tags][]=31', false],
     'scalar tags' => ['g[version]=1&g[tags]=31', false],
     'unknown' => ['g[version]=1&g[future]=bad', false],
+    'old with attributes' => ['g[version]=1&g[attributes][application][]=0', false],
+    'unknown attribute' => ['g[version]=2&g[attributes][foreign][]=0', false],
+    'sparse attributes' => ['g[version]=2&g[attributes][application][1]=0', false],
+    'duplicate attribute index' => ['g[version]=2&g[attributes][application][0]=0&g[attributes][application][0]=001', false],
+    'mixed attribute style' => ['g[version]=2&g[attributes][application][]=0&g[attributes][application][1]=001', false],
+    'scalar attributes' => ['g[version]=2&g[attributes]=0', false],
+    'duplicate attribute value' => ['g[version]=2&g[attributes][application][]=0&g[attributes][application][]=0', false],
 ]);

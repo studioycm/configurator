@@ -183,7 +183,7 @@ export function catalogFilters() {
 
         productHref(baseUrl, productId) {
             try {
-                return journeyLink(baseUrl,{version:1,groupId:String(root.dataset.groupId),productId:String(productId),catalog:journey?.catalog ?? null,
+                return journeyLink(baseUrl,{version:2,groupId:String(root.dataset.groupId),productId:String(productId),catalog:journey?.catalog ?? null,
                     products:{criteria:this.state,anchor:`product-${productId}`}},location.href);
             } catch {
                 this.journeyError=root.dataset.journeyOverflow || '';

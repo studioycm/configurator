@@ -23,6 +23,8 @@ test('presentation storage starts empty and reads deterministic defaults without
         'group_card_content' => ['description', 'tags'], 'group_card_tag_categories' => [],
         'tag_presentation' => 'cards', 'tag_columns' => 2, 'tag_density' => 'compact', 'tag_counts' => true,
         'branch_tag_retention' => 'keep_available', 'criteria_container' => 'responsive',
+        'branch_attribute_retention' => 'keep_available',
+        'group_card_attribute_keys' => array_keys(config('group_attributes.definitions')), 'group_card_attribute_labels' => true,
         'criteria_columns' => 'divided', 'criteria_choices' => 'checkbox',
         'product_image_placement' => 'left', 'product_image_scale' => 'medium',
         'product_page_layout' => 'compact_header', 'product_page_image_scale' => 'medium',
@@ -46,6 +48,9 @@ test('presentation accepts every finite alternative including false and empty li
     ['group_cards_per_row', [2, 3, 4]],
     ['group_card_content', [[], ['legacy_id', 'product_count', 'tags', 'description']]],
     ['group_card_tag_categories', [[]]],
+    ['group_card_attribute_keys', [[], ['fluid_type', 'application']]],
+    ['group_card_attribute_labels', [false, true]],
+    ['branch_attribute_retention', ['keep_available', 'clear']],
     ['tag_presentation', ['cards', 'chip_grid', 'chips', 'rows']],
     ['tag_columns', [1, 2, 3]], ['tag_density', ['compact', 'comfortable']],
     ['tag_counts', [false, true]], ['branch_tag_retention', ['keep_available', 'clear']],
@@ -79,6 +84,18 @@ test('presentation rejects missing null unknown and incorrectly typed shared set
         ['group_card_tag_categories' => [1 => 2]],
     ] as $delta) {
         expect(fn () => $service->validate(array_replace($defaults, $delta)))->toThrow(ValidationException::class);
+    }
+});
+
+test('presentation cache follows registry keys and rejects unknown or duplicate display attributes', function () {
+    $service = app(CatalogPresentation::class);
+    $settings = $service->defaults();
+    CatalogPresentationSettings::factory()->create(['id' => 1, 'settings' => $settings]);
+    expect($service->current()['settings']['group_card_attribute_keys'])->toBe(array_keys(config('group_attributes.definitions')));
+    config(['group_attributes.definitions' => ['future_key' => ['label' => 'Future key']]]);
+    expect($service->current()['settings']['group_card_attribute_keys'])->toBe(['future_key']);
+    foreach ([['application'], ['future_key', 'future_key'], [1]] as $keys) {
+        expect(fn () => $service->validateOverrides(['group_card_attribute_keys' => $keys]))->toThrow(ValidationException::class);
     }
 });
 

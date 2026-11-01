@@ -3,9 +3,22 @@ import assert from 'node:assert/strict';
 import { encodeJourney, journeyLink, productBrowsePosition } from '../../resources/js/catalog-journey.js';
 import { discoveryUrl, readDiscovery } from '../../resources/js/catalog-filter-engine.js';
 
-const state = () => ({version:1,groupId:'5',productId:'9',catalog:{query:{branchId:1,search:'שסתום é',tagValueIds:[3],mode:'tags',page:2},anchor:'model-5'},
+const state = () => ({version:2,groupId:'5',productId:'9',catalog:{query:{branchId:1,search:'שסתום é',tagValueIds:[3],attributeValues:{},mode:'tags',page:2},anchor:'model-5'},
     products:{criteria:{version:1,filters:{pressure:'0',code:'001'},subGroupId:null,precedence:['filter:code','filter:pressure']},anchor:'product-9'}});
 const decode = encoded => JSON.parse(Buffer.from(encoded,'base64url').toString('utf8'));
+
+test('legacy return upgrades and r2 preserves literal Group maps separately from Product criteria and configuration',()=>{
+    const legacy=state();legacy.version=1;delete legacy.catalog.query.attributeValues;const old=encodeJourney(legacy);const upgraded=decode(old);
+    assert.equal(upgraded.version,2);assert.deepEqual(upgraded.catalog.query.attributeValues,{});
+    const current={...upgraded,catalog:{...upgraded.catalog,query:{...upgraded.catalog.query,attributeValues:{application:[' 0 ','001','Case','case','מים Multi Word']}}}};
+    const link=new URL(journeyLink('/dashboard/catalog/products/9?configuration=RAW%2B001&external=keep',current,'https://catalog.test'));
+    const wire=decode(link.searchParams.get('r'));
+    assert.deepEqual(wire.catalog.query.attributeValues,current.catalog.query.attributeValues);
+    assert.deepEqual(wire.products.criteria,legacy.products.criteria);assert.equal(wire.products.criteria.version,1);
+    assert.equal(link.searchParams.get('configuration'),'RAW+001');assert.equal(link.searchParams.get('external'),'keep');
+    assert.throws(()=>encodeJourney({...current,catalog:{...current.catalog,query:{...current.catalog.query,attributeValues:[]}}}));
+    assert.throws(()=>encodeJourney({...legacy,catalog:current.catalog}));
+});
 
 test('numeric property key zero stays an object map with exact value and chronology in a return link',()=>{
     const s=state();s.products.criteria.filters={'0':'001'};s.products.criteria.precedence=['filter:0'];
@@ -29,7 +42,7 @@ test('return envelopes cannot select a foreign origin or smuggle extra tree or U
     const s=state();s.returnUrl='https://evil.test';s.tree={secret:'never'};
     assert.throws(()=>journeyLink('https://evil.test/products/9',s,'https://catalog.test'));
     assert.throws(()=>journeyLink('https://user:pass@catalog.test/products/9',s,'https://catalog.test'));
-    assert.equal(decode(encodeJourney(s)).returnUrl,undefined);assert.equal(decode(encodeJourney(s)).tree,undefined);
+    assert.throws(()=>encodeJourney(s));
 });
 test('encoded byte limit is enforced without truncating multibyte values',()=>{
     const s=state();s.products.criteria.filters.code='é'.repeat(4000);assert.throws(()=>encodeJourney(s),/journey/i);

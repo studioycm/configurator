@@ -5,6 +5,7 @@ use App\Livewire\Catalog\Index;
 use App\Livewire\Catalog\ProductShow;
 use App\Models\Group;
 use App\Models\GroupFilter;
+use App\Models\GroupTagValue;
 use App\Models\Product;
 use App\Models\SubGroup;
 use App\Models\User;
@@ -64,12 +65,58 @@ test('signed in users can open the catalog before products are imported', functi
     $this->get(route('catalog.index'))->assertOk()->assertSeeLivewire(Index::class)->assertSee(__('catalog.frontend.copy.the_catalog_is_being_prepared'))->assertDontSee('D060');
 });
 
+test('catalog SSR uses approved headings deep family titles and escaped attribute cards before tags', function () {
+    $root = Group::factory()->create(['name' => 'Real root']);
+    $middle = Group::factory()->for($root, 'parent')->create(['name' => 'Real middle']);
+    $branch = Group::factory()->for($middle, 'parent')->create(['name' => 'Deep <branch> Valve $&']);
+    $group = Group::factory()->for($branch, 'parent')->create(['name' => 'Actual model', 'description' => '0', 'legacy_id' => '0',
+        'catalog_attributes' => ['application' => ['<script>fact</script>', ' 0 ', '001']],
+        'result_settings' => ['catalog_presentation' => ['group_card_content' => ['tags', 'description', 'legacy_id', 'product_count'], 'group_card_attribute_keys' => ['application'], 'group_card_attribute_labels' => false]]]);
+    Product::factory()->for($group)->create();
+    Product::factory()->for($group)->create(['is_active' => false]);
+    $tag = GroupTagValue::factory()->create(['label' => 'Sidebar tag']);
+    $group->tagValues()->attach($tag, ['position' => 0]);
+    $settings = $group->result_settings;
+    $settings['catalog_presentation']['group_card_tag_categories'] = [$tag->group_tag_category_id];
+    $group->update(['result_settings' => $settings]);
+    $missing = Group::factory()->for($branch, 'parent')->create();
+    $bad = Group::factory()->for($branch, 'parent')->create();
+    foreach ([$missing, $bad] as $other) {
+        Product::factory()->for($other)->create();
+    }
+    DB::table('groups')->where('id', $bad->id)->update(['catalog_attributes' => '["bad"]']);
+    $html = $this->get(route('catalog.index', ['g' => ['version' => 2, 'branch' => $branch->id]]))->assertOk()
+        ->assertSee('Find the right valve for your application')->assertSee('Product Selection Wizard')->assertSee('Product families')->getContent();
+    $dom = new DOMDocument;
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
+    expect($xpath->query('//h1')->item(0)->textContent)->toBe('Find the right valve for your application');
+    $heading = $xpath->query('//section[contains(@class,"catalog-model-results")]//h2')->item(0);
+    expect($heading->textContent)->toBe('Deep <branch> Valve $& — Product families');
+    expect($heading->getAttribute('x-text'))->toStartWith('familyHeading(');
+    $card = $xpath->query('//*[@data-catalog-model-id="'.$group->id.'"]')->item(0);
+    expect($xpath->query('.//p[@class="catalog-model-description"]', $card)->length)->toBe(1);
+    expect($xpath->query('.//p[@class="catalog-model-description"]', $card)->item(0)->textContent)->toBe('0');
+    expect($xpath->query('.//p[@class="catalog-model-reference" and text()="0"]', $card)->length)->toBe(1);
+    expect($xpath->query('//div[contains(@class,"catalog-model-results-heading")]//p[contains(@class,"catalog-model-reference")]')->item(0)->textContent)->toBe('Real root / Real middle');
+    expect($card->textContent)->toContain('Real root / Real middle / Deep <branch> Valve $&', '1 active direct products', '<script>fact</script>', ' 0 ', '001');
+    expect($xpath->query('.//script | .//img', $card)->length)->toBe(0);
+    expect($xpath->query('.//*[@data-group-card-attributes]//dt[contains(@class,"sr-only")]', $card)->length)->toBe(1);
+    expect(strpos($dom->saveHTML($card), 'data-group-card-attributes'))->toBeLessThan(strpos($dom->saveHTML($card), 'data-group-card-tags'));
+    expect($xpath->query('//*[@data-catalog-model-id="'.$missing->id.'"]')->item(0)->textContent)->toContain('Not specified');
+    expect($xpath->query('//*[@data-catalog-model-id="'.$bad->id.'"]')->item(0)->textContent)->toContain('Attribute data unavailable');
+    $group->update(['result_settings' => ['catalog_presentation' => ['group_card_attribute_keys' => []]]]);
+    $html = $this->get(route('catalog.index'))->assertOk()->getContent();
+    @$dom->loadHTML($html);
+    expect((new DOMXPath($dom))->query('//*[@data-catalog-model-id="'.$group->id.'"]//*[@data-group-card-attributes]')->length)->toBe(0);
+});
+
 test('catalog navigation shows actual model cards and redirects organizing branch links', function () {
     $root = Group::factory()->create(['name' => 'Actual root']);
     $leaf = Group::factory()->for($root, 'parent')->create(['name' => 'Actual leaf']);
     $product = Product::factory()->for($leaf)->create(['product_name' => 'Actual product']);
     $this->get(route('catalog.index'))->assertSee('Actual root')->assertSee('Actual leaf')->assertSee('data-catalog-model-id="'.$leaf->id.'"', false)->assertDontSee('data-catalog-model-id="'.$root->id.'"', false);
-    $this->get(route('catalog.groups.show', $root))->assertRedirect(route('catalog.index', ['g' => ['version' => 1, 'branch' => $root->id, 'mode' => 'tree']]));
+    $this->get(route('catalog.groups.show', $root))->assertRedirect(route('catalog.index', ['g' => ['version' => 2, 'branch' => $root->id, 'mode' => 'tree']]));
     $this->get(route('catalog.groups.show', $leaf))->assertSeeInOrder(['Actual root', 'Actual leaf'])->assertSee('data-catalog-snapshot')->assertDontSee($product->product_code);
     $this->get(route('catalog.products.show', $product))->assertSee('Actual product')->assertSeeInOrder(['Actual root', 'Actual leaf']);
 });

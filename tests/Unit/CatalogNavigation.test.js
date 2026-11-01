@@ -3,9 +3,94 @@ import assert from 'node:assert/strict';
 
 const deferred = () => { let resolve, reject; const promise = new Promise((a,b) => { resolve=a; reject=b; }); return {promise,resolve,reject}; };
 async function moduleUnderTest() { return import('../../resources/js/catalog-navigation.js'); }
-const card = id => ({id,name:'Model '+id,url:'/dashboard/catalog/groups/'+id,description:null,legacyId:null,productCount:1,mainImage:null,tags:[],presentation:{group_card_content:[],group_image_placement:'left',group_image_scale:'medium'}});
-const query = (overrides={}) => ({branchId:null,search:'',tagValueIds:[],mode:'tree',page:1,...overrides});
-const reply = (q=query(), overrides={}) => ({requestId:'initial',queryIdentity:'server-only-opaque-hash',query:q,displayVersion:'defaults:v1',treeVersion:'a'.repeat(64),branch:q.branchId===null?null:{id:q.branchId,name:'Branch',parentId:null},ancestors:[],treeRows:[{id:1,name:'Branch',parentId:null,hasChildren:true,modelCount:2}],rootTreePagination:{page:1,nextPage:null,hasMore:false},tags:[{id:1,label:'Pressure',values:[{id:3,label:'001',count:2,selected:false},{id:4,label:'001',count:1,selected:false}]}],cards:[card(2)],total:1,page:1,hasMore:false,presentation:{sidebar_mode:'tree',branch_tag_retention:'keep_available',criteria_container:'responsive'},presentationRecovery:null,...overrides});
+const card = id => ({id,name:'Model '+id,url:'/dashboard/catalog/groups/'+id,description:null,legacyId:null,productCount:1,mainImage:null,tags:[],ancestors:[],attributesStatus:'missing',attributes:[],presentation:{group_card_content:[],group_image_placement:'left',group_image_scale:'medium',group_card_attribute_keys:['application','fluid_type'],group_card_attribute_labels:true}});
+const query = (overrides={}) => ({branchId:null,search:'',tagValueIds:[],attributeValues:{},mode:'tree',page:1,...overrides});
+
+test('family heading renders literal branch names including replacement tokens', async () => {
+    const {component:c}=await harness();
+    const pattern=':name — Product families', root='Product families';
+    assert.equal(c.familyHeading(pattern,root),root);
+    for(const name of ['Valve $&','Valve $&amp;','Valve $$',"Valve $'",'Valve $`']) {
+        c.projection.branch={id:1,name,parentId:null};
+        assert.equal(c.familyHeading(pattern,root),`${name} — Product families`);
+    }
+    c.destroy();
+});
+
+test('g2 exact attribute maps and legacy g1 normalize without authoring trim or coercion', async () => {
+    const {navigationQueryFromUrl, normalizeNavigationQuery} = await moduleUnderTest();
+    const literal = [' 0 ', '001', 'Case', 'case', 'מים Multi Word', '\u200d0\u200d', '\u00ad0'];
+    const url = new URL('https://catalog.test/?g[version]=2');
+    literal.forEach(v=>url.searchParams.append('g[attributes][application][]', v));
+    assert.deepEqual(navigationQueryFromUrl(url).attributeValues, {application:literal});
+    assert.deepEqual(navigationQueryFromUrl('https://catalog.test/?g[version]=1').attributeValues, {});
+    assert.deepEqual(normalizeNavigationQuery({...query(),attributeValues:{application:[]}}).attributeValues, {});
+    assert.throws(()=>normalizeNavigationQuery({...query(),attributeValues:[]}));
+    assert.throws(()=>normalizeNavigationQuery({...query(),attributeValues:{application:[0]}}));
+    assert.throws(()=>normalizeNavigationQuery({...query(),attributeValues:{application:['0','0']}}));
+    const large=Object.fromEntries(['one','two','three','four','five','six'].map(key=>[key,Array.from({length:25},(_,index)=>'א'.repeat(198)+index)]));
+    assert.throws(()=>normalizeNavigationQuery({...query(),attributeValues:large}));
+    for (const suffix of ['g[version]=1&g[attributes][application][]=0','g[version]=2&g[attributes][application][1]=0','g[version]=2&g[attributes][application][0]=0&g[attributes][application][]=001']) {
+        assert.throws(()=>navigationQueryFromUrl('https://catalog.test/?'+suffix));
+    }
+});
+
+test('attribute and tag branch policies stay independent and ordinary refresh retains unavailable literals',async()=>{
+    for(const clearAttributes of [true,false]) {
+        const {component:c,requests}=await harness();
+        c.criteria=query({attributeValues:{application:['Gone']},tagValueIds:[3]});
+        c.projection.presentation.branch_attribute_retention=clearAttributes?'clear':'keep_available';
+        c.projection.presentation.branch_tag_retention=clearAttributes?'keep_available':'clear';
+        const task=c.chooseBranch(1);
+        assert.deepEqual(requests[0].q.tagValueIds,clearAttributes?[3]:[]);
+        assert.deepEqual(requests[0].q.attributeValues,clearAttributes?{}:{application:['Gone']});
+        const attributes=clearAttributes?[]:[{key:'application',label:'Application',values:[{value:'Gone',count:1,selected:true,available:true}]}];
+        answer(requests[0],{attributes});await task;
+        c.criteria={...c.criteria,attributeValues:{application:['Gone']}};
+        const refresh=c.refresh();answer(requests[1],{attributes:[{key:'application',label:'Application',values:[{value:'Gone',count:0,selected:true,available:false}]}],cards:[],total:0});await refresh;
+        assert.equal(requests.length,2);assert.deepEqual(c.criteria.attributeValues,{application:['Gone']});assert.equal(c.notice,'');c.destroy();
+    }
+});
+
+test('new attribute intent supersedes a pending branch reply and history restores exact selections',async()=>{
+    const {component:c,requests,browser}=await harness();
+    const branch=c.chooseBranch(1);c.searchLater('new search');const choice=c.toggleAttribute('application',' 0 ');
+    const attributes=[{key:'application',label:'Application',values:[{value:' 0 ',count:1,selected:true,available:true}]}];
+    answer(requests[1],{attributes});await choice;answer(requests[0]);await branch;
+    assert.deepEqual(c.criteria.attributeValues,{application:[' 0 ']});assert.equal(c.criteria.search,'new search');assert.equal(c.notice,'');
+    browser.location.href='https://catalog.test/dashboard/catalog?g[version]=2&g[mode]=tags&g[attributes][application][]=001';
+    const restored=c.restore();answer(requests[2],{attributes:[{key:'application',label:'Application',values:[{value:'001',count:0,selected:true,available:false}]}],cards:[],total:0});await restored;
+    assert.deepEqual(c.criteria.attributeValues,{application:['001']});assert.equal(c.criteria.mode,'tags');assert.equal(c.notice,'');c.destroy();
+});
+
+test('attribute intent consumes pending search and failed latest replies preserve URL before retry', async () => {
+    const {component:c,requests,browser}=await harness();
+    c.searchLater('typed'); const before=browser.location.href;
+    const task=c.toggleAttribute('application','0');
+    assert.equal(requests[0].q.search,'typed');assert.deepEqual(requests[0].q.attributeValues,{application:['0']});
+    requests[0].reject(new Error('offline'));await task;assert.equal(browser.location.href,before);
+    const retry=c.retry();answer(requests[1]);await retry;
+    assert.deepEqual(c.criteria.attributeValues,{application:['0']});assert.match(browser.location.href,/g%5Bversion%5D=2/);c.destroy();
+});
+
+test('branch reconciliation prunes only unavailable attributes without clearing independent tags',async()=>{
+    const {component:c,requests}=await harness();c.criteria=query({attributeValues:{application:['0','Gone']},tagValueIds:[3]});
+    const task=c.chooseBranch(1);
+    const attributes=[{key:'application',label:'Application',values:[{value:'0',count:1,selected:true,available:true},{value:'Gone',count:0,selected:true,available:false}]}];
+    answer(requests[0],{attributes});await new Promise(resolve=>setImmediate(resolve));
+    assert.deepEqual(requests[1].q.attributeValues,{application:['0']});assert.deepEqual(requests[1].q.tagValueIds,[3]);
+    answer(requests[1],{attributes:attributes.map(a=>({...a,values:a.values.slice(0,1)})),cards:[],total:0});await task;
+    assert.deepEqual(c.criteria.attributeValues,{application:['0']});assert.match(c.notice,/Gone/);c.destroy();
+});
+
+test('Wizard clear keeps branch search and custom tags while global clear also clears independent criteria',async()=>{
+    const {component:c,requests}=await harness();c.criteria=query({branchId:1,search:'valve',attributeValues:{application:['0']},tagValueIds:[3]});c.searchText='valve';
+    const cleared=c.clearAttributes();answer(requests[0]);await cleared;
+    assert.equal(c.criteria.search,'valve');assert.deepEqual(c.criteria.tagValueIds,[3]);assert.deepEqual(c.criteria.attributeValues,{});
+    const all=c.reset();answer(requests[1]);await all;
+    assert.equal(c.criteria.branchId,1);assert.equal(c.criteria.search,'');assert.deepEqual(c.criteria.tagValueIds,[]);c.destroy();
+});
+const reply = (q=query(), overrides={}) => ({requestId:'initial',queryIdentity:'server-only-opaque-hash',query:q,displayVersion:'defaults:v1',treeVersion:'a'.repeat(64),branch:q.branchId===null?null:{id:q.branchId,name:'Branch',parentId:null},ancestors:[],treeRows:[{id:1,name:'Branch',parentId:null,hasChildren:true,modelCount:2}],rootTreePagination:{page:1,nextPage:null,hasMore:false},attributeDefinitions:[{key:'application',label:'Application'},{key:'fluid_type',label:'Fluid Type'}],attributes:[],tags:[{id:1,label:'Pressure',values:[{id:3,label:'001',count:2,selected:false},{id:4,label:'001',count:1,selected:false}]}],cards:[card(2)],total:1,page:1,hasMore:false,presentation:{sidebar_mode:'tree',branch_tag_retention:'keep_available',branch_attribute_retention:'keep_available',criteria_container:'responsive'},presentationRecovery:null,...overrides});
 async function harness(options={}) {
     const {catalogNavigation} = await moduleUnderTest();
     const browser = new EventTarget(); browser.location={href:'https://catalog.test/dashboard/catalog?d[x]=001&external=keep'};

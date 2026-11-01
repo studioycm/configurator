@@ -6,7 +6,7 @@
     @if ($journeyNotice)<p role="status" class="text-sm text-zinc-600 dark:text-zinc-400">{{ $journeyNotice }}</p>@endif
     @if ($isBranch)
         <p role="status">{{ __('catalog.browse.redirecting') }}</p>
-        <a href="{{ route('catalog.index', ['g' => ['version' => 1, 'branch' => $group->id]]) }}">{{ __('catalog.browse.group_navigation') }}</a>
+        <a href="{{ route('catalog.index', ['g' => ['version' => 2, 'branch' => $group->id]]) }}">{{ __('catalog.browse.group_navigation') }}</a>
     @else
         <div wire:ignore x-data="catalogFilters" data-catalog-filters :data-catalog-display-version="displayVersion" :data-catalog-product-image-placement="presentation.product_image_placement" data-catalog-labels="{{ \Illuminate\Support\Js::encode(__('catalog.frontend.messages')) }}" data-group-id="{{ $group->id }}" data-catalog-journey="{{ \Illuminate\Support\Js::encode($journeyData) }}" data-journey-overflow="{{ __('catalog.journey.overflow') }}" data-dataset-url="{{ route('catalog.groups.dataset', $group) }}">
             <script type="application/json" data-catalog-snapshot>{!! \Illuminate\Support\Js::encode($snapshot?->data) !!}</script>

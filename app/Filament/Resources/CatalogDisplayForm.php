@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\GroupTagCategory;
 use App\Models\GroupTagValue;
 use App\Services\CatalogPresentation;
+use App\Services\GroupAttributes;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -108,7 +109,7 @@ class CatalogDisplayForm
     public static function field(string $key): Select|TextInput|Toggle|ToggleButtons
     {
         $label = __('catalog.display.fields.'.$key);
-        if ($key === 'tag_counts') {
+        if (in_array($key, ['tag_counts', 'group_card_attribute_labels'], true)) {
             return Toggle::make($key)->label($label);
         }
         if (in_array($key, ['group_cards_per_row', 'tag_columns'], true)) {
@@ -118,6 +119,10 @@ class CatalogDisplayForm
         if ($key === 'group_card_content') {
             return Select::make($key)->label($label)->multiple()->reorderable()->searchable()
                 ->options(self::labels(['description', 'tags', 'product_count', 'legacy_id']));
+        }
+        if ($key === 'group_card_attribute_keys') {
+            return Select::make($key)->label($label)->multiple()->reorderable()->searchable(false)
+                ->options(array_map(fn (array $definition): string => $definition['label'], app(GroupAttributes::class)->definitions()));
         }
         if ($key === 'group_card_tag_categories') {
             return Select::make($key)->label($label)->multiple()->reorderable()->searchable()->optionsLimit(50)
@@ -134,7 +139,7 @@ class CatalogDisplayForm
             'group_image_scale', 'product_image_scale', 'product_page_image_scale' => ['small', 'medium', 'large'],
             'group_card_density', 'tag_density' => ['compact', 'comfortable'],
             'tag_presentation' => ['cards', 'chip_grid', 'chips', 'rows'],
-            'branch_tag_retention' => ['keep_available', 'clear'],
+            'branch_tag_retention', 'branch_attribute_retention' => ['keep_available', 'clear'],
             'criteria_container' => ['responsive', 'drawer'],
             'criteria_columns' => ['plain', 'divided'],
             'criteria_choices' => ['checkbox', 'buttons'],

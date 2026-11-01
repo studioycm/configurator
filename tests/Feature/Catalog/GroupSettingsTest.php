@@ -23,14 +23,15 @@ beforeEach(function () {
 
 test('legacy settings saves preserve raw presentation and future metadata through the real Group editor', function () {
     $raw = ['card_show_labels' => false, 'products_debounce_ms' => 0, 'future_root' => ['enabled' => false, 'zero' => 0],
-        'catalog_presentation' => ['group_card_content' => [], 'product_image_placement' => 'right', 'future_key' => ['x' => 0]]];
-    $group = Group::factory()->create(['result_settings' => $raw]);
+        'catalog_presentation' => ['group_card_content' => [], 'group_card_attribute_keys' => ['application'], 'group_card_attribute_labels' => false, 'product_image_placement' => 'right', 'future_key' => ['x' => 0]]];
+    $group = Group::factory()->create(['result_settings' => $raw, 'catalog_attributes' => ['application' => [' 001 ']]]);
     app(SaveGroupSettings::class)->handle($this->actor, $group, groupSettingsInput(['result_settings' => ['cards_per_row' => 2]]));
     expect($group->fresh()->result_settings)->toMatchArray($raw);
     $before = $group->fresh()->result_settings;
     $this->actingAs($this->actor);
     Livewire::test(EditGroup::class, ['record' => $group->id])->set('data.name', 'Renamed without presentation edits')->call('save')->assertHasNoFormErrors();
     expect($group->fresh()->result_settings)->toBe($before);
+    expect($group->fresh()->catalog_attributes)->toBe(['application' => [' 001 ']]);
 });
 
 test('full presentation replacement removes omitted known overrides while retaining future keys and explicit inherited values', function () {

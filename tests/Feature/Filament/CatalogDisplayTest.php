@@ -4,6 +4,7 @@ use App\Actions\SaveCatalogPresentationSettings;
 use App\Actions\SaveGroupSettings;
 use App\Actions\SaveGroupTags;
 use App\Filament\Pages\CatalogDisplay;
+use App\Filament\Resources\CatalogDisplayForm;
 use App\Models\CatalogPresentationSettings;
 use App\Models\Group;
 use App\Models\GroupTagCategory;
@@ -47,6 +48,25 @@ test('Catalog Display is explicitly registered and access is limited to catalog 
     $this->get('/admin/catalog-display')->assertForbidden();
     $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
     $this->get('/admin/catalog-display')->assertOk()->assertSee('Catalog Display');
+});
+
+test('native attribute controls distinguish empty Group overrides from inheritance and keep facts untouched', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $field = CatalogDisplayForm::field('group_card_attribute_keys');
+    expect($field->isSearchable())->toBeFalse()
+        ->and(array_keys($field->getOptions()))->toBe(array_keys(config('group_attributes.definitions')));
+    $group = Group::factory()->create(['catalog_attributes' => ['application' => [' 001 ']]]);
+    $page = Livewire::test(CatalogDisplay::class)->call('requestGroup', $group->id)
+        ->set('groupData.use_group_card_attribute_keys', true)->set('groupData.group_card_attribute_keys', [])
+        ->set('groupData.use_group_card_attribute_labels', true)->set('groupData.group_card_attribute_labels', false)
+        ->call('saveGroupPresentation')->assertHasNoErrors();
+    expect($group->fresh()->result_settings['catalog_presentation'])->toBe(['group_card_attribute_keys' => [], 'group_card_attribute_labels' => false])
+        ->and($group->fresh()->catalog_attributes)->toBe(['application' => [' 001 ']]);
+    $page->set('groupData.use_group_card_attribute_keys', false)->call('saveGroupPresentation')->assertHasNoErrors();
+    expect($group->fresh()->result_settings['catalog_presentation'])->not->toHaveKey('group_card_attribute_keys');
+    $page->set('data.branch_attribute_retention', 'clear')->set('data.group_card_attribute_keys', ['fluid_type', 'application'])
+        ->call('save')->assertHasNoErrors();
+    expect(app(CatalogPresentation::class)->current()['settings']['group_card_attribute_keys'])->toBe(['fluid_type', 'application']);
 });
 
 test('native shared form persists only its state and reset remains an unsaved draft', function () {

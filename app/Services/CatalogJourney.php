@@ -10,9 +10,9 @@ use JsonException;
 use stdClass;
 
 /**
- * @phpstan-type ReturnQuery array{branchId:int|null,search:string,tagValueIds:list<int>,mode:'tree'|'tags',page:int}
+ * @phpstan-type ReturnQuery array{branchId:int|null,search:string,tagValueIds:list<int>,attributeValues:array<string,list<string>>,mode:'tree'|'tags',page:int}
  * @phpstan-type ProductCriteria array{version:1,filters:array<string|int,string>,subGroupId:string|null,precedence:list<string>}
- * @phpstan-type JourneyState array{version:1,groupId:string,productId:string|null,catalog:array{query:ReturnQuery,anchor:string|null}|null,products:array{criteria:ProductCriteria,anchor:string|null}|null}
+ * @phpstan-type JourneyState array{version:2,groupId:string,productId:string|null,catalog:array{query:ReturnQuery,anchor:string|null}|null,products:array{criteria:ProductCriteria,anchor:string|null}|null}
  */
 class CatalogJourney
 {
@@ -30,6 +30,12 @@ class CatalogJourney
             if (($wire->catalog ?? null) !== null) {
                 $this->require($wire->catalog instanceof stdClass && ($wire->catalog->query ?? null) instanceof stdClass
                     && is_array($wire->catalog->query->tagValueIds ?? null));
+                if (($wire->version ?? null) === 2) {
+                    $this->require(($wire->catalog->query->attributeValues ?? null) instanceof stdClass);
+                    foreach ($wire->catalog->query->attributeValues as $values) {
+                        $this->require(is_array($values));
+                    }
+                }
             }
             if (($wire->products ?? null) !== null) {
                 $this->require($wire->products instanceof stdClass && ($wire->products->criteria ?? null) instanceof stdClass
@@ -101,6 +107,9 @@ class CatalogJourney
     public function forClient(array $state): array
     {
         $wire = $this->normalize($state);
+        if ($wire['catalog'] !== null) {
+            $wire['catalog']['query'] = $this->navigation->queryForClient($wire['catalog']['query']);
+        }
         if ($wire['products'] !== null) {
             $wire['products']['criteria']['filters'] = (object) $wire['products']['criteria']['filters'];
         }
@@ -143,15 +152,9 @@ class CatalogJourney
         }
         if ($destination === 'group') {
             if (array_key_exists('g', $query)) {
-                $this->require(is_array($query['g']) && in_array($query['g']['version'] ?? null, [1, '1'], true)
-                    && array_diff(array_keys($query['g']), ['version', 'branch', 'q', 'tags', 'mode', 'page']) === []);
-                $input = [];
-                foreach (['branch' => 'branchId', 'q' => 'search', 'tags' => 'tagValueIds', 'mode' => 'mode', 'page' => 'page'] as $from => $to) {
-                    if (array_key_exists($from, $query['g'])) {
-                        $input[$to] = $query['g'][$from];
-                    }
-                }
-                $result['g'] = $this->groupQuery($this->navigation->validateQuery($input));
+                $result['g'] = $this->groupQuery($this->navigation->validateQuery(
+                    $this->navigation->queryFromUrl($query['g'], rawQuery: (string) request()->server('QUERY_STRING', '')),
+                ));
             }
             if (array_key_exists('d', $query)) {
                 $raw = $query['d'];
@@ -192,7 +195,8 @@ class CatalogJourney
     private function normalize(array $state): array
     {
         $this->keys($state, ['version', 'groupId', 'productId', 'catalog', 'products']);
-        $this->require($state['version'] === 1);
+        $this->require(in_array($state['version'], [1, 2], true));
+        $legacy = $state['version'] === 1;
         $groupId = $this->id($state['groupId']);
         $productId = $state['productId'] === null ? null : $this->id($state['productId']);
         $catalog = $state['catalog'];
@@ -200,7 +204,7 @@ class CatalogJourney
             $this->require(is_array($catalog));
             $this->keys($catalog, ['query', 'anchor']);
             $this->require(is_array($catalog['query']));
-            $this->keys($catalog['query'], ['branchId', 'search', 'tagValueIds', 'mode', 'page']);
+            $this->keys($catalog['query'], $legacy ? ['branchId', 'search', 'tagValueIds', 'mode', 'page'] : ['branchId', 'search', 'tagValueIds', 'attributeValues', 'mode', 'page']);
             $query = $this->navigation->validateQuery($catalog['query']);
             unset($query['requestId']);
             $this->require($catalog['anchor'] === null || $catalog['anchor'] === 'model-'.$groupId);
@@ -215,7 +219,7 @@ class CatalogJourney
             $products = ['criteria' => $this->criteria($products['criteria']), 'anchor' => $products['anchor']];
         }
 
-        return ['version' => 1, 'groupId' => $groupId, 'productId' => $productId, 'catalog' => $catalog, 'products' => $products];
+        return ['version' => 2, 'groupId' => $groupId, 'productId' => $productId, 'catalog' => $catalog, 'products' => $products];
     }
 
     /**
@@ -242,7 +246,7 @@ class CatalogJourney
     /** @param array<string,mixed> $query @return array<string,mixed> */
     private function groupQuery(array $query): array
     {
-        return ['version' => 1, 'branch' => $query['branchId'], 'q' => $query['search'], 'tags' => $query['tagValueIds'], 'mode' => $query['mode'], 'page' => $query['page']];
+        return ['version' => 2, 'branch' => $query['branchId'], 'q' => $query['search'], 'tags' => $query['tagValueIds'], 'attributes' => $query['attributeValues'], 'mode' => $query['mode'], 'page' => $query['page']];
     }
 
     /** @param array<string,mixed> $data @param list<string> $keys */

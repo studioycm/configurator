@@ -21,7 +21,7 @@ class CatalogPresentation
 
     private const array OVERRIDES = [
         'group_image_placement', 'group_image_scale', 'group_card_content',
-        'group_card_tag_categories', 'product_image_placement', 'product_image_scale',
+        'group_card_tag_categories', 'group_card_attribute_keys', 'group_card_attribute_labels', 'product_image_placement', 'product_image_scale',
     ];
 
     /** @return array<string, bool|int|string|list<int>|list<string>> */
@@ -33,6 +33,8 @@ class CatalogPresentation
             'group_card_content' => ['description', 'tags'], 'group_card_tag_categories' => [],
             'tag_presentation' => 'cards', 'tag_columns' => 2, 'tag_density' => 'compact', 'tag_counts' => true,
             'branch_tag_retention' => 'keep_available', 'criteria_container' => 'responsive',
+            'branch_attribute_retention' => 'keep_available',
+            'group_card_attribute_keys' => array_keys(config('group_attributes.definitions')), 'group_card_attribute_labels' => true,
             'criteria_columns' => 'divided', 'criteria_choices' => 'checkbox',
             'product_image_placement' => 'left', 'product_image_scale' => 'medium',
             'product_page_layout' => 'compact_header', 'product_page_image_scale' => 'medium',
@@ -168,7 +170,7 @@ class CatalogPresentation
             ksort($stored);
         }
 
-        return 'catalog-presentation:payload:v1:'.$version.':'.hash('sha256', serialize($stored));
+        return 'catalog-presentation:payload:v2:'.hash('sha256', json_encode(array_keys(config('group_attributes.definitions')), JSON_THROW_ON_ERROR)).':'.$version.':'.hash('sha256', serialize($stored));
     }
 
     /** @return array<string,list<mixed>> */
@@ -178,7 +180,7 @@ class CatalogPresentation
             'sidebar_mode' => ['tree', 'tags'], 'group_image_placement' => ['above', 'below', 'left', 'right'],
             'group_image_scale' => ['small', 'medium', 'large'], 'group_card_density' => ['compact', 'comfortable'],
             'tag_presentation' => ['cards', 'chip_grid', 'chips', 'rows'], 'tag_density' => ['compact', 'comfortable'],
-            'branch_tag_retention' => ['keep_available', 'clear'], 'criteria_container' => ['responsive', 'drawer'],
+            'branch_tag_retention' => ['keep_available', 'clear'], 'branch_attribute_retention' => ['keep_available', 'clear'], 'criteria_container' => ['responsive', 'drawer'],
             'criteria_columns' => ['plain', 'divided'], 'criteria_choices' => ['checkbox', 'buttons'],
             'product_image_placement' => ['above', 'below', 'left', 'right'], 'product_image_scale' => ['small', 'medium', 'large'],
             'product_page_layout' => ['compact_header', 'image_column'], 'product_page_image_scale' => ['small', 'medium', 'large'],
@@ -193,6 +195,9 @@ class CatalogPresentation
             'settings.group_cards_per_row' => ['required', 'integer:strict', Rule::in([2, 3, 4])],
             'settings.tag_columns' => ['required', 'integer:strict', Rule::in([1, 2, 3])],
             'settings.tag_counts' => ['present', 'boolean:strict'],
+            'settings.group_card_attribute_labels' => ['present', 'boolean:strict'],
+            'settings.group_card_attribute_keys' => ['present', 'array', 'list'],
+            'settings.group_card_attribute_keys.*' => ['required', 'string', 'distinct:strict', Rule::in(array_keys(config('group_attributes.definitions')))],
             'settings.group_card_content' => ['present', 'array', 'list', 'max:4'],
             'settings.group_card_content.*' => ['required', 'string', 'distinct:strict', Rule::in(['description', 'tags', 'product_count', 'legacy_id'])],
             'settings.group_card_tag_categories' => ['present', 'array', 'list'],
