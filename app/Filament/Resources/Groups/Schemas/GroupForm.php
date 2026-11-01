@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Groups\Schemas;
 
+use App\Filament\Resources\CatalogMainImageField;
 use App\Filament\Resources\FormHints;
 use App\Filament\Resources\FormOrderControls;
 use App\Filament\Resources\Groups\Pages\EditGroup;
@@ -47,6 +48,7 @@ class GroupForm
                 ->helperText(__('admin.workspace.editor.shared_configurator_help')),
             Textarea::make('description')->label(__('catalog.fields.description'))->maxLength(5000)->columnSpanFull(),
             self::attributesSection($schema->getRecord()),
+            CatalogMainImageField::make(),
         ];
         $record = $schema->getRecord();
         if (! $record instanceof Group || $record->children()->exists()) {

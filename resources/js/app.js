@@ -5,6 +5,7 @@ import { masterValueBatch, catalogDraftGuard, attributeDraftIsDirty } from './ma
 import { workspaceTableSelection } from './workspace-table-selection';
 import { interpolate } from './ui-wording';
 import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
+import { catalogImageEditor } from './catalog-image-editor';
 import { catalogFilters } from './catalog-filters';
 import { catalogNavigation } from './catalog-navigation';
 import { catalogConfigurationUrl } from './catalog-configuration-url';
@@ -56,6 +57,7 @@ function registerComponents(Alpine) {
     Alpine.data('localSectionProfile', localSectionProfile);
     Alpine.data('localOrderProfile', localOrderProfile);
     Alpine.data('catalogFilters', catalogFilters);
+    Alpine.data('catalogImageEditor', catalogImageEditor);
     registeredAlpine.add(Alpine);
 }
 

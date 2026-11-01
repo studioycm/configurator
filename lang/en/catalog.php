@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'images' => [
+        'resume_upload' => 'Resume upload',
+        'source_id' => 'Saved source ID',
+        'recover_source' => 'Open saved source',
+        'unsettled_upload' => 'Uploads are still unsettled. Resume from the original editor or request source review.',
+        'main_image' => 'Main image', 'current' => 'Current', 'proposed' => 'Proposed', 'missing' => 'No main image saved.',
+        'remove_on_save' => 'The main image will be removed when you save.', 'reference' => 'Image reference',
+        'find' => 'Find image', 'find_reference' => 'Find from image reference', 'remove' => 'Remove image', 'revert' => 'Revert image',
+        'check_save' => 'Check saved record', 'source' => 'Import source', 'choose_source' => 'Choose a source…', 'files' => 'files',
+        'scan' => 'Continue scan', 'stop_scan' => 'Stop after this step', 'source_status' => 'Check source status',
+        'filename' => 'Filename stem', 'case_sensitive' => 'Match case', 'partial' => 'Suggest partial matches', 'candidates' => 'candidates. Choose the image to stage.',
+    ],
     'group_attributes' => [
         'title' => 'Group attributes',
         'labels' => ['operating_pressure' => 'Operating Pressure', 'application' => 'Application', 'system_water_flow_rate' => 'System Water Flow Rate', 'required_function' => 'Required Function', 'fluid_type' => 'Fluid Type', 'installation_type' => 'Installation Type'],

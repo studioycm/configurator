@@ -47,6 +47,20 @@ return [
             'report' => false,
         ],
 
+        'catalog-assets' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/catalog-assets'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/catalog-assets',
+            'visibility' => 'public',
+            'throw' => true,
+        ],
+        'catalog-asset-imports' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/catalog-asset-imports'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

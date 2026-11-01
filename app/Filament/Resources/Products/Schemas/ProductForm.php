@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Filament\Resources\CatalogMainImageField;
 use App\Filament\Resources\FormHints;
 use App\Models\Product;
 use App\Services\ProductEditorData;
@@ -28,6 +29,7 @@ class ProductForm
                     TextInput::make('product_name')->label(__('catalog.products.labels.product_name_2'))->maxLength(255)->trim(false),
                     Textarea::make('description')->label(__('catalog.fields.description'))->rows(3)->autosize()->maxLength(5000)->columnSpanFull(),
                     View::make('filament.forms.product-references')->columnSpanFull(),
+                    CatalogMainImageField::make(),
                 ]),
                 Tab::make(__('catalog.products.buckets.properties'))->key(fn (Tab $component): string => 'properties::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('properties', __('catalog.products.buckets.properties'))]),
                 Tab::make(__('catalog.products.buckets.parts'))->key(fn (Tab $component): string => 'parts::'.(filled($component->getStatePath()) ? $component->getStatePath().'::tab' : 'tab'), isInheritable: false)->schema([self::jsonRepeater('parts', __('catalog.products.buckets.parts'))]),

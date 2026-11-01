@@ -22,7 +22,12 @@ class Product extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'group_id' => 'integer', 'profile_fields' => 'array', 'parts' => 'array'];
+        return ['main_image_id' => 'integer', 'is_active' => 'boolean', 'group_id' => 'integer', 'profile_fields' => 'array', 'parts' => 'array'];
+    }
+
+    public function mainImage(): BelongsTo
+    {
+        return $this->belongsTo(CatalogAsset::class, 'main_image_id');
     }
 
     public function group(): BelongsTo

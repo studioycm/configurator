@@ -2,11 +2,14 @@
 
 namespace App\Actions;
 
+use App\DTO\CatalogAssetChange;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CatalogAssetAssignments;
 use App\Services\CatalogIntegrity;
 use App\Services\CatalogRevisions;
 use App\Services\ProductEditorData;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -23,11 +26,14 @@ class SaveCatalogProduct
     }
 
     /** @param array<string, mixed> $data */
-    public function handle(User $actor, Product $product, array $data, string $expectedFingerprint, string $expectedGroupFingerprint): Product
+    public function handle(User $actor, Product $product, array $data, string $expectedFingerprint, string $expectedGroupFingerprint, ?CatalogAssetChange $imageChange = null, ?Closure $resolveImageChange = null): Product
     {
         Gate::forUser($actor)->authorize('manage-catalog');
+        if ($imageChange !== null && $resolveImageChange !== null) {
+            throw ValidationException::withMessages(['image' => 'Choose one main-image change source.']);
+        }
 
-        return DB::transaction(function () use ($product, $data, $expectedFingerprint, $expectedGroupFingerprint): Product {
+        return DB::transaction(function () use ($product, $data, $expectedFingerprint, $expectedGroupFingerprint, $imageChange, $resolveImageChange): Product {
             $groups = $this->integrity->lockGroups();
             $record = Product::query()->whereKey($product->id)->lockForUpdate()->firstOrFail();
             abort_unless($groups->has($record->group_id), 404);
@@ -37,6 +43,12 @@ class SaveCatalogProduct
             $record->setRelation('group', $groups->get($record->group_id));
             if (! hash_equals(ProductEditorData::groupFingerprint($record), $expectedGroupFingerprint)) {
                 throw ValidationException::withMessages(['product.group_classification' => __('catalog.products.validation.group_filters_changed_after_your_editor_was')]);
+            }
+            if ($resolveImageChange !== null) {
+                $imageChange = $resolveImageChange($record);
+                if (! $imageChange instanceof CatalogAssetChange) {
+                    throw ValidationException::withMessages(['image' => 'The prepared image change is invalid.']);
+                }
             }
             $rules = [
                 'product' => ['required', 'array:product_code,product_name,description,properties,parts,others'],
@@ -64,6 +76,9 @@ class SaveCatalogProduct
             $record->product_code = $validated['product_code'];
             $record->product_name = $validated['product_name'] ?? '';
             $record->description = $validated['description'] ?? '';
+            if ($imageChange !== null) {
+                app(CatalogAssetAssignments::class)->applyToLockedRecord($record, $imageChange);
+            }
             if ($record->isDirty()) {
                 $record->save();
                 $this->revisions->advance([$record->group_id]);

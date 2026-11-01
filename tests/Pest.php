@@ -1,7 +1,12 @@
 <?php
 
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /*
@@ -24,10 +29,17 @@ $independentCommitTests = [
 ];
 $nonResettingCommitTests = [
     __DIR__.'/Feature/Catalog/MySql/GroupAttributesConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogAssetPreparationConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogMainImageConcurrencyTest.php',
 ];
+$imagesCommitTests = array_map(fn (string $path): string => __DIR__.'/Feature/'.$path, [
+    'Catalog/CatalogAssetFoundationTest.php', 'Catalog/CatalogAssetSourcesTest.php', 'Catalog/CatalogAssetStorageTest.php',
+    'Catalog/CatalogMainImageAssignmentTest.php', 'Catalog/CatalogMainImageRecoveryTest.php',
+    'Filament/CatalogMainImageFieldTest.php', 'Filament/CatalogMainImageCompletionTest.php',
+]);
 $transactionalTests = [];
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {
-    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), [...$independentCommitTests, ...$nonResettingCommitTests], true)) {
+    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), [...$independentCommitTests, ...$nonResettingCommitTests, ...$imagesCommitTests], true)) {
         $transactionalTests[] = $file->getPathname();
     }
 }
@@ -35,6 +47,46 @@ if ($transactionalTests !== []) {
     pest()->use(RefreshDatabase::class)->in(...$transactionalTests);
 }
 pest()->use(DatabaseMigrations::class)->in(...$independentCommitTests);
+if (getenv('DB_CONNECTION') === 'sqlite' && getenv('DB_DATABASE') === ':memory:') {
+    pest()->use(DatabaseMigrations::class)->in(...$imagesCommitTests);
+} else {
+    pest()->extend(TestCase::class)->beforeEach(fn () => throw new LogicException('SQLite-only Images commit proof.'))->in(...$imagesCommitTests);
+}
+
+pest()->beforeEach(function (): void {
+    config(['catalog-assets.testing_root' => sys_get_temp_dir().'/catalog-images-'.bin2hex(random_bytes(8))]);
+    foreach (['local', 'public', 'catalog-assets', 'catalog-asset-imports'] as $disk) {
+        catalogImageTestDisk($disk);
+    }
+    config(['media-library.temporary_directory' => config('catalog-assets.testing_root').'/media-tmp']);
+})->in(...[...$imagesCommitTests, __DIR__.'/Feature/Catalog/CatalogAssetDisplayTest.php']);
+
+pest()->afterEach(function (): void {
+    if (getenv('DB_CONNECTION') !== 'sqlite' || getenv('DB_DATABASE') !== ':memory:') {
+        return;
+    }
+    if (Schema::hasTable('groups')) {
+        DB::table('groups')->update(['parent_id' => null]);
+    }
+})->in(...$imagesCommitTests);
+
+function catalogImageTestDisk(string $disk): LocalFilesystemAdapter
+{
+    $scratch = config('catalog-assets.testing_root');
+    if (! is_string($scratch) || ! str_starts_with($scratch, sys_get_temp_dir().'/catalog-images-') || preg_match('/^[a-z0-9-]+$/D', $disk) !== 1) {
+        throw new LogicException('Image fixtures require their explicit scratch-only disk root.');
+    }
+    $root = $scratch.'/'.$disk;
+    $files = new Filesystem;
+    $files->ensureDirectoryExists($root);
+    $files->cleanDirectory($root);
+    $config = array_replace(config('filesystems.disks.'.$disk, []), ['driver' => 'local', 'root' => $root, 'throw' => true]);
+    config(['filesystems.disks.'.$disk => $config]);
+    $adapter = Storage::build($config);
+    Storage::set($disk, $adapter);
+
+    return $adapter;
+}
 
 /*
 |--------------------------------------------------------------------------

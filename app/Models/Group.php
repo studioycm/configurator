@@ -24,7 +24,12 @@ class Group extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'catalog_revision' => 'string', 'parent_id' => 'integer', 'configurator_id' => 'integer', 'sort_order' => 'integer', 'result_settings' => 'array', 'catalog_attributes' => 'array'];
+        return ['main_image_id' => 'integer', 'is_active' => 'boolean', 'catalog_revision' => 'string', 'parent_id' => 'integer', 'configurator_id' => 'integer', 'sort_order' => 'integer', 'result_settings' => 'array', 'catalog_attributes' => 'array'];
+    }
+
+    public function mainImage(): BelongsTo
+    {
+        return $this->belongsTo(CatalogAsset::class, 'main_image_id');
     }
 
     public function parent(): BelongsTo

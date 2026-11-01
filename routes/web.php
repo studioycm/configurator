@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\CatalogAssetSourcePreviewController;
 use App\Http\Controllers\CatalogDatasetController;
+use App\Http\Controllers\CatalogMainImageUploadController;
 use App\Livewire\Catalog\GroupShow;
 use App\Livewire\Catalog\Index as CatalogIndex;
 use App\Livewire\Catalog\ProductShow;
@@ -15,6 +17,8 @@ use Laravel\Fortify\Features;
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth'])->group(function () {
+    Route::post('/catalog-images/native-upload', CatalogMainImageUploadController::class)->name('catalog.images.native-upload');
+    Route::get('/catalog-images/source-preview/{source}/{version}/{entry}', CatalogAssetSourcePreviewController::class)->middleware('signed:relative')->name('catalog.images.source-preview');
     Route::redirect('/dashboard', '/dashboard/catalog')->name('dashboard');
     Route::livewire('/dashboard/catalog', CatalogIndex::class)->name('catalog.index');
     Route::get('/dashboard/catalog/groups/{group}/dataset', CatalogDatasetController::class)->whereNumber('group')->name('catalog.groups.dataset');
