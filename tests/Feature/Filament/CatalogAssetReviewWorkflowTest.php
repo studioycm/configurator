@@ -270,3 +270,15 @@ test('first review Back and Return reopen the same journal and cursor without ne
     $returned = Livewire::test(AssetAssignment::class, $props)->assertSet('reviewProgress.classified', 1);
     expect($batch->fresh()->getAttributes())->toBe($before)->and($batch->items()->get()->map->getAttributes()->all())->toBe($items)->and(CatalogAssetBatch::count())->toBe(1)->and(CatalogAsset::count())->toBe(0);
 });
+
+test('read only review refresh includes Apply controls but never prepares or accepts a subset', function () {
+    $source = workflowReviewSource();
+    $p = Product::factory()->create(['profile_fields' => ['product_pic' => 'a']]);
+    $scope = app(ReviewCatalogAssets::class)->freeze(auth()->user(), 'product.main_image', [], [$p->id], [['column' => 'products.id', 'direction' => 'asc']]);
+    $child = Livewire::test(AssetAssignment::class, ['launchToken' => $scope['token'], 'launchSession' => $scope['review_id'], 'operation' => 'folder_matches', 'parentHost' => 'test-parent'])->set('recipeData.source_choice', 'source:'.$source);
+    $child->call('chooseReviewSource', $child->instance()->reviewContext())->call('previewReview', $child->instance()->reviewContext());
+    workflowReviewFinish($child);
+    $child->call('refreshReviewStatus', $child->instance()->reviewContext())->assertHasNoErrors()->assertSee('This Apply')->assertSee('Apply checked images');
+    $batch = CatalogAssetBatch::findOrFail($scope['review_id']);
+    expect($batch->pending_apply_intent)->toBeNull()->and($batch->active_acceptance_id)->toBeNull()->and($batch->items()->whereNotNull('accepted_at')->count())->toBe(0)->and($p->fresh()->main_image_id)->toBeNull();
+});

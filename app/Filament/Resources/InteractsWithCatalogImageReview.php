@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Actions\ReviewCatalogAssets;
 use App\Services\CatalogAssetReviewFiles;
+use App\Services\CatalogAssetTargets;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 
 trait InteractsWithCatalogImageReview
 {
@@ -59,6 +61,43 @@ trait InteractsWithCatalogImageReview
         sort($frozen);
 
         return $destination['target'] === $this->imageTarget && $scope['owner_context'] === $this->imageOwnerContext && $checks === $frozen;
+    }
+
+    #[On('catalog-batch-applied')]
+    public function reconcileReviewImageOwner(string $model, array $ids): void
+    {
+        $this->authorizeImageBrowser();
+        $profile = app(CatalogAssetTargets::class)->profile($this->imageTarget);
+        if ($model !== $profile['model'] || $this->imageRecordId === null || ! in_array($this->imageRecordId, $ids, true)) {
+            return;
+        }
+        if ($this->catalogMainImageHasChanges()) {
+            $this->imageBrowserNotice = 'The saved record changed. Your image draft is retained; review the saved image before saving.';
+
+            return;
+        }
+        $this->initializeWorkspaceImageEditor();
+    }
+
+    public function replaceImageReview(string $session, string $host, string $token, array $expectedContext): void
+    {
+        $this->admitImageContext($expectedContext);
+        if ($host !== $this->getId() || $session !== ($this->imageReviewLaunch['session'] ?? null)) {
+            throw ValidationException::withMessages(['review' => 'This parent review is no longer open.']);
+        }
+        $scope = app(CatalogAssetReviewFiles::class)->openLaunch(auth()->user(), $token);
+        $parent = app(ReviewCatalogAssets::class)->owned(auth()->user(), $session);
+        if (($scope['parent_review_id'] ?? null) !== $session || ($scope['parent_preview_version'] ?? null) !== $parent->preview_version || $scope['target_key'] !== $this->imageTarget || $scope['owner_context'] !== $this->imageOwnerContext || $parent->active_acceptance_id !== null || $parent->pending_apply_intent !== null) {
+            throw ValidationException::withMessages(['review' => 'The remaining review no longer matches this parent.']);
+        }
+        $parentScope = app(ReviewCatalogAssets::class)->scope($parent);
+        $finished = $parent->items()->whereIn('apply_status', ['applied', 'unchanged', 'skipped'])->pluck('record_id')->all();
+        $remaining = array_values(array_diff($parentScope['record_ids'], $finished));
+        $selection = array_intersect_key($parent->recipe['review_selection'], array_flip($remaining));
+        if ($scope['record_ids'] !== $remaining || app(CatalogAssetReviewFiles::class)->digest($scope['review_selection']) !== app(CatalogAssetReviewFiles::class)->digest($selection)) {
+            throw ValidationException::withMessages(['review' => 'The remaining records changed. Start their review again.']);
+        }
+        $this->imageReviewLaunch = ['session' => $scope['review_id'], 'token' => $token, 'target' => $this->imageTarget, 'operation' => $parent->operation, 'count' => count($scope['record_ids'])];
     }
 
     public function closeImageReview(string $session, string $host): void

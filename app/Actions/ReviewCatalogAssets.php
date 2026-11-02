@@ -35,6 +35,8 @@ class ReviewCatalogAssets
 
     public function owned(User $actor, string $id, bool $lock = false): CatalogAssetBatch
     {
+        $actor = User::query()->find($actor->getKey());
+        abort_unless($actor !== null, 403);
         $this->authorize($actor);
         $batch = CatalogAssetBatch::query()->where('actor_id', $actor->id)->when($lock, fn ($q) => $q->lockForUpdate())->findOrFail($id);
         $this->targets->eligibleQuery($actor, $batch->target_type.'.main_image', $batch->owner_context);
@@ -98,7 +100,7 @@ class ReviewCatalogAssets
         }
         $evidence = $this->evidence($actor, $scope, $intent['source_id'], $intent['source_version'], $parameters, $intent['operation'], $intent['entry_choice'] ?? null, []);
         $artifact = $this->files->write($scope['review_id'], 1, 'manifest', $evidence);
-        $attributes = ['id' => $scope['review_id'], 'actor_id' => $actor->id, 'target_type' => $entity, 'role' => 'main_image', 'operation' => $intent['operation'], 'owner_context' => $scope['owner_context'], 'recipe' => ['parameters' => $parameters, 'mode' => $intent['mode'], 'review_selection' => []], 'creation_hash' => $creationHash, 'source_id' => $intent['source_id'], 'source_version' => $intent['source_version'], 'scope_path' => $scope['scope_path'], 'scope_sha256' => $scope['scope_sha256'], 'scope_count' => count($explicitIds), 'manifest_path' => $artifact['path'], 'manifest_sha256' => $artifact['sha256']];
+        $attributes = ['id' => $scope['review_id'], 'actor_id' => $actor->id, 'target_type' => $entity, 'role' => 'main_image', 'operation' => $intent['operation'], 'owner_context' => $scope['owner_context'], 'recipe' => ['parameters' => $parameters, 'mode' => $intent['mode'], 'review_selection' => $scope['review_selection'] ?? []], 'creation_hash' => $creationHash, 'source_id' => $intent['source_id'], 'source_version' => $intent['source_version'], 'scope_path' => $scope['scope_path'], 'scope_sha256' => $scope['scope_sha256'], 'scope_count' => count($explicitIds), 'manifest_path' => $artifact['path'], 'manifest_sha256' => $artifact['sha256']];
         try {
             return DB::transaction(fn () => tap((new CatalogAssetBatch)->forceFill($attributes), fn ($batch) => $batch->save()), 3);
         } catch (QueryException $exception) {
@@ -205,13 +207,15 @@ class ReviewCatalogAssets
     {
         $batch = $this->owned($actor, $batchId);
         $counts = $batch->items()->select('match_status')->selectRaw('COUNT(*) AS total')->groupBy('match_status')->pluck('total', 'match_status')->all();
-        $stage = $batch->status === 'review' && $batch->expires_at?->isPast() ? 'expired' : $batch->status;
+        $accepted = $batch->items()->whereNotNull('acceptance_id')->exists();
+        $complete = $batch->build_position === $batch->scope_count;
+        $stage = $complete ? ($batch->expires_at?->isPast() ? 'expired' : 'review') : $batch->status;
         $busy = $stage === 'building' && $batch->build_token !== null && $batch->build_expires_at?->isFuture();
         $selection = $batch->recipe['review_selection'] ?? [];
         $explicitlyExcluded = count(array_filter($selection, fn (array $choice): bool => ! $choice['included'] && $choice['origin'] === 'explicit'));
         $deferred = count(array_filter($selection, fn (array $choice): bool => ! $choice['included'] && $choice['origin'] === 'initial'));
 
-        return ['explicitly_excluded' => $explicitlyExcluded, 'deferred' => $deferred, 'stage' => $stage, 'outcome' => $busy ? 'busy' : 'status', 'batch_id' => $batch->id, 'preview_version' => $batch->preview_version, 'revision' => $batch->build_revision, 'classified' => $batch->build_position, 'total' => $batch->scope_count, 'counts' => $counts, 'excluded' => $batch->items()->where('included', false)->count(), 'next_action' => $stage === 'building' ? ($busy ? 'continue' : 'next_step') : ($stage === 'review' ? 'none' : 'review_again'), 'message' => $stage === 'review' ? 'Review ready. No images have been assigned.' : ($stage === 'failed' ? 'Review evidence is unavailable. Choose a valid source and review again.' : 'Review '.$stage.'.')];
+        return ['explicitly_excluded' => $explicitlyExcluded, 'deferred' => $deferred, 'stage' => $stage, 'outcome' => $busy ? 'busy' : 'status', 'batch_id' => $batch->id, 'preview_version' => $batch->preview_version, 'revision' => $batch->build_revision, 'classified' => $batch->build_position, 'total' => $batch->scope_count, 'counts' => $counts, 'excluded' => $batch->items()->where('included', false)->count(), 'next_action' => $stage === 'building' ? ($busy ? 'continue' : 'next_step') : ($stage === 'review' ? 'none' : 'review_again'), 'has_acceptance' => $accepted, 'apply_status' => $accepted ? $batch->status : null, 'message' => $stage === 'review' ? ($accepted ? 'Review retained. See This Apply for saved results.' : 'Review ready. No images have been assigned.') : ($stage === 'failed' ? 'Review evidence is unavailable. Choose a valid source and review again.' : 'Review '.$stage.'.')];
     }
 
     public function revise(User $actor, string $batchId, int $expectedVersion, array $intent): array
@@ -221,6 +225,7 @@ class ReviewCatalogAssets
         Validator::make(['intent' => $intent], ['intent' => ['required', 'array:source_id,source_version,mode,recipe,entry_choice,override'], 'intent.mode' => ['sometimes', Rule::in(['fill_missing', 'replace_existing'])], 'intent.recipe' => ['sometimes', 'array'], 'intent.source_id' => ['sometimes', 'ulid'], 'intent.source_version' => ['sometimes', 'integer', 'min:1']])->validate();
         $batch = $this->owned($actor, $batchId);
         $this->version($batch, $expectedVersion);
+        $this->requireRevisable($batch);
         $scope = $this->scope($batch);
         $old = $this->reviewEvidence($batch);
         $parameters = $this->recipes->validate(array_replace($batch->recipe['parameters'], $intent['recipe'] ?? []), $batch->operation, $batch->target_type);
@@ -248,6 +253,7 @@ class ReviewCatalogAssets
         DB::transaction(function () use ($actor, $batchId, $expectedVersion, $intent, $parameters, $artifact, $sourceId, $sourceVersion): void {
             $current = $this->owned($actor, $batchId, true);
             $this->version($current, $expectedVersion);
+            $this->requireRevisable($current);
             $state = $current->recipe;
             $state['parameters'] = $parameters;
             $state['mode'] = $intent['mode'] ?? $state['mode'];
@@ -266,8 +272,8 @@ class ReviewCatalogAssets
         DB::transaction(function () use ($actor, $batchId, $expectedVersion, $itemIds, $included): void {
             $batch = $this->owned($actor, $batchId, true);
             $this->version($batch, $expectedVersion);
-            if ($batch->status !== 'review' || ! $batch->expires_at?->isFuture()) {
-                $this->invalid('Complete a current review before changing inclusion.');
+            if ($batch->build_position !== $batch->scope_count || $batch->active_acceptance_id !== null || ! $batch->expires_at?->isFuture()) {
+                $this->invalid('Complete a current review and finish its active Apply before changing inclusion.');
             }
             $rows = $batch->items()->whereKey($itemIds)->get();
             if ($rows->count() !== count($itemIds)) {
@@ -276,6 +282,9 @@ class ReviewCatalogAssets
             $eligible = $included ? $this->targets->eligibleQuery($actor, $batch->target_type.'.main_image', $batch->owner_context)->whereKey($rows->pluck('record_id'))->get()->keyBy('id') : collect();
             $state = $batch->recipe;
             foreach ($rows as $row) {
+                if ($row->acceptance_id !== null) {
+                    $this->invalid('Accepted rows cannot change inclusion.');
+                }
                 if ($included && ($row->match_status !== 'ready' || ! $eligible->has($row->record_id) || ! hash_equals($row->record_fingerprint ?? '', CatalogAssetAssignments::fingerprint($eligible->get($row->record_id))))) {
                     $this->invalid('Only current ready proposals can be included. Review the record again.');
                 }
@@ -286,6 +295,43 @@ class ReviewCatalogAssets
         }, 3);
 
         return $this->status($actor, $batchId);
+    }
+
+    private function requireRevisable(CatalogAssetBatch $batch): void
+    {
+        if ($batch->items()->whereNotNull('acceptance_id')->exists() || $batch->pending_apply_intent !== null) {
+            $this->invalid('Accepted reviews are immutable. Finish Apply and start a new review for remaining records; discard an unaccepted prepared Apply first.');
+        }
+    }
+
+    public function freezeRemaining(User $actor, string $batchId, int $expectedVersion): array
+    {
+        $this->noTransaction();
+        $batch = $this->owned($actor, $batchId);
+        $this->version($batch, $expectedVersion);
+        if ($batch->active_acceptance_id !== null || $batch->pending_apply_intent !== null || $batch->build_position !== $batch->scope_count) {
+            $this->invalid('Finish the active Apply and discard any prepared Apply before starting a remaining review.');
+        }
+        $original = $this->scope($batch);
+        $finished = $batch->items()->whereIn('apply_status', ['applied', 'unchanged', 'skipped'])->pluck('record_id')->all();
+        $ids = array_values(array_diff($original['record_ids'], $finished));
+        if ($ids === []) {
+            $this->invalid('There are no remaining records to review.');
+        }
+        $id = (string) Str::ulid();
+        $scope = ['actor_id' => $actor->id, 'review_id' => $id, 'target_key' => $batch->target_type.'.main_image', 'owner_context' => $batch->owner_context, 'record_ids' => $ids, 'sort' => $original['sort'],
+            'parent_review_id' => $batch->id, 'parent_preview_version' => $expectedVersion, 'review_selection' => array_intersect_key($batch->recipe['review_selection'], array_flip($ids))];
+        $artifact = $this->files->write($id, 1, 'scope', $scope);
+        DB::transaction(function () use ($actor, $batchId, $expectedVersion, $batch, $finished): void {
+            $current = $this->owned($actor, $batchId, true);
+            $this->version($current, $expectedVersion);
+            $nowFinished = $current->items()->whereIn('apply_status', ['applied', 'unchanged', 'skipped'])->pluck('record_id')->all();
+            if ($current->active_acceptance_id !== null || $current->pending_apply_intent !== null || $current->recipe !== $batch->recipe || $nowFinished !== $finished) {
+                $this->invalid('The parent review changed. Refresh before starting a remaining review.');
+            }
+        }, 3);
+
+        return ['review_id' => $id, 'token' => $this->files->launchToken($actor, $id, $artifact), 'count' => count($ids)];
     }
 
     public function scope(CatalogAssetBatch $batch): array

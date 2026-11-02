@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\ApplyCatalogAssets;
 use App\Actions\ReviewCatalogAssets;
 use App\Models\CatalogAsset;
 use App\Models\CatalogAssetBatch;
@@ -270,4 +271,17 @@ test('empty automatic identifiers stay invalid and excluded while an explicit ex
         expect($resolved->match_status)->toBe('ready')->and($resolved->included)->toBeFalse()->and($resolved->snapshot['manual'])->toBeTrue();
     }
     expect($p->fresh()->main_image_id)->toBeNull()->and(CatalogAsset::count())->toBe(0);
+});
+
+test('preparing Apply keeps the review immutable until its exact pending intent is discarded', function () {
+    $source = catalogReviewSource(['a.png']);
+    $p = Product::factory()->create(['profile_fields' => ['product_pic' => 'a']]);
+    $batch = catalogReviewCreate([$p->id], $source);
+    catalogReviewFinish($batch);
+    $a = app(ApplyCatalogAssets::class);
+    $intent = $a->prepareIntent(auth()->user(), $batch->id, 1, [$batch->items()->first()->id]);
+    expect(fn () => app(ReviewCatalogAssets::class)->revise(auth()->user(), $batch->id, 1, ['recipe' => []]))->toThrow(ValidationException::class);
+    $a->discardPendingIntent(auth()->user(), $batch->id, $intent);
+    app(ReviewCatalogAssets::class)->revise(auth()->user(), $batch->id, 1, ['recipe' => []]);
+    expect($batch->fresh()->preview_version)->toBe(2)->and(CatalogAsset::count())->toBe(0);
 });

@@ -18,8 +18,12 @@ class SaveCatalogMainImage
 {
     public function __construct(private CatalogAssetTargets $targets, private CatalogIntegrity $integrity, private CatalogAssetAssignments $assignments, private CatalogRevisions $revisions) {}
 
-    /** @param array{list_key?: string, parent_id?: int} $ownerContext */
-    public function handle(User $actor, string $targetKey, int $recordId, array $ownerContext, string $expectedFingerprint, ?CatalogAssetChange $change, ?Closure $resolveImageChange = null): Model
+    /**
+     * @param  array{list_key?: string, parent_id?: int}  $ownerContext
+     * @param  (Closure(Model): CatalogAssetChange)|null  $resolveImageChange  SQL-only resolver under the owner locks.
+     * @param  (Closure(Model, bool): void)|null  $finalizeImageSave  SQL-only, retry-safe publication inside this transaction, including no-op saves.
+     */
+    public function handle(User $actor, string $targetKey, int $recordId, array $ownerContext, string $expectedFingerprint, ?CatalogAssetChange $change, ?Closure $resolveImageChange = null, ?Closure $finalizeImageSave = null): Model
     {
         abort_unless(config('catalog-assets.enabled'), 404);
         if (($change !== null && $resolveImageChange !== null) || ($change === null && $resolveImageChange === null)) {
@@ -30,7 +34,7 @@ class SaveCatalogMainImage
         $this->targets->eligibleQuery($actor, $targetKey, $ownerContext);
         $model = $this->targets->profile($targetKey)['model'];
 
-        return (new $model)->getConnection()->transaction(function () use ($actor, $targetKey, $recordId, $ownerContext, $expectedFingerprint, $change, $model, $resolveImageChange): Model {
+        return (new $model)->getConnection()->transaction(function () use ($actor, $targetKey, $recordId, $ownerContext, $expectedFingerprint, $change, $model, $resolveImageChange, $finalizeImageSave): Model {
             $groups = $this->integrity->lockGroups();
             $actor = User::query()->find($actor->getKey());
             abort_unless($actor !== null, 403);
@@ -48,9 +52,14 @@ class SaveCatalogMainImage
                     throw ValidationException::withMessages(['image' => 'The prepared image change is invalid.']);
                 }
             }
-            if ($this->assignments->applyToLockedRecord($record, $change)) {
+            $changed = $this->assignments->applyToLockedRecord($record, $change);
+            if ($changed) {
                 $record->save();
                 $this->revisions->advance($record instanceof Product ? [$record->group_id] : [$record->id, $record->parent_id], descendants: $record instanceof Group);
+            }
+
+            if ($finalizeImageSave !== null) {
+                $finalizeImageSave($record, $changed);
             }
 
             return $record;

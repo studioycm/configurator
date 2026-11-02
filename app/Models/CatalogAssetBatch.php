@@ -18,11 +18,11 @@ class CatalogAssetBatch extends Model
 
     protected $attributes = ['status' => 'building', 'build_position' => 0, 'build_revision' => 0, 'preview_version' => 1];
 
-    protected $hidden = ['owner_context', 'recipe', 'creation_hash', 'scope_path', 'scope_sha256', 'manifest_path', 'manifest_sha256', 'build_token', 'build_expires_at', 'error_detail'];
+    protected $hidden = ['owner_context', 'recipe', 'creation_hash', 'scope_path', 'scope_sha256', 'manifest_path', 'manifest_sha256', 'build_token', 'build_expires_at', 'error_detail', 'pending_apply_intent', 'active_acceptance_id'];
 
     protected function casts(): array
     {
-        return ['actor_id' => 'integer', 'owner_context' => 'array', 'recipe' => 'array', 'source_version' => 'integer', 'scope_count' => 'integer', 'build_position' => 'integer', 'build_revision' => 'integer', 'preview_version' => 'integer', 'build_expires_at' => 'datetime', 'expires_at' => 'datetime'];
+        return ['pending_apply_intent' => 'array', 'actor_id' => 'integer', 'owner_context' => 'array', 'recipe' => 'array', 'source_version' => 'integer', 'scope_count' => 'integer', 'build_position' => 'integer', 'build_revision' => 'integer', 'preview_version' => 'integer', 'build_expires_at' => 'datetime', 'expires_at' => 'datetime'];
     }
 
     public function actor(): BelongsTo

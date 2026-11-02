@@ -22,9 +22,12 @@ class CatalogAssetReviewQuery
     {
         $batch = $this->reviews->owned($actor, $batchId);
         $this->checkVersion($batch, $version);
-        Validator::make(['filters' => $filters], ['filters' => ['array:query,status,included'], 'filters.query' => ['sometimes', 'string', 'max:500'], 'filters.status' => ['sometimes', 'nullable', Rule::in(['ready', 'existing', 'missing', 'ambiguous', 'invalid', 'suggestion'])], 'filters.included' => ['sometimes', 'nullable', 'boolean']])->validate();
+        Validator::make(['filters' => $filters], ['filters' => ['array:query,status,included,apply_status'], 'filters.apply_status' => ['sometimes', 'nullable', Rule::in(['pending', 'processing', 'applied', 'unchanged', 'failed', 'stale', 'skipped'])], 'filters.query' => ['sometimes', 'string', 'max:500'], 'filters.status' => ['sometimes', 'nullable', Rule::in(['ready', 'existing', 'missing', 'ambiguous', 'invalid', 'suggestion'])], 'filters.included' => ['sometimes', 'nullable', 'boolean']])->validate();
         $query = CatalogAssetBatchItem::query()->where('batch_id', $batchId)
             ->whereHas('batch', fn ($q) => $q->where('actor_id', $actor->id)->where('preview_version', $version));
+        if (($filters['apply_status'] ?? '') !== '') {
+            $query->where('apply_status', $filters['apply_status']);
+        }
         if (($filters['status'] ?? '') !== '') {
             $query->where('match_status', $filters['status']);
         }
@@ -179,6 +182,32 @@ class CatalogAssetReviewQuery
         }
 
         return $q;
+    }
+
+    public function eligibleApplyItems(User $actor, string $batchId, int $version, array $filters = []): Builder
+    {
+        return $this->items($actor, $batchId, $version, $filters)->where('included', true)->where('match_status', 'ready')->whereNull('acceptance_id');
+    }
+
+    public function applyProgress(User $actor, string $batchId, ?string $acceptanceId = null): array
+    {
+        $batch = $this->reviews->owned($actor, $batchId);
+        $acceptanceId ??= $batch->active_acceptance_id ?? ($batch->recipe['last_acceptance_id'] ?? null);
+        $rows = $batch->items()->whereNotNull('acceptance_id')->where('acceptance_id', $acceptanceId)->orderBy('position')->orderBy('id')->get();
+        abort_if($acceptanceId !== null && $rows->isEmpty(), 404);
+        $first = $rows->first(fn ($row) => in_array($row->apply_status, ['pending', 'processing'], true));
+        $active = $acceptanceId !== null && $batch->active_acceptance_id === $acceptanceId;
+        $busy = $active && $first?->apply_status === 'processing' && $first->processing_expires_at?->isFuture();
+        $recovery = $active && $first?->apply_status === 'processing' && ! $busy;
+        $intent = $batch->pending_apply_intent;
+
+        return ['batch_id' => $batch->id, 'preview_version' => $batch->preview_version, 'acceptance_id' => $acceptanceId, 'active_acceptance_id' => $batch->active_acceptance_id,
+            'status' => $batch->status, 'counts' => $rows->countBy('apply_status')->all(), 'total' => $rows->count(),
+            'next_step_id' => $active && $first?->apply_status === 'pending' ? $first->request_step_id : null, 'busy' => (bool) $busy, 'recovery_required' => (bool) $recovery,
+            'retryable' => $rows->contains(fn ($row) => $row->apply_status === 'failed' && ($row->snapshot['apply_result']['retryable'] ?? false) === true),
+            'pending_intent' => $intent === null ? null : ['id' => $intent['id'], 'preview_version' => $intent['preview_version'], 'item_ids' => $intent['item_ids']],
+            'review_total' => $batch->scope_count, 'review_complete' => $batch->build_position === $batch->scope_count, 'review_expired' => ! $batch->expires_at?->isFuture(),
+            'accepted' => $batch->items()->whereNotNull('acceptance_id')->exists()];
     }
 
     private function checkVersion(CatalogAssetBatch $batch, int $version): void

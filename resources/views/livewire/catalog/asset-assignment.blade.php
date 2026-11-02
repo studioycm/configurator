@@ -5,7 +5,7 @@
         {{ $this->backAction }}
     </div>
     @if ($errors->any())<div role="alert" class="catalog-images-notice">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
-    <fieldset x-bind:disabled="running || unknown">
+    <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
         {{ $this->matchForm }}
         <div class="catalog-images-bar">
             {{ $this->openSourceAction }}
@@ -31,6 +31,25 @@
             @foreach($reviewProgress['counts'] as $status => $count)<span>{{ ucfirst($status) }}: {{ $count }}</span>@endforeach
             <span>Explicitly excluded: {{ $reviewProgress['explicitly_excluded'] ?? 0 }}</span><span>Deferred: {{ $reviewProgress['deferred'] ?? 0 }}</span>
         </div>
+        <section class="catalog-images-bar" aria-label="This Apply">
+            <strong>{{ __('catalog-images.this_apply') }} <span x-text="$wire.selectedTableRecords.length"></span> / 50</strong>
+            <span x-text="$wire.selectedTableRecords.filter(id => !{{ \Illuminate\Support\Js::from(array_map('strval', $this->getTableRecords()->modelKeys())) }}.includes(String(id))).length + ' checked outside this page'"></span>
+            <x-filament::button color="gray" x-on:click="command('selectReadyImageApply', 'page')" x-bind:disabled="running || unknown || !!$wire.applyProgress.active_acceptance_id || !!$wire.applyProgress.pending_intent || {{ $this->readyPageApplyCount() > 50 ? 'true' : 'false' }}">Use ready page</x-filament::button>
+            <x-filament::button color="gray" x-on:click="command('selectReadyImageApply', 'next')" x-bind:disabled="running || unknown || !!$wire.applyProgress.active_acceptance_id || !!$wire.applyProgress.pending_intent">Use next 50 ready</x-filament::button>
+            <x-filament::button color="gray" x-on:click="command('selectReadyImageApply', 'clear')" x-bind:disabled="running || unknown || !!$wire.applyProgress.active_acceptance_id || !!$wire.applyProgress.pending_intent">Clear Apply checks</x-filament::button>
+            {{ $this->imageApplyAction }}
+            @if($applyProgress['pending_intent'] ?? null)
+                <span>{{ count($applyProgress['pending_intent']['item_ids']) }} proposals prepared; no image assignments accepted yet.</span>
+                {{ $this->confirmImageApplyAction }} {{ $this->discardImageApplyAction }}
+            @endif
+            @if($applyProgress['acceptance_id'] ?? null)
+                <span>Accepted {{ $applyProgress['total'] }} in this Apply</span>
+                @foreach($applyProgress['counts'] as $status => $count)<span>{{ ucfirst($status) }}: {{ $count }}</span>@endforeach
+                @if($applyProgress['active_acceptance_id'] ?? null){{ $this->continueImageApplyAction }}@endif
+                @if(($applyProgress['retryable'] ?? false) && !($applyProgress['active_acceptance_id'] ?? null)){{ $this->retryImageApplyAction }}@endif
+                {{ $this->remainingImageReviewAction }}
+            @endif
+        </section>
         <div class="catalog-images-layout">
             <section class="catalog-images-records" aria-label="Image review">
                 <label class="sr-only" for="image-review-search-{{ $launchSession }}">Search review</label>
@@ -51,7 +70,7 @@
             </section>
             @include('livewire.catalog.asset-review-inspector')
         </div>
-        @if(($reviewProgress['stage'] ?? '') === 'review')<p class="catalog-images-notice">Review ready — applying images is not available in this stage.</p>@endif
+        <p class="catalog-images-notice">{{ $reviewProgress['message'] ?? '' }} Only this explicitly accepted subset is processed; another subset requires a new Apply.</p>
     @endif
     @if($sourceId !== null && (($operation === 'one_image') || $reviewItemId !== null))
         @php($candidates = $this->candidateResults())
@@ -68,7 +87,7 @@
             <div class="catalog-asset-candidate-grid">
                 @foreach($candidates['entries'] as $candidate)
                     <button type="button" wire:key="candidate-{{ $candidate['choice']['source_id'] }}-{{ $candidate['choice']['scan_version'] }}-{{ $candidate['choice']['entry_id'] }}" class="catalog-asset-candidate"
-                        x-bind:disabled="running || unknown || ($wire.batchId &amp;&amp; $wire.reviewProgress.stage !== 'review')" x-on:click="command({{ \Illuminate\Support\Js::from($reviewItemId === null ? 'chooseOneImage' : 'resolveReviewCandidate') }}, {{ \Illuminate\Support\Js::from($candidate['choice']) }})">
+                        x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted || ($wire.batchId &amp;&amp; $wire.reviewProgress.stage !== 'review')" x-on:click="command({{ \Illuminate\Support\Js::from($reviewItemId === null ? 'chooseOneImage' : 'resolveReviewCandidate') }}, {{ \Illuminate\Support\Js::from($candidate['choice']) }})">
                         <img src="{{ $candidate['url'] }}" alt="" loading="lazy" x-on:error="$el.hidden = true; $el.nextElementSibling.hidden = false" />
                         <span hidden>Source image unavailable. Refresh or choose another valid source.</span>
                         <span>{{ $candidate['relative_path'] }}</span><small>{{ $candidate['width'] }} × {{ $candidate['height'] }}</small>

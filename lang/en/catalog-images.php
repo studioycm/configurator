@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'this_apply' => 'This Apply', 'apply_checked' => 'Apply checked images', 'confirm_apply' => 'Confirm prepared Apply', 'continue_apply' => 'Continue Apply', 'retry_failed' => 'Retry failed', 'remaining_review' => 'New review for remaining records', 'discard_apply' => 'Discard prepared Apply',
     'assign_one' => 'Assign one image',
     'match_folder' => 'Match folder',
     'save_image' => 'Save image', 'save_continue' => 'Save & continue', 'stay' => 'Stay', 'discard' => 'Discard', 'unsaved' => 'Unsaved image change', 'leave_image' => 'Keep or discard this image change before opening :destination.',

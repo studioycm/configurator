@@ -6,6 +6,7 @@ use App\Actions\ReviewCatalogAssets;
 use App\Filament\Resources\CatalogAssetActions;
 use App\Filament\Resources\CatalogAssetMatchForm;
 use App\Filament\Resources\CatalogAssetReviewTable;
+use App\Filament\Resources\InteractsWithCatalogAssetApplying;
 use App\Models\CatalogAssetBatch;
 use App\Models\CatalogAssetBatchItem;
 use App\Models\User;
@@ -35,6 +36,7 @@ use Livewire\Component;
 class AssetAssignment extends Component implements HasActions, HasSchemas, HasTable
 {
     use InteractsWithActions;
+    use InteractsWithCatalogAssetApplying;
     use InteractsWithSchemas;
     use InteractsWithTable;
 
@@ -103,6 +105,8 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
     protected ?array $savedImages = null;
 
     protected ?array $selectionOrigins = null;
+
+    protected ?array $currentImages = null;
 
     public function mount(string $launchToken, string $launchSession, string $operation, string $parentHost): void
     {
@@ -251,6 +255,7 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
     public function chooseReviewSource(array $expected): array
     {
         $this->admit($expected);
+        $this->requireUnacceptedReview();
         $choice = $this->recipeData['source_choice'] ?? '';
         if (! is_string($choice) || strlen($choice) > 120) {
             throw ValidationException::withMessages(['review' => 'Choose an image source.']);
@@ -289,6 +294,7 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
     public function chooseOneImage(array $choice, array $expected): array
     {
         $this->admit($expected);
+        $this->requireUnacceptedReview();
         $this->requireSource();
         if ($this->operation !== 'one_image' || ($choice['source_id'] ?? '') !== $this->sourceId || ($choice['scan_version'] ?? 0) !== $this->sourceVersion) {
             throw ValidationException::withMessages(['review' => 'Choose one image from the current source.']);
@@ -348,7 +354,12 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
         $this->admit($expected);
         $this->requireBatch();
 
-        return $this->reviewProgress = app(ReviewCatalogAssets::class)->buildNext($this->actor(), $this->batchId, $this->previewVersion, $revision);
+        $this->reviewProgress = app(ReviewCatalogAssets::class)->buildNext($this->actor(), $this->batchId, $this->previewVersion, $revision);
+        if ($this->reviewProgress['stage'] !== 'building') {
+            $this->syncImageApply();
+        }
+
+        return $this->reviewProgress;
     }
 
     public function refreshReviewStatus(array $expected): array
@@ -371,7 +382,7 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
             $this->sourceProgress = app(CatalogAssetSources::class)->status($this->actor(), $this->sourceId);
         }
 
-        return ['review' => $this->reviewProgress, 'source' => $this->sourceProgress];
+        return ['review' => $this->reviewProgress, 'source' => $this->sourceProgress, 'apply' => $this->applyProgress];
     }
 
     protected function restoreReview(): void
@@ -398,6 +409,7 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
             $this->resetTable();
         }
         $this->reviewProgress = app(ReviewCatalogAssets::class)->status($this->actor(), $batch->id);
+        $this->syncImageApply();
     }
 
     public function reviewRows(): Builder
@@ -410,6 +422,9 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
     protected function reviewFilters(): array
     {
         $filters = ['query' => $this->reviewSearch];
+        if (($v = $this->tableFilters['apply_status']['value'] ?? '') !== '') {
+            $filters['apply_status'] = $v;
+        }
         if (($v = $this->tableFilters['match_status']['value'] ?? '') !== '') {
             $filters['status'] = $v;
         }
@@ -522,7 +537,7 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
         $position = app(CatalogAssetReviewQuery::class)->position($this->actor(), $this->batchId, $this->previewVersion, $row->id, $this->reviewFilters(), (int) $this->getTableRecordsPerPage());
         $saved = $row->before_asset_id === null ? null : (app(CatalogAssetDisplay::class)->forIds([$row->before_asset_id])[$row->before_asset_id] ?? null);
 
-        return ['id' => $row->id, 'title' => $row->snapshot['title'], 'raw' => $row->snapshot['raw_display'], 'truncated' => $row->snapshot['raw_truncated'], 'identifier' => $row->snapshot['identifier'], 'filename' => $row->snapshot['filename'], 'reason' => $row->snapshot['reason'], 'status' => $row->match_status, 'manual' => $row->snapshot['manual'], 'included' => $row->included, 'saved_url' => $saved['thumbnail_url'] ?? null, 'proposed_url' => $this->proposedUrl($row), 'position' => $position];
+        return ['id' => $row->id, 'title' => $row->snapshot['title'], 'raw' => $row->snapshot['raw_display'], 'truncated' => $row->snapshot['raw_truncated'], 'identifier' => $row->snapshot['identifier'], 'filename' => $row->snapshot['filename'], 'reason' => $row->snapshot['reason'], 'status' => $row->match_status, 'manual' => $row->snapshot['manual'], 'included' => $row->included, 'accepted' => $row->acceptance_id !== null, 'apply_status' => $row->apply_status, 'apply_code' => $row->error_code ?? ($row->snapshot['apply_result']['code'] ?? null), 'warnings' => array_slice($row->snapshot['apply_result']['warnings'] ?? [], 0, 10), 'current_url' => $this->currentReviewImages()[$row->record_id]['thumbnail_url'] ?? null, 'saved_url' => $saved['thumbnail_url'] ?? null, 'proposed_url' => $this->proposedUrl($row), 'position' => $position];
     }
 
     protected function proposedUrl(CatalogAssetBatchItem $row): ?string
@@ -535,6 +550,41 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
         $this->actor();
 
         return $this->savedImages ??= app(CatalogAssetDisplay::class)->forIds($this->getTableRecords()->pluck('before_asset_id')->filter()->unique()->all());
+    }
+
+    public function readyPageApplyCount(): int
+    {
+        return $this->getTableRecords()->filter(fn (CatalogAssetBatchItem $row): bool => $row->included && $row->match_status === 'ready' && $row->acceptance_id === null)->count();
+    }
+
+    public function currentReviewImages(): array
+    {
+        if ($this->currentImages !== null) {
+            return $this->currentImages;
+        }
+        $batch = app(ReviewCatalogAssets::class)->owned($this->actor(), $this->batchId);
+        $recordIds = $this->getTableRecords()->pluck('record_id')->all();
+        if ($this->reviewItemId !== null) {
+            $inspectedId = $batch->items()->whereKey($this->reviewItemId)->value('record_id');
+            if ($inspectedId !== null) {
+                $recordIds[] = $inspectedId;
+            }
+        }
+        $owners = app(CatalogAssetTargets::class)->eligibleQuery($this->actor(), $this->targetKey, $batch->owner_context)->whereKey($recordIds)->pluck('main_image_id', 'id');
+        $images = app(CatalogAssetDisplay::class)->forIds($owners->filter()->unique()->values()->all());
+        $this->currentImages = [];
+        foreach ($owners as $id => $asset) {
+            $this->currentImages[$id] = $images[$asset] ?? null;
+        }
+
+        return $this->currentImages;
+    }
+
+    protected function requireUnacceptedReview(): void
+    {
+        if ($this->batchId !== null && app(ReviewCatalogAssets::class)->owned($this->actor(), $this->batchId)->items()->whereNotNull('acceptance_id')->exists()) {
+            throw ValidationException::withMessages(['review' => 'Accepted review choices are frozen. Start a remaining review to change them.']);
+        }
     }
 
     public function reviewSelectionLabel(CatalogAssetBatchItem $row): string
