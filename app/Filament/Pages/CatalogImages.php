@@ -6,6 +6,7 @@ use App\Filament\Resources\CatalogImagesTable;
 use App\Filament\Resources\HasWorkspaceTable;
 use App\Filament\Resources\InteractsWithCatalogImageBrowsing;
 use App\Filament\Resources\InteractsWithCatalogImageEditing;
+use App\Filament\Resources\InteractsWithCatalogImageReview;
 use App\Models\Group;
 use App\Models\Product;
 use App\Services\CatalogAssetDisplay;
@@ -34,6 +35,7 @@ class CatalogImages extends Page implements HasTable, HasWorkspaceTable
         InteractsWithCatalogImageBrowsing::sortTable insteadof InteractsWithTable;
     }
     use InteractsWithCatalogImageEditing;
+    use InteractsWithCatalogImageReview;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedPhoto;
 

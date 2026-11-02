@@ -33,12 +33,13 @@ $nonResettingCommitTests = [
     __DIR__.'/Feature/Catalog/MySql/CatalogMainImageConcurrencyTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogImagesBrowsingTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogImagesEditingTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogAssetReviewTest.php',
 ];
 $imagesCommitTests = array_map(fn (string $path): string => __DIR__.'/Feature/'.$path, [
     'Catalog/CatalogAssetFoundationTest.php', 'Catalog/CatalogAssetSourcesTest.php', 'Catalog/CatalogAssetStorageTest.php',
     'Catalog/CatalogMainImageAssignmentTest.php', 'Catalog/CatalogMainImageRecoveryTest.php',
     'Filament/CatalogMainImageFieldTest.php', 'Filament/CatalogMainImageCompletionTest.php',
-    'Filament/CatalogImagesEditingTest.php',
+    'Filament/CatalogImagesEditingTest.php', 'Catalog/CatalogAssetReviewTest.php', 'Filament/CatalogAssetReviewWorkflowTest.php',
 ]);
 $transactionalTests = [];
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {

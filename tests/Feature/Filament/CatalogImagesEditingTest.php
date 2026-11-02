@@ -2,6 +2,7 @@
 
 use App\Filament\Pages\CatalogImages;
 use App\Models\CatalogAsset;
+use App\Models\CatalogAssetBatch;
 use App\Models\Group;
 use App\Models\GroupTagValue;
 use App\Models\Product;
@@ -361,4 +362,36 @@ test('a deleted current owner keeps local Stay and Discard available without cre
     $page->call('resolveWorkspaceImageTransition', 'discard', $page->get('imagePendingTransition.token'), $expected)
         ->assertSet('imageRecordId', $b->id)->assertSet('data.image_intent.operation', 'keep');
     expect(Product::whereKey($a->id)->exists())->toBeFalse()->and($b->fresh()->main_image_id)->toBeNull()->and(CatalogAsset::count())->toBe(0);
+});
+
+test('opening a checked image review uses the existing dirty guard and invalidates changed checked meaning', function () {
+    $a = Product::factory()->create(['product_code' => 'REVIEW-A']);
+    $b = Product::factory()->create(['product_code' => 'REVIEW-B']);
+    $page = workspaceImageProduct($a)->call('catalogMainImageRemove')->set('selectedTableRecords', [$a->id, $b->id]);
+    $page->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext())->assertSet('imageReviewLaunch', null)->assertSee('Match folder · 2');
+    $pending = $page->get('imagePendingTransition');
+    $page->call('resolveWorkspaceImageTransition', 'stay', $pending['token'], workspaceImageExpected($page))->assertSet('imageReviewLaunch', null)->assertSet('data.image_intent.operation', 'remove');
+    $page->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext());
+    $pending = $page->get('imagePendingTransition');
+    $page->set('selectedTableRecords', [$a->id])->call('resolveWorkspaceImageTransition', 'discard', $pending['token'], workspaceImageExpected($page))->assertSet('imageReviewLaunch', null);
+    $page->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext());
+    if ($page->get('imagePendingTransition') !== null) {
+        $page->call('resolveWorkspaceImageTransition', 'discard', $page->get('imagePendingTransition')['token'], workspaceImageExpected($page))->assertHasNoErrors();
+    }
+    $launch = $page->get('imageReviewLaunch');
+    expect($launch['count'])->toBe(1)->and($page->get('imageRecordId'))->toBe($a->id)->and($page->get('selectedTableRecords'))->toBe([$a->id]);
+    $page->call('closeImageReview', $launch['session'], $page->instance()->getId())->assertSet('imageReviewLaunch', null)->assertSet('imageRecordId', $a->id);
+});
+
+test('Save and continue opens the frozen review only after the existing individual image save is confirmed', function () {
+    workspaceImageSource();
+    $p = Product::factory()->create();
+    $page = workspaceImageProduct($p);
+    workspaceImageChoose($page);
+    $page->set('selectedTableRecords', [$p->id])->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext())->assertSet('imageReviewLaunch', null);
+    $token = $page->get('imagePendingTransition')['token'];
+    $expected = workspaceImageExpected($page);
+    $page->call('prepareWorkspaceImageSave', $expected, $token)->assertHasNoErrors()->assertSet('imageReviewLaunch', null);
+    $page->call('saveWorkspaceImage', $expected, $token)->assertHasNoErrors();
+    expect($page->get('imageReviewLaunch')['count'])->toBe(1)->and($p->fresh()->main_image_id)->not->toBeNull()->and(CatalogAssetBatch::count())->toBe(0);
 });

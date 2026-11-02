@@ -1,11 +1,15 @@
 <x-filament-panels::page>
-    <div class="catalog-images-workspace" x-data="catalogImagesBrowser({ user: @js(auth()->id()) })" x-on:catalog-images-inspect="inspect($event.detail)">
+    <div class="catalog-images-workspace" x-data="catalogImagesBrowser({ user: @js(auth()->id()) })" x-on:catalog-images-inspect="inspect($event.detail)" x-on:catalog-images-review="command('openImageReview', $event.detail.operation)" x-on:catalog-image-review-closed="command('closeImageReview', $event.detail.session, $event.detail.host)">
+        <div @if($imageReviewLaunch !== null) hidden @endif>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('catalog-images.intro') }}</p>
         <div class="catalog-images-bar" role="group" aria-label="{{ __('catalog-images.title') }}">
             @foreach (['product.main_image' => 'products', 'group.main_image' => 'groups'] as $key => $label)
                 <x-filament::button wire:key="images-target-{{ $key }}" color="{{ $imageTarget === $key ? 'primary' : 'gray' }}"
                     :aria-pressed="$imageTarget === $key ? 'true' : 'false'" x-on:click="command('switchImageTarget', {{ \Illuminate\Support\Js::from($key) }})">{{ __('catalog-images.'.$label) }}</x-filament::button>
             @endforeach
+            <span x-data="{ lastReview: '' }" x-effect="void $wire.imageReviewLaunch; try { lastReview = localStorage.getItem('catalog-image-review:{{ auth()->id() }}:' + $wire.imageTarget) || ''; } catch { lastReview = ''; }">
+                <x-filament::button color="gray" x-show="lastReview" x-cloak x-on:click="command('returnToImageReview', lastReview)">Return to last review</x-filament::button>
+            </span>
         </div>
         @if ($errors->any())
             <div role="alert" class="catalog-images-notice">
@@ -40,6 +44,10 @@
             </section>
             @include('filament.resources.catalog-images-inspector')
         </div>
+        </div>
+        @if($imageReviewLaunch !== null)
+            <livewire:catalog.asset-assignment :launch-token="$imageReviewLaunch['token']" :launch-session="$imageReviewLaunch['session']" :operation="$imageReviewLaunch['operation']" :parent-host="$this->getId()" :key="$imageReviewLaunch['session']" />
+        @endif
         <p role="status" x-cloak x-show="clientError" x-text="clientError" class="catalog-images-notice"></p>
     </div>
 </x-filament-panels::page>

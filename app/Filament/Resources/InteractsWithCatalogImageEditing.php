@@ -112,7 +112,7 @@ trait InteractsWithCatalogImageEditing
             'meaning' => $this->workspaceImageMeaning(), 'destination' => $destination,
             'destination_label' => $destination['kind'] === 'target'
                 ? __('catalog-images.'.($destination['target'] === 'product.main_image' ? 'products' : 'groups'))
-                : (string) $this->imageEligibleQuery()->whereKey($destination['record'])->value($this->imageTarget === 'product.main_image' ? 'product_code' : 'name')];
+                : ($destination['kind'] === 'review' ? (($destination['launch']['operation'] === 'one_image' ? __('catalog-images.assign_one') : __('catalog-images.match_folder')).' · '.$destination['launch']['count']) : (string) $this->imageEligibleQuery()->whereKey($destination['record'])->value($this->imageTarget === 'product.main_image' ? 'product_code' : 'name'))];
 
         return false;
     }
@@ -246,6 +246,9 @@ trait InteractsWithCatalogImageEditing
     protected function workspaceDestinationValid(array $destination): bool
     {
         $this->authorizeImageBrowser();
+        if ($destination['kind'] === 'review') {
+            return $this->imageReviewDestinationValid($destination);
+        }
         if ($destination['kind'] === 'target') {
             return in_array($destination['target'], ['product.main_image', 'group.main_image'], true);
         }
@@ -261,7 +264,9 @@ trait InteractsWithCatalogImageEditing
     {
         $this->executingWorkspaceTransition = true;
         try {
-            if ($destination['kind'] === 'target') {
+            if ($destination['kind'] === 'review') {
+                $this->imageReviewLaunch = $destination['launch'];
+            } elseif ($destination['kind'] === 'target') {
                 $this->switchImageTarget($destination['target'], $this->imageBrowserContext());
             } else {
                 $this->inspectImageRecord($destination['record'], $this->imageBrowserContext(), $destination['target']);

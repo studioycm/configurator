@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'assign_one' => 'Assign one image',
+    'match_folder' => 'Match folder',
     'save_image' => 'Save image', 'save_continue' => 'Save & continue', 'stay' => 'Stay', 'discard' => 'Discard', 'unsaved' => 'Unsaved image change', 'leave_image' => 'Keep or discard this image change before opening :destination.',
     'editor_changed' => 'This image editor or saved record changed. Review the current image before saving.', 'pending_choice' => 'Choose Stay, Discard or Save & continue for the pending destination.', 'pending_changed' => 'The draft or browsing selection changed. Choose Stay, then request the destination again.', 'prepare_first' => 'Prepare this image draft through Save image before saving.', 'destination_changed' => 'The image is current, but the requested destination changed. Stay here and choose another record.', 'saved' => 'Image saved.', 'goal_matches' => 'Image matches your choice.', 'check_saved' => 'Check saved image', 'saving_image' => 'Saving image…',
 
