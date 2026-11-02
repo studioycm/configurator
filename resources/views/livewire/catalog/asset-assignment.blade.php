@@ -1,10 +1,34 @@
-<div class="catalog-asset-assignment" x-data="catalogAssetAssignment({ user: {{ auth()->id() }} })" x-on:image-review-command.stop="command($event.detail.method, ...$event.detail.args)">
+<div class="catalog-asset-assignment" x-data="catalogAssetAssignment({ user: {{ auth()->id() }}, csrf: @js(csrf_token()) })" x-on:image-review-command.stop="command($event.detail.method, ...$event.detail.args)">
     <div class="catalog-images-bar">
         <h2 class="text-lg font-semibold">{{ $operation === 'one_image' ? __('catalog-images.assign_one') : __('catalog-images.match_folder') }}</h2>
         <span>{{ $reviewProgress['total'] ?? $recordCount }} {{ $targetKey === 'product.main_image' ? 'Products' : 'Groups' }}</span>
         {{ $this->backAction }}
     </div>
     @if ($errors->any())<div role="alert" class="catalog-images-notice">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+    <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
+        <legend>Upload an image source</legend>
+        <p>JPEG, PNG or WebP, up to 3 MiB per image; at most 2000 images and 500 MiB per source. Uploading never assigns images to records.</p>
+        <div class="catalog-images-bar" wire:ignore>
+            <label for="image-files-{{ $launchSession }}">Choose image files
+                <input id="image-files-{{ $launchSession }}" type="file" multiple accept="image/jpeg,image/png,image/webp" x-on:change="selectUploadFiles($event.target.files); $event.target.value = ''" />
+            </label>
+            <label for="image-folder-{{ $launchSession }}">Choose image folder
+                <input id="image-folder-{{ $launchSession }}" type="file" multiple webkitdirectory accept="image/jpeg,image/png,image/webp" x-on:change="selectUploadFiles($event.target.files); $event.target.value = ''" />
+            </label>
+        </div>
+        <div class="catalog-images-bar">
+            <x-filament::button :wire:loading.attr="false" x-on:click="uploadFiles()" x-bind:disabled="running || unknown || !upload || upload.done">Upload files</x-filament::button>
+            <x-filament::button color="gray" :wire:loading.attr="false" x-on:click="continueUpload()" x-bind:disabled="running || unknown || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Continue upload</x-filament::button>
+        </div>
+    </fieldset>
+    <div role="status" class="catalog-images-bar" x-show="upload" x-cloak>
+        <span x-text="upload ? upload.completed + ' / ' + upload.total + ' files copied · ' + upload.bytes + ' selected bytes' : ''"></span>
+        <details x-show="upload?.skipped.length"><summary x-text="(upload?.skipped.length ?? 0) + ' unsupported files skipped before selection'"></summary>
+            <template x-for="(path, index) in upload?.skipped ?? []" :key="index"><p x-text="path"></p></template>
+        </details>
+    </div>
+    <p role="status" x-show="uploadProgress()" x-cloak x-text="uploadProgress() ? 'Upload source: ' + uploadProgress().file_count + ' / ' + uploadProgress().declared_files + ' files · ' + uploadProgress().byte_count + ' / ' + uploadProgress().declared_bytes + ' bytes' : ''"></p>
+    <x-filament::button color="gray" :wire:loading.attr="false" x-on:click="refreshUpload()" x-bind:disabled="running || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Refresh upload status</x-filament::button>
     <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
         {{ $this->matchForm }}
         <div class="catalog-images-bar">

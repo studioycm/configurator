@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatalogAssetIntakeUploadController;
 use App\Http\Controllers\CatalogAssetSourcePreviewController;
 use App\Http\Controllers\CatalogDatasetController;
 use App\Http\Controllers\CatalogMainImageUploadController;
@@ -13,10 +14,13 @@ use App\Livewire\Settings\TwoFactor;
 use App\Services\CatalogJourney;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth'])->group(function () {
+    Route::post('/catalog-images/batch-upload', CatalogAssetIntakeUploadController::class)
+        ->middleware(FileUploadConfiguration::middleware())->name('catalog.images.batch-upload');
     Route::post('/catalog-images/native-upload', CatalogMainImageUploadController::class)->name('catalog.images.native-upload');
     Route::get('/catalog-images/source-preview/{source}/{version}/{entry}', CatalogAssetSourcePreviewController::class)->middleware('signed:relative')->name('catalog.images.source-preview');
     Route::redirect('/dashboard', '/dashboard/catalog')->name('dashboard');

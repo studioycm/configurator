@@ -165,8 +165,8 @@ class CatalogAssetReviewQuery
             $label = DB::getDriverName() === 'mysql' ? "JSON_UNQUOTE(JSON_EXTRACT(source, '$.label'))" : "json_extract(source, '$.label')";
             $q->where(fn ($q) => $q->whereRaw('INSTR(LOWER(id), ?) > 0', [mb_strtolower($query)])->orWhereRaw('INSTR(LOWER('.$label.'), ?) > 0', [mb_strtolower($query)]));
         }
-        foreach ($q->limit(30)->get() as $source) {
-            $options['source:'.$source->id] = ($source->source['label'] ?? 'Image source').' · '.$source->status.' · '.substr($source->id, -6);
+        foreach ($q->limit(30)->get(['id', 'status', 'source->label as source_label']) as $source) {
+            $options['source:'.$source->id] = ($source->source_label ?? 'Image source').' · '.$source->status.' · '.substr($source->id, -6);
         }
 
         return array_slice($options, 0, 30, true);

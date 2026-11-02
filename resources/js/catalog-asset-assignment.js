@@ -1,19 +1,22 @@
 import { interceptCatalogImageMessage } from './catalog-image-editor.js';
+import { createCatalogAssetUpload, transferCatalogAssetUpload } from './catalog-asset-upload.js';
 
 const context = wire => ({ session: wire.launchSession, batch: wire.batchId, version: wire.previewVersion,
     source: wire.sourceId, source_version: wire.sourceVersion });
 const applyContext = wire => ({...context(wire), pending: wire.applyProgress?.pending_intent?.id ?? null, acceptance: wire.applyProgress?.acceptance_id ?? null});
 const meaning = wire => JSON.stringify([context(wire), wire.recipeData, wire.oneImageChoice, wire.candidateData, wire.selectedTableRecords, wire.applyProgress]);
 const applyMethods = ['prepareImageApply','applyImages','processNextImageAssignment','continueImageApply','retryFailedImages','discardImageApply','startRemainingImageReview','selectReadyImageApply'];
+const uploadMethods = ['issueReviewUpload', 'beginReviewUpload', 'issueReviewUploadEntry', 'refreshReviewUpload', 'finishReviewUpload'];
 const methods = ['chooseReviewSource','advanceReviewSource','chooseOneImage','previewReview','buildReview',
-    ...applyMethods, 'refreshReviewStatus','inspectReviewItem','navigateReviewItem','setReviewIncluded','resolveReviewCandidate',
+    ...applyMethods, ...uploadMethods, 'refreshReviewStatus','inspectReviewItem','navigateReviewItem','setReviewIncluded','resolveReviewCandidate',
     'restoreRecipePreferences','clearReviewOverride','useCandidateSource','setReviewPageSize','backToRecords','previousCandidatePage','nextCandidatePage'];
-const mutations = [...applyMethods.filter(method => method !== 'selectReadyImageApply'), 'chooseReviewSource','advanceReviewSource','chooseOneImage','previewReview','buildReview','setReviewIncluded','resolveReviewCandidate','clearReviewOverride'];
+const mutations = [...applyMethods.filter(method => method !== 'selectReadyImageApply'), 'beginReviewUpload', 'finishReviewUpload', 'chooseReviewSource','advanceReviewSource','chooseOneImage','previewReview','buildReview','setReviewIncluded','resolveReviewCandidate','clearReviewOverride'];
 
 /** The foreground owns scheduling; committed cursor recovery is always read-only. */
-export function createAssetAssignmentController({ wire, onState = () => {} }) {
+export function createAssetAssignmentController({ wire, csrf, transferUpload = (cap, file) => transferCatalogAssetUpload(cap, file, { launchToken: wire.launchToken, csrf }), onState = () => {} }) {
     let destroyed = false, running = false, unknown = false, stopped = false, generation = 0, message = '';
-    const state = () => ({ running, unknown, message });
+    let upload = null, uploadInfo = null, cancelWait = null;
+    const state = () => ({ running, unknown, message, upload: uploadInfo });
     const changed = () => { if (!destroyed) onState(state()); };
     const remove = interceptCatalogImageMessage(wire, ({ message: request, cancel, onSuccess }) => {
         if (!request.getActions().some(action => methods.includes(action.name))) return;
@@ -45,6 +48,11 @@ export function createAssetAssignmentController({ wire, onState = () => {} }) {
         while (!destroyed && !stopped && !(globalThis.document?.hidden)) {
             const progress = kind === 'source' ? wire.sourceProgress : wire.reviewProgress;
             if (!progress || (kind === 'source' ? progress.stage === 'ready' : progress.stage !== 'building')) break;
+            if (kind === 'source' && progress.stage === 'uploading') {
+                message = 'Copy all selected files and finish the upload before scanning.';
+                changed();
+                break;
+            }
             result = await step(kind === 'source' ? 'advanceReviewSource' : 'buildReview', progress.revision);
             if (destroyed) break;
             if (!result || typeof result.stage !== 'string') throw new Error('Unconfirmed progress');
@@ -55,6 +63,43 @@ export function createAssetAssignmentController({ wire, onState = () => {} }) {
         return result;
     }
     const maySchedule = () => !destroyed && !stopped && !globalThis.document?.hidden;
+    function waitForUpload(ms) {
+        return new Promise(resolve => {
+            const finish = () => { clearTimeout(timer); globalThis.document?.removeEventListener?.('visibilitychange', hidden); cancelWait = null; resolve(); };
+            const hidden = () => { if (globalThis.document?.hidden) finish(); };
+            const timer = setTimeout(finish, Math.min(ms, 2147483647));
+            cancelWait = finish;
+            globalThis.document?.addEventListener?.('visibilitychange', hidden);
+            if (!maySchedule()) finish();
+        });
+    }
+    async function uploadLoop() {
+        if (!upload) {
+            if (!wire.intakeProgress?.declared_files) { message = 'Choose image files or reopen an owned batch upload source.'; return; }
+            const progress = await send('refreshReviewUpload', [null]);
+            if (!maySchedule()) return;
+            if (!progress?.declared_files || progress.file_count !== progress.declared_files || progress.unsettled_uploads) {
+                message = 'This browser no longer has the unsent Files. Preserve this source and choose a fresh selection.';
+                return;
+            }
+            if (!progress.uploads_sealed) await send('finishReviewUpload', [progress.revision]);
+            return;
+        }
+        while (maySchedule() && !upload.state().done) {
+            try {
+                const result = await upload.advance();
+                if (!result || destroyed) break;
+                message = result.message ?? '';
+                changed();
+                if (result.outcome === 'busy' || result.recovery === 'unresolved') break;
+            } catch (error) {
+                if (error.status !== 429) throw error;
+                message = 'Upload limit reached. Waiting for Retry-After; Stop remains available.';
+                changed();
+                await waitForUpload(error.retryAfterMs ?? 60000);
+            }
+        }
+    }
     async function applyLoop(expectedAcceptance) {
         while (maySchedule()) {
             const progress = wire.applyProgress;
@@ -85,6 +130,43 @@ export function createAssetAssignmentController({ wire, onState = () => {} }) {
     }
     return {
         state,
+        uploadProgress(info = uploadInfo) {
+            const progress = info?.progress?.source_id === wire.sourceId ? info.progress : wire.intakeProgress;
+            return progress?.declared_files ? progress : null;
+        },
+        selectUploadFiles(files) {
+            if (destroyed || running || unknown || wire.applyProgress?.accepted) return;
+            try {
+                const next = createCatalogAssetUpload(files, {
+                    issue: (metadata, label) => send('issueReviewUpload', [metadata, label]),
+                    begin: token => send('beginReviewUpload', [token]),
+                    entry: index => send('issueReviewUploadEntry', [index]),
+                    transfer: async (cap, file) => {
+                        const ticket = generation, original = meaning(wire);
+                        const result = await transferUpload(cap, file);
+                        if (destroyed || ticket !== generation || original !== meaning(wire)) throw new Error('The upload context changed.');
+                        return result;
+                    },
+                    status: entry => wire.sourceId ? send('refreshReviewUpload', [entry]) : send('refreshReviewStatus'),
+                    finish: revision => send('finishReviewUpload', [revision]),
+                }, { mayContinue: maySchedule, onChange: info => { uploadInfo = info; changed(); } });
+                upload?.destroy(); upload = next; uploadInfo = next.state();
+                message = uploadInfo.skipped.length ? `${uploadInfo.skipped.length} unsupported files skipped before selection.` : 'Images selected. Choose Upload files to start.';
+            } catch (error) { message = error.message; }
+            changed();
+        },
+        async uploadFiles() { return run(uploadLoop); },
+        async continueUpload() { return run(uploadLoop); },
+        async refreshUpload() {
+            return run(async () => {
+                const result = upload?.state().source_id ? await upload.refresh()
+                    : wire.intakeProgress?.declared_files ? await send('refreshReviewUpload', [null]) : await send('refreshReviewStatus');
+                if (destroyed) return;
+                if (!result || typeof result !== 'object') throw new Error('Unconfirmed upload status');
+                unknown = false; message = 'Upload status refreshed. Choose Continue upload explicitly.';
+                return result;
+            }, false);
+        },
         async apply() {
             if (wire.applyProgress?.active_acceptance_id || wire.applyProgress?.pending_intent || !wire.selectedTableRecords?.length) return;
             return run(async () => {
@@ -118,6 +200,9 @@ export function createAssetAssignmentController({ wire, onState = () => {} }) {
             return run(async () => {
                 const result = await send(method, args);
                 if (!destroyed && mutations.includes(method) && !result) throw new Error('Unconfirmed change');
+                if (!destroyed && method === 'chooseReviewSource' && upload && uploadInfo?.source_id !== wire.sourceId) {
+                    upload.destroy(); upload = null; uploadInfo = null;
+                }
                 if (!destroyed) message = result?.message ?? '';
                 return result;
             }, mutations.includes(method));
@@ -141,19 +226,19 @@ export function createAssetAssignmentController({ wire, onState = () => {} }) {
                 return result;
             }, false);
         },
-        stop() { stopped = true; message = 'Stopped scheduling. An in-flight request may still commit; refresh status if needed.'; changed(); },
-        destroy() { destroyed = true; stopped = true; generation++; remove(); },
+        stop() { stopped = true; cancelWait?.(); message = 'Stopped scheduling. An in-flight request may still commit; refresh status if needed.'; changed(); },
+        destroy() { destroyed = true; stopped = true; generation++; cancelWait?.(); upload?.destroy(); remove(); },
     };
 }
 
 export function catalogAssetAssignment(config = {}) {
     let controller, wire, destroyed = false;
     return {
-        running: false, unknown: false, message: '',
+        running: false, unknown: false, message: '', upload: null,
         init() {
             // Capture Livewire's native proxy before a morph detaches the initiating element.
             wire = this.$wire;
-            controller = createAssetAssignmentController({ wire, onState: state => {
+            controller = createAssetAssignmentController({ wire, csrf: config.csrf, onState: state => {
                 Object.assign(this, state);
                 const syncChecks = () => {
                     const table = wire.$el?.querySelector('.catalog-asset-review-native [x-data]');
@@ -175,6 +260,9 @@ export function catalogAssetAssignment(config = {}) {
             }
         },
         command(method, ...args) { return controller.command(method, ...args); },
+        selectUploadFiles(files) { controller.selectUploadFiles(files); },
+        uploadProgress() { return controller.uploadProgress(this.upload); },
+        uploadFiles() { return controller.uploadFiles(); }, continueUpload() { return controller.continueUpload(); }, refreshUpload() { return controller.refreshUpload(); },
         async preview() {
             const result = await controller.preview();
             if (!destroyed && !controller.state().unknown && wire.batchId) {

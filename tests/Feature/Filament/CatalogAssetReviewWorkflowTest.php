@@ -2,6 +2,7 @@
 
 use App\Actions\ReviewCatalogAssets;
 use App\Filament\Pages\CatalogImages;
+use App\Filament\Resources\CatalogAssetReviewTable;
 use App\Livewire\Catalog\AssetAssignment;
 use App\Models\CatalogAsset;
 use App\Models\CatalogAssetBatch;
@@ -96,6 +97,25 @@ test('exclusions survive finder resolution rebuild filtering pagination and fres
     expect($products->mapWithKeys(fn ($p) => [$p->id => $p->fresh()->getAttributes()])->all())->toBe($before)->and(CatalogAsset::count())->toBe(0);
     $payload = json_encode($fresh->snapshot);
     expect($payload)->not->toContain('scope_path', 'manifest_path', 'record_ids', 'review_selection', 'raw_value');
+});
+
+test('the native proposed image column serves its signed preview without assigning an image', function () {
+    $source = workflowReviewSource();
+    $product = Product::factory()->create(['profile_fields' => ['product_pic' => 'a']]);
+    $before = $product->fresh()->getRawOriginal();
+    $launch = app(ReviewCatalogAssets::class)->freeze(auth()->user(), 'product.main_image', [], [$product->id], [['column' => 'products.id', 'direction' => 'asc']]);
+    $child = Livewire::test(AssetAssignment::class, ['launchToken' => $launch['token'], 'launchSession' => $launch['review_id'], 'operation' => 'folder_matches', 'parentHost' => 'preview-parent'])
+        ->set('recipeData.source_choice', 'source:'.$source);
+    $child->call('chooseReviewSource', $child->instance()->reviewContext())->call('previewReview', $child->instance()->reviewContext())->assertHasNoErrors();
+    workflowReviewFinish($child);
+    $row = CatalogAssetBatch::findOrFail($launch['review_id'])->items()->sole();
+    $column = $child->instance()->getTable()->getColumn('proposed')->record($row);
+    $url = $column->getImageUrl($column->getState());
+    expect($url)->not->toBeNull()->toBe(CatalogAssetReviewTable::proposedUrl($row));
+    $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/png');
+    $tampered = preg_replace('/signature=[a-f0-9]+/', 'signature=invalid', $url);
+    $this->get($tampered)->assertForbidden();
+    expect($product->fresh()->getRawOriginal())->toBe($before)->and(CatalogAsset::count())->toBe(0);
 });
 
 test('Group folder matching and unprivileged or disabled review callbacks are denied', function () {

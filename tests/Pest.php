@@ -35,12 +35,15 @@ $nonResettingCommitTests = [
     __DIR__.'/Feature/Catalog/MySql/CatalogImagesEditingTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogAssetReviewTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogAssetBatchApplyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogAssetIntakeCapacityTest.php',
+    __DIR__.'/Feature/Catalog/MySql/CatalogAssetIntakeConcurrencyTest.php',
 ];
 $imagesCommitTests = array_map(fn (string $path): string => __DIR__.'/Feature/'.$path, [
     'Catalog/CatalogAssetFoundationTest.php', 'Catalog/CatalogAssetSourcesTest.php', 'Catalog/CatalogAssetStorageTest.php',
     'Catalog/CatalogMainImageAssignmentTest.php', 'Catalog/CatalogMainImageRecoveryTest.php',
     'Filament/CatalogMainImageFieldTest.php', 'Filament/CatalogMainImageCompletionTest.php',
     'Filament/CatalogImagesEditingTest.php', 'Catalog/CatalogAssetReviewTest.php', 'Filament/CatalogAssetReviewWorkflowTest.php', 'Catalog/CatalogAssetBatchApplyTest.php', 'Filament/CatalogAssetApplyWorkflowTest.php',
+    'Catalog/CatalogAssetIntakeTest.php', 'Filament/CatalogAssetIntakeWorkflowTest.php',
 ]);
 $transactionalTests = [];
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {

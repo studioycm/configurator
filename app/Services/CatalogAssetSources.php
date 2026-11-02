@@ -9,6 +9,7 @@ use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -33,15 +34,36 @@ class CatalogAssetSources
 
     public function __construct(private CatalogAssetTargets $targets, private CatalogAssetSourceFiles $files) {}
 
-    /** @param array<string, mixed> $ownerContext */
-    public function startUpload(User $actor, string $targetKey, array $ownerContext, string $label): CatalogAssetImportSource
+    /** @param array<string, mixed> $ownerContext
+     * @param  array<string, mixed>|null  $batch
+     */
+    public function startUpload(User $actor, string $targetKey, array $ownerContext, string $label, ?array $batch = null): CatalogAssetImportSource
     {
         $this->assertNoTransaction();
         $this->authorizeTarget($actor, $targetKey, $ownerContext);
         Validator::make(['label' => $label], ['label' => ['required', 'string', 'max:160']])->validate();
 
-        return $this->createSource($actor, 'upload', ['target_key' => $targetKey, 'owner_context' => $ownerContext, 'label' => $label],
-            ['status' => 'uploading', 'cursor' => ['upload_position' => 0, 'fragments' => []]]);
+        $definition = ['target_key' => $targetKey, 'owner_context' => $ownerContext, 'label' => $label];
+        if ($batch === null) {
+            return $this->createSource($actor, 'upload', $definition,
+                ['status' => 'uploading', 'cursor' => ['upload_position' => 0, 'fragments' => []]]);
+        }
+        $batch = $this->batchDescriptor($batch);
+        $definition['intake'] = $batch;
+        $existing = CatalogAssetImportSource::query()->find($batch['id']);
+        if ($existing === null) {
+            try {
+                return $this->createSource($actor, 'upload', $definition,
+                    ['status' => 'uploading', 'cursor' => ['upload_position' => 0, 'fragments' => []]], $batch['id']);
+            } catch (UniqueConstraintViolationException) {
+                $existing = CatalogAssetImportSource::query()->findOrFail($batch['id']);
+            }
+        }
+        $meaning = app(CatalogAssetReviewFiles::class);
+        $this->require($existing->actor_id === $actor->id && $existing->source_kind === 'upload'
+            && hash_equals($meaning->digest($definition), $meaning->digest($existing->source)), 'This upload identity belongs to a different intake.');
+
+        return $existing;
     }
 
     /** @param array<string, mixed> $metadata
@@ -61,9 +83,10 @@ class CatalogAssetSources
                 return $this->progress($source, 'reconciled');
             }
             $this->require($source->source_kind === 'upload' && $source->status === 'uploading' && ! $source->uploads_sealed, 'This upload source is sealed or cannot accept files.');
-            $this->require(count($ledger) < config('catalog-assets.limits.source_files'), 'The source file limit has been reached.');
+            $limits = $this->sourceLimits($source);
+            $this->require(count($ledger) < $limits['source_files'], 'The source file limit has been reached.');
             $reserved = $this->reservedBytes($ledger);
-            $this->require($source->byte_count + $reserved + $metadata['bytes'] <= config('catalog-assets.limits.source_bytes'), 'The source byte limit would be exceeded.');
+            $this->require($source->byte_count + $reserved + $metadata['bytes'] <= $limits['source_bytes'], 'The source byte limit would be exceeded.');
             $ledger[$entryId] = ['metadata' => $metadata, 'status' => 'reserved', 'reference_hash' => null, 'token' => null, 'expires_at' => null];
             $source->forceFill(['upload_ledger' => $ledger, 'unsettled_uploads' => $source->unsettled_uploads + 1, 'scan_revision' => $source->scan_revision + 1])->save();
 
@@ -131,8 +154,9 @@ class CatalogAssetSources
                     return $this->progress($current, 'reconciled');
                 }
                 $reservedOtherBytes = $this->reservedBytes($ledger) - $ledger[$entryId]['metadata']['bytes'];
-                if ($current->file_count + 1 > config('catalog-assets.limits.source_files')
-                    || $current->byte_count + $entry['bytes'] + $reservedOtherBytes > config('catalog-assets.limits.source_bytes')
+                $limits = $this->sourceLimits($current);
+                if ($current->file_count + 1 > $limits['source_files']
+                    || $current->byte_count + $entry['bytes'] + $reservedOtherBytes > $limits['source_bytes']
                     || $current->visited_nodes + 1 > config('catalog-assets.requests.source_nodes')) {
                     throw new DomainException('source_limit');
                 }
@@ -171,6 +195,13 @@ class CatalogAssetSources
                 return $this->progress($source, 'reconciled');
             }
             $this->require($source->source_kind === 'upload' && $source->status === 'uploading' && $source->unsettled_uploads === 0, 'Settle all reserved uploads before sealing the source.');
+            if (isset($source->source['intake'])) {
+                $intake = $source->source['intake'];
+                $this->require($source->file_count === $intake['file_count'] && $source->byte_count === $intake['byte_count'], 'Copy the complete selected intake before finishing.');
+                foreach ($intake['entries'] as $entry) {
+                    $this->require(($source->upload_ledger[$entry['entry_id']]['status'] ?? null) === 'committed', 'Copy the complete selected intake before finishing.');
+                }
+            }
             $source->forceFill(['uploads_sealed' => true, 'status' => 'scanning', 'scan_revision' => $source->scan_revision + 1])->save();
 
             return $this->progress($source, 'sealed');
@@ -439,10 +470,10 @@ class CatalogAssetSources
     /** @param array<string, mixed> $source
      * @param  array<string, mixed>  $attributes
      */
-    private function createSource(User $actor, string $kind, array $source, array $attributes): CatalogAssetImportSource
+    private function createSource(User $actor, string $kind, array $source, array $attributes, ?string $id = null): CatalogAssetImportSource
     {
         $model = new CatalogAssetImportSource;
-        $model->forceFill(['actor_id' => $actor->id, 'source_kind' => $kind, 'source' => $source, ...$attributes])->save();
+        $model->forceFill(['actor_id' => $actor->id, 'source_kind' => $kind, 'source' => $source, ...$attributes, ...($id === null ? [] : ['id' => $id])])->save();
 
         return $model;
     }
@@ -634,10 +665,56 @@ class CatalogAssetSources
 
     private function verifyCaps(CatalogAssetImportSource $source): void
     {
-        if ($source->file_count > config('catalog-assets.limits.source_files') || $source->byte_count > config('catalog-assets.limits.source_bytes')
+        $limits = $this->sourceLimits($source);
+        if ($source->file_count > $limits['source_files'] || $source->byte_count > $limits['source_bytes']
             || $source->visited_nodes > config('catalog-assets.requests.source_nodes')) {
             throw new DomainException('source_limit');
         }
+    }
+
+    /** @param array<string, mixed> $batch
+     * @return array<string, mixed>
+     */
+    private function batchDescriptor(array $batch): array
+    {
+        Validator::make(['batch' => $batch], [
+            'batch' => ['array:id,intake_id,file_count,byte_count,selection_sha256,entries'],
+            'batch.id' => ['required', 'ulid'], 'batch.intake_id' => ['required', 'ulid'],
+            'batch.file_count' => ['required', 'integer', 'min:1', 'max:'.config('catalog-assets.limits.source_files')],
+            'batch.byte_count' => ['required', 'integer', 'min:0', 'max:'.config('catalog-assets.limits.source_bytes')],
+            'batch.selection_sha256' => ['required', 'regex:/^[a-f0-9]{64}$/D'],
+            'batch.entries' => ['required', 'array', 'list', 'min:1', 'max:'.config('catalog-assets.limits.source_files')],
+            'batch.entries.*' => ['required', 'array:entry_id,name,relative_path,bytes'],
+            'batch.entries.*.entry_id' => ['required', 'ulid', 'distinct:strict'],
+        ])->validate();
+        $this->require(is_int($batch['file_count']) && is_int($batch['byte_count']), 'The intake counts must be integers.');
+        $entries = [];
+        foreach ($batch['entries'] as $entry) {
+            $metadata = $this->uploadMetadata($entry['entry_id'], array_diff_key($entry, ['entry_id' => true]));
+            $this->require($metadata['bytes'] <= config('catalog-assets.image.max_bytes'), 'The selected image exceeds its byte limit.');
+            $entries[] = ['entry_id' => $entry['entry_id'], ...$metadata];
+        }
+        $this->require(count($entries) === $batch['file_count'] && array_sum(array_column($entries, 'bytes')) === $batch['byte_count']
+            && hash_equals($batch['selection_sha256'], app(CatalogAssetReviewFiles::class)->digest($entries)), 'The intake selection does not match its declared counts or digest.');
+
+        return ['id' => $batch['id'], 'intake_id' => $batch['intake_id'], 'file_count' => $batch['file_count'],
+            'byte_count' => $batch['byte_count'], 'selection_sha256' => $batch['selection_sha256'], 'entries' => $entries];
+    }
+
+    /** @return array{source_files: int, source_bytes: int} */
+    private function sourceLimits(CatalogAssetImportSource $source): array
+    {
+        $files = config('catalog-assets.limits.source_files');
+        $bytes = config('catalog-assets.limits.source_bytes');
+        if (array_key_exists('intake', $source->source)) {
+            $intake = $source->source['intake'];
+            $this->require(is_array($intake) && is_int($intake['file_count'] ?? null) && $intake['file_count'] > 0
+                && is_int($intake['byte_count'] ?? null) && $intake['byte_count'] >= 0, 'The stored intake limits are invalid.');
+            $files = min($files, $intake['file_count']);
+            $bytes = min($bytes, $intake['byte_count']);
+        }
+
+        return ['source_files' => $files, 'source_bytes' => $bytes];
     }
 
     /** @param array<string, array<string, mixed>> $ledger */
@@ -656,7 +733,7 @@ class CatalogAssetSources
     /** @param array<string, mixed> $metadata
      * @return array{name: string, relative_path: string, bytes: int}
      */
-    private function uploadMetadata(string $entryId, array $metadata): array
+    public function uploadMetadata(string $entryId, array $metadata): array
     {
         $this->require(Str::isUlid($entryId), 'The upload entry identifier is invalid.');
         Validator::make(['metadata' => $metadata], ['metadata' => ['required', 'array:name,relative_path,bytes'],

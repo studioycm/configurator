@@ -21,7 +21,7 @@ class CatalogAssetReviewTable
     {
         $choice = $row->snapshot['chosen_entry'] ?? null;
 
-        return ! is_array($choice) ? null : URL::temporarySignedRoute('catalog.images.source-preview', now()->addMinutes(10), ['source' => $choice['source_id'], 'version' => $choice['scan_version'], 'entry' => $choice['entry_id']], false);
+        return ! is_array($choice) ? null : URL::to(URL::temporarySignedRoute('catalog.images.source-preview', now()->addMinutes(10), ['source' => $choice['source_id'], 'version' => $choice['scan_version'], 'entry' => $choice['entry_id']], false));
     }
 
     public static function configure(Table $table, AssetAssignment $page): Table

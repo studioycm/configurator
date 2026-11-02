@@ -11,6 +11,7 @@ use App\Models\CatalogAssetBatch;
 use App\Models\CatalogAssetBatchItem;
 use App\Models\User;
 use App\Services\CatalogAssetDisplay;
+use App\Services\CatalogAssetIntake;
 use App\Services\CatalogAssetRecipe;
 use App\Services\CatalogAssetReviewFiles;
 use App\Services\CatalogAssetReviewQuery;
@@ -78,6 +79,9 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
 
     #[Locked]
     public array $sourceProgress = [];
+
+    #[Locked]
+    public array $intakeProgress = [];
 
     #[Locked]
     public array $reviewProgress = [];
@@ -274,8 +278,64 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
         $this->oneImageChoice = null;
         $this->candidateSourceId = null;
         $this->candidatePage = 1;
+        $this->intakeProgress = $source->source_kind === 'upload' && isset($source->source['intake'])
+            ? app(CatalogAssetIntake::class)->status($this->actor(), $this->launchToken, $source->id) : [];
 
         return $this->sourceProgress = app(CatalogAssetSources::class)->status($this->actor(), $this->sourceId);
+    }
+
+    /** @param list<array{name: string, relative_path: string, bytes: int}> $files */
+    public function issueReviewUpload(array $files, string $label, array $expected): array
+    {
+        $this->admit($expected);
+        $this->requireUnacceptedReview();
+
+        return app(CatalogAssetIntake::class)->issue($this->actor(), $this->launchToken, $label, $files);
+    }
+
+    public function beginReviewUpload(string $token, array $expected): array
+    {
+        $this->admit($expected);
+        $this->requireUnacceptedReview();
+        $progress = app(CatalogAssetIntake::class)->begin($this->actor(), $this->launchToken, $token);
+        $this->sourceId = $progress['source_id'];
+        $this->sourceVersion = $progress['scan_version'];
+        $this->recipeData['source_choice'] = 'source:'.$this->sourceId;
+        $this->oneImageChoice = null;
+        $this->candidateSourceId = null;
+        $this->candidatePage = 1;
+
+        return $this->sourceProgress = $this->intakeProgress = $progress;
+    }
+
+    public function issueReviewUploadEntry(int $index, array $expected): array
+    {
+        $this->admit($expected);
+        $this->requireUnacceptedReview();
+        $this->requireSource();
+
+        return app(CatalogAssetIntake::class)->entry($this->actor(), $this->launchToken, $this->sourceId, $index);
+    }
+
+    public function refreshReviewUpload(?string $entryId, array $expected): array
+    {
+        $this->actor();
+        $this->scope();
+        if (($expected['session'] ?? null) !== $this->launchSession || ($expected['source'] ?? null) !== $this->sourceId || ($expected['source_version'] ?? null) !== $this->sourceVersion) {
+            abort(404);
+        }
+        $this->requireSource();
+
+        return $this->sourceProgress = $this->intakeProgress = app(CatalogAssetIntake::class)->status($this->actor(), $this->launchToken, $this->sourceId, $entryId);
+    }
+
+    public function finishReviewUpload(int $revision, array $expected): array
+    {
+        $this->admit($expected);
+        $this->requireUnacceptedReview();
+        $this->requireSource();
+
+        return $this->sourceProgress = $this->intakeProgress = app(CatalogAssetIntake::class)->finish($this->actor(), $this->launchToken, $this->sourceId, $revision);
     }
 
     public function advanceReviewSource(array $expected, int $revision): array
@@ -286,6 +346,9 @@ class AssetAssignment extends Component implements HasActions, HasSchemas, HasTa
         $p = $sources->status($this->actor(), $this->sourceId);
         if ($p['stage'] === 'ready' || $p['outcome'] === 'busy') {
             return $this->sourceProgress = $p;
+        }
+        if ($p['stage'] === 'uploading') {
+            return $this->sourceProgress = [...$p, 'message' => 'Copy all selected files and choose Finish upload before scanning.'];
         }
 
         return $this->sourceProgress = $p['traversal_complete'] ? $sources->finalize($this->actor(), $this->sourceId, $this->sourceVersion, $revision) : $sources->scanNext($this->actor(), $this->sourceId, $this->sourceVersion, $revision);
