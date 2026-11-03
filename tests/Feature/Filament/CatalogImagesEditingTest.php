@@ -368,7 +368,7 @@ test('opening a checked image review uses the existing dirty guard and invalidat
     $a = Product::factory()->create(['product_code' => 'REVIEW-A']);
     $b = Product::factory()->create(['product_code' => 'REVIEW-B']);
     $page = workspaceImageProduct($a)->call('catalogMainImageRemove')->set('selectedTableRecords', [$a->id, $b->id]);
-    $page->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext())->assertSet('imageReviewLaunch', null)->assertSee('Match folder · 2');
+    $page->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext())->assertSet('imageReviewLaunch', null)->assertSee(__('catalog-images.match_folder').' · 2');
     $pending = $page->get('imagePendingTransition');
     $page->call('resolveWorkspaceImageTransition', 'stay', $pending['token'], workspaceImageExpected($page))->assertSet('imageReviewLaunch', null)->assertSet('data.image_intent.operation', 'remove');
     $page->call('openImageReview', 'folder_matches', $page->instance()->imageBrowserContext());

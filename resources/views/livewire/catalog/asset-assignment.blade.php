@@ -5,8 +5,10 @@
         {{ $this->backAction }}
     </div>
     @if ($errors->any())<div role="alert" class="catalog-images-notice">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+    <details class="catalog-images-upload-options">
+        <summary>Upload images or a folder</summary>
     <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
-        <legend>Upload an image source</legend>
+        <legend class="sr-only">Upload images</legend>
         <p>JPEG, PNG or WebP, up to 3 MiB per image; at most 2000 images and 500 MiB per source. Uploading never assigns images to records.</p>
         <div class="catalog-images-bar" wire:ignore>
             <label for="image-files-{{ $launchSession }}">Choose image files
@@ -18,9 +20,10 @@
         </div>
         <div class="catalog-images-bar">
             <x-filament::button :wire:loading.attr="false" x-on:click="uploadFiles()" x-bind:disabled="running || unknown || !upload || upload.done">Upload files</x-filament::button>
-            <x-filament::button color="gray" :wire:loading.attr="false" x-on:click="continueUpload()" x-bind:disabled="running || unknown || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Continue upload</x-filament::button>
+            <x-filament::button color="gray" :wire:loading.attr="false" x-show="upload || $wire.intakeProgress.declared_files" x-cloak x-on:click="continueUpload()" x-bind:disabled="running || unknown || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Continue upload</x-filament::button>
         </div>
     </fieldset>
+    </details>
     <div role="status" class="catalog-images-bar" x-show="upload" x-cloak>
         <span x-text="upload ? upload.completed + ' / ' + upload.total + ' files copied · ' + upload.bytes + ' selected bytes' : ''"></span>
         <details x-show="upload?.skipped.length"><summary x-text="(upload?.skipped.length ?? 0) + ' unsupported files skipped before selection'"></summary>
@@ -28,7 +31,7 @@
         </details>
     </div>
     <p role="status" x-show="uploadProgress()" x-cloak x-text="uploadProgress() ? 'Upload source: ' + uploadProgress().file_count + ' / ' + uploadProgress().declared_files + ' files · ' + uploadProgress().byte_count + ' / ' + uploadProgress().declared_bytes + ' bytes' : ''"></p>
-    <x-filament::button color="gray" :wire:loading.attr="false" x-on:click="refreshUpload()" x-bind:disabled="running || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Refresh upload status</x-filament::button>
+    <x-filament::button color="gray" :wire:loading.attr="false" x-show="upload || $wire.intakeProgress.declared_files" x-cloak x-on:click="refreshUpload()" x-bind:disabled="running || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Refresh upload status</x-filament::button>
     <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
         {{ $this->matchForm }}
         <div class="catalog-images-bar">
@@ -51,6 +54,7 @@
     </div>
     <p role="status" x-text="message" x-show="message" class="catalog-images-notice"></p>
     @if($reviewProgress)
+        <h2 class="text-lg font-semibold">Review matches and apply images</h2>
         <div class="catalog-images-bar">
             @foreach($reviewProgress['counts'] as $status => $count)<span>{{ ucfirst($status) }}: {{ $count }}</span>@endforeach
             <span>Explicitly excluded: {{ $reviewProgress['explicitly_excluded'] ?? 0 }}</span><span>Deferred: {{ $reviewProgress['deferred'] ?? 0 }}</span>
@@ -74,7 +78,7 @@
                 {{ $this->remainingImageReviewAction }}
             @endif
         </section>
-        <div class="catalog-images-layout">
+        <div class="catalog-images-layout catalog-workspace-split" x-data="workspaceSplit({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'owner' => 'catalog-images', 'tab' => 'review']) }})" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
             <section class="catalog-images-records" aria-label="Image review">
                 <label class="sr-only" for="image-review-search-{{ $launchSession }}">Search review</label>
                 <x-filament::input.wrapper><x-filament::input id="image-review-search-{{ $launchSession }}" wire:model.live.debounce.350ms="reviewSearch" placeholder="Search record, identifier or filename…" maxlength="500" /></x-filament::input.wrapper>
@@ -92,6 +96,7 @@
                     <x-filament::pagination :paginator="$this->getTableRecords()" :page-options="[]" />
                 </div>
             </section>
+            <x-catalog.workspace-splitter :label="__('catalog-images.resize_panels')" />
             @include('livewire.catalog.asset-review-inspector')
         </div>
         <p class="catalog-images-notice">{{ $reviewProgress['message'] ?? '' }} Only this explicitly accepted subset is processed; another subset requires a new Apply.</p>

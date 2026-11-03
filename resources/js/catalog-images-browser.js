@@ -56,7 +56,7 @@ export function catalogImagesBrowser(config) {
             this.onInspect = event => {
                 // Installed Livewire dispatches server events on the component root after morph.
                 if (!destroyed && event.detail.host === this.$wire.$id
-                    && JSON.stringify(event.detail.context) === JSON.stringify(imagesContext(this.$wire))) this.$refs.inspectorHeading?.focus();
+                    && JSON.stringify(event.detail.context) === JSON.stringify(imagesContext(this.$wire))) this.$el.querySelector('[data-catalog-images-inspector-heading]')?.focus();
             };
             eventRoot = this.$wire.$el;
             eventRoot.addEventListener('catalog-images-inspected', this.onInspect);

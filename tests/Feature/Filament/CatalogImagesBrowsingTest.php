@@ -271,9 +271,38 @@ test('rendered target and mode buttons execute their current typed navigation in
     $intent = catalogImagesRenderedIntent($page->html(), 'Products');
     $page->call($intent[1], $intent[2], $page->instance()->imageBrowserContext())->assertSet('imageTarget', 'product.main_image');
     $page->call('inspectProductImage', $product->id, $page->instance()->imageBrowserContext());
-    $intent = catalogImagesRenderedIntent($page->html(), 'Checked');
+    $intent = catalogImagesRenderedIntent($page->html(), __('catalog-images.checked'));
     expect($intent)->toBe(['command', 'setImageNavigationMode', 'checked']);
     $page->call($intent[1], $intent[2], $page->instance()->imageBrowserContext())->assertSet('imageNavigationMode', 'checked');
+});
+
+test('selected record buttons carry the typed image assignment intent', function () {
+    $product = Product::factory()->create();
+    foreach (['one_image' => 'assign_one', 'folder_matches' => 'match_folder'] as $operation => $label) {
+        $page = Livewire::test(CatalogImages::class);
+        $intent = catalogImagesRenderedIntent($page->html(), __('catalog-images.'.$label));
+        expect($intent)->toBe(['command', 'openImageReview', $operation]);
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->html());
+        foreach ($document->getElementsByTagName('button') as $button) {
+            if (trim(preg_replace('/\s+/u', ' ', $button->textContent)) !== __('catalog-images.'.$label)) {
+                continue;
+            }
+            expect($button->getAttribute('class'))->not->toContain('fi-disabled');
+            expect($button->hasAttribute('aria-disabled'))->toBeFalse();
+            $javascript = <<<'JS'
+const expressions = JSON.parse(process.argv[1]).map(expression => new Function('$wire', 'return (' + expression + ')'));
+process.stdout.write(JSON.stringify([[], [1], []].map(selectedTableRecords => {
+    const values = expressions.map(expression => expression({ selectedTableRecords }));
+    return [values[0], values[1], values[2]['fi-disabled']];
+})));
+JS;
+            $process = new Process(['node', '-e', $javascript, json_encode(array_map(fn (string $attribute): string => $button->getAttribute($attribute), ['x-bind:disabled', 'x-bind:aria-disabled', 'x-bind:class']))]);
+            $process->mustRun();
+            expect(json_decode($process->getOutput(), true))->toBe([[true, 'true', true], [false, 'false', false], [true, 'true', true]]);
+            break;
+        }
+    }
 });
 
 test('both rendered record title and Inspect buttons open the typed image inspector without a table action fallback', function () {

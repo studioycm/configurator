@@ -46,7 +46,6 @@ class CatalogImagesTable
                 TextColumn::make('image_status')->label(__('catalog-images.status'))
                     ->state(fn (Product|Group $record): string => $record->main_image_id === null ? __('catalog-images.missing') : (isset($page->imagePageDisplays()[(int) $record->main_image_id]) ? __('catalog-images.has') : __('catalog-images.unavailable'))),
             ])->recordActions([$inspect()], position: RecordActionsPosition::BeforeCells)->recordAction(null)->recordUrl(null)
-            ->toolbarActions(CatalogAssetActions::bulk($page))
             ->selectable()->selectCurrentPageOnly()->trackDeselectedRecords(false)->maxSelectableRecords(5000)
             ->currentSelectionLivewireProperty('selectedTableRecords')
             ->deselectAllRecordsWhenFiltered(false)->searchable(false)

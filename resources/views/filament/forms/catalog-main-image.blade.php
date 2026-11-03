@@ -11,7 +11,7 @@
                     @if ($key === 'proposed' && $state['operation'] === 'remove')
                         <p class="text-sm">{{ __('catalog.images.remove_on_save') }}</p>
                     @elseif ($state[$key])
-                        <div class="rounded-lg bg-white p-2"><img src="{{ $state[$key]['thumbnail_url'] }}" alt="{{ $label }}" class="h-28 w-full object-contain" width="{{ $state[$key]['width'] }}" height="{{ $state[$key]['height'] }}" /></div>
+                        <div class="catalog-main-image-preview rounded-lg bg-white p-2"><img src="{{ $state[$key]['thumbnail_url'] }}" alt="{{ $label }}" class="h-28 w-full object-contain" width="{{ $state[$key]['width'] }}" height="{{ $state[$key]['height'] }}" /></div>
                         <p class="break-all text-xs text-gray-500 dark:text-gray-400">{{ $state[$key]['filename'] }} · {{ $state[$key]['width'] }} × {{ $state[$key]['height'] }}</p>
                     @else
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('catalog.images.missing') }}</p>

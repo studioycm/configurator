@@ -17,7 +17,7 @@
             </div>
         @endif
         @if ($imageBrowserNotice)<p role="status" class="catalog-images-notice">{{ $imageBrowserNotice }}</p>@endif
-        <div class="catalog-images-layout">
+        <div class="catalog-images-layout catalog-workspace-split" x-data="workspaceSplit({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'owner' => 'catalog-images', 'tab' => 'records']) }})" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
             <section aria-label="{{ __('catalog-images.results') }}" x-ref="records" tabindex="-1" class="catalog-images-records">
                 @include('filament.forms.catalog-image-record-search')
                 <div data-catalog-images-native-table wire:key="image-table-{{ $imageTarget }}">{{ $this->table }}</div>
@@ -42,6 +42,7 @@
                     <x-filament::pagination :paginator="$this->getTableRecords()" :page-options="[]" />
                 </div>
             </section>
+            <x-catalog.workspace-splitter :label="__('catalog-images.resize_panels')" />
             @include('filament.resources.catalog-images-inspector')
         </div>
         </div>

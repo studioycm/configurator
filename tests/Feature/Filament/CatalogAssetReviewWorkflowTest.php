@@ -100,6 +100,7 @@ test('exclusions survive finder resolution rebuild filtering pagination and fres
 });
 
 test('the native proposed image column serves its signed preview without assigning an image', function () {
+    $this->freezeTime();
     $source = workflowReviewSource();
     $product = Product::factory()->create(['profile_fields' => ['product_pic' => 'a']]);
     $before = $product->fresh()->getRawOriginal();

@@ -139,7 +139,8 @@ async function focusHarness(localFirst = false) {
     root.removeEventListener = (name, callback) => { listeners.delete(callback); remove(name, callback); };
     root.listenerCount = () => listeners.size;
     nested.parentElement = root;
-    nested.querySelector = () => null;
+    const heading = { focus() { effects.push('focus'); } };
+    nested.querySelector = selector => selector === '[data-catalog-images-inspector-heading]' ? heading : null;
     let localInterceptor, dispatchInterceptor;
     const wire = { ...state(), $id: 'images', $el: root, tableColumns: [],
         interceptMessage(callback) { localInterceptor = callback; return () => { localInterceptor = null; }; },
@@ -147,7 +148,8 @@ async function focusHarness(localFirst = false) {
     };
     const ui = catalogImagesBrowser({ user: 1 });
     ui.$el = nested; ui.$wire = wire;
-    ui.$refs = { inspectorHeading: { focus() { effects.push('focus'); } } };
+    // The inspector heading belongs to the descendant splitter's Alpine scope.
+    ui.$refs = {};
     const previousStorage = globalThis.localStorage;
     globalThis.localStorage = { getItem() { return null; }, setItem() {} };
     await ui.init();

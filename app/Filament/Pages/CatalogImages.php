@@ -125,7 +125,7 @@ class CatalogImages extends Page implements HasTable, HasWorkspaceTable
     public function imageFilters(Schema $schema): Schema
     {
         return $schema->statePath('imageSearch')->components([
-            ToggleButtons::make('image_state')->label(__('catalog-images.saved_image'))
+            ToggleButtons::make('image_state')->label(__('catalog-images.filter_status'))
                 ->options(['any' => __('catalog-images.any'), 'missing' => __('catalog-images.missing'), 'has' => __('catalog-images.has')])->inline()->live(),
             Select::make('group_ids')->label(__('catalog-images.groups'))->multiple()->searchable()->live()
                 ->visible(fn (): bool => $this->imageTarget === 'product.main_image')
