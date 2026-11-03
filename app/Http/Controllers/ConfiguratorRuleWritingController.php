@@ -13,6 +13,7 @@ use App\Services\ConfiguratorRuleWritingDrafts;
 use App\Services\ConfiguratorRuleWritingInspection;
 use App\Services\ConfiguratorRuleWritingInspectionPresenter;
 use App\Services\ConfiguratorRuleWritingReconciliation;
+use App\Services\ConfiguratorRuleWritingReferences;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ class ConfiguratorRuleWritingController extends Controller
 {
     public const BODY_LIMIT = 20971520;
 
-    public const OPERATIONS = ['draft-summaries', 'saved-rule-summaries', 'open-draft', 'create-draft', 'open-rule', 'update-draft', 'save-selected', 'inspect-draft', 'capture-latest', 'refresh-sections'];
+    public const OPERATIONS = ['references', 'draft-summaries', 'saved-rule-summaries', 'open-draft', 'create-draft', 'open-rule', 'update-draft', 'save-selected', 'inspect-draft', 'capture-latest', 'refresh-sections'];
 
     public function __invoke(Request $request, string $configurator, string $operation): JsonResponse
     {
@@ -49,6 +50,7 @@ class ConfiguratorRuleWritingController extends Controller
             $this->validateInput($operation, $input);
             $drafts = app(ConfiguratorRuleWritingDrafts::class);
             $data = match ($operation) {
+                'references' => app(ConfiguratorRuleWritingReferences::class)->get($actor, $owner),
                 'draft-summaries', 'saved-rule-summaries' => $this->summaries($owner, $operation, $input),
                 'open-draft' => $this->editorResult($drafts->get($actor, $owner, $input['id'])),
                 'create-draft' => $this->editorResult($drafts->create($actor, $owner, $input['id'], $input['authoring'], $input['sequence'])),
@@ -82,6 +84,7 @@ class ConfiguratorRuleWritingController extends Controller
     private function validateInput(string $operation, array $input): void
     {
         $keys = match ($operation) {
+            'references' => [],
             'draft-summaries', 'saved-rule-summaries' => ['page', 'search'],
             'open-draft', 'inspect-draft' => ['id'],
             'create-draft' => ['id', 'authoring', 'sequence'],

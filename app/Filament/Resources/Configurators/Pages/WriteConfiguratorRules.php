@@ -44,6 +44,6 @@ class WriteConfiguratorRules extends Page
     /** @return array<string,mixed> */
     protected function getViewData(): array
     {
-        return ['writingConfig' => ['operationUrl' => route('configurators.writing.operation', ['configurator' => $this->getRecord()->id, 'operation' => '__operation__']), 'requestedRule' => $this->requestedRule, 'csrf' => csrf_token(), 'backUrl' => ConfiguratorResource::getUrl('edit', ['record' => $this->getRecord(), 'tab' => 'rules::data::tab']), 'labels' => __('configurator.writing')]];
+        return ['writingConfig' => ['user' => (string) auth()->id(), 'owner' => (string) $this->getRecord()->id, 'operationUrl' => route('configurators.writing.operation', ['configurator' => $this->getRecord()->id, 'operation' => '__operation__']), 'requestedRule' => $this->requestedRule, 'csrf' => csrf_token(), 'backUrl' => ConfiguratorResource::getUrl('edit', ['record' => $this->getRecord(), 'tab' => 'rules::data::tab']), 'labels' => __('configurator.writing')]];
     }
 }

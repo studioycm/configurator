@@ -54,8 +54,8 @@ export function writingHistory(initialSource) {
     };
     return {
         get source() { return source; },
-        get canUndo() { return undo.length > 0; },
-        get canRedo() { return redo.length > 0; },
+        canUndo: false,
+        canRedo: false,
         edit(text, context = {}, after = null) {
             const result = applyWritingEditorChange(source, text, context);
             if (!result.ok || !result.patch) return result;
@@ -63,9 +63,10 @@ export function writingHistory(initialSource) {
             undo.push({ patch: result.patch, before: [context.start ?? 0, context.end ?? 0], after });
             redo = [];
             while (undo.length > 200 || undo.reduce((sum, entry) => sum + 2 * (entry.patch.removed.length + entry.patch.inserted.length), 0) > 8388608) undo.shift();
+            this.canUndo = undo.length > 0; this.canRedo = redo.length > 0;
             return result;
         },
-        undo() { if (!undo.length) return null; const entry = undo.pop(); const result = change(entry, true); redo.push(entry); return result; },
-        redo() { if (!redo.length) return null; const entry = redo.pop(); const result = change(entry, false); undo.push(entry); return result; },
+        undo() { if (!undo.length) return null; const entry = undo.pop(); const result = change(entry, true); redo.push(entry); this.canUndo = undo.length > 0; this.canRedo = redo.length > 0; return result; },
+        redo() { if (!redo.length) return null; const entry = redo.pop(); const result = change(entry, false); undo.push(entry); this.canUndo = undo.length > 0; this.canRedo = redo.length > 0; return result; },
     };
 }

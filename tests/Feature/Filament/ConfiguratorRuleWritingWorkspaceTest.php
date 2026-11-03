@@ -80,3 +80,32 @@ test('Writing inherits cold appearance recovery and existing shell hooks without
     expect($appearance->fresh()->getRawOriginal())->toBe($before)
         ->and(ConfiguratorRuleWritingDraft::count())->toBe(0);
 });
+
+test('Writing profile identities are trusted and the full authoring and data tools render without creating drafts', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $owner = Configurator::factory()->create();
+    $page = Livewire::withQueryParams(['user' => 'untrusted-user', 'owner' => '999999'])->test(WriteConfiguratorRules::class, ['record' => $owner->id])
+        ->assertOk()->assertSee('Display options')->assertSee('Writing helpers')->assertSee('Choices')->assertSee('What next?')->assertSee('Logic')->assertSee('Learning')->assertSee('Copy complete');
+    $view = (new ReflectionMethod(WriteConfiguratorRules::class, 'getViewData'))->invoke($page->instance());
+    expect($view['writingConfig']['user'])->toBe((string) $actor->id)->and($view['writingConfig']['owner'])->toBe((string) $owner->id);
+    expect(ConfiguratorRuleWritingDraft::count())->toBe(0);
+});
+
+test('Writing toolbar renders executable Alpine expressions instead of literal Blade directives', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $owner = Configurator::factory()->create();
+
+    $response = $this->get("/admin/configurators/{$owner->id}/writing")
+        ->assertOk()->assertDontSee('@js(', false);
+
+    $html = html_entity_decode($response->getContent(), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    foreach (['commands', 'attributes', 'values', 'products'] as $key) {
+        expect($html)->toContain('x-on:click="openChoices(\''.$key.'\')"')
+            ->toContain('x-bind:disabled="!!composing || current.pendingText !== null || !context.toolbar[\''.$key.'\']"');
+    }
+    foreach (['condition', 'group', 'compare', 'join', 'mapping', 'effects'] as $group) {
+        expect($html)->toContain('x-bind:disabled="!helperEnabled(\''.$group.'\')"');
+    }
+    expect(ConfiguratorRuleWritingDraft::count())->toBe(0);
+});

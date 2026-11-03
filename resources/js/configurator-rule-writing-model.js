@@ -38,7 +38,7 @@ function referenceStart(byte) {
     return letter(byte) || (byte >= 48 && byte <= 57) || byte === 95;
 }
 
-function tokenize(bytes, decode) {
+function tokenize(bytes, decode, analysis = null) {
     const tokens = [];
     let i = 0;
     while (i < bytes.length) {
@@ -55,8 +55,10 @@ function tokenize(bytes, decode) {
         }
         if (character === 47 && bytes[i + 1] === 47) {
             while (i < bytes.length && bytes[i] !== 13 && bytes[i] !== 10) i++;
+            analysis?.spans.push({type: 'comment', start, end: i, complete: true});
             continue;
         }
+        try {
         const prefix = [64, 35, 36].includes(character) ? character : null;
         if (prefix !== null) i++;
         let value;
@@ -132,6 +134,14 @@ function tokenize(bytes, decode) {
             throw new WritingSyntaxError('Unknown character in source.');
         }
         tokens.push({ type, value, start, end: i });
+        analysis?.spans.push({type: type === 'string' && character === 91 ? 'block' : type, start, end: i, complete: true});
+        } catch (error) {
+            if (!analysis || !(error instanceof WritingSyntaxError)) throw error;
+            const type = character === 34 ? 'string' : character === 91 ? 'block' : character === 36 && bytes[start + 1] === 34 ? 'product' : character === 64 ? 'attribute' : character === 35 ? 'value' : 'word';
+            analysis.spans.push({type, start, end: bytes.length, complete: false});
+            analysis.issue = {message: error.message, start, end: bytes.length};
+            return tokens;
+        }
     }
     return tokens;
 }
@@ -163,12 +173,27 @@ function condition(tokens) {
     return { kind: 'condition', source_kind: reference.type === 'attribute' ? 'SelectionOption' : 'ProductProperty', reference: reference.value, operator, values: operands };
 }
 
-export function parseRuleWriting(source) {
+function parseWriting(source, partial = false) {
     assertSource(source);
     const result = { source, format_version: 1, statements: [], diagnostics: [] };
+    const analysis = partial ? {spans: [], issue: null} : null;
+    if (partial) { result.spans = analysis.spans; result.tokens = []; }
+    let root = false, group = null, flat = null, sawOutcome = false;
     const info = unicodePosition(source);
+    const normalizeFlatJoin = () => {
+        if (flat !== 'Any') return;
+        const conditions = result.statements.filter(node => node.kind === 'condition');
+        if (!conditions.length) return;
+        const first = conditions[0], last = conditions.at(-1);
+        result.statements = [{kind: 'group', operator: 'Any', children: conditions, start: first.start, end: last.end, raw: decode(first.start, last.end)}, ...result.statements.filter(node => node.kind !== 'condition')];
+    };
     const failure = (message, start, end) => {
-        result.statements = [];
+        if (!partial) result.statements = [];
+        else {
+            if (group?.children.length) result.statements.push({...group, incomplete: true});
+            normalizeFlatJoin();
+            result.context = {root, childGroup: group?.operator ?? null, flat, sawOutcome};
+        }
         result.diagnostics.push({ code: 'syntax', severity: 'error', start, end, message });
         return result;
     };
@@ -181,7 +206,9 @@ export function parseRuleWriting(source) {
     try {
         const lines = [];
         let line = [];
-        for (const token of tokenize(bytes, decode)) {
+        const scanned = tokenize(bytes, decode, analysis);
+        if (partial) result.tokens = scanned;
+        for (const token of scanned) {
             if (token.type === 'newline') {
                 if (line.length) {
                     lines.push(line);
@@ -192,10 +219,6 @@ export function parseRuleWriting(source) {
             }
         }
         if (line.length) lines.push(line);
-        let root = false;
-        let group = null;
-        let flat = null;
-        let sawOutcome = false;
         for (let tokens of lines) {
             offset = tokens[0].start;
             const words = tokens.map(token => token.value);
@@ -279,18 +302,17 @@ export function parseRuleWriting(source) {
             }
             result.statements.push(node);
         }
+        if (analysis?.issue) { offset = analysis.issue.start; throw new WritingSyntaxError(analysis.issue.message); }
         if (root || group !== null) throw new WritingSyntaxError('Close the condition group.');
-        if (flat === 'Any') {
-            const conditions = result.statements.filter(node => node.kind === 'condition');
-            if (conditions.length) {
-                const first = conditions[0];
-                const last = conditions.at(-1);
-                result.statements = [{ kind: 'group', operator: 'Any', children: conditions, start: first.start, end: last.end, raw: decode(first.start, last.end) }, ...result.statements.filter(node => node.kind !== 'condition')];
-            }
-        }
+        normalizeFlatJoin();
     } catch (error) {
         if (!(error instanceof WritingSyntaxError)) throw error;
         return failure(error.message, offset, info.bytes);
     }
+    if (partial) result.context = {root, childGroup: group?.operator ?? null, flat, sawOutcome};
     return result;
 }
+
+export function parseRuleWriting(source) { return parseWriting(source); }
+
+parseRuleWriting.inspectSyntax = source => parseWriting(source, true);

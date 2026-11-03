@@ -43,3 +43,36 @@ test('backward deletion handles an emoji grapheme without splitting it', () => {
     const r = applyWritingEditorChange('A😀\r\nB', 'A\nB', { start: 3, end: 3, inputType: 'deleteContentBackward' });
     assert.equal(r.source, 'A\r\nB');
 });
+
+test('history availability notifies proxy observers after editing, Undo and Redo without replacing history', () => {
+    const notifications = [];
+    const history = new Proxy(writingHistory('X\r\nY'), {
+        set(target, key, value, receiver) {
+            const previous = Reflect.get(target, key, receiver);
+            const result = Reflect.set(target, key, value, receiver);
+            if (result && previous !== value) notifications.push([key, value]);
+            return result;
+        },
+    });
+
+    history.edit('X\nYQ', { start: 3, end: 3, inputType: 'insertText' }, [4, 4]);
+
+    assert.deepEqual(notifications.splice(0), [['canUndo', true]]);
+    assert.equal(history.source, 'X\r\nYQ');
+    assert.deepEqual([history.canUndo, history.canRedo], [true, false]);
+
+    history.undo();
+    assert.deepEqual(notifications.splice(0), [['canUndo', false], ['canRedo', true]]);
+    assert.equal(history.source, 'X\r\nY');
+    history.edit('X\nY', { start: 3, end: 3, inputType: 'insertText' });
+    assert.deepEqual(notifications, []);
+    assert.deepEqual([history.canUndo, history.canRedo], [false, true]);
+
+    history.redo();
+    assert.deepEqual(notifications.splice(0), [['canUndo', true], ['canRedo', false]]);
+    assert.equal(history.source, 'X\r\nYQ');
+    history.undo(); notifications.splice(0);
+    history.edit('X\nYZ', { start: 3, end: 3, inputType: 'insertText' });
+    assert.deepEqual(notifications, [['canUndo', true], ['canRedo', false]]);
+    assert.equal(history.redo(), null);
+});

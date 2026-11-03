@@ -389,3 +389,172 @@ for (const failure of [{ ok: false, type: 'validation', errors: { 'drafts.a.revi
         await w.refreshSections(); assert.equal(calls.includes('refresh-sections'), false); w.destroy();
     });
 }
+
+test('Feedback owns a failed A and switching to valid D and back never leaks or erases the failure', async () => {
+    const w=workspace(async()=>({ok:false,type:'validation',errors:{source:['Writing exceeds the 1 MiB draft limit.']}}));
+    w.acceptOpened(opened(draft('a')));append(w,' failure');await w.flush();const failure=w.current.error;
+    w.acceptOpened(opened(draft('d')));assert.equal(w.activeError,'');assert.equal(w.workspaceError,'');assert.equal(w.current.error,null);
+    assert.equal(w.draftStatus(),'Draft saved');w.focusDraft('a');assert.equal(w.current.error,failure);assert.match(w.activeError,/1 MiB/);w.destroy();
+});
+test('late A failure while D is active retains A ownership and explicit D recovery notice', async()=>{
+    const pending=deferred(),w=workspace(()=>pending.promise);w.acceptOpened(opened(draft('a')));append(w,' fail');const saving=w.flush();await Promise.resolve();await Promise.resolve();w.acceptOpened(opened(draft('d')));
+    pending.resolve({ok:false,type:'validation',errors:{source:['A failed']}});await saving;assert.equal(w.activeError,'');assert.equal(w.workspaceError,'');assert.equal(w.buffers.a.error.operation,'update-draft');
+    w.current.unknown=true;w.blocked.d=true;w.current.latest=draft('d','// recovered');w.loadShared();assert.match(w.activeNotice,/not a receipt/);assert.equal(w.current.unknown,false);assert.equal(w.buffers.a.error.message,'A failed');w.destroy();
+});
+test('real workspace authorization errors remain visible across draft switches',()=>{
+    const w=workspace(async()=>({}));w.acceptOpened(opened(draft('a')));const error=Object.assign(new Error('Session expired'),{result:{type:'rejected',status:419}});w.problem(w.current,error,'update-draft');w.acceptOpened(opened(draft('d')));assert.equal(w.workspaceError,'Session expired');w.destroy();
+});
+test('explicit Value choice survives picker detach as one raw-source edit and undo',()=>{
+    const w=workspace(async()=>({})),ticks=[];const source='// שלום 😀\r\n/when @A in #x |';w.acceptOpened(opened(draft('a',source)));
+    w.references={fingerprint:'r1',attributes:[{key:'A',label:'A',values:[{semantic_id:'x',label:'X'},{semantic_id:'y',label:'Y'}]}]};
+    const text=source.replaceAll('\r\n','\n'),element={value:text,isConnected:true,selectionStart:text.length,selectionEnd:text.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b;},focus(){}};
+    let connected=true;Object.defineProperty(w,'$refs',{get:()=>connected?{source:element}:{}});w.$nextTick=fn=>ticks.push(fn);
+    w.openChoices('values');const choice=w.context.choices.find(x=>x.insertText==='#y');connected=false;assert.equal(w.applyWritingAction(choice),true);ticks.splice(0).forEach(fn=>fn());
+    assert.equal(w.current.source,source+'#y');assert.equal(element.value,text+'#y');assert.equal(w.current.sequence,1);w.history('undo');assert.equal(w.current.source,source);w.destroy();
+});
+test('stale choice and IME cannot insert into newer writing or a different draft',()=>{
+    const w=workspace(async()=>({}));w.acceptOpened(opened(draft('a','/when ')));const element={value:'/when ',isConnected:true,selectionStart:6,selectionEnd:6,setSelectionRange(){},focus(){}};w.$refs={source:element};w.references={fingerprint:'1',attributes:[{key:'A',label:'A',values:[]}]};w.openChoices('attributes');const action=w.context.choices[0];
+    append(w,'@new');assert.equal(w.applyWritingAction(action),false);assert.equal(w.current.source,'/when @new');w.acceptOpened(opened(draft('d')));assert.equal(w.applyWritingAction(action),false);w.composing={id:'d'};assert.equal(w.applyWritingAction(action),false);w.destroy();
+});
+test('advisory references failure stays separate from draft persistence and never changes caret receipt or revisions',async()=>{
+    const read=deferred(),calls=[],w=workspace(async(op,input)=>{calls.push(op);if(op==='references')return read.promise;return {ok:true,data:ack({...draft(),...input.authoring,revision:2},input.sequence)};});
+    w.acceptOpened(opened(draft()));w.current.caret=[1,1];w.receipt='committed';const refs=w.refreshReferences();append(w,' local');await w.flush();read.resolve({ok:false,type:'unknown',message:'Read unavailable'});await refs;
+    assert.equal(w.current.unknown,false);assert.equal(w.current.revision,2);assert.equal(w.receipt,'committed');assert.deepEqual(w.current.caret,null);assert.equal(w.current.error,null);assert.match(w.referenceError,/Read unavailable/);assert.deepEqual(calls,['references','update-draft']);w.destroy();
+});
+
+test('closed and reopened Choices cannot apply an old proposal even with unchanged source',()=>{
+    const w=workspace(async()=>({}));w.acceptOpened(opened(draft('a','/when @A in ')));const element={value:'/when @A in ',isConnected:true,selectionStart:12,selectionEnd:12,setSelectionRange(){},focus(){}};w.$refs={source:element};w.references={fingerprint:'1',attributes:[{key:'A',label:'A',values:[{semantic_id:'x',label:'X'}]}]};
+    w.openChoices('values');const old=w.context.choices[0];w.closeChoices(false);w.openChoices('values');assert.equal(w.applyWritingAction(old),false);assert.equal(w.current.source,'/when @A in ');w.destroy();
+});
+test('failure attempt identity comes from submitted source before a later local edit',async()=>{
+    const pending=deferred(),w=workspace(()=>pending.promise);w.acceptOpened(opened(draft('a')));append(w,' first');const sequence=w.current.sequence,saving=w.flush();await Promise.resolve();await Promise.resolve();append(w,' later');pending.resolve({ok:false,type:'validation',errors:{source:['Earlier source rejected']}});await saving;
+    assert.equal(w.current.error.attempt.sequence,sequence);assert.notEqual(w.current.sequence,sequence);assert.equal(w.feedbackIssues[0].severity,'previous-attempt');assert.equal(w.current.unknown,false);w.destroy();
+});
+
+test('display and pane resize change preferences without editing writing or sending requests',()=>{
+    const calls=[],w=workspace(async(op)=>{calls.push(op);return {};});w.acceptOpened(opened(draft('a','// exact\r\nשלום')));w.current.caret=[2,2];const before=JSON.stringify({source:w.current.source,sequence:w.current.sequence,ack:w.current.ack,caret:w.current.caret});
+    w.choicesOpen=true;w.setDisplay('writing',{theme:'dark',editor:{wrap:false,autoHeight:false},visible:{learning:false},lowerOrder:['learning','logic']});w.adjustPane(0,-100);
+    assert(w.paneWeights.every(n=>n>=10));assert.equal(Math.round(w.paneWeights.reduce((a,b)=>a+b)),100);
+    w.setDisplay('data',{visible:{conditions:false},order:['effects','rule']});w.closePane('feedback');
+    assert.equal(JSON.stringify({source:w.current.source,sequence:w.current.sequence,ack:w.current.ack,caret:w.current.caret}),before);assert.deepEqual(calls,[]);w.destroy();
+});
+test('active pointer resizing releases its listeners and capture on destruction',()=>{
+    const w=workspace(async()=>({}));w.acceptOpened(opened(draft()));const listeners=new Map();let captured=null;
+    const handle={closest:()=>({getBoundingClientRect:()=>({width:1000})}),setPointerCapture:id=>{captured=id},hasPointerCapture:id=>captured===id,releasePointerCapture:()=>{captured=null},addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};
+    w.startResize({button:0,pointerId:7,clientX:100,currentTarget:handle},0);assert.equal(listeners.size,3);listeners.get('pointermove')({clientX:180});assert.notDeepEqual(w.paneWeights,[60,40]);w.destroy();assert.equal(listeners.size,0);assert.equal(captured,null);
+});
+test('record visibility and order do not filter complete server JSON or YAML copy',async()=>{
+    const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator'),copied=[];
+    Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>copied.push(text)}}});
+    try {const w=workspace(async()=>({}));w.inspection={json:'COMPLETE JSON',yaml:'COMPLETE YAML',records:[{key:'conditions',label:'Conditions',rows:[{cells:[]}]}],draft_json:'DRAFT',capture_json:'CAPTURE'};w.setDisplay('data',{visible:{conditions:false},order:['source','rule']});assert(!w.inspectionSections.some(x=>x.key==='conditions'));await w.copy(w.inspection.json);await w.copy(w.inspection.yaml);assert.deepEqual(copied,['COMPLETE JSON','COMPLETE YAML']);w.destroy();}
+    finally {if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
+});
+test('Insert text preserves literal delimiters quotes and line breaks as one undoable edit',async()=>{
+    const {parseRuleWriting}=await import('../../resources/js/configurator-rule-writing-model.js');const w=workspace(async()=>({})),source='// שלום\r\n/set-hint @A ',text=source.replaceAll('\r\n','\n');w.acceptOpened(opened(draft('a',source)));
+    const element={value:text,isConnected:true,selectionStart:text.length,selectionEnd:text.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b},focus(){}};w.$refs={source:element};w.openTextHelper();w.textValue='First "quote"\nclose ]] and \\ path';w.textMode='block';assert.equal(w.insertText(),true);const parsed=parseRuleWriting(w.current.source);assert.deepEqual(parsed.diagnostics,[]);assert.equal(parsed.statements[0].text,w.textValue);assert(w.current.source.startsWith(source));w.history('undo');assert.equal(w.current.source,source);w.destroy();
+});
+
+test('display before the first draft never caches an empty editor reference',()=>{
+    const w=workspace(async()=>({})),ticks=[];let earlyLookups=0;Object.defineProperty(w,'$refs',{get(){earlyLookups++;return {};}});w.$nextTick=fn=>ticks.push(fn);
+    w.setDisplay('writing',{theme:'dark'});w.resetDisplay();w.syncEditor();w.rememberEditor();ticks.splice(0).forEach(fn=>fn());assert.equal(earlyLookups,0);assert.equal(w.current,null);w.destroy();
+});
+
+test('selected unopened A failure stays labelled off-draft without making saved D fail',async()=>{
+    const w=workspace(async()=>({ok:false,type:'validation',errors:{'drafts.a.source':['A source rejected']}}));w.acceptOpened(opened(draft('d','// valid D')));w.current.caret=[2,2];w.receipt='D receipt';w.listedDrafts.a={id:'a',revision:1,label:'Unopened A'};w.selected=['a'];const before=JSON.stringify({source:w.current.source,caret:w.current.caret,receipt:w.receipt});
+    await w.saveSelected();assert.equal(w.workspaceError,'');assert.equal(w.activeError,'');assert.equal(JSON.stringify({source:w.current.source,caret:w.current.caret,receipt:w.receipt}),before);
+    const failure=w.offDraftFailures.find(item=>item.draftId==='a');assert.equal(failure.label,'Unopened A');assert.equal(failure.operation,'save-selected');assert.equal(failure.message,'A source rejected');
+    w.acceptOpened(opened(draft('a')));assert.equal(w.activeError,'A source rejected');w.focusDraft('d');assert.equal(w.activeError,'');w.destroy();
+});
+test('unknown unopened selection retains blocked A when its shared draft is opened',async()=>{
+    const calls=[],w=workspace(async(op)=>{calls.push(op);throw Error('lost')});w.acceptOpened(opened(draft('d')));w.listedDrafts.a={id:'a',revision:1};w.selected=['a'];await w.saveSelected();assert.equal(w.blocked.a,true);assert.equal(w.current.unknown,false);assert.equal(w.workspaceError,'');
+    w.acceptOpened(opened(draft('a')));assert.equal(w.current.unknown,true);assert.equal(w.blocked.a,true);assert.equal(w.current.error.operation,'save-selected');assert.equal(await w.saveSelected(),false);assert.deepEqual(calls,['save-selected']);
+    w.current.latest={...draft('a'),revision:2};w.loadShared();assert.equal(w.current.unknown,false);assert.equal(w.blocked.a,undefined);assert.equal(w.current.error,null);assert.match(w.activeNotice,/not a receipt/);assert.deepEqual(calls,['save-selected']);w.destroy();
+});
+test('caret-only sourceSelection invalidates an old choice while same-caret interaction stays valid',()=>{
+    const w=workspace(async()=>({})),source='/when @A in ';w.acceptOpened(opened(draft('a',source)));const element={value:source,isConnected:true,selectionStart:source.length,selectionEnd:source.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b},focus(){}};w.$refs={source:element};w.references={fingerprint:'1',attributes:[{key:'A',label:'A',values:[{semantic_id:'x',label:'X'}]}]};
+    w.openChoices('values');const old=w.context.choices[0];element.selectionStart=0;element.selectionEnd=0;w.sourceSelection({target:element});assert.equal(w.applyWritingAction(old),false);assert.equal(w.current.source,source);
+    assert.equal(w.current.sequence,0);assert.equal(w.current.history.canUndo,false);
+    element.selectionStart=source.length;element.selectionEnd=source.length;w.sourceSelection({target:element});w.openChoices('values');const current=w.context.choices[0];w.sourceSelection({target:element});assert.equal(w.applyWritingAction(current),true);assert.equal(w.current.source,source+'#x');assert.equal(w.current.sequence,1);w.history('undo');assert.equal(w.current.source,source);w.destroy();
+});
+test('first same-caret pointer interaction accepts an already rendered next-step action',()=>{
+    const w=workspace(async()=>({})),source='/when ';w.acceptOpened(opened(draft('a',source)));
+    const element={value:source,isConnected:true,selectionStart:source.length,selectionEnd:source.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b},focus(){}};w.$refs={source:element};
+    const action=w.context.nextGroups.find(group=>group.category==='Group').actions[0];
+
+    w.rememberEditor();assert.equal(w.applyWritingAction(action),true);
+
+    assert.equal(w.current.source,'/when all {\n  \n}');assert.equal(w.current.sequence,1);w.history('undo');assert.equal(w.current.source,source);w.destroy();
+});
+test('Mapping toolbar follows grammar: Pair first, Case after Pair and Other only after a case',()=>{
+    const w=workspace(async()=>({}));w.acceptOpened(opened({...draft('a',''),kind:'Mapping'}));let items=w.helperItems('mapping');assert.deepEqual(items.map(item=>item.text.trim()),['/pair']);
+    w.acceptOpened(opened({...draft('a','/pair @A -> @B\n'),kind:'Mapping'}),true);items=w.helperItems('mapping');assert.deepEqual(items.map(item=>item.text.trim()),['/case']);
+    w.acceptOpened(opened({...draft('a','/pair @A -> @B\n/case #x -> #y'),kind:'Mapping'}),true);items=w.helperItems('mapping');assert(!items.some(item=>item.text.trim()==='/pair'));assert(items.some(item=>item.text.trim()==='/other hide'));assert(items.some(item=>item.text.trim()==='/other disable'));w.destroy();
+});
+test('closing a condition group adds one structural newline after a predicate and supports blank lines and Undo',async()=>{
+    const {parseRuleWriting}=await import('../../resources/js/configurator-rule-writing-model.js');
+    for(const source of ['/when all {\n @A = #x','/when all {\r\n @A = #x','/when all {\r @A = #x','/when all {\n @A = #x\n  ']) {
+        const w=workspace(async()=>({})),text=source.replace(/\r\n|\r/g,'\n');w.acceptOpened(opened(draft('a',source)));const element={value:text,isConnected:true,selectionStart:text.length,selectionEnd:text.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b},focus(){}};w.$refs={source:element};w.rememberEditor();assert.equal(w.closeConditionGroup(),true);assert.deepEqual(parseRuleWriting(w.current.source).diagnostics,[]);assert(w.current.source.startsWith(source));assert.equal(w.current.sequence,1);
+        assert.equal(w.current.source,source+(source.endsWith('  ')?'}':'\n}'));w.history('undo');assert.equal(w.current.source,source);w.destroy();
+    }
+});
+
+test('a close-group Choice shares the structural newline edit and exact raw-source Undo',async()=>{
+    const {parseRuleWriting}=await import('../../resources/js/configurator-rule-writing-model.js');
+    const source='// שלום 😀\r\n/when all {\r\n @A = #x',w=workspace(async()=>({})),text=source.replaceAll('\r\n','\n');w.acceptOpened(opened(draft('a',source)));
+    const element={value:text,isConnected:true,selectionStart:text.length,selectionEnd:text.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b},focus(){}};w.$refs={source:element};w.openChoices('commands');
+
+    assert.equal(w.applyWritingAction(w.context.choices.find(action=>action.insertText==='}')),true);
+
+    assert.equal(w.current.source,source+'\n}');assert.deepEqual(parseRuleWriting(w.current.source).diagnostics,[]);assert.equal(w.current.sequence,1);w.history('undo');assert.equal(w.current.source,source);w.destroy();
+});
+
+test('the newest References refresh wins over an older reply without changing authoring or saved state',async()=>{
+    const older=deferred(),newer=deferred(),calls=[],w=workspace(async(op,input)=>{calls.push([op,input]);return calls.length===1?older.promise:newer.promise;});
+    w.acceptOpened(opened({...draft('a','// שלום 😀\r\n/when @A in #x |'),revision:7}));w.current.caret=[8,12];w.current.unknown=true;w.current.conflict=true;w.blocked.a=true;w.receipt='existing saved receipt';w.references={fingerprint:'original'};
+    const before=JSON.stringify({buffer:w.current,receipt:w.receipt,blocked:w.blocked}),first=w.refreshReferences(),second=w.refreshReferences();
+
+    newer.resolve({ok:true,data:{fingerprint:'newest',attributes:[]}});assert.equal(await second,true);
+    older.resolve({ok:true,data:{fingerprint:'older',attributes:[]}});assert.equal(await first,false);
+
+    assert.deepEqual(w.references,{fingerprint:'newest',attributes:[]});assert.equal(w.referenceError,'');assert.equal(w.referencesLoading,false);
+    assert.equal(JSON.stringify({buffer:w.current,receipt:w.receipt,blocked:w.blocked}),before);assert.deepEqual(calls,[['references',{}],['references',{}]]);w.destroy();
+});
+
+test('References success and failure arriving after destroy cannot change state or replay requests',async()=>{
+    for(const response of [{ok:true,data:{fingerprint:'late',attributes:[]}},{ok:false,type:'unknown',message:'Late failed read'}]) {
+        const pending=deferred(),calls=[],w=workspace(async(op,input)=>{calls.push([op,input]);return pending.promise;});
+        w.acceptOpened(opened({...draft('a','// raw\r\nשלום 😀'),revision:4}));w.current.caret=[1,3];w.current.unknown=true;w.current.conflict=true;w.blocked.a=true;w.receipt='saved before close';w.references={fingerprint:'before'};w.referenceError='Earlier advisory read';
+        const state=()=>JSON.stringify({buffer:w.current,receipt:w.receipt,blocked:w.blocked,references:w.references,loading:w.referencesLoading,error:w.referenceError});
+        const reading=w.refreshReferences();w.destroy();const before=state();
+
+        pending.resolve(response);assert.equal(await reading,false);
+
+        assert.equal(state(),before);assert.deepEqual(calls,[['references',{}]]);
+    }
+});
+
+test('opening D clears Learning selected in A without changing source history receipts revisions or requests',async()=>{
+    const calls=[],w=workspace(async(op)=>{calls.push(op);return {}});
+    w.references={fingerprint:'r1',attributes:[{key:'A',label:'Source A',values:[{semantic_id:'x',label:'A-only Value'}]}]};
+    w.acceptOpened(opened({...draft('d',''),kind:'Mapping'}));w.acceptOpened(opened(draft('a','/when @A in ')));w.current.caret=[12,12];w.receipt='saved receipt';
+    w.learningAction=w.context.choices.find(action=>action.insertText==='#x');assert.equal(w.learningAction.label,'A-only Value · x');
+    const authoring=()=>JSON.stringify({buffers:Object.values(w.buffers).map(b=>({id:b.id,source:b.source,caret:b.caret,sequence:b.sequence,revision:b.revision,ack:b.ack,history:[b.history.source,b.history.canUndo,b.history.canRedo],unknown:b.unknown,conflict:b.conflict})),receipt:w.receipt,blocked:w.blocked});
+    const before=authoring();
+
+    await w.openDraft('d');
+
+    assert.equal(w.currentId,'d');assert.equal(w.learningAction,null);assert.equal(w.activeLearningAction,null);assert.equal(w.context.learning.title,'Write one complete instruction');assert.equal(authoring(),before);assert.deepEqual(calls,[]);w.destroy();
+});
+
+test('Learning retains applicable same-draft help and fences it after a caret source or reference change',async()=>{
+    const calls=[],w=workspace(async(op)=>{calls.push(op);return {}}),source='/when @A in ';
+    w.references={fingerprint:'r1',attributes:[{key:'A',label:'A',values:[{semantic_id:'x',label:'X'}]}]};w.acceptOpened(opened(draft('a',source)));
+    const element={value:source,isConnected:true,selectionStart:source.length,selectionEnd:source.length,setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b},focus(){}};w.$refs={source:element};w.rememberEditor();
+    const action=w.context.choices.find(item=>item.insertText==='#x');w.learningAction=action;
+
+    w.setDisplay('writing',{theme:'dark'});await w.openDraft('a');w.sourceSelection({target:element});assert.equal(w.activeLearningAction,action);
+    element.selectionStart=0;element.selectionEnd=0;w.sourceSelection({target:element});assert.equal(w.activeLearningAction,null);
+    element.selectionStart=source.length;element.selectionEnd=source.length;w.sourceSelection({target:element});assert.equal(w.activeLearningAction,action);
+    w.references={...w.references,fingerprint:'r2'};assert.equal(w.activeLearningAction,null);w.references={...w.references,fingerprint:'r1'};
+    append(w,'#x');assert.equal(w.activeLearningAction,null);assert.deepEqual(calls,[]);w.destroy();
+});
