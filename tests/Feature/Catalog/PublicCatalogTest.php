@@ -100,7 +100,7 @@ test('catalog SSR uses approved headings deep family titles and escaped attribut
     expect($xpath->query('.//p[@class="catalog-model-reference" and text()="0"]', $card)->length)->toBe(1);
     expect($xpath->query('//div[contains(@class,"catalog-model-results-heading")]//p[contains(@class,"catalog-model-reference")]')->item(0)->textContent)->toBe('Real root / Real middle');
     expect($card->textContent)->toContain('Real root / Real middle / Deep <branch> Valve $&', '1 active direct products', '<script>fact</script>', ' 0 ', '001');
-    expect($xpath->query('.//script | .//img', $card)->length)->toBe(0);
+    expect($xpath->query('.//script | .//img[not(ancestor::template)] | .//*[@onerror]', $card)->length)->toBe(0);
     expect($xpath->query('.//*[@data-group-card-attributes]//dt[contains(@class,"sr-only")]', $card)->length)->toBe(1);
     expect(strpos($dom->saveHTML($card), 'data-group-card-attributes'))->toBeLessThan(strpos($dom->saveHTML($card), 'data-group-card-tags'));
     expect($xpath->query('//*[@data-catalog-model-id="'.$missing->id.'"]')->item(0)->textContent)->toContain('Not specified');
@@ -303,11 +303,11 @@ test('a difference in product twenty five is shown in every earlier chunk with s
     expect($response['propertiesNotice'])->toBeNull();
 });
 
-test('a card exposes one escaped native link with configured labels and appearance', function () {
+test('a card exposes one escaped native link with configured labels and appearance', function (int $columns) {
     $group = Group::factory()->create(['name' => 'Leaf <script>bad</script>', 'result_settings' => [
         'card_properties' => ['Working_Pressure', 'Model'], 'card_only_differences' => false,
         'card_show_labels' => true, 'card_property_layout' => 'below_center',
-        'card_property_columns' => 1, 'card_padding_block' => 0, 'card_padding_inline' => 20,
+        'card_property_columns' => $columns, 'card_padding_block' => 0, 'card_padding_inline' => 20,
     ]]);
     GroupFilter::factory()->for($group)->create(['property_key' => 'Working_Pressure', 'label' => 'Pressure <img onerror=bad>']);
     $product = Product::factory()->for($group)->create(['product_code' => 'LINK-01', 'profile_fields' => ['Working_Pressure' => '01', 'Model' => '<script>alert(1)</script>']]);
@@ -319,12 +319,12 @@ test('a card exposes one escaped native link with configured labels and appearan
 
     expect($link->getAttribute('href'))->toBe(route('catalog.products.show', $product->id));
     expect($xpath->query('//article//a')->length)->toBe(1);
-    expect($xpath->query('//article//script | //article//img')->length)->toBe(0);
+    expect($xpath->query('//article//script | //article//img[not(ancestor::template)] | //article//*[@onerror]')->length)->toBe(0);
     expect($xpath->evaluate('string(//dt[1])'))->toBe('Pressure <img onerror=bad>');
     expect($xpath->evaluate('string(//dd[1])'))->toBe('01');
-    expect($html)->toContain('data-property-layout="below_center"', 'data-property-columns="1"', '--catalog-card-padding-block:0px', '--catalog-card-padding-inline:20px');
+    expect($html)->toContain('data-property-layout="below_center"', 'data-property-columns="'.$columns.'"', '--catalog-card-padding-block:0px', '--catalog-card-padding-inline:20px');
     expect($link->getAttribute('aria-labelledby'))->toBe('catalog-card-title-'.$group->id.'-'.$product->id);
-});
+})->with([1, 2, 3]);
 
 test('ordinary and preset matches determine the displayed differences using exact result identities', function () {
     $group = Group::factory()->create(['result_settings' => ['card_properties' => ['Model', 'Working_Pressure']]]);

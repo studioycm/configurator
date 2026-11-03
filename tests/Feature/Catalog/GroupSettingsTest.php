@@ -392,12 +392,12 @@ test('missing appearance settings resolve to compact defaults without rewriting 
     expect($group->fresh()->getAttributes())->toBe($before);
 });
 
-test('appearance retains typed values and layout through partial updates and unchanged saves', function () {
+test('appearance retains typed values and layout through partial updates and unchanged saves', function (int $columns) {
     $group = Group::factory()->create();
     $action = app(SaveGroupSettings::class);
     $action->handle($this->actor, $group, groupSettingsInput(['result_settings' => [
         'card_only_differences' => '0', 'card_show_labels' => '1',
-        'card_property_layout' => 'below_center', 'card_property_columns' => '1',
+        'card_property_layout' => 'below_center', 'card_property_columns' => (string) $columns,
         'card_padding_block' => '0', 'card_padding_inline' => '20',
     ]]));
     $action->handle($this->actor, $group, groupSettingsInput(['result_settings' => ['card_show_labels' => false]]));
@@ -407,13 +407,14 @@ test('appearance retains typed values and layout through partial updates and unc
 
     expect($group->fresh()->result_settings)->toMatchArray([
         'card_only_differences' => false, 'card_show_labels' => false,
-        'card_property_layout' => 'below_center', 'card_property_columns' => 1,
+        'card_property_layout' => 'below_center', 'card_property_columns' => $columns,
         'card_padding_block' => 0, 'card_padding_inline' => 20,
         'default_page_size' => 10, 'page_size_options' => [1, 2, 10],
     ]);
     expect($revision)->toBe('3')->and((string) $group->fresh()->catalog_revision)->toBe($revision);
     expect($group->fresh()->getAttributes())->toBe($before);
-});
+    expect(CatalogPolicy::resultSettings($group->fresh()->result_settings)['card_property_columns'])->toBe($columns);
+})->with([1, 2, 3]);
 
 test('saving implicit appearance defaults preserves the legacy group revision', function () {
     $group = Group::factory()->create(['result_settings' => ['max_results' => 6, 'cards_per_row' => 6]]);
@@ -445,7 +446,7 @@ test('invalid appearance rejects the complete group draft', function (string $ke
     'differences is boolean' => ['card_only_differences', 'false'],
     'labels is boolean' => ['card_show_labels', 'yes'],
     'layout is bounded' => ['card_property_layout', 'custom'],
-    'one or two property columns' => ['card_property_columns', 3],
+    'one to three property columns' => ['card_property_columns', 4],
     'integral property columns' => ['card_property_columns', 1.5],
     'nonnegative block padding' => ['card_padding_block', -1],
     'bounded block padding' => ['card_padding_block', 17],

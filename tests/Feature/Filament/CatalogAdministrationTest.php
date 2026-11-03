@@ -193,7 +193,7 @@ test('group appearance saves through the editor and keeps its layout when labels
             'catalog_settings.result_settings.card_only_differences' => false,
             'catalog_settings.result_settings.card_show_labels' => true,
             'catalog_settings.result_settings.card_property_layout' => 'above_center',
-            'catalog_settings.result_settings.card_property_columns' => '1',
+            'catalog_settings.result_settings.card_property_columns' => '3',
             'catalog_settings.result_settings.card_padding_block' => '2',
             'catalog_settings.result_settings.card_padding_inline' => '3',
         ])->call('save')->assertHasNoFormErrors();
@@ -201,7 +201,7 @@ test('group appearance saves through the editor and keeps its layout when labels
     expect((string) $group->fresh()->catalog_revision)->toBe('2');
     expect($group->fresh()->result_settings)->toMatchArray([
         'card_only_differences' => false, 'card_show_labels' => true,
-        'card_property_layout' => 'above_center', 'card_property_columns' => 1,
+        'card_property_layout' => 'above_center', 'card_property_columns' => 3,
         'card_padding_block' => 2, 'card_padding_inline' => 3,
     ]);
     Livewire::test(EditGroup::class, ['record' => $group->id])

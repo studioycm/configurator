@@ -53,7 +53,7 @@ class BatchCatalogChanges
                 'products_debounce_ms' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'min:0', 'max:2147483600', 'multiple_of:100']],
                 'card_only_differences' => $boolean, 'card_show_labels' => $boolean,
                 'card_property_layout' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))], 'options' => array_map(fn (string $label): string => __($label), CatalogPolicy::CARD_LAYOUTS)],
-                'card_property_columns' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in([1, 2])], 'options' => [1 => '1', 2 => '2']],
+                'card_property_columns' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::in([1, 2, 3])], 'options' => [1 => '1', 2 => '2', 3 => '3']],
                 'card_padding_block' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'between:0,16']],
                 'card_padding_inline' => ['type' => 'integer', 'nullable' => false, 'rules' => ['required', 'integer', 'between:0,20']]],
             'configurator-attributes' => ['label_override' => $text(true), 'help_text' => $text(true, 1000), 'input_type' => ['type' => 'select', 'nullable' => false, 'rules' => ['required', Rule::enum(ConfigInputType::class)], 'options' => collect(ConfigInputType::cases())->mapWithKeys(fn (ConfigInputType $type): array => [$type->value => $type->getLabel()])->all()]],

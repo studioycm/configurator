@@ -203,7 +203,7 @@ class SaveGroupSettings
             'settings.result_settings.card_only_differences' => ['sometimes', 'required', 'boolean'],
             'settings.result_settings.card_show_labels' => ['sometimes', 'required', 'boolean'],
             'settings.result_settings.card_property_layout' => ['sometimes', 'required', Rule::in(array_keys(CatalogPolicy::CARD_LAYOUTS))],
-            'settings.result_settings.card_property_columns' => ['sometimes', 'required', 'integer', Rule::in([1, 2])],
+            'settings.result_settings.card_property_columns' => ['sometimes', 'required', 'integer', Rule::in([1, 2, 3])],
             'settings.result_settings.card_padding_block' => ['sometimes', 'required', 'integer', 'between:0,16'],
             'settings.result_settings.card_padding_inline' => ['sometimes', 'required', 'integer', 'between:0,20'],
         ];

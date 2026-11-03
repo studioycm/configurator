@@ -59,7 +59,7 @@ class CatalogPolicy
             'card_only_differences' => is_bool($settings['card_only_differences'] ?? null) ? $settings['card_only_differences'] : true,
             'card_show_labels' => is_bool($settings['card_show_labels'] ?? null) ? $settings['card_show_labels'] : false,
             'card_property_layout' => is_string($layout) && array_key_exists($layout, self::CARD_LAYOUTS) ? $layout : 'inline_space_between',
-            'card_property_columns' => is_int($propertyColumns) && in_array($propertyColumns, [1, 2], true) ? $propertyColumns : 2,
+            'card_property_columns' => is_int($propertyColumns) && in_array($propertyColumns, [1, 2, 3], true) ? $propertyColumns : 2,
             'card_padding_block' => is_int($blockPadding) && $blockPadding >= 0 && $blockPadding <= 16 ? $blockPadding : 4,
             'card_padding_inline' => is_int($inlinePadding) && $inlinePadding >= 0 && $inlinePadding <= 20 ? $inlinePadding : 6,
         ];

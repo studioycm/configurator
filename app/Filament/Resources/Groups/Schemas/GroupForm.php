@@ -127,7 +127,7 @@ class GroupForm
                     ->helperText(fn (Get $get): string => $get('catalog_settings.result_settings.card_show_labels') ? __('admin.workspace.editor.layout_active') : __('admin.workspace.editor.layout_inactive'))
                     ->extraAttributes(fn (Get $get): array => ['class' => $get('catalog_settings.result_settings.card_show_labels') ? 'catalog-dependent-field' : 'catalog-dependent-field catalog-dependent-field-inactive']),
                 Select::make('catalog_settings.result_settings.card_property_columns')->label(__('catalog.groups.labels.property_columns'))
-                    ->options([1 => '1', 2 => '2'])->default(2)->required()->selectablePlaceholder(false),
+                    ->options([1 => '1', 2 => '2', 3 => '3'])->default(2)->required()->selectablePlaceholder(false),
             ])->columns(2)->columnSpanFull(),
             Section::make(__('catalog.groups.headings.card_spacing'))->key(fn (Section $component): string => 'card-spacing::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 TextInput::make('catalog_settings.result_settings.card_padding_block')->label(__('catalog.groups.labels.block_padding'))

@@ -97,10 +97,15 @@ test('invalid later row blocks the whole selected set and unknown fields are rej
 test('Group batch presentation preserves all card settings and related lists', function () {
     $group = Group::factory()->create(['result_settings' => ['card_show_labels' => false, 'card_property_layout' => 'above_start', 'card_padding_inline' => 11]]);
     $action = app(BatchCatalogChanges::class);
-    $intent = ['operation' => 'edit', 'changes' => [['field' => 'card_show_labels', 'mode' => 'set', 'value' => true]]];
+    $intent = ['operation' => 'edit', 'changes' => [['field' => 'card_show_labels', 'mode' => 'set', 'value' => true], ['field' => 'card_property_columns', 'mode' => 'set', 'value' => 3]]];
     $preview = $action->preview(auth()->user(), 'groups', [$group->id], $intent);
     $action->apply(auth()->user(), 'groups', [$group->id], $intent, $preview['token']);
-    expect($group->fresh()->result_settings['card_show_labels'])->toBeTrue()->and($group->fresh()->result_settings['card_property_layout'])->toBe('above_start')->and($group->fresh()->result_settings['card_padding_inline'])->toBe(11);
+    expect($group->fresh()->result_settings['card_show_labels'])->toBeTrue()->and($group->fresh()->result_settings['card_property_layout'])->toBe('above_start')->and($group->fresh()->result_settings['card_padding_inline'])->toBe(11)
+        ->and($group->fresh()->result_settings['card_property_columns'])->toBe(3);
+    $invalid = ['operation' => 'edit', 'changes' => [['field' => 'card_property_columns', 'mode' => 'set', 'value' => 4]]];
+    $before = $group->fresh()->getAttributes();
+    expect(fn () => $action->preview(auth()->user(), 'groups', [$group->id], $invalid))->toThrow(ValidationException::class);
+    expect($group->fresh()->getAttributes())->toBe($before);
     $this->actingAs(User::factory()->create());
     expect(fn () => $action->preview(auth()->user(), 'groups', [$group->id], $intent))->toThrow(AuthorizationException::class);
 });
