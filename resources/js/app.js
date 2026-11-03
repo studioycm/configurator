@@ -24,6 +24,8 @@ import { tablePagination } from './table-pagination';
 import { configuratorProductSearch } from './configurator-product-search';
 import { configuratorPreviewWorkspace } from './configurator-preview-workspace';
 import { configuratorPreviewDisplay } from './configurator-preview-display';
+import { ruleWritingWorkspace } from './configurator-rule-writing';
+import { ruleWritingEntry } from './configurator-rule-writing-entry';
 
 window.uiInterpolate = interpolate;
 window.workspaceColumnManager = workspaceColumnManager;
@@ -58,6 +60,8 @@ function registerComponents(Alpine) {
     Alpine.data('localTableProfile', localTableProfile);
     Alpine.data('adminBrowserProfile', adminBrowserProfile);
     Alpine.data('configuratorPreviewDisplay', configuratorPreviewDisplay);
+    Alpine.data('ruleWritingWorkspace', ruleWritingWorkspace);
+    Alpine.data('ruleWritingEntry', ruleWritingEntry);
     Alpine.data('localSectionProfile', localSectionProfile);
     Alpine.data('localOrderProfile', localOrderProfile);
     Alpine.data('catalogFilters', catalogFilters);

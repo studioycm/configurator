@@ -1,0 +1,1062 @@
+[
+  {
+    "source": "/when all {\n  @body in #iron | #steel\n  any {\n    $\"לחץ.size\" != \"0\"\n    $Connection_Type contains \"Flange\"\n  }\n}\n/hide @bolts",
+    "kinds": [
+      "condition",
+      "group",
+      "hide"
+    ],
+    "valid": true,
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "SelectionOption",
+        "reference": "body",
+        "operator": "In",
+        "values": [
+          "iron",
+          "steel"
+        ]
+      },
+      {
+        "kind": "group",
+        "operator": "Any",
+        "children": [
+          {
+            "kind": "condition",
+            "source_kind": "ProductProperty",
+            "reference": "לחץ.size",
+            "operator": "NotEquals",
+            "values": [
+              "0"
+            ]
+          },
+          {
+            "kind": "condition",
+            "source_kind": "ProductProperty",
+            "reference": "Connection_Type",
+            "operator": "Contains",
+            "values": [
+              "Flange"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "bolts",
+        "values": [],
+        "text": null
+      }
+    ],
+    "name": "original_1"
+  },
+  {
+    "source": "/when @body = #iron\n/or @body = #steel\n/hide @bolts",
+    "kinds": [
+      "group",
+      "hide"
+    ],
+    "valid": true,
+    "ast": [
+      {
+        "kind": "group",
+        "operator": "Any",
+        "children": [
+          {
+            "kind": "condition",
+            "source_kind": "SelectionOption",
+            "reference": "body",
+            "operator": "Equals",
+            "values": [
+              "iron"
+            ]
+          },
+          {
+            "kind": "condition",
+            "source_kind": "SelectionOption",
+            "reference": "body",
+            "operator": "Equals",
+            "values": [
+              "steel"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "bolts",
+        "values": [],
+        "text": null
+      }
+    ],
+    "name": "original_2"
+  },
+  {
+    "source": "/set-hint @body [[\r\nBeny's \"quote\" and \\]] delimiter\r\n]]",
+    "kinds": [
+      "set-hint"
+    ],
+    "valid": true,
+    "text": "\r\nBeny's \"quote\" and ]] delimiter\r\n",
+    "ast": [
+      {
+        "kind": "set-hint",
+        "attribute": "body",
+        "values": [],
+        "text": "\r\nBeny's \"quote\" and ]] delimiter\r\n"
+      }
+    ],
+    "name": "original_3"
+  },
+  {
+    "source": "/when all {\n any {\n all {\n @body = #iron\n }\n }\n}",
+    "valid": false,
+    "name": "original_4"
+  },
+  {
+    "source": "/when @body contains #iron",
+    "valid": false,
+    "name": "original_5"
+  },
+  {
+    "source": "/when @body in #iron | #iron",
+    "valid": false,
+    "name": "original_6"
+  },
+  {
+    "source": "/set-label @body \"unterminated",
+    "valid": false,
+    "name": "original_7"
+  },
+  {
+    "source": "/set-hint @body [[unterminated",
+    "valid": false,
+    "name": "original_8"
+  },
+  {
+    "source": "/when $\"literal.key\" not-in \"001\" | \"0\"",
+    "kinds": [
+      "condition"
+    ],
+    "valid": true,
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "literal.key",
+        "operator": "NotIn",
+        "values": [
+          "001",
+          "0"
+        ]
+      }
+    ],
+    "name": "original_9"
+  },
+  {
+    "name": "mapping_multiple_cases",
+    "source": "// retain\r\n/pair @Body_1 -> @Bolts.2\r\n/case #IRON | #steel-1 -> #steel | #stst316\r\n/other hide\r\n/case #polymer -> #steel\r\n/other disable\r\n",
+    "valid": true,
+    "kinds": [
+      "pair",
+      "case",
+      "other",
+      "case",
+      "other"
+    ],
+    "ast": [
+      {
+        "kind": "pair",
+        "source": "Body_1",
+        "target": "Bolts.2"
+      },
+      {
+        "kind": "case",
+        "source_values": [
+          "IRON",
+          "steel-1"
+        ],
+        "target_values": [
+          "steel",
+          "stst316"
+        ]
+      },
+      {
+        "kind": "other",
+        "behavior": "Hide"
+      },
+      {
+        "kind": "case",
+        "source_values": [
+          "polymer"
+        ],
+        "target_values": [
+          "steel"
+        ]
+      },
+      {
+        "kind": "other",
+        "behavior": "Disable"
+      }
+    ]
+  },
+  {
+    "name": "every_effect",
+    "source": "/allow @A #one | #two\n/exclude @A #two\n/hide @B #one\n/disable @C #three\n/hide @D\n/set-label @A \"0\"\n/set-display-value @B #one \"001\"\n/set-hint @C [[first\n/hide @fake // literal | ->\nlast]]",
+    "valid": true,
+    "kinds": [
+      "allow",
+      "exclude",
+      "hide",
+      "disable",
+      "hide",
+      "set-label",
+      "set-display-value",
+      "set-hint"
+    ],
+    "ast": [
+      {
+        "kind": "allow",
+        "attribute": "A",
+        "values": [
+          "one",
+          "two"
+        ],
+        "text": null
+      },
+      {
+        "kind": "exclude",
+        "attribute": "A",
+        "values": [
+          "two"
+        ],
+        "text": null
+      },
+      {
+        "kind": "hide",
+        "attribute": "B",
+        "values": [
+          "one"
+        ],
+        "text": null
+      },
+      {
+        "kind": "disable",
+        "attribute": "C",
+        "values": [
+          "three"
+        ],
+        "text": null
+      },
+      {
+        "kind": "hide",
+        "attribute": "D",
+        "values": [],
+        "text": null
+      },
+      {
+        "kind": "set-label",
+        "attribute": "A",
+        "values": [],
+        "text": "0"
+      },
+      {
+        "kind": "set-display-value",
+        "attribute": "B",
+        "values": [
+          "one"
+        ],
+        "text": "001"
+      },
+      {
+        "kind": "set-hint",
+        "attribute": "C",
+        "values": [],
+        "text": "first\n/hide @fake // literal | ->\nlast"
+      }
+    ]
+  },
+  {
+    "name": "flat_and_operators",
+    "source": "/when @A != #one\n/and @B not-in #two | #three\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "condition",
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "SelectionOption",
+        "reference": "A",
+        "operator": "NotEquals",
+        "values": [
+          "one"
+        ]
+      },
+      {
+        "kind": "condition",
+        "source_kind": "SelectionOption",
+        "reference": "B",
+        "operator": "NotIn",
+        "values": [
+          "two",
+          "three"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "all_groups",
+    "source": "/when all {\n  all {\n    @A = #one\n    @B in #two | #three\n  }\n  $Pressure contains \"psi\"\n}\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "group",
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "group",
+        "operator": "All",
+        "children": [
+          {
+            "kind": "condition",
+            "source_kind": "SelectionOption",
+            "reference": "A",
+            "operator": "Equals",
+            "values": [
+              "one"
+            ]
+          },
+          {
+            "kind": "condition",
+            "source_kind": "SelectionOption",
+            "reference": "B",
+            "operator": "In",
+            "values": [
+              "two",
+              "three"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "Pressure",
+        "operator": "Contains",
+        "values": [
+          "psi"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "literal_keys_and_operands",
+    "source": "/when all {\n  $\"Connection Size\" = \"001\"\n  $\"literal.key\" != \"0\"\n  $\"לחץ\" in \"|\" | \"->\" | \"x\"\n  $\"quote\\\"slash\\\\\" not-in \"yes\" | \"no\"\n}\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "condition",
+      "condition",
+      "condition",
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "Connection Size",
+        "operator": "Equals",
+        "values": [
+          "001"
+        ]
+      },
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "literal.key",
+        "operator": "NotEquals",
+        "values": [
+          "0"
+        ]
+      },
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "לחץ",
+        "operator": "In",
+        "values": [
+          "|",
+          "->",
+          "x"
+        ]
+      },
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "quote\"slash\\",
+        "operator": "NotIn",
+        "values": [
+          "yes",
+          "no"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "all_product_literal",
+    "source": "/when $all = \"x\"\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "all",
+        "operator": "Equals",
+        "values": [
+          "x"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "all_attribute_literal",
+    "source": "/when @all = #one\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "SelectionOption",
+        "reference": "all",
+        "operator": "Equals",
+        "values": [
+          "one"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "command_product_literal",
+    "source": "/when all {\n  $\"/hide\" = \"x\"\n}\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "/hide",
+        "operator": "Equals",
+        "values": [
+          "x"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "legacy_quoted_command",
+    "source": "\"/hide\" @C",
+    "valid": true,
+    "kinds": [
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "legacy_quoted_wrapper",
+    "source": "/when \"all\" \"{\"\n  @A = #one\n\"}\"\n/hide @C",
+    "valid": true,
+    "kinds": [
+      "condition",
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "SelectionOption",
+        "reference": "A",
+        "operator": "Equals",
+        "values": [
+          "one"
+        ]
+      },
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "legacy_quoted_pipe",
+    "source": "/when @A in #one \"|\" #two",
+    "valid": true,
+    "kinds": [
+      "condition"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "SelectionOption",
+        "reference": "A",
+        "operator": "In",
+        "values": [
+          "one",
+          "two"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "legacy_quoted_arrow",
+    "source": "/pair @A \"->\" @B\n/case #one \"->\" #two\n/other \"hide\"",
+    "valid": true,
+    "kinds": [
+      "pair",
+      "case",
+      "other"
+    ],
+    "ast": [
+      {
+        "kind": "pair",
+        "source": "A",
+        "target": "B"
+      },
+      {
+        "kind": "case",
+        "source_values": [
+          "one"
+        ],
+        "target_values": [
+          "two"
+        ]
+      },
+      {
+        "kind": "other",
+        "behavior": "Hide"
+      }
+    ]
+  },
+  {
+    "name": "legacy_quoted_operator",
+    "source": "/when $P \"in\" \"001\" \"|\" \"1\"",
+    "valid": true,
+    "kinds": [
+      "condition"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "P",
+        "operator": "In",
+        "values": [
+          "001",
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "empty_source",
+    "source": "",
+    "valid": true,
+    "kinds": [],
+    "ast": []
+  },
+  {
+    "name": "comments_only",
+    "source": "  // /hide @fake\r\n// case -> #fake\n",
+    "valid": true,
+    "kinds": [],
+    "ast": []
+  },
+  {
+    "name": "condition_without_outcome",
+    "source": "/when $Unknown = \"\"",
+    "valid": true,
+    "kinds": [
+      "condition"
+    ],
+    "ast": [
+      {
+        "kind": "condition",
+        "source_kind": "ProductProperty",
+        "reference": "Unknown",
+        "operator": "Equals",
+        "values": [
+          ""
+        ]
+      }
+    ]
+  },
+  {
+    "name": "case_without_pair",
+    "source": "/case #one -> #two",
+    "valid": true,
+    "kinds": [
+      "case"
+    ],
+    "ast": [
+      {
+        "kind": "case",
+        "source_values": [
+          "one"
+        ],
+        "target_values": [
+          "two"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "other_without_case",
+    "source": "/other disable",
+    "valid": true,
+    "kinds": [
+      "other"
+    ],
+    "ast": [
+      {
+        "kind": "other",
+        "behavior": "Disable"
+      }
+    ]
+  },
+  {
+    "name": "empty_outer_group",
+    "source": "/when all {\n}",
+    "valid": true,
+    "kinds": [],
+    "ast": []
+  },
+  {
+    "name": "unknown_reference_is_syntax",
+    "source": "/hide @Unknown #not_in_catalog",
+    "valid": true,
+    "kinds": [
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "hide",
+        "attribute": "Unknown",
+        "values": [
+          "not_in_catalog"
+        ],
+        "text": null
+      }
+    ]
+  },
+  {
+    "name": "json_controls_and_pair",
+    "source": "/set-hint @A \"\\u0000\\t\\n\\uD83D\\uDE00\"",
+    "valid": true,
+    "kinds": [
+      "set-hint"
+    ],
+    "ast": [
+      {
+        "kind": "set-hint",
+        "attribute": "A",
+        "values": [],
+        "text": "\u0000\t\n😀"
+      }
+    ]
+  },
+  {
+    "name": "text_backslash_escape",
+    "source": "/set-hint @A [[Beny's \"quote\" \\\\ and \\]] end]]",
+    "valid": true,
+    "kinds": [
+      "set-hint"
+    ],
+    "ast": [
+      {
+        "kind": "set-hint",
+        "attribute": "A",
+        "values": [],
+        "text": "Beny's \"quote\" \\ and ]] end"
+      }
+    ]
+  },
+  {
+    "name": "unicode_span",
+    "source": "// שלום 😀\r\n  /hide @C",
+    "valid": true,
+    "kinds": [
+      "hide"
+    ],
+    "ast": [
+      {
+        "kind": "hide",
+        "attribute": "C",
+        "values": [],
+        "text": null
+      }
+    ],
+    "spans": [
+      {
+        "path": [
+          0
+        ],
+        "start": 20,
+        "end": 28,
+        "raw": "/hide @C"
+      }
+    ]
+  },
+  {
+    "name": "multiline_span",
+    "source": "/set-hint @A [[שורה\r\n😀]]",
+    "valid": true,
+    "kinds": [
+      "set-hint"
+    ],
+    "ast": [
+      {
+        "kind": "set-hint",
+        "attribute": "A",
+        "values": [],
+        "text": "שורה\r\n😀"
+      }
+    ],
+    "spans": [
+      {
+        "path": [
+          0
+        ],
+        "start": 0,
+        "end": 31,
+        "raw": "/set-hint @A [[שורה\r\n😀]]"
+      }
+    ]
+  },
+  {
+    "name": "comma_rejected",
+    "source": "/when $P in \"x\", \"y\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 20
+    }
+  },
+  {
+    "name": "short_command_rejected",
+    "source": "/w @A = #one",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 12
+    }
+  },
+  {
+    "name": "unknown_command",
+    "source": "/unknown @A",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 11
+    }
+  },
+  {
+    "name": "trailing_pipe",
+    "source": "/when @A in #one |",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 18
+    }
+  },
+  {
+    "name": "duplicate_product_values",
+    "source": "/when $P in \"001\" | \"001\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 25
+    }
+  },
+  {
+    "name": "multiple_equality_values",
+    "source": "/when $P = \"one\" | \"two\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 24
+    }
+  },
+  {
+    "name": "attribute_contains",
+    "source": "/when @A contains #one",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 22
+    }
+  },
+  {
+    "name": "quoted_attribute_reference",
+    "source": "/hide @\"A\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 10
+    }
+  },
+  {
+    "name": "single_quotes",
+    "source": "/set-hint @A 'text'",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 19
+    }
+  },
+  {
+    "name": "missing_effect_values",
+    "source": "/allow @A",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 9
+    }
+  },
+  {
+    "name": "missing_effect_text",
+    "source": "/set-hint @A",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 12
+    }
+  },
+  {
+    "name": "empty_child",
+    "source": "/when all {\n  any {\n  }\n}",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 22,
+      "end": 25
+    }
+  },
+  {
+    "name": "mixed_flat_joins",
+    "source": "/when @A = #one\n/and @B = #two\n/or @C = #three",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 31,
+      "end": 46
+    }
+  },
+  {
+    "name": "condition_after_outcome",
+    "source": "/hide @C\n/when @A = #one",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 9,
+      "end": 24
+    }
+  },
+  {
+    "name": "repeated_flat_start",
+    "source": "/when @A = #one\n/when @B = #two",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 16,
+      "end": 31
+    }
+  },
+  {
+    "name": "unclosed_group",
+    "source": "/when all {\n  @A = #one",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 14,
+      "end": 23
+    }
+  },
+  {
+    "name": "lexical_after_unicode",
+    "source": "// שלום 😀\r\n  /hide @C\r\n  %",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 33
+    }
+  },
+  {
+    "name": "dispatch_after_unicode",
+    "source": "// שלום 😀\r\n  /unknown @C",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 20,
+      "end": 31
+    }
+  },
+  {
+    "name": "json_error_after_valid",
+    "source": "/hide @C\n/set-hint @C \"\\uD800\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 30
+    }
+  },
+  {
+    "name": "json_reverse_surrogates",
+    "source": "/set-hint @C \"\\uDC00\\uD800\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 27
+    }
+  },
+  {
+    "name": "json_bad_escape",
+    "source": "/hide @C\n/set-hint @C \"\\q\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 26
+    }
+  },
+  {
+    "name": "json_literal_newline",
+    "source": "/hide @C\n/set-hint @C \"first\nsecond\"",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 36
+    }
+  },
+  {
+    "name": "unclosed_text_after_valid",
+    "source": "/hide @C\n/set-hint @C [[unfinished",
+    "valid": false,
+    "diagnostic": {
+      "code": "syntax",
+      "severity": "error",
+      "start": 0,
+      "end": 34
+    }
+  },
+  {
+    "name": "literal_BOM_text_blocks",
+    "source": "/set-hint @A [[﻿before\\]]﻿after]]",
+    "valid": true,
+    "kinds": [
+      "set-hint"
+    ],
+    "ast": [
+      {
+        "kind": "set-hint",
+        "attribute": "A",
+        "values": [],
+        "text": "﻿before]]﻿after"
+      }
+    ]
+  }
+]

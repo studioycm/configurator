@@ -9,6 +9,7 @@ use App\DTO\ConfiguratorInteraction;
 use App\Models\Attribute;
 use App\Models\CatalogContextSettings;
 use App\Models\Configurator;
+use App\Models\ConfiguratorRule;
 use App\Models\Option;
 use App\Models\Product;
 use App\Models\RuleCondition;
@@ -153,26 +154,47 @@ class ConfiguratorDefinitionLoader
         }
         $rules = [];
         foreach ($configurator->rules->sortBy(['priority', 'id']) as $rule) {
-            $row = ['id' => (string) $rule->id, ...$rule->only(['label', 'kind', 'is_active', 'priority'])];
-            foreach (['driver_configurator_attribute_id', 'target_configurator_attribute_id'] as $field) {
-                $row[$field] = $rule->$field === null ? null : (string) $rule->$field;
-            }
-            $row['conditions'] = $rule->conditions->whereNull('condition_group_id')->sortBy(['sort_order', 'id'])->map(fn (RuleCondition $condition): array => $this->condition($condition))->values()->all();
-            foreach ($rule->conditionGroups->sortBy(['sort_order', 'id']) as $group) {
-                $row['conditions'][] = ['id' => (string) $group->id, 'operator' => $group->operator, 'conditions' => $rule->conditions->where('condition_group_id', $group->id)->sortBy(['sort_order', 'id'])->map(fn (RuleCondition $condition): array => $this->condition($condition))->values()->all()];
-            }
-            $row['effects'] = [];
-            foreach ($rule->effects->sortBy('id') as $effect) {
-                $row['effects'][] = ['id' => (string) $effect->id, ...$effect->only(['kind', 'target_scope', 'display_value']), 'target_configurator_attribute_id' => (string) $effect->target_configurator_attribute_id, 'option_ids' => $effect->optionReferences->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all()];
-            }
-            $row['sets'] = [];
-            foreach ($rule->mappingSets->sortBy(['sort_order', 'id']) as $set) {
-                $row['sets'][] = ['id' => (string) $set->id, ...$set->only(['label', 'sort_order']), 'disallowed_target_behavior' => $set->disallowed_target_behavior->value, 'source_option_ids' => $set->sources->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all(), 'target_option_ids' => $set->targets->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all()];
-            }
-            $rules[] = $row;
+            $rules[] = $this->rule($rule);
         }
 
         return ['name' => $configurator->name, 'description' => $configurator->description, 'context_schema' => $configurator->context_schema ?? ['territory' => [], 'application' => []], 'hidden_context_options' => $configurator->hidden_context_options ?? ['territory' => [], 'application' => []], 'policy_overrides' => $configurator->policy_overrides ?? [], 'attributes' => $attributes, 'rules' => $rules];
+    }
+
+    /** @return array<string,mixed> Serialize caller-fresh preloaded relations without querying. */
+    public function rule(ConfiguratorRule $rule): array
+    {
+        foreach (['conditionGroups', 'conditions', 'effects', 'mappingSets'] as $relation) {
+            if (! $rule->relationLoaded($relation)) {
+                throw new \LogicException('Rule serialization requires freshly preloaded relations.');
+            }
+        }
+        foreach ([[$rule->conditions, ['optionReferences']], [$rule->effects, ['optionReferences']], [$rule->mappingSets, ['sources', 'targets']]] as [$rows, $relations]) {
+            foreach ($rows as $child) {
+                foreach ($relations as $relation) {
+                    if (! $child->relationLoaded($relation)) {
+                        throw new \LogicException('Rule serialization requires freshly preloaded child relations.');
+                    }
+                }
+            }
+        }
+        $row = ['id' => (string) $rule->id, ...$rule->only(['label', 'kind', 'is_active', 'priority'])];
+        foreach (['driver_configurator_attribute_id', 'target_configurator_attribute_id'] as $field) {
+            $row[$field] = $rule->$field === null ? null : (string) $rule->$field;
+        }
+        $row['conditions'] = $rule->conditions->whereNull('condition_group_id')->sortBy(['sort_order', 'id'])->map(fn (RuleCondition $condition): array => $this->condition($condition))->values()->all();
+        foreach ($rule->conditionGroups->sortBy(['sort_order', 'id']) as $group) {
+            $row['conditions'][] = ['id' => (string) $group->id, 'operator' => $group->operator, 'conditions' => $rule->conditions->where('condition_group_id', $group->id)->sortBy(['sort_order', 'id'])->map(fn (RuleCondition $condition): array => $this->condition($condition))->values()->all()];
+        }
+        $row['effects'] = [];
+        foreach ($rule->effects->sortBy('id') as $effect) {
+            $row['effects'][] = ['id' => (string) $effect->id, ...$effect->only(['kind', 'target_scope', 'display_value']), 'target_configurator_attribute_id' => (string) $effect->target_configurator_attribute_id, 'option_ids' => $effect->optionReferences->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all()];
+        }
+        $row['sets'] = [];
+        foreach ($rule->mappingSets->sortBy(['sort_order', 'id']) as $set) {
+            $row['sets'][] = ['id' => (string) $set->id, ...$set->only(['label', 'sort_order']), 'disallowed_target_behavior' => $set->disallowed_target_behavior->value, 'source_option_ids' => $set->sources->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all(), 'target_option_ids' => $set->targets->sortBy('id')->pluck('configurator_option_id')->map(fn (int $id): string => (string) $id)->all()];
+        }
+
+        return $row;
     }
 
     /** @param array<string, mixed> $data @return array{attribute_ids: list<int|string>, option_ids: list<int|string>} */

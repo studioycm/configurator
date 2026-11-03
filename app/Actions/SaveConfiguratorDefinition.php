@@ -15,6 +15,9 @@ use App\Models\RuleEffect;
 use App\Models\User;
 use App\Services\ConfiguratorDefinitionCompiler;
 use App\Services\ConfiguratorDefinitionLoader;
+use App\Services\ConfiguratorEditorChanges;
+use App\Services\ConfiguratorRuleRecords;
+use App\Services\ConfiguratorRuleWritingCodec;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
@@ -168,6 +171,185 @@ class SaveConfiguratorDefinition
         });
     }
 
+    /**
+     * Server-only single-Rule mutation. The opening baseline must come from trusted server state.
+     * A returned snapshot remains provisional while an enclosing transaction is open.
+     *
+     * @param  array<string, mixed>|null  $expectedRule
+     * @param  array<string, mixed>  $proposedRule
+     * @param  array<string, mixed>  $referenceBindings  Required accepted-source payload; explicit [] means an ID-only operation with no source-fidelity assertion.
+     * @return array{configurator_id:int, rule_id:int, operation:string, identities:array<string,array<string,int>>, saved_rule:array<string,mixed>, records:array<string,mixed>, comparison_state:array<string,mixed>}
+     */
+    public function changeRuleWithIdentities(User $actor, Configurator $configurator, ?array $expectedRule, array $proposedRule, array $referenceBindings): array
+    {
+        return $this->changeRulesWithIdentities($actor, $configurator, fn (): array => [
+            ['expected_rule' => $expectedRule, 'proposed_rule' => $proposedRule, 'reference_bindings' => $referenceBindings],
+        ])['rules'][0];
+    }
+
+    /**
+     * Prepare trusted selected mutations after canonical parent locks; nested results are provisional.
+     *
+     * @param  \Closure(array, array, array):array  $prepare
+     * @return array{configurator_id:int,rules:list<array<string,mixed>>}
+     */
+    public function changeRulesWithIdentities(User $actor, Configurator $configurator, \Closure $prepare): array
+    {
+        Gate::forUser($actor)->authorize('manage-catalog');
+
+        return DB::transaction(function () use ($configurator, $prepare): array {
+            $record = Configurator::whereKey($configurator->id)->lockForUpdate()->firstOrFail();
+            $context = CatalogContextSettings::current(lock: true)->choices;
+            $current = $this->loader->draft($record);
+            [$attributes, $options] = $this->loader->canonical($current, true);
+            $codec = app(ConfiguratorRuleWritingCodec::class);
+            $dictionary = $codec->dictionary($current, $attributes, $options);
+            $labels = [];
+            foreach ($current['attributes'] as $attribute) {
+                $label = $attribute['label_override'];
+                $labels[$attribute['id']] = $label === null || trim($label) === '' ? $attributes[$attribute['attribute_id']]['label'] : $label;
+            }
+            $mutations = $prepare($current, $dictionary, $labels);
+            if (! is_array($mutations) || ! array_is_list($mutations) || $mutations === []) {
+                throw ValidationException::withMessages(['rules' => 'Select a nonempty list of Rule changes.']);
+            }
+            $changes = app(ConfiguratorEditorChanges::class);
+            $owned = static function (array $rule): array {
+                unset($rule['is_active'], $rule['priority']);
+
+                return $rule;
+            };
+            $data = $current;
+            $plans = [];
+            $seen = [];
+            $nextPriority = $current['rules'] === [] ? 0 : max(array_column($current['rules'], 'priority')) + 1;
+            foreach ($mutations as $mutation) {
+                if (! is_array($mutation) || array_diff(array_keys($mutation), ['expected_rule', 'proposed_rule', 'reference_bindings']) !== [] || ! array_key_exists('expected_rule', $mutation) || ($mutation['expected_rule'] !== null && ! is_array($mutation['expected_rule'])) || ! is_array($mutation['proposed_rule'] ?? null) || ! is_array($mutation['reference_bindings'] ?? null)) {
+                    throw ValidationException::withMessages(['rules' => 'Malformed trusted Rule mutation.']);
+                }
+                ['expected_rule' => $expectedRule, 'proposed_rule' => $proposedRule, 'reference_bindings' => $referenceBindings] = $mutation;
+                if ($referenceBindings !== []) {
+                    try {
+                        $codec->validateReferenceBindings($referenceBindings, $dictionary);
+                    } catch (\InvalidArgumentException $exception) {
+                        throw ValidationException::withMessages(['references' => $exception->getMessage()]);
+                    }
+                }
+                $id = (string) ($proposedRule['id'] ?? '');
+                if (isset($seen[$id])) {
+                    throw ValidationException::withMessages(['rules' => 'A Rule may be changed only once in a selected batch.']);
+                }
+                $seen[$id] = true;
+                $index = array_search($id, array_column($current['rules'], 'id'), true);
+                $creating = $expectedRule === null;
+                $original = $index === false ? null : $current['rules'][$index];
+                if ($creating) {
+                    if (! str_starts_with($id, 'new:') || $id === 'new:') {
+                        throw ValidationException::withMessages(['rule' => 'Create requires an explicit new staging identity.']);
+                    }
+                    $proposedRule['is_active'] = true;
+                    $proposedRule['priority'] = $nextPriority++;
+                } else {
+                    if ($original === null || (string) ($expectedRule['id'] ?? '') !== $id
+                        || ! $changes->sameMeaning('rule', $owned($expectedRule), $owned($original))
+                        || array_column($expectedRule['sets'] ?? [], 'sort_order', 'id') !== array_column($original['sets'], 'sort_order', 'id')) {
+                        throw ValidationException::withMessages(['rule' => 'The saved Rule changed or was removed. Keep the writing and refresh explicitly.']);
+                    }
+                    if (($proposedRule['kind'] ?? null) !== $original['kind']) {
+                        throw ValidationException::withMessages(['rule' => 'The Rule kind cannot change.']);
+                    }
+                    $proposedRule['is_active'] = $original['is_active'];
+                    $proposedRule['priority'] = $original['priority'];
+                    $surviving = array_values(array_intersect(array_column($original['effects'], 'id'), array_column($proposedRule['effects'] ?? [], 'id')));
+                    $submitted = array_values(array_filter(array_column($proposedRule['effects'] ?? [], 'id'), fn ($effectId) => ! str_starts_with((string) $effectId, 'new:')));
+                    $sawNew = false;
+                    foreach ($proposedRule['effects'] ?? [] as $effect) {
+                        if (str_starts_with((string) $effect['id'], 'new:')) {
+                            $sawNew = true;
+                        } elseif ($sawNew) {
+                            throw ValidationException::withMessages(['effects' => 'New effects must follow surviving effects.']);
+                        }
+                    }
+                    if ($surviving !== $submitted) {
+                        throw ValidationException::withMessages(['effects' => 'Surviving effect order must be preserved.']);
+                    }
+                }
+                if (! in_array($proposedRule['kind'] ?? null, ['Mapping', 'Advanced'], true)) {
+                    throw ValidationException::withMessages(['rule' => 'Only Mapping and Advanced are supported.']);
+                }
+                if ($creating) {
+                    $index = count($data['rules']);
+                    $data['rules'][] = $proposedRule;
+                } else {
+                    $data['rules'][$index] = $proposedRule;
+                }
+                $plans[] = ['index' => $index, 'original' => $original, 'creating' => $creating];
+            }
+            $data = $this->compiler->compile($data, $attributes, $options, authoring: true, globalContext: $context)->data;
+            $this->assertOwnership($data, $current);
+            $attributeMap = array_combine(array_column($current['attributes'], 'id'), array_map('intval', array_column($current['attributes'], 'id')));
+            $optionMap = [];
+            foreach ($current['attributes'] as $attribute) {
+                foreach ($attribute['options'] as $option) {
+                    $optionMap[(string) $option['id']] = (int) $option['id'];
+                }
+            }
+            $results = [];
+            foreach ($plans as $plan) {
+                ['index' => $index, 'original' => $original, 'creating' => $creating] = $plan;
+                $row = $data['rules'][$index];
+                $identities = ['rules' => [], 'condition_groups' => [], 'conditions' => [], 'effects' => [], 'mapping_sets' => []];
+                $unchanged = ! $creating && $changes->sameMeaning('rule', $original, $row)
+                    && array_column($original['sets'], 'sort_order', 'id') === array_column($row['sets'], 'sort_order', 'id');
+                if ($unchanged) {
+                    $rule = ConfiguratorRule::findOrFail($row['id']);
+                    $this->existingRuleIdentities($original, $identities);
+                } else {
+                    $rule = $this->persist(ConfiguratorRule::class, $row['id'], ['configurator_id' => $record->id, ...$this->only($row, ['label', 'kind', 'is_active', 'priority']),
+                        'driver_configurator_attribute_id' => $row['driver_configurator_attribute_id'], 'target_configurator_attribute_id' => $row['target_configurator_attribute_id']]);
+                    $identities['rules'][(string) $row['id']] = $rule->id;
+                    $this->persistRule($rule, $row, $attributeMap, $optionMap, $identities);
+                }
+                $results[] = ['configurator_id' => $record->id, 'rule_id' => $rule->id, 'operation' => $unchanged ? 'unchanged' : ($creating ? 'create' : 'update'), 'identities' => $identities];
+            }
+            $readback = $this->loader->draft($record->fresh());
+            foreach ($results as &$result) {
+                $saved = $readback['rules'][array_search((string) $result['rule_id'], array_column($readback['rules'], 'id'), true)];
+                $result += ['saved_rule' => $saved, 'records' => $this->ruleRecords(ConfiguratorRule::findOrFail($result['rule_id'])), 'comparison_state' => $changes->comparisonState('rule', $saved)];
+            }
+            unset($result);
+
+            return ['configurator_id' => $record->id, 'rules' => $results];
+        });
+    }
+
+    /** @param array<string,mixed> $row @param array<string,array<string,int>> $identities */
+    private function existingRuleIdentities(array $row, array &$identities): void
+    {
+        $identities['rules'][(string) $row['id']] = (int) $row['id'];
+        foreach ($row['conditions'] as $condition) {
+            if (isset($condition['conditions'])) {
+                $identities['condition_groups'][(string) $condition['id']] = (int) $condition['id'];
+                foreach ($condition['conditions'] as $child) {
+                    $identities['conditions'][(string) $child['id']] = (int) $child['id'];
+                }
+            } else {
+                $identities['conditions'][(string) $condition['id']] = (int) $condition['id'];
+            }
+        }
+        foreach (['effects' => 'effects', 'sets' => 'mapping_sets'] as $bucket => $kind) {
+            foreach ($row[$bucket] as $child) {
+                $identities[$kind][(string) $child['id']] = (int) $child['id'];
+            }
+        }
+    }
+
+    /** @return array<string,mixed> */
+    private function ruleRecords(ConfiguratorRule $rule): array
+    {
+        return app(ConfiguratorRuleRecords::class)->read($rule);
+    }
+
     public function duplicate(User $actor, Configurator $configurator, string $name): Configurator
     {
         Gate::forUser($actor)->authorize('manage-catalog');
@@ -234,7 +416,7 @@ class SaveConfiguratorDefinition
     }
 
     /** @param array<string, mixed> $row @param array<string, int> $attributes @param array<string, int> $options */
-    private function persistRule(ConfiguratorRule $rule, array $row, array $attributes, array $options): void
+    private function persistRule(ConfiguratorRule $rule, array $row, array $attributes, array $options, ?array &$identities = null): void
     {
         $conditionIds = [];
         $groupIds = [];
@@ -242,11 +424,20 @@ class SaveConfiguratorDefinition
             if (array_key_exists('conditions', $condition)) {
                 $group = $this->persist(RuleConditionGroup::class, $condition['id'], ['rule_id' => $rule->id, 'operator' => $condition['operator'], 'sort_order' => $index]);
                 $groupIds[] = $group->id;
+                if ($identities !== null) {
+                    $identities['condition_groups'][(string) $condition['id']] = $group->id;
+                }
                 foreach ($condition['conditions'] as $order => $predicate) {
-                    $conditionIds[] = $this->persistCondition($rule, $predicate, $attributes, $options, $group->id, $order);
+                    $conditionIds[] = $savedCondition = $this->persistCondition($rule, $predicate, $attributes, $options, $group->id, $order);
+                    if ($identities !== null) {
+                        $identities['conditions'][(string) $predicate['id']] = $savedCondition;
+                    }
                 }
             } else {
-                $conditionIds[] = $this->persistCondition($rule, $condition, $attributes, $options, null, $index);
+                $conditionIds[] = $savedCondition = $this->persistCondition($rule, $condition, $attributes, $options, null, $index);
+                if ($identities !== null) {
+                    $identities['conditions'][(string) $condition['id']] = $savedCondition;
+                }
             }
         }
         $rule->conditions()->whereNotIn('id', $conditionIds)->delete();
@@ -255,6 +446,9 @@ class SaveConfiguratorDefinition
         foreach ($row['effects'] as $effect) {
             $saved = $this->persist(RuleEffect::class, $effect['id'], ['rule_id' => $rule->id, ...$this->only($effect, ['kind', 'target_scope', 'display_value']), 'target_configurator_attribute_id' => $attributes[(string) $effect['target_configurator_attribute_id']]]);
             $effectIds[] = $saved->id;
+            if ($identities !== null) {
+                $identities['effects'][(string) $effect['id']] = $saved->id;
+            }
             $this->references($saved->optionReferences(), array_map(fn (string|int $id): int => $options[(string) $id], $effect['option_ids']));
         }
         $rule->effects()->whereNotIn('id', $effectIds)->delete();
@@ -263,6 +457,9 @@ class SaveConfiguratorDefinition
         foreach ($row['sets'] as $set) {
             $saved = $this->persist(MappingSet::class, $set['id'], ['rule_id' => $rule->id, ...$this->only($set, ['label', 'sort_order', 'disallowed_target_behavior'])]);
             $setIds[] = $saved->id;
+            if ($identities !== null) {
+                $identities['mapping_sets'][(string) $set['id']] = $saved->id;
+            }
             foreach ($set['source_option_ids'] as $id) {
                 $sources[$options[(string) $id]] = $saved->id;
             }

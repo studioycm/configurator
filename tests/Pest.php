@@ -37,6 +37,18 @@ $nonResettingCommitTests = [
     __DIR__.'/Feature/Catalog/MySql/CatalogAssetBatchApplyTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogAssetIntakeCapacityTest.php',
     __DIR__.'/Feature/Catalog/MySql/CatalogAssetIntakeConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/ConfiguratorRuleWritingBatchConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/ConfiguratorRuleWritingDraftConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/ConfiguratorRuleWritingInspectionConcurrencyTest.php',
+    __DIR__.'/Feature/Catalog/MySql/ConfiguratorRuleWritingReconciliationConcurrencyTest.php',
+];
+$writingCommitTests = [
+    __DIR__.'/Feature/Catalog/ConfiguratorRuleWritingBatchTest.php',
+    __DIR__.'/Feature/Catalog/ConfiguratorRuleWritingDraftsTest.php',
+    __DIR__.'/Feature/Catalog/ConfiguratorRuleWritingHttpTest.php',
+    __DIR__.'/Feature/Catalog/ConfiguratorRuleWritingInspectionTest.php',
+    __DIR__.'/Feature/Catalog/ConfiguratorRuleWritingReconciliationTest.php',
 ];
 $imagesCommitTests = array_map(fn (string $path): string => __DIR__.'/Feature/'.$path, [
     'Catalog/CatalogAssetFoundationTest.php', 'Catalog/CatalogAssetSourcesTest.php', 'Catalog/CatalogAssetStorageTest.php',
@@ -47,7 +59,7 @@ $imagesCommitTests = array_map(fn (string $path): string => __DIR__.'/Feature/'.
 ]);
 $transactionalTests = [];
 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/Feature', FilesystemIterator::SKIP_DOTS)) as $file) {
-    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), [...$independentCommitTests, ...$nonResettingCommitTests, ...$imagesCommitTests], true)) {
+    if ($file->isFile() && $file->getExtension() === 'php' && ! in_array($file->getPathname(), [...$independentCommitTests, ...$nonResettingCommitTests, ...$imagesCommitTests, ...$writingCommitTests], true)) {
         $transactionalTests[] = $file->getPathname();
     }
 }
@@ -56,9 +68,14 @@ if ($transactionalTests !== []) {
 }
 pest()->use(DatabaseMigrations::class)->in(...$independentCommitTests);
 if (getenv('DB_CONNECTION') === 'sqlite' && getenv('DB_DATABASE') === ':memory:') {
-    pest()->use(DatabaseMigrations::class)->in(...$imagesCommitTests);
+    pest()->use(DatabaseMigrations::class)->in(...$imagesCommitTests, ...$writingCommitTests);
 } else {
     pest()->extend(TestCase::class)->beforeEach(fn () => throw new LogicException('SQLite-only Images commit proof.'))->in(...$imagesCommitTests);
+    pest()->beforeEach(function (): void {
+        if (! defined('CATALOG_MYSQL_TEST_RUN') || getenv('CATALOG_MYSQL_TEST_PROFILE') !== 'reconciliation') {
+            throw new LogicException('Writing committed proof requires the reviewed reconciliation MySQL profile.');
+        }
+    })->in(...$writingCommitTests);
 }
 
 pest()->beforeEach(function (): void {

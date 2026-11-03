@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Configurators;
 use App\Filament\Resources\Configurators\Pages\CreateConfigurator;
 use App\Filament\Resources\Configurators\Pages\EditConfigurator;
 use App\Filament\Resources\Configurators\Pages\ListConfigurators;
+use App\Filament\Resources\Configurators\Pages\WriteConfiguratorRules;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorForm;
 use App\Filament\Resources\Configurators\Tables\ConfiguratorsTable;
 use App\Models\Configurator;
@@ -94,7 +95,7 @@ class ConfiguratorResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ListConfigurators::route('/'), 'create' => CreateConfigurator::route('/create'), 'edit' => EditConfigurator::route('/{record}/edit')];
+        return ['index' => ListConfigurators::route('/'), 'create' => CreateConfigurator::route('/create'), 'edit' => EditConfigurator::route('/{record}/edit'), 'writing' => WriteConfiguratorRules::route('/{record}/writing')];
     }
 
     public static function getEloquentQuery(): Builder

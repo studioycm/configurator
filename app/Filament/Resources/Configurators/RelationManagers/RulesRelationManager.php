@@ -6,6 +6,7 @@ use App\Actions\SaveConfiguratorDefinition;
 use App\Filament\ConfiguratorRuleDataActions;
 use App\Filament\InteractsWithConfiguratorRuleImport;
 use App\Filament\Resources\Configurators\Concerns\InteractsWithConfiguratorTable;
+use App\Filament\Resources\Configurators\ConfiguratorResource;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorFormErrors;
 use App\Filament\Resources\Configurators\Schemas\ConfiguratorRuleForm;
 use App\Filament\Resources\HasWorkspaceTable;
@@ -378,7 +379,10 @@ class RulesRelationManager extends RelationManager implements HasWorkspaceTable
                 default => $query,
             })])->defaultSort('priority', 'desc')->reorderable('priority', direction: 'desc')->paginated(false)
             ->recordAction('edit')->recordClasses(fn (ConfiguratorRule $record): ?string => $record->id === $this->selectedRuleId ? 'catalog-selected-row' : null)
-            ->headerActions([ConfiguratorRuleDataActions::import(selectConfigurators: false), ConfiguratorRuleDataActions::export($this->owner()->id), ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label(__('configurator.labels.add_rule'))->icon(Heroicon::OutlinedPlus)->tooltip(__('configurator.help.add_rule'))])
+            ->headerActions([Action::make('writing')->label(__('configurator.writing.title'))->icon(Heroicon::OutlinedPencilSquare)->authorize('manage-catalog')
+                ->visible(fn (): bool => config('configurator-writing.enabled') === true)
+                ->url(fn (): string => ConfiguratorResource::getUrl('writing', ['record' => $this->owner()]))
+                ->extraAttributes(['data-rule-writing-entry' => true, 'x-data' => 'ruleWritingEntry()', 'x-on:click' => 'enter($event)']), ConfiguratorRuleDataActions::import(selectConfigurators: false), ConfiguratorRuleDataActions::export($this->owner()->id), ActionGroup::make([$this->createAction('Mapping'), $this->createAction('Advanced')])->label(__('configurator.labels.add_rule'))->icon(Heroicon::OutlinedPlus)->tooltip(__('configurator.help.add_rule'))])
             ->recordActions([
                 ...$this->workspaceOrderActions(fn (int $id, int $direction) => $this->moveRule($id, $direction)),
                 Action::make('edit')->label(__('ui.actions.edit'))->authorize('manage-catalog')
@@ -388,7 +392,11 @@ class RulesRelationManager extends RelationManager implements HasWorkspaceTable
                     ->schema([View::make('filament.forms.validation-summary')])
                     ->modalDescription(__('configurator.help.remove_this_rule_and_its_owned_conditions'))
                     ->action(fn (ConfiguratorRule $record) => $this->removeRule($record->id)),
-            ]), 'configurator-rules', true, ['addMapping', 'addAdvanced', 'importRules'], selectionVisible: fn (): bool => $this->showSelection, workspaceActions: fn (): array => $this->workspaceVisibilityActions(), rowActions: fn (): array => $this->rowOrderingActions());
+                Action::make('write')->label(__('configurator.writing.write'))->icon(Heroicon::OutlinedPencilSquare)->authorize('manage-catalog')
+                    ->visible(fn (): bool => config('configurator-writing.enabled') === true)
+                    ->url(fn (ConfiguratorRule $record): string => ConfiguratorResource::getUrl('writing', ['record' => $this->owner(), 'rule' => (string) $record->id]))
+                    ->extraAttributes(['data-rule-writing-entry' => true, 'x-data' => 'ruleWritingEntry()', 'x-on:click' => 'enter($event)']),
+            ]), 'configurator-rules', true, ['addMapping', 'addAdvanced', 'importRules', 'writing'], selectionVisible: fn (): bool => $this->showSelection, workspaceActions: fn (): array => $this->workspaceVisibilityActions(), rowActions: fn (): array => $this->rowOrderingActions());
     }
 
     private function createAction(string $kind): Action

@@ -151,3 +151,74 @@ test('dotenv cannot introduce executable cached configuration after the inert pr
         rmdir($directory);
     }
 });
+
+test('rules profile accepts only its exact dedicated target without broadening the catalog profile', function () {
+    $rules = ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3307', 'DB_DATABASE' => 'configurator_rules_test', 'DB_USERNAME' => 'configurator_rules_test', 'CATALOG_MYSQL_TEST_PROFILE' => 'rules'];
+    TestDatabaseSafety::assertEnvironment($rules, [], [], true);
+    foreach ([['DB_USERNAME' => 'root'], ['DB_DATABASE' => 'configurator_catalog_dev'], ['DB_DATABASE' => 'configurator_catalog_test'], ['CATALOG_MYSQL_TEST_PROFILE' => 'anything'], ['CATALOG_MYSQL_TEST_PROFILE' => '']] as $override) {
+        expect(fn () => TestDatabaseSafety::assertEnvironment([...$rules, ...$override], [], [], true))->toThrow(RuntimeException::class);
+    }
+    expect(fn () => TestDatabaseSafety::assertEnvironment($rules, ['CATALOG_MYSQL_TEST_PROFILE' => 'catalog'], [], true))->toThrow(RuntimeException::class);
+    $unselected = $rules;
+    unset($unselected['CATALOG_MYSQL_TEST_PROFILE']);
+    expect(fn () => TestDatabaseSafety::assertEnvironment($unselected, [], [], true))->toThrow(RuntimeException::class);
+});
+
+test('rules mysql bootstrap refuses mismatched targets before application boot', function (array $override, bool $accepted) {
+    $environment = [
+        'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3307',
+        'DB_DATABASE' => 'configurator_rules_test', 'DB_USERNAME' => 'configurator_rules_test', 'CATALOG_MYSQL_TEST_PROFILE' => 'rules',
+        'DB_URL' => false, 'DATABASE_URL' => false, 'DB_SOCKET' => false, 'APP_CONFIG_CACHE' => false, 'APP_BASE_PATH' => false, 'LARAVEL_STORAGE_PATH' => false,
+    ];
+    $process = new Process([PHP_BINARY, 'tests/bootstrap-mysql.php'], dirname(__DIR__, 2), [...$environment, ...$override]);
+    $process->run();
+    expect($process->isSuccessful())->toBe($accepted);
+    if (! $accepted) {
+        expect($process->getErrorOutput().$process->getOutput())->toContain('Unsafe catalog MySQL test configuration');
+    }
+})->with([
+    'dedicated rules target' => [[], true],
+    'cross-profile database' => [['DB_DATABASE' => 'configurator_catalog_test'], false],
+    'cross-profile user' => [['DB_USERNAME' => 'configurator_catalog_test'], false],
+    'admin account' => [['DB_USERNAME' => 'root'], false],
+    'other port' => [['DB_PORT' => '3306'], false],
+    'unknown profile' => [['CATALOG_MYSQL_TEST_PROFILE' => 'production'], false],
+]);
+
+test('rules profile validates the resolved connection independently of its alias without opening PDO', function (array $override, bool $accepted) {
+    $environment = [
+        'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3307',
+        'DB_DATABASE' => 'configurator_rules_test', 'DB_USERNAME' => 'configurator_rules_test', 'CATALOG_MYSQL_TEST_PROFILE' => 'rules',
+        'DB_URL' => false, 'DATABASE_URL' => false, 'DB_SOCKET' => false, 'APP_CONFIG_CACHE' => false, 'APP_BASE_PATH' => false, 'LARAVEL_STORAGE_PATH' => false,
+    ];
+    $connection = ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => '3307', 'database' => 'configurator_rules_test', 'username' => 'configurator_rules_test', 'name' => 'arbitrary_alias'];
+    $code = 'require "tests/bootstrap-mysql.php"; Tests\\TestDatabaseSafety::assertConnection(json_decode($argv[1], true), true); echo "SAFE_TARGET";';
+    $process = new Process([PHP_BINARY, '-r', $code, json_encode([...$connection, ...$override], JSON_THROW_ON_ERROR)], dirname(__DIR__, 2), $environment);
+    $process->run();
+    expect($process->isSuccessful())->toBe($accepted);
+    if ($accepted) {
+        expect($process->getOutput())->toBe('SAFE_TARGET');
+    } else {
+        expect($process->getErrorOutput().$process->getOutput())->toContain('Unsafe catalog MySQL test configuration');
+    }
+})->with([
+    'exact target through alias' => [[], true],
+    'catalog target' => [['database' => 'configurator_catalog_test'], false],
+    'root account' => [['username' => 'root'], false],
+    'other port' => [['port' => 3306], false],
+    'read override' => [['read' => ['database' => 'configurator_catalog_dev']], false],
+    'url override' => [['url' => 'mysql://root@127.0.0.1/configurator_catalog_dev'], false],
+]);
+
+test('Writing MySQL entry refuses the catalog profile before fixtures can run', function () {
+    $environment = [
+        'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3307',
+        'DB_DATABASE' => 'configurator_catalog_test', 'DB_USERNAME' => 'configurator_catalog_test', 'CATALOG_MYSQL_TEST_PROFILE' => 'catalog',
+        'DB_URL' => false, 'DATABASE_URL' => false, 'DB_SOCKET' => false, 'APP_CONFIG_CACHE' => false, 'APP_BASE_PATH' => false, 'LARAVEL_STORAGE_PATH' => false,
+    ];
+    $code = 'require "tests/Feature/Catalog/MySql/ConfiguratorRuleWritingConcurrencyTest.php";';
+    $process = new Process([PHP_BINARY, '-r', $code], dirname(__DIR__, 2), $environment);
+    $process->run();
+    expect($process->isSuccessful())->toBeFalse();
+    expect($process->getErrorOutput().$process->getOutput())->toContain('Rules Writing MySQL tests require the reviewed reconciliation profile');
+});

@@ -4,6 +4,7 @@ use App\Http\Controllers\CatalogAssetIntakeUploadController;
 use App\Http\Controllers\CatalogAssetSourcePreviewController;
 use App\Http\Controllers\CatalogDatasetController;
 use App\Http\Controllers\CatalogMainImageUploadController;
+use App\Http\Controllers\ConfiguratorRuleWritingController;
 use App\Livewire\Catalog\GroupShow;
 use App\Livewire\Catalog\Index as CatalogIndex;
 use App\Livewire\Catalog\ProductShow;
@@ -17,6 +18,12 @@ use Laravel\Fortify\Features;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 Route::redirect('/', '/dashboard')->name('home');
+
+Route::post('/admin/configurators/{configurator}/writing/operations/{operation}', ConfiguratorRuleWritingController::class)
+    ->middleware(['auth:web', 'auth.session', 'can:manage-catalog'])
+    ->whereNumber('configurator')
+    ->whereIn('operation', ConfiguratorRuleWritingController::OPERATIONS)
+    ->name('configurators.writing.operation');
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/catalog-images/batch-upload', CatalogAssetIntakeUploadController::class)
