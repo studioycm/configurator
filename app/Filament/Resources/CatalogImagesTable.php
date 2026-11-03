@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Support\Js;
 
@@ -44,7 +45,7 @@ class CatalogImagesTable
                 ...$columns,
                 TextColumn::make('image_status')->label(__('catalog-images.status'))
                     ->state(fn (Product|Group $record): string => $record->main_image_id === null ? __('catalog-images.missing') : (isset($page->imagePageDisplays()[(int) $record->main_image_id]) ? __('catalog-images.has') : __('catalog-images.unavailable'))),
-            ])->recordActions([$inspect()])->recordAction(null)->recordUrl(null)
+            ])->recordActions([$inspect()], position: RecordActionsPosition::BeforeCells)->recordAction(null)->recordUrl(null)
             ->toolbarActions(CatalogAssetActions::bulk($page))
             ->selectable()->selectCurrentPageOnly()->trackDeselectedRecords(false)->maxSelectableRecords(5000)
             ->currentSelectionLivewireProperty('selectedTableRecords')

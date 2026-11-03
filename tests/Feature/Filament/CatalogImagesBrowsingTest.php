@@ -279,7 +279,7 @@ test('rendered target and mode buttons execute their current typed navigation in
 test('both rendered record title and Inspect buttons open the typed image inspector without a table action fallback', function () {
     $group = Group::factory()->create(['name' => 'Binding Group']);
     $product = Product::factory()->for($group)->create(['product_code' => 'EL-001']);
-    foreach (['EL-001', 'Inspect image'] as $label) {
+    foreach (['EL-001', 'Inspect'] as $label) {
         $page = Livewire::test(CatalogImages::class);
         $intent = catalogImagesRenderedIntent($page->html(), $label);
         expect($intent[0])->toBe('dispatch')->and($intent[1])->toBe('catalog-images-inspect');
@@ -287,7 +287,7 @@ test('both rendered record title and Inspect buttons open the typed image inspec
         $page->call($detail['method'], $detail['record'], $detail['context'])->assertSet('imageRecordId', $product->id);
     }
     $page = Livewire::test(CatalogImages::class)->call('switchImageTarget', 'group.main_image', imagesContext());
-    foreach (['Binding Group', 'Inspect image'] as $label) {
+    foreach (['Binding Group', 'Inspect'] as $label) {
         $intent = catalogImagesRenderedIntent($page->html(), $label);
         expect($intent[2]['method'])->toBe('inspectGroupImage');
         $page->call($intent[2]['method'], $intent[2]['record'], $intent[2]['context'])->assertSet('imageRecordId', $group->id);

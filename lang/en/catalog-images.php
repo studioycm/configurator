@@ -9,9 +9,9 @@ return [
 
     'title' => 'Images', 'intro' => 'Browse saved main images for products and groups. Inspect a record or check rows to build a selection.',
     'products' => 'Products', 'groups' => 'Groups', 'code' => 'Product code', 'name' => 'Name', 'group' => 'Group', 'parent' => 'Parent',
-    'legacy' => 'Legacy ID', 'order' => 'Sort order', 'reference' => 'Image reference', 'saved_image' => 'Saved main image', 'status' => 'Image status',
-    'any' => 'Any', 'missing' => 'Missing image', 'has' => 'Has image', 'unavailable' => 'Saved image unavailable',
-    'inspect' => 'Inspect image', 'search' => 'Search records', 'search_in' => 'Search in', 'options' => 'Search options', 'quick_filters' => 'Quick filters',
+    'legacy' => 'Legacy ID', 'order' => 'Sort order', 'reference' => 'Image reference', 'saved_image' => 'Saved main image', 'status' => 'Status',
+    'any' => 'Any', 'missing' => 'Missing', 'has' => 'Has image', 'unavailable' => 'Saved image unavailable',
+    'inspect' => 'Inspect', 'search' => 'Search records', 'search_in' => 'Search in', 'options' => 'Search options', 'quick_filters' => 'Quick filters',
     'contains' => 'Contains', 'starts' => 'Starts with', 'ends' => 'Ends with', 'whole' => 'Whole value', 'fragments' => 'Combine fragments', 'all' => 'All fragments', 'any_fragments' => 'Any fragments',
     'case_sensitive' => 'Case sensitive', 'literal' => 'Keep separators', 'ignore_case' => 'Ignore case', 'ignore_separators' => 'Ignore separators',
     'exclude' => 'Exclude fragments', 'positions' => 'Code segments', 'position_help' => 'Choose hyphen-separated segments. Empty searches all segments.',
