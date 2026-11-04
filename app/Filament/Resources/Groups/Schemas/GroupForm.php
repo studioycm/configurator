@@ -21,6 +21,7 @@ use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -105,9 +106,9 @@ class GroupForm
                     ->options($properties)->default([])->placeholder(__('catalog.groups.help.use_group_filter_properties'))
                     ->hintAction(FormHints::make(__('catalog.groups.hints.leave_empty_to_use_the_groups_filter')))
                     ->columnSpanFull(),
-                Select::make('catalog_settings.result_settings.cards_per_row')->label(__('catalog.groups.labels.cards_per_row'))
+                ToggleButtons::make('catalog_settings.result_settings.cards_per_row')->label(__('catalog.groups.labels.cards_per_row'))->inline()
                     ->options(array_combine(range(1, CatalogPolicy::MAX_CARDS_PER_ROW), range(1, CatalogPolicy::MAX_CARDS_PER_ROW)))
-                    ->default(4)->required()->selectablePlaceholder(false)
+                    ->default(4)->required()
                     ->hintAction(FormHints::make(__('catalog.groups.hints.desktop_columns_smaller_screens_use_fewer_columns'))),
                 TextInput::make('catalog_settings.result_settings.products_debounce_ms')->label(__('catalog.groups.labels.product_update_delay_ms'))
                     ->integer()->minValue(0)->maxValue(2147483600)->step(100)->rules(['multiple_of:100'])->default(0)->required()
@@ -126,8 +127,8 @@ class GroupForm
                     ->options(fn (): array => array_combine(array_keys(CatalogPolicy::CARD_LAYOUTS), array_map(fn (string $key): string => __('catalog.groups.card_layouts.'.$key), array_keys(CatalogPolicy::CARD_LAYOUTS))))->default('inline_space_between')->required()->selectablePlaceholder(false)
                     ->helperText(fn (Get $get): string => $get('catalog_settings.result_settings.card_show_labels') ? __('admin.workspace.editor.layout_active') : __('admin.workspace.editor.layout_inactive'))
                     ->extraAttributes(fn (Get $get): array => ['class' => $get('catalog_settings.result_settings.card_show_labels') ? 'catalog-dependent-field' : 'catalog-dependent-field catalog-dependent-field-inactive']),
-                Select::make('catalog_settings.result_settings.card_property_columns')->label(__('catalog.groups.labels.property_columns'))
-                    ->options([1 => '1', 2 => '2', 3 => '3'])->default(2)->required()->selectablePlaceholder(false),
+                ToggleButtons::make('catalog_settings.result_settings.card_property_columns')->label(__('catalog.groups.labels.property_columns'))->grouped()
+                    ->options([1 => '1', 2 => '2', 3 => '3'])->default(2)->required(),
             ])->columns(2)->columnSpanFull(),
             Section::make(__('catalog.groups.headings.card_spacing'))->key(fn (Section $component): string => 'card-spacing::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 TextInput::make('catalog_settings.result_settings.card_padding_block')->label(__('catalog.groups.labels.block_padding'))

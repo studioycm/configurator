@@ -20,6 +20,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -57,7 +58,7 @@ class ConfiguratorRuleForm
                     Block::make('predicate')->label(__('configurator.labels.condition'))->schema($predicate())->columns(2),
                     Block::make('group')->label(__('configurator.labels.all_any_group'))->schema([
                         Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
-                        Select::make('operator')->label(__('configurator.labels.match'))->options(['All' => __('ui.choices.all'), 'Any' => __('configurator.labels.any')])->required()->default('All'),
+                        ToggleButtons::make('operator')->label(__('configurator.labels.match'))->options(['All' => __('ui.choices.all'), 'Any' => __('configurator.labels.any')])->required()->default('All')->grouped(),
                         Repeater::make('conditions')->label(__('configurator.fields.conditions'))->schema($predicate())->minItems(1)->defaultItems(1)->columns(2)->columnSpanFull(),
                     ]),
                 ])->default([])->columnSpanFull(),
@@ -80,7 +81,7 @@ class ConfiguratorRuleForm
                 Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                 Select::make('kind')->label(__('configurator.rules.fields.effect'))->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => $kind->getLabel()])->all())->required()->live()->hintAction(FormHints::make(__('configurator.hints.exclusion_is_an_advanced_restriction_use_a'))),
                 Select::make('target_configurator_attribute_id')->label(__('configurator.rules.fields.target_attribute'))->options($attributes)->required()->searchable()->live(),
-                Select::make('target_scope')->label(__('configurator.labels.applies_to'))->options(collect(RuleTargetScope::cases())->mapWithKeys(fn (RuleTargetScope $scope): array => [$scope->value => $scope->getLabel()])->all())->required()->default('Options')->live(),
+                ToggleButtons::make('target_scope')->label(__('configurator.labels.applies_to'))->options(collect(RuleTargetScope::cases())->mapWithKeys(fn (RuleTargetScope $scope): array => [$scope->value => $scope->getLabel()])->all())->required()->default('Options')->live()->inline(),
                 Select::make('option_ids')->label(__('configurator.labels.target_values'))->options(fn (Get $get): array => self::withStale($options[$get('target_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))->multiple()->searchable()->default([])
                     ->visible(fn (Get $get): bool => $get('target_scope') === 'Options' || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),
                 TextInput::make('display_value')->label(__('configurator.labels.presentation_text'))->maxLength(255)->default(null)
@@ -109,7 +110,7 @@ class ConfiguratorRuleForm
                 ->afterStateUpdated(fn (mixed $state, Set $set) => $set('context_dimension', match ($state) {
                     'Territory' => 'territory', 'Application' => 'application', default => null
                 })),
-            Select::make('operator')->label(__('configurator.fields.operator'))->options(fn (Get $get): array => collect(ConditionOperator::cases())->filter(fn (ConditionOperator $operator): bool => $operator !== ConditionOperator::Contains || $get('source_kind') === 'ProductProperty')->mapWithKeys(fn (ConditionOperator $operator): array => [$operator->value => $operator->getLabel()])->all())->required()->default('Equals')->live(),
+            ToggleButtons::make('operator')->label(__('configurator.fields.operator'))->options(fn (Get $get): array => collect(ConditionOperator::cases())->filter(fn (ConditionOperator $operator): bool => $operator !== ConditionOperator::Contains || $get('source_kind') === 'ProductProperty')->mapWithKeys(fn (ConditionOperator $operator): array => [$operator->value => $operator->getLabel()])->all())->required()->default('Equals')->live()->inline(),
             Select::make('source_configurator_attribute_id')->label(__('configurator.rules.fields.source_attribute'))->options($attributes)->searchable()->live()->default(null)
                 ->visible(fn (Get $get): bool => $selection($get) || filled($get('source_configurator_attribute_id')))->dehydratedWhenHidden(),
             Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->searchable()->default(null)

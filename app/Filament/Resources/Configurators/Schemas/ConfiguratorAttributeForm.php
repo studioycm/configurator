@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -37,7 +38,7 @@ class ConfiguratorAttributeForm
     public static function settingsFields(int $helpTextLimit = 1000): array
     {
         return [
-            Select::make('input_type')->label(__('configurator.fields.input_type'))->required()->options(ConfigInputType::class)->default('toggle'),
+            ToggleButtons::make('input_type')->label(__('configurator.fields.input_type'))->required()->options(ConfigInputType::class)->default('toggle')->inline(),
             TextInput::make('label_override')->label(__('configurator.labels.local_label'))->maxLength(255)->hintAction(FormHints::make(__('configurator.hints.leave_empty_to_use_the_shared_attribute'))),
             Textarea::make('help_text')->label(__('configurator.labels.local_help'))->maxLength($helpTextLimit)->rows(3)->columnSpanFull(),
         ];

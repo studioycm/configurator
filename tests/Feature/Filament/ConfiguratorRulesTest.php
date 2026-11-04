@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Services\ConfiguratorDefinitionLoader;
 use App\Services\ConfiguratorRuleDraft;
 use Filament\Actions\Testing\TestAction;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ToggleButtons;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -182,7 +184,7 @@ test('new Advanced effects keep string scopes and show Target values before any 
         ->call('createRule', 'Advanced')->fillForm(app(ConfiguratorRuleDraft::class)->fromRule($ruleData), 'editorForm');
     $key = array_key_first($manager->get('editorData.effects'));
 
-    $manager->assertFormFieldExists('effects.'.$key.'.target_scope', 'editorForm', fn (Select $field): bool => $field->getState() === 'Options' && array_keys($field->getOptions()) === ['Attribute', 'Options'])
+    $manager->assertFormFieldExists('effects.'.$key.'.target_scope', 'editorForm', fn (Field $field): bool => $field instanceof ToggleButtons && $field->getState() === 'Options' && array_keys($field->getOptions()) === ['Attribute', 'Options'])
         ->assertSchemaComponentVisible('effects.'.$key.'.option_ids', 'editorForm', 'form')
         ->set('editorData.label', 'Allow selected values')
         ->set('editorData.effects.'.$key.'.option_ids', [$attribute['options'][0]['id']])
