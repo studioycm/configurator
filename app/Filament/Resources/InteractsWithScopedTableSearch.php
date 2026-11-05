@@ -8,6 +8,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 
@@ -107,6 +108,50 @@ trait InteractsWithScopedTableSearch
     #[Locked]
     public array $batchPreview = [];
 
+    #[Locked]
+    public bool $batchPreviewStale = false;
+
+    /** @param list<int|string> $ids @return array{total: int, inside: int, outside: int}|null */
+    #[Renderless]
+    public function workspaceSelectionScope(array $ids): ?array
+    {
+        Gate::authorize('manage-catalog');
+        Validator::make(['ids' => $ids], ['ids' => ['array', 'max:5000'], 'ids.*' => ['integer', 'min:1']])->validate();
+        if (! $this->getTable()->hasQuery()) {
+            return null;
+        }
+        $ids = array_values(array_unique(array_map(fn (int|string $id): int => (int) $id, $ids)));
+        $query = $this->getFilteredTableQuery();
+        $inside = $ids === [] ? 0 : (clone $query)->whereKey($ids)->distinct()->count($query->getModel()->getQualifiedKeyName());
+
+        return ['total' => count($ids), 'inside' => $inside, 'outside' => count($ids) - $inside];
+    }
+
+    public function updatedInteractsWithScopedTableSearch(string $property, mixed $value): void
+    {
+        $index = $this->batchPreview['action_index'] ?? null;
+        if (filled($this->batchPreview['token'] ?? null) && ($property === 'selectedTableRecords' || str_starts_with($property, 'selectedTableRecords.')
+            || ($index !== null && ($property === 'mountedActions.'.$index.'.data' || str_starts_with($property, 'mountedActions.'.$index.'.data.'))))) {
+            $this->batchPreviewStale = true;
+        }
+    }
+
+    public function batchPreviewIsOutdated(): bool
+    {
+        if (empty($this->batchPreview['token'])) {
+            return false;
+        }
+        $index = $this->batchPreview['action_index'] ?? null;
+        $ids = array_map(strval(...), $this->selectedTableRecords);
+        $prepared = $this->batchPreview['selected_ids'] ?? [];
+        sort($ids);
+        sort($prepared);
+
+        return $this->batchPreviewStale || $index === null
+            || ($this->mountedActions[$index]['data'] ?? null) != ($this->batchPreview['form_state'] ?? null)
+            || $ids !== $prepared;
+    }
+
     /** @param array<string, mixed> $state */
     public function restoreTableBrowserProfile(array $state): void
     {
@@ -128,6 +173,9 @@ trait InteractsWithScopedTableSearch
 
     public function dehydrateInteractsWithScopedTableSearch(): void
     {
+        if ($this->batchPreviewIsOutdated()) {
+            $this->batchPreviewStale = true;
+        }
         $controls = [];
         foreach ($this->tableProfileControlNames() as $property) {
             $controls[$property] = $this->{$property};

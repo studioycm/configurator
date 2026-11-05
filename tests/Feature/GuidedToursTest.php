@@ -249,3 +249,25 @@ test('only the untouched original Writing starter receives the corrected Save ru
         expect($tour->fresh()->revision)->toBe(2)->and($tour->fresh()->steps[1]['description'])->toContain('Save rule')->not->toContain('Apply');
     }
 })->with([false, true]);
+
+test('visible Tour status and page filters compose without hiding another page or changing content', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $enabled = TourDefinition::create(tourInput());
+    $disabled = TourDefinition::create([...tourInput(), 'key' => 'disabled-tour', 'title' => 'Disabled guide', 'enabled' => false]);
+    $elsewhere = app(GuidedTours::class)->save($actor, null, [...tourInput(), 'key' => 'group-guide', 'stage' => 'groups-edit', 'steps' => [
+        ['key' => 'heading', 'target' => 'screen.heading', 'title' => 'Group guide', 'description' => 'This Group', 'placement' => 'bottom'],
+    ]]);
+    Livewire::test(ManageTourDefinitions::class)->filterTable('stage', 'images')->filterTable('enabled', true)
+        ->assertCanSeeTableRecords([$enabled])->assertCanNotSeeTableRecords([$disabled, $elsewhere]);
+    expect($disabled->fresh()->enabled)->toBeFalse();
+});
+
+test('creating a Tour supplies its internal key without requiring advanced settings', function () {
+    $this->actingAs(User::factory()->create(['email' => 'ycm@data4.work']));
+    $input = tourInput();
+    unset($input['key']);
+    Livewire::test(ManageTourDefinitions::class)->mountAction(CreateAction::class)->fillForm($input)->callMountedAction()->assertHasNoFormErrors();
+    $tour = TourDefinition::sole();
+    expect($tour->key)->toBeUuid()->and($tour->title)->toBe($input['title']);
+});

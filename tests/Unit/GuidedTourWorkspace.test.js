@@ -70,3 +70,14 @@ test('help preference survives modal Escape and navigation removes observers lis
         globalThis.MutationObserver = originalMutation; globalThis.ResizeObserver = originalResize;
     }
 });
+
+
+test('section launchers avoid covering the native header action underneath their anchor corner', () => {
+    const target = surface({left:100,right:400,top:100,bottom:200});
+    const action = {closest: selector => selector === '[data-tour-launchers]' ? null : {tagName:'BUTTON'}};
+    const heading = {closest: () => null};
+    const doc = {querySelector:()=>target,querySelectorAll:()=>[],elementsFromPoint:x=>[x>360?action:heading]};
+    const ui = guidedTourWorkspace({targets:{heading:'#heading'},tours:[{key:'intro',title:'Intro',steps:[{target:'heading'}]}]}, {window:browser,document:doc});
+    ui.$store={guidedTourHelp:{enabled:true}};ui.positionLaunchers();
+    assert.equal(ui.launchers.length,1);assert.ok(ui.launchers[0].x+15<=360);
+});

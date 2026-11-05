@@ -84,12 +84,20 @@ export function guidedTourWorkspace(config, dependencies = {}) {
                     if (modal && !modal.contains(target)) continue;
                     const bounds = tourAnchorRect(target, browserWindow);
                     if (!bounds) continue;
-                    const slot = used.get(target) ?? 0;
+                    let slot = used.get(target) ?? 0, x, y, found = false;
                     const columns = Math.max(1, Math.floor((bounds.right - bounds.left) / 34));
-                    const x = bounds.right - 32 - (slot % columns) * 34;
-                    const y = bounds.top + 2 + Math.floor(slot / columns) * 34;
-                    if (y + 30 > bounds.bottom) continue;
-                    used.set(target, slot + 1);
+                    for (let attempt = 0; attempt < 20; attempt++) {
+                        x = bounds.right - 32 - (slot % columns) * 34;
+                        y = bounds.top + 2 + Math.floor(slot / columns) * 34;
+                        slot++;
+                        if (y + 30 > bounds.bottom) break;
+                        const hit = browserDocument.elementsFromPoint?.(x + 15, y + 15)
+                            .find(node => !node.closest('[data-tour-launchers]'));
+                        if (hit?.closest('a, button, input, select, textarea, [role="button"]')) continue;
+                        found = true; break;
+                    }
+                    if (!found) continue;
+                    used.set(target, slot);
                     next.push({ key: item.key, title: item.title, x: Math.round(x), y: Math.round(y) });
                 }
             }

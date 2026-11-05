@@ -3,6 +3,7 @@ import { nextIdentifierIntent, suggestedIdentifier } from './suggested-identifie
 import { configuratorCreationGuard } from './configurator-creation';
 import { masterValueBatch, catalogDraftGuard, attributeDraftIsDirty } from './master-value-batch';
 import { workspaceTableSelection } from './workspace-table-selection';
+import { workspaceSelectionScope, batchPreviewGuard } from './admin-batch-workflow';
 import { interpolate } from './ui-wording';
 import { localTableProfile, adminBrowserProfile, rememberSchemaState, localSectionProfile, localOrderProfile, rememberOrderControls } from './admin-profile';
 import { catalogImage } from './catalog-image';
@@ -50,6 +51,8 @@ function registerComponents(Alpine) {
     Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));
     Alpine.data('configuratorCreationGuard', configuratorCreationGuard);
     Alpine.data('workspaceTableSelection', workspaceTableSelection);
+    Alpine.data('workspaceSelectionScope', workspaceSelectionScope);
+    Alpine.data('batchPreviewGuard', batchPreviewGuard);
     Alpine.data('configuratorProductSearch', configuratorProductSearch);
     Alpine.data('configuratorPreviewWorkspace', configuratorPreviewWorkspace);
     Alpine.data('catalogShell', catalogShell);

@@ -2,6 +2,7 @@
 
 return [
     'singular' => 'Tour', 'plural' => 'Tours', 'navigation' => 'Guided Tours', 'title' => 'Title', 'key' => 'Tour key', 'locale' => 'Language',
+    'details' => 'Tour details', 'advanced' => 'Advanced settings', 'step_title' => 'Step heading', 'new_step' => 'New step', 'all_statuses' => 'All statuses', 'disabled' => 'Disabled', 'status' => 'Status', 'help_title' => 'How tours work',
     'stage' => 'Page / workspace',
     'stage_help' => 'Choose the page containing this tour. A page can have several section tours.',
     'enabled' => 'Enabled', 'steps' => 'Steps', 'step_key' => 'Step key', 'page' => 'Page', 'target' => 'Highlight',

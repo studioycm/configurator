@@ -1,4 +1,5 @@
-<div class="space-y-2" aria-live="polite">
+<div data-batch-preview class="space-y-2" aria-live="polite">
+    <p x-cloak x-show="batchIsOutdated || $wire.batchPreviewStale" role="status" class="text-sm font-medium text-warning-700 dark:text-warning-300">{{ __('admin.batch.preview.outdated') }}</p>
     @include('filament.forms.validation-summary')
     @if (filled($this->batchPreview['rows'] ?? []))
         <p class="text-sm">{{ trans_choice('admin.batch.preview.selected', count($this->batchPreview['rows'])) }}</p>

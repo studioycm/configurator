@@ -137,6 +137,10 @@ return [
             'view' => 'View :value1 (:value2)',
         ],
         'preview' => [
+            'scope' => '{1}:count selected record|[0,*]All :count selected records',
+            'scope_split' => ':inside in current results · :outside outside current results',
+            'scope_help' => 'This action includes selected records outside the search and filters. Cancel keeps the selection.',
+            'outdated' => 'Preview out of date. Preview changes again before applying. Your entries and selection are kept.',
             'blocked' => '{1} :count record is blocked. Nothing in this selection can be removed until the dependencies are repaired.|[0,*] :count records are blocked. Nothing in this selection can be removed until the dependencies are repaired.',
             'blocker' => ':name #:id · :category: :count. Use View :category below.',
             'changed' => 'Changed',

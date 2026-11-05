@@ -17,7 +17,10 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Js;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Component;
 
 class BatchEditActions
 {
@@ -56,18 +59,43 @@ class BatchEditActions
             $actions[] = self::base('batchRemove', str_starts_with($table, 'configurator-') ? __('admin.batch.labels.remove_selected_inclusions_rules') : __('admin.batch.labels.delete_selected'), $table)->color('danger')->schema([
                 Hidden::make('operation')->default('remove'),
                 View::make('filament.resources.batch-preview'),
-            ])->modalDescription(__('admin.batch.help.preview_the_complete_selection_first_dependencies_block'));
+            ]);
         }
 
         return BulkActionGroup::make($actions)->label(__('admin.batch.labels.selected'));
     }
 
+    /** @param list<int|string> $ids @param array<string, mixed> $data */
+    private static function preparePreview(Component $livewire, Action $action, string $table, array $ids, array $data, ?int $ownerId): void
+    {
+        $livewire->batchPreview = [...app(BatchCatalogChanges::class)->preview(auth()->user(), $table, $ids, $data, $ownerId),
+            'action_index' => $action->getNestingIndex(),
+            'form_state' => $livewire->mountedActions[$action->getNestingIndex()]['data'] ?? [],
+            'selected_ids' => array_map(strval(...), $livewire->selectedTableRecords),
+            'ui_revision' => (string) Str::uuid()];
+        $livewire->batchPreviewStale = false;
+    }
+
     private static function base(string $name, string $label, string $table): BulkAction
     {
-        return BulkAction::make($name)->label($label)->authorize('manage-catalog')->slideOver()->stickyModalHeader()->stickyModalFooter()->modalSubmitActionLabel(__('admin.batch.labels.apply_previewed_changes'))
-            ->modalSubmitAction(fn (Action $action, $livewire): Action => $action->disabled(empty($livewire->batchPreview['token']) || ! empty($livewire->batchPreview['blockers'])))
+        return BulkAction::make($name)->label($label)->authorize('manage-catalog')->slideOver()->modalDescription(function ($livewire) use ($name): string {
+            $scope = $livewire->workspaceSelectionScope($livewire->selectedTableRecords);
+
+            return trans_choice('admin.batch.preview.scope', $scope['total'] ?? count($livewire->selectedTableRecords))
+                .($scope ? ' · '.__('admin.batch.preview.scope_split', $scope) : '')
+                .'. '.__('admin.batch.preview.scope_help')
+                .($name === 'batchRemove' ? ' '.__('admin.batch.help.preview_the_complete_selection_first_dependencies_block') : '');
+        })->stickyModalHeader()->stickyModalFooter()->modalSubmitActionLabel(__('admin.batch.labels.apply_previewed_changes'))
+            ->modalSubmitAction(fn (Action $action, $livewire): Action => $action->disabled(empty($livewire->batchPreview['token']) || ! empty($livewire->batchPreview['blockers']) || $livewire->batchPreviewIsOutdated())->extraAttributes(['x-bind:disabled' => 'batchIsOutdated || $wire.batchPreviewStale || !$wire.batchPreview.token || !!$wire.batchPreview.blockers?.length']))
+            ->extraModalWindowAttributes(fn (Action $action): array => [
+                'x-data' => 'batchPreviewGuard('.Js::from(['index' => $action->getNestingIndex()]).')',
+                'x-on:input.capture' => 'captureBatchEdit($event)',
+                'x-on:change.capture' => 'captureBatchEdit($event)',
+                'data-batch-workflow' => '',
+            ])
             ->beforeFormFilled(function ($livewire): void {
                 $livewire->batchPreview = [];
+                $livewire->batchPreviewStale = false;
             })
             ->extraModalFooterActions(function (Action $action, $livewire): array {
                 $actions = [$action->makeModalSubmitAction('previewBatch', arguments: ['preview' => true])->label(__('admin.batch.labels.preview_changes'))->color('gray')];
@@ -89,8 +117,12 @@ class BatchEditActions
                 $ownerId = method_exists($livewire, 'getOwnerRecord') ? $livewire->getOwnerRecord()->getKey() : null;
                 $ids = $records->modelKeys();
                 if ($arguments['preview'] ?? false) {
-                    $livewire->batchPreview = app(BatchCatalogChanges::class)->preview(auth()->user(), $table, $ids, $data, $ownerId);
+                    self::preparePreview($livewire, $action, $table, $ids, $data, $ownerId);
                     $action->halt();
+                }
+                if ($livewire->batchPreviewIsOutdated()) {
+                    $livewire->batchPreviewStale = true;
+                    throw ValidationException::withMessages(['preview' => __('admin.batch.preview.outdated')]);
                 }
                 if (empty($livewire->batchPreview['token'])) {
                     throw ValidationException::withMessages(['preview' => __('admin.batch.validation.preview_the_selected_records_before_applying_changes')]);
@@ -98,7 +130,7 @@ class BatchEditActions
                 try {
                     app(BatchCatalogChanges::class)->apply(auth()->user(), $table, $ids, $data, $livewire->batchPreview['token'], $ownerId);
                 } catch (ValidationException $exception) {
-                    $livewire->batchPreview = app(BatchCatalogChanges::class)->preview(auth()->user(), $table, $ids, $data, $ownerId);
+                    self::preparePreview($livewire, $action, $table, $ids, $data, $ownerId);
                     throw $exception;
                 }
                 $changedIds = array_column(array_filter($livewire->batchPreview['rows'], fn (array $row): bool => $row['changed']), 'id');
@@ -108,6 +140,7 @@ class BatchEditActions
                 $livewire->dispatch('catalog-batch-applied', model: $records->first()::class, ids: $changedIds);
                 $livewire->deselectAllTableRecords();
                 $livewire->batchPreview = [];
+                $livewire->batchPreviewStale = false;
                 $livewire->flushCachedTableRecords();
                 $livewire->dispatch('configurator-updated');
                 $livewire->dispatch('refresh-sidebar');
