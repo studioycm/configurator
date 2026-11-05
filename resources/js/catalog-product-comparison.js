@@ -6,7 +6,7 @@ const validRows = (rows, count) => Array.isArray(rows) && rows.every(row => row 
     && row.values.every(value => value === null || typeof value === 'string'));
 
 export function catalogProductComparison(config, browserWindow = window) {
-    let root, dialog, opener, restoreFocus = true, alive = false, suspended = false, initialized = false, generation = 0;
+    let root, dialog, opener, backdropPointer = false, restoreFocus = true, alive = false, suspended = false, initialized = false, generation = 0;
     const listeners = [];
     const labels = config.labels;
     const groupId = config.groupId;
@@ -26,6 +26,17 @@ export function catalogProductComparison(config, browserWindow = window) {
             const on = (target, event, callback) => { target.addEventListener(event, callback); listeners.push(() => target.removeEventListener(event, callback)); };
             on(dialog, 'cancel', event => { event.preventDefault(); this.closeComparison(); });
             on(dialog, 'close', () => this.afterComparisonClose());
+            const outsideDialog = event => {
+                if (event.target !== dialog) return false;
+                const bounds = dialog.getBoundingClientRect();
+                return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+            };
+            on(dialog, 'pointerdown', event => { backdropPointer = outsideDialog(event); });
+            on(dialog, 'pointercancel', () => { backdropPointer = false; });
+            on(dialog, 'click', event => {
+                if (backdropPointer && outsideDialog(event)) this.closeComparison();
+                backdropPointer = false;
+            });
             on(browserWindow, 'pagehide', () => { suspended = true; this.closeComparison(false); });
             on(browserWindow, 'pageshow', () => { if (alive) suspended = false; });
             on(browserWindow, 'focus', () => { if (owns() && this.comparisonOpen) this.readComparison(true); });
@@ -46,7 +57,9 @@ export function catalogProductComparison(config, browserWindow = window) {
             this.comparisonError = ''; this.comparisonNotice = labels.group_scope;
             this.comparisonEnabled = false;
             previousGroup = { id: groupId, hadSelection: false };
-            root?.querySelector('[data-comparison-toggle]')?.focus();
+            const toggle = root?.querySelector('[data-comparison-toggle]');
+            if (toggle && (!toggle.getClientRects || toggle.getClientRects().length > 0)) toggle.focus();
+            else root?.querySelector('[data-comparison-results]')?.focus();
         },
 
         comparisonIsSelected(id) { return this.comparisonItems.some(item => item.id === id); },
@@ -57,6 +70,7 @@ export function catalogProductComparison(config, browserWindow = window) {
             const item = { id, label, inResults: inResults === true };
             if (this.comparisonItems.length === 4) { this.comparisonReplacement = item; return; }
             this.changeComparisonPair([...this.comparisonItems, item]);
+            if (this.comparisonItems.length === 4) this.openComparison();
         },
 
         changeComparisonPair(items) {
@@ -129,6 +143,7 @@ export function catalogProductComparison(config, browserWindow = window) {
         },
 
         closeComparison(shouldRestoreFocus = true) {
+            backdropPointer = false;
             generation++; this.comparisonBusy = false; this.comparisonResult = null; this.comparisonError = '';
             this.comparisonOpen = false; restoreFocus = shouldRestoreFocus;
             if (dialog?.open) dialog.close();

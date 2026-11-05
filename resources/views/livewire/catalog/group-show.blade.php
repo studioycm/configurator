@@ -21,7 +21,6 @@
             </div>
             <section wire:ignore x-cloak x-show="available" data-tour="catalog.product-filters" aria-label="{{ __('catalog.frontend.copy.product_filters') }}" class="mt-3">
                 <div class="mb-3 flex items-stretch gap-2">
-                    <button type="button" data-tour="catalog.comparison-toggle" data-comparison-toggle @click="toggleComparisonMode()" :aria-pressed="comparisonEnabled" aria-label="{{ __('catalog.comparison.toggle') }}" title="{{ __('catalog.comparison.toggle') }}" class="self-center rounded-lg border border-slate-300 p-2 aria-pressed:bg-blue-700 aria-pressed:text-white focus-visible:outline-2 dark:border-zinc-600"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="size-5"><path d="M4 4h6v16H4zM14 4h6v16h-6zM10 12h4" stroke-width="1.5" /></svg></button>
                     <div class="catalog-result-count" role="status" aria-live="polite" aria-atomic="true">
                         <p class="catalog-result-count__amount" data-catalog-total x-text="total === null ? '—' : total"></p>
                         <p class="catalog-result-count__label" x-text="total === 1 ? @js(trans_choice('catalog.frontend.copy.profile_count_label', 1)) : @js(trans_choice('catalog.frontend.copy.profile_count_label', 2))">{{ trans_choice('catalog.frontend.copy.profile_count_label', 2) }}</p>
@@ -66,7 +65,7 @@
                 <button x-show="!reloadRequired" type="button" @click="refreshSnapshot()" :disabled="refreshing" class="ml-2 underline">{{ __('catalog.frontend.copy.retry_update') }}</button>
                 <a x-show="reloadRequired" href="{{ route('catalog.groups.show', $group) }}" class="ml-2 underline">{{ __('catalog.frontend.copy.reload_page') }}</a>
             </div>
-            <section data-tour="catalog.product-results" wire:ignore x-cloak x-show="available" class="mt-4" aria-label="{{ __('catalog.resources.products.plural') }}" :aria-busy="cardStatus === 'loading'">
+            <section data-tour="catalog.product-results" data-comparison-results tabindex="-1" wire:ignore x-cloak x-show="available" class="mt-4" aria-label="{{ __('catalog.resources.products.plural') }}" :aria-busy="cardStatus === 'loading'">
                 <p x-show="cardStatus === 'loading'" role="status" class="mb-2 text-sm">{{ __('catalog.frontend.copy.updating_products') }}</p>
                 <p x-show="cardStatus === 'empty'">{{ __('catalog.frontend.copy.there_are_no_products_matching_these_choices') }}</p>
                 <p x-show="cardStatus === 'above_threshold'" class="text-sm text-zinc-600 dark:text-zinc-400" x-text="maximum === 1 ? @js(__('catalog.frontend.threshold_one')) : @js(__('catalog.frontend.threshold_many')).replace(':maximum', maximum)"></p>
@@ -74,12 +73,15 @@
                     <span x-text="cardError"></span>
                     <button type="button" @click="retryCards()" class="ml-2 underline">{{ __('catalog.frontend.copy.retry_products') }}</button>
                 </div>
-                <p x-show="cardsVisible && cardPropertiesNotice" role="status" aria-live="polite" class="mb-2 text-sm text-zinc-600 dark:text-zinc-400" x-text="cardPropertiesNotice"></p>
+                <div x-show="(cardsVisible && cardPropertiesNotice) || (!comparisonEnabled && comparisonEntryVisible)" class="mb-2 flex items-center justify-between gap-3">
+                    <p x-show="cardsVisible && cardPropertiesNotice" role="status" aria-live="polite" class="min-w-0 text-sm text-zinc-600 dark:text-zinc-400" x-text="cardPropertiesNotice"></p>
+                    <button x-cloak x-show="!comparisonEnabled && comparisonEntryVisible" type="button" data-tour="catalog.comparison-toggle" data-comparison-toggle @click="toggleComparisonMode()" :aria-pressed="comparisonEnabled" aria-label="{{ __('catalog.comparison.toggle') }}" title="{{ __('catalog.comparison.toggle') }}" class="ml-auto shrink-0 rounded-lg border border-slate-300 bg-white p-2 text-slate-600 hover:border-blue-500 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:text-blue-300"><x-heroicon-o-scale class="size-5" /></button>
+                </div>
+                <x-catalog.product-comparison :group="$group" />
                 <div data-cards-visible="false" :data-cards-visible="cardsVisible ? 'true' : 'false'" :aria-hidden="cardsVisible ? null : 'true'" class="catalog-card-grid" :style="{'--catalog-cards-max-columns': columns}">
                     <template x-for="chunk in cardChunks" :key="chunk.key"><div class="contents" :data-card-chunk="chunk.key" x-html="chunk.html"></div></template>
                 </div>
             </section>
         </div>
-        <x-catalog.product-comparison :group="$group" />
     @endif
 </div>

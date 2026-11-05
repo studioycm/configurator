@@ -94,6 +94,10 @@ export function catalogFilters() {
         available: false, unavailable: '', reloadRequired: false, freshnessError: '', refreshing: false,
         cardStatus: 'idle', cardError: '', cardChunks: [], cardsVisible: false, cardPropertiesNotice: null, journeyError: '',
 
+        get comparisonEntryVisible() {
+            return this.available && this.cardsVisible && this.cardStatus === 'ready' && this.total > 2;
+        },
+
         init() {
             if (initialized) return;
             initialized = true;

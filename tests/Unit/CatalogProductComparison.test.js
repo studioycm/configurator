@@ -11,6 +11,7 @@ function fixture(groupId = '1', queuedClose = false) {
     const opener = { isConnected: true, focus() { focused.push('opener'); }, closest: () => null };
     browser.document.activeElement = opener;
     dialog.open = false;
+    dialog.getBoundingClientRect = () => ({ left: 100, right: 900, top: 100, bottom: 700 });
     dialog.showModal = () => { dialog.open = true; };
     dialog.close = () => {
         dialog.open = false;
@@ -68,15 +69,70 @@ test('disposal before queued close completion removes its handler and never rest
     assert.deepEqual(f.focused, []); assert.equal(f.component.comparisonResult, null); assert.equal(f.dialog.open, false);
 });
 
-test('four-item tray toggles without a request; fifth requires explicit replacement or cancel', () => {
+test('fourth selection opens automatically once; fifth still requires explicit replacement or cancel', () => {
     const f = fixture(); f.pair();
-    for (const id of ['3', '4']) f.component.toggleComparisonProduct(id, `Product ${id}`, true);
+    f.component.toggleComparisonProduct('3', 'Product 3', true);
+    assert.equal(f.calls.length, 0);
+    f.component.toggleComparisonProduct('4', 'Product 4', true);
+    assert.equal(f.dialog.open, true);
+    assert.deepEqual(f.calls[0].ids, ['1', '2', '3', '4']);
+    f.component.closeComparison();
+    assert.equal(f.component.comparisonItems.length, 4);
+    assert.equal(f.calls.length, 1);
     f.component.toggleComparisonProduct('5', 'Product 5', true);
     assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['1', '2', '3', '4']);
     f.component.cancelComparisonReplacement(); assert.equal(f.component.comparisonReplacement, null);
     f.component.toggleComparisonProduct('5', 'Product 5', true); f.component.replaceComparisonProduct(2);
     assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['1', '2', '5', '4']);
-    assert.equal(f.calls.length, 0); f.component.destroy();
+    assert.equal(f.calls.length, 1); f.component.destroy();
+});
+
+test('comparison entry requires three or more matches and ready displayed cards', () => {
+    const filters = catalogFilters();
+    for (const count of [null, 0, 1, 2, 3, 4]) {
+        Object.assign(filters, { available: true, cardsVisible: true, cardStatus: 'ready', total: count });
+        assert.equal(filters.comparisonEntryVisible, count >= 3);
+    }
+    for (const state of [{ available: false }, { cardsVisible: false }, { cardStatus: 'loading' }, { cardStatus: 'error' }, { cardStatus: 'above_threshold' }]) {
+        Object.assign(filters, { available: true, cardsVisible: true, cardStatus: 'ready', total: 4 }, state);
+        assert.equal(filters.comparisonEntryVisible, false);
+    }
+});
+
+test('only a complete backdrop click dismisses comparison and keeps the selection', async () => {
+    const f = fixture(); f.pair(); const request = f.component.openComparison(); f.reply(0); await request;
+    const pointer = (type, x, y) => {
+        const event = new Event(type);
+        Object.assign(event, { clientX: x, clientY: y });
+        f.dialog.dispatchEvent(event);
+    };
+
+    pointer('pointerdown', 200, 200); pointer('click', 200, 200);
+    assert.equal(f.dialog.open, true);
+    pointer('pointerdown', 200, 200); pointer('click', 50, 50);
+    assert.equal(f.dialog.open, true);
+    pointer('pointerdown', 50, 50); pointer('click', 200, 200);
+    assert.equal(f.dialog.open, true);
+    pointer('pointerdown', 50, 50); pointer('pointercancel', 50, 50); pointer('click', 50, 50);
+    assert.equal(f.dialog.open, true);
+    pointer('pointerdown', 50, 50); pointer('click', 50, 50);
+    assert.equal(f.dialog.open, false);
+    assert.deepEqual(f.component.comparisonItems.map(item => item.id), ['1', '2']);
+    assert.equal(f.component.comparisonEnabled, true);
+    assert.deepEqual(f.focused, ['opener']); f.component.destroy();
+});
+
+test('clear and exit returns focus to results when the entry is hidden by narrowed filters', () => {
+    const f = fixture(); f.pair();
+    const query = f.root.querySelector;
+    f.root.querySelector = selector => selector === '[data-comparison-toggle]' ? { getClientRects: () => [] }
+        : selector === '[data-comparison-results]' ? { focus() { f.focused.push('results'); } } : query(selector);
+
+    f.component.clearComparison();
+
+    assert.deepEqual(f.focused, ['results']);
+    assert.equal(f.component.comparisonEnabled, false);
+    assert.deepEqual(f.component.comparisonItems, []); f.component.destroy();
 });
 
 test('clear and exit invalidates an outstanding four Product read and hides comparison controls', async () => {

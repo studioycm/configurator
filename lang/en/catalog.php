@@ -25,7 +25,7 @@ return [
     ],
     'comparison' => [
         'title' => 'Compare Products', 'add' => 'Add to comparison', 'remove' => 'Remove from comparison',
-        'toggle' => 'Compare Products', 'clear_exit' => 'Clear all and exit comparison', 'choose_more' => 'Choose at least two Products to compare.', 'compare' => 'Compare', 'close' => 'Back to selection', 'property' => 'Property',
+        'toggle' => 'Compare Products', 'clear_exit' => 'Clear & Exit', 'choose_more' => 'Select 2–4 Products', 'compare' => 'Compare', 'close' => 'Back to selection', 'property' => 'Property',
         'choose' => 'Choose two to four Products to compare their saved properties.',
         'group_scope' => 'Compare two to four Products from this Group. Switching Groups clears the selection.',
         'group_changed' => 'Comparison selections were cleared because the Group changed or became unavailable.',
