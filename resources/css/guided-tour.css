@@ -2,10 +2,14 @@
 
 .guided-tour-controller { display: contents; }
 .guided-tour-launchers { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
-.guided-tour-section { position: absolute; pointer-events: auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; border: 1px solid #64748b; background: #fff; color: #334155; box-shadow: 0 1px 4px #0002; cursor: pointer; }
+.guided-tour-section { position: absolute; pointer-events: auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; border: 1px solid #134e4a; background: #0f766e; color: #fff; box-shadow: 0 0 0 2px #fff, 0 2px 8px #0004; cursor: pointer; }
+.guided-tour-section:hover { background: #115e59; }
 .guided-tour-section svg { width: 21px; height: 21px; }
-.guided-tour-section:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.guided-tour-section:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
 .ari-guided-tour { font-family: inherit; }
 .ari-guided-tour :is(.driver-popover-title, .driver-popover-description) { overflow-wrap: anywhere; }
-.dark .ari-guided-tour, .dark .guided-tour-section { background: #1f2937; color: #f9fafb; }
+.dark .ari-guided-tour { background: #1f2937; color: #f9fafb; }
+.dark .guided-tour-section { background: #5eead4; color: #042f2e; border-color: #99f6e4; box-shadow: 0 0 0 2px #0f172a, 0 2px 8px #0006; }
+.dark .guided-tour-section:hover { background: #99f6e4; }
+.dark .guided-tour-section:focus-visible { outline-color: #5eead4; }
 .dark .ari-guided-tour .driver-popover-close-btn { color: #d1d5db; }
