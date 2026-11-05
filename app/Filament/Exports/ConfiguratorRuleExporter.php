@@ -14,6 +14,7 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Set;
@@ -64,14 +65,14 @@ class ConfiguratorRuleExporter extends CatalogExporter
     public static function optionsForm(bool $selectConfigurators = true): array
     {
         return [
-            Select::make('preset')->label(__('data_exchange.rules.preset'))->options(['review' => __('data_exchange.rules.review'), 'import' => __('data_exchange.rules.import_template')])->default('review')->required()->live()->afterStateUpdated(function (?string $state, Set $set): void {
+            ToggleButtons::make('preset')->label(__('data_exchange.rules.preset'))->options(['review' => __('data_exchange.rules.review'), 'import' => __('data_exchange.rules.import_template')])->default('review')->required()->inline()->live()->afterStateUpdated(function (?string $state, Set $set): void {
                 foreach (array_keys(ConfiguratorRuleExchange::HELPERS) as $group) {
                     $set('helper_'.$group, $state === 'review');
                 }
             }),
-            Select::make('kind')->label(__('data_exchange.rules.kind'))->options(['all' => __('data_exchange.rules.both'), 'Mapping' => __('data_exchange.rules.mapping'), 'Advanced' => __('data_exchange.rules.advanced')])->default('all')->required(),
-            Select::make('state')->label(__('data_exchange.rules.state'))->options(['all' => __('data_exchange.rules.all'), 'enabled' => __('data_exchange.rules.enabled'), 'disabled' => __('data_exchange.rules.disabled')])->default('all')->required(),
-            Select::make('format')->label(__('data_exchange.rules.format'))->options(['csv' => 'CSV', 'xlsx' => 'XLSX', 'both' => 'CSV + XLSX'])->default('both')->required(),
+            ToggleButtons::make('kind')->label(__('data_exchange.rules.kind'))->options(['all' => __('data_exchange.rules.both'), 'Mapping' => __('data_exchange.rules.mapping'), 'Advanced' => __('data_exchange.rules.advanced')])->default('all')->required()->inline(),
+            ToggleButtons::make('state')->label(__('data_exchange.rules.state'))->options(['all' => __('data_exchange.rules.all'), 'enabled' => __('data_exchange.rules.enabled'), 'disabled' => __('data_exchange.rules.disabled')])->default('all')->required()->inline(),
+            ToggleButtons::make('format')->label(__('data_exchange.rules.format'))->options(['csv' => 'CSV', 'xlsx' => 'XLSX', 'both' => 'CSV + XLSX'])->default('both')->required()->inline(),
             ...array_map(fn (string $group): Checkbox => Checkbox::make('helper_'.$group)->label(__('data_exchange.rules.helpers.'.$group))->default(true), array_keys(ConfiguratorRuleExchange::HELPERS)),
             Checkbox::make('lookups')->label(__('data_exchange.rules.lookups'))->helperText(__('data_exchange.rules.lookup_help'))->default(true),
             ...($selectConfigurators ? [Select::make('configurator_ids')->label(__('data_exchange.rules.configurators'))->multiple()->searchable()->options(fn (): array => Configurator::orderBy('name')->pluck('name', 'id')->all())->helperText(__('data_exchange.rules.all_configurators'))->default([])] : []),

@@ -20,6 +20,8 @@ use Filament\Actions\ExportAction;
 use Filament\Actions\Exports\Jobs\CreateXlsxFile;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Actions\Testing\TestAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,6 +49,50 @@ function ruleExportRecord(User $actor, int $total = 1): Export
 {
     return Export::create(['user_id' => $actor->id, 'exporter' => ConfiguratorRuleExporter::class, 'total_rows' => $total, 'processed_rows' => 0, 'successful_rows' => 0, 'file_disk' => 'local', 'file_name' => 'rules']);
 }
+
+test('Rule export exposes fixed choices immediately and preserves scoped defaults and reactive helpers', function (bool $scoped) {
+    $this->actingAs(User::factory()->create(['email' => 'beny.cr@gmail.com']));
+    $configurator = Configurator::factory()->create();
+    $page = $scoped
+        ? Livewire::test(RulesRelationManager::class, ['ownerRecord' => $configurator, 'pageClass' => EditConfigurator::class])->mountAction(TestAction::make('exportRules')->table())
+        : Livewire::test(DataExchange::class)->mountAction(TestAction::make('exportRules')->schemaComponent(true, 'content'));
+    $schema = $page->instance()->getSchema($page->instance()->getMountedActionSchemaName());
+    $choices = [
+        'preset' => [['review' => __('data_exchange.rules.review'), 'import' => __('data_exchange.rules.import_template')], 'review'],
+        'kind' => [['all' => __('data_exchange.rules.both'), 'Mapping' => __('data_exchange.rules.mapping'), 'Advanced' => __('data_exchange.rules.advanced')], 'all'],
+        'state' => [['all' => __('data_exchange.rules.all'), 'enabled' => __('data_exchange.rules.enabled'), 'disabled' => __('data_exchange.rules.disabled')], 'all'],
+        'format' => [['csv' => 'CSV', 'xlsx' => 'XLSX', 'both' => 'CSV + XLSX'], 'both'],
+    ];
+
+    foreach ($choices as $name => [$options, $default]) {
+        $field = $schema->getComponentByStatePath($name);
+        expect($field)->toBeInstanceOf(ToggleButtons::class);
+        expect($field->getOptions())->toBe($options)
+            ->and($field->getState())->toBe($default)
+            ->and($field->isRequired())->toBeTrue()
+            ->and($field->isInline())->toBeTrue()
+            ->and($field->isGrouped())->toBeFalse();
+        expect($field->toHtml())->toContain('role="radiogroup"', 'fi-inline', ...array_values($options));
+    }
+
+    $lookup = $schema->getComponentByStatePath('configurator_ids');
+    if ($scoped) {
+        expect($lookup)->toBeNull();
+    } else {
+        expect($lookup)->toBeInstanceOf(Select::class);
+        expect($lookup->isMultiple())->toBeTrue()
+            ->and($lookup->isSearchable())->toBeTrue()
+            ->and($lookup->getState())->toBe([]);
+    }
+
+    foreach (['import' => false, 'review' => true] as $preset => $helpers) {
+        $page->set('mountedActions.0.data.preset', $preset);
+        foreach (array_keys(ConfiguratorRuleExchange::HELPERS) as $group) {
+            $page->assertSet('mountedActions.0.data.helper_'.$group, $helpers);
+        }
+    }
+    expect(Export::count())->toBe(0);
+})->with(['all Configurators' => false, 'one Configurator' => true]);
 
 test('replaying a Rules export page preserves its captured bytes and accounts for it only once', function () {
     $disk = Storage::fake('local');
