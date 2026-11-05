@@ -10,7 +10,8 @@ class TourDefinitionSeeder extends Seeder
 {
     public function run(): void
     {
-        $starter = GuidedTours::starter();
-        TourDefinition::query()->firstOrCreate(['key' => $starter['key'], 'locale' => $starter['locale']], $starter);
+        foreach (GuidedTours::starters() as $starter) {
+            TourDefinition::query()->firstOrCreate(['key' => $starter['key'], 'locale' => $starter['locale']], $starter);
+        }
     }
 }

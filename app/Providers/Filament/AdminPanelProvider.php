@@ -16,6 +16,7 @@ use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\TourDefinitions\TourDefinitionResource;
 use App\Filament\Resources\Values\ValueResource;
 use App\Services\AdminAppearance;
+use App\Services\GuidedTours;
 use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -78,6 +79,7 @@ class AdminPanelProvider extends PanelProvider
                 return view('filament.resources.appearance-recovery-notice', ['recovery' => $appearance->recovery()]);
             })
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.resources.workspace-assets'))
+            ->renderHook(PanelsRenderHook::PAGE_START, fn (array $scopes) => view('filament.resources.guided-tour', ['tourPage' => GuidedTours::pageForScopes($scopes)]))
             ->resources([GroupResource::class, ProductResource::class, ConfiguratorResource::class, AttributeResource::class, ValueResource::class, OptionResource::class, TourDefinitionResource::class])
             ->navigationItems([
                 NavigationItem::make(__('catalog.navigation.product_catalog'))

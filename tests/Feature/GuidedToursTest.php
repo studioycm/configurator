@@ -1,5 +1,7 @@
 <?php
 
+use App\Filament\Pages\AdminAppearance;
+use App\Filament\Resources\Groups\Pages\EditGroup;
 use App\Filament\Resources\TourDefinitions\Pages\ManageTourDefinitions;
 use App\Models\TourDefinition;
 use App\Models\User;
@@ -17,7 +19,7 @@ use Livewire\Livewire;
 
 function tourInput(): array
 {
-    return ['key' => 'images-basics', 'title' => 'Images introduction', 'locale' => 'en', 'enabled' => true,
+    return ['key' => 'images-basics', 'title' => 'Images introduction', 'locale' => 'en', 'enabled' => true, 'stage' => 'images',
         'steps' => [
             ['key' => 'find', 'page' => 'images', 'target' => 'images.find', 'title' => 'Find records', 'description' => 'Search products or groups.', 'placement' => 'bottom'],
             ['key' => 'inspect', 'page' => 'images', 'target' => 'images.records', 'title' => 'Inspect a record', 'description' => 'Inspect does not select a record for assignment.', 'placement' => 'top'],
@@ -109,7 +111,7 @@ test('cached definitions avoid reloading JSON while current enabled and locale m
     $service->forPage($actor, 'images', 'he');
     $queries = DB::getQueryLog();
     DB::disableQueryLog();
-    expect(collect($queries)->filter(fn (array $q): bool => str_contains($q['query'], '"steps"'))->count())->toBe(0);
+    expect(collect($queries)->filter(fn (array $q): bool => str_contains(Str::before($q['query'], ' from '), '"steps"'))->count())->toBe(0);
     $disabled = tourInput();
     $disabled['locale'] = 'he';
     $disabled['enabled'] = false;
@@ -150,10 +152,67 @@ test('unknown targets duplicate step keys and executable extra fields are reject
 
 test('the starter tour installation is idempotent and preserves managed edits', function () {
     $this->seed(TourDefinitionSeeder::class);
-    $tour = TourDefinition::query()->sole();
+    $tour = TourDefinition::query()->where('key', 'images-basics')->sole();
     $tour->update(['title' => 'My edited tour', 'enabled' => false]);
     $this->seed(TourDefinitionSeeder::class);
-    expect(TourDefinition::count())->toBe(1);
+    expect(TourDefinition::count())->toBe(count(GuidedTours::pages()));
     expect($tour->fresh()->title)->toBe('My edited tour');
     expect($tour->fresh()->enabled)->toBeFalse();
+});
+
+test('a managed stage keeps its steps in one context and rejects highlights from another workspace', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $input = tourInput();
+    $input['stage'] = 'groups-edit';
+    $input['steps'] = [array_replace($input['steps'][0], ['target' => 'screen.workspace'])];
+    Livewire::test(ManageTourDefinitions::class)->callAction(CreateAction::class, data: $input)->assertHasNoFormErrors();
+    $tour = TourDefinition::query()->sole();
+    expect($tour->stage)->toBe('groups-edit');
+    expect($tour->steps[0]['page'])->toBe('groups-edit');
+    expect(app(GuidedTours::class)->forPage($actor, 'groups-edit', 'en'))->toHaveCount(1);
+    expect(app(GuidedTours::class)->forPage($actor, 'images', 'en'))->toBe([]);
+
+    $input['steps'][0]['target'] = 'images.find';
+    expect(fn () => app(GuidedTours::class)->save($actor, $tour, $input))->toThrow(ValidationException::class);
+    expect($tour->fresh()->revision)->toBe(1);
+});
+
+test('stage installation creates screen-specific starters without replacing edited or disabled stages', function () {
+    $this->seed(TourDefinitionSeeder::class);
+    $group = TourDefinition::query()->where('key', 'screen-groups-edit')->sole();
+    $group->update(['title' => 'Our group editing guide', 'enabled' => false]);
+    $this->seed(TourDefinitionSeeder::class);
+
+    expect(TourDefinition::query()->where('key', 'screen-groups-edit')->sole()->title)->toBe('Our group editing guide');
+    expect($group->fresh()->enabled)->toBeFalse();
+    expect(TourDefinition::query()->where('key', 'screen-writing')->sole()->steps[1]['description'])->toContain('Save');
+    expect(TourDefinition::query()->where('key', 'screen-catalog-products')->exists())->toBeTrue();
+});
+
+test('the native tour manager filters stages by their screen and hydrates existing context on edit', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $this->seed(TourDefinitionSeeder::class);
+    $group = TourDefinition::query()->where('key', 'screen-groups-edit')->sole();
+    $images = TourDefinition::query()->where('key', 'images-basics')->sole();
+
+    Livewire::test(ManageTourDefinitions::class)->filterTable('stage', 'groups-edit')
+        ->assertCanSeeTableRecords([$group])->assertCanNotSeeTableRecords([$images])
+        ->mountAction(TestAction::make(EditAction::class)->table($group))
+        ->assertSet('mountedActions.0.data.stage', 'groups-edit');
+});
+
+test('the shared page hook offers only the current workspace stage on render and subsequent requests', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $this->seed(TourDefinitionSeeder::class);
+    config(['catalog-assets.enabled' => false]);
+
+    $this->get(route('filament.admin.pages.admin-appearance'))->assertSee('Show me around')->assertSee('screen-appearance', false);
+    Livewire::test(AdminAppearance::class)->call('$refresh')->assertSee('Show me around')->assertSee('screen-appearance', false);
+    expect(GuidedTours::pageForScopes([EditGroup::class]))->toBe('groups-edit');
+    expect(GuidedTours::pageForScopes(['unregistered']))->toBeNull();
+    expect(app(GuidedTours::class)->forPage($actor, 'images', 'en'))->toBe([]);
+    expect(app(GuidedTours::class)->forPage($actor, 'appearance', 'en'))->toHaveCount(1);
 });

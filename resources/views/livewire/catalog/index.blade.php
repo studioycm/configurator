@@ -1,4 +1,5 @@
-<div>
+<div data-tour="catalog.workspace">
+    @include('filament.resources.guided-tour', ['tourPage' => 'catalog-families'])
     @if ($invalidState)
         <section data-catalog-invalid-state role="alert" class="catalog-browse-state"><h2>{{ __('catalog.browse.invalid') }}</h2><a href="{{ route('catalog.index') }}">{{ __('catalog.browse.return_all') }}</a></section>
     @else

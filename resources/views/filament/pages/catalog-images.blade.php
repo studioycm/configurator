@@ -1,5 +1,4 @@
 <x-filament-panels::page>
-    @include('filament.resources.guided-tour', ['tourPage' => 'images'])
     <div class="catalog-images-workspace" x-data="catalogImagesBrowser({ user: @js(auth()->id()) })" x-on:catalog-images-inspect="inspect($event.detail)" x-on:catalog-images-review="command('openImageReview', $event.detail.operation)" x-on:catalog-image-review-replaced="command('replaceImageReview', $event.detail.session, $event.detail.host, $event.detail.token)" x-on:catalog-image-review-closed="command('closeImageReview', $event.detail.session, $event.detail.host)">
         <div @if($imageReviewLaunch !== null) hidden @endif>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('catalog-images.intro') }}</p>
