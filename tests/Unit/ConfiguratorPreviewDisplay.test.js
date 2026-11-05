@@ -81,7 +81,14 @@ test('application registers the display controller both before and after Alpine 
     const importedNames = [...source.matchAll(/^import \{ ([^}]+) \}/gm)].flatMap(match => match[1].split(',').map(name => name.trim()));
     for (const alreadyInitialized of [false, true]) {
         const registered = new Map(); let initialize;
-        const alpine = { data(name, factory) { registered.set(name, factory); } };
+        const stores = new Map();
+        const alpine = {
+            data(name, factory) { registered.set(name, factory); },
+            store(name, value) {
+                if (arguments.length > 1) stores.set(name, value);
+                return stores.get(name);
+            },
+        };
         const context = { ...Object.fromEntries(importedNames.map(name => [name, () => {}])), configuratorPreviewDisplay, window: { Alpine: alreadyInitialized ? alpine : undefined }, document: { addEventListener(name, callback) { if (name === 'alpine:init') initialize = callback; } } };
         runInNewContext(source.replace(/^import .*;\n/gm, ''), context);
         if (!alreadyInitialized) { context.window.Alpine = alpine; initialize(); }
