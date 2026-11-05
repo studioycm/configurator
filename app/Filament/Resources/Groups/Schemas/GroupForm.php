@@ -169,9 +169,9 @@ class GroupForm
                 ])->columns(2),
             ])->columnSpanFull(),
             Section::make(__('catalog.groups.headings.subgroups'))->key(fn (Section $component): string => 'subgroups::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
-                FormOrderControls::make('catalog_settings.sub_groups')->label(__('catalog.groups.tabs.presets'))->hiddenLabel()->extraAttributes(['class' => 'catalog-compact-repeater', 'data-tour' => 'groups.presets'])->hintAction(FormHints::make(__('catalog.groups.hints.named_presets_select_an_allowed_set_for')))->defaultItems(0)->reorderableWithButtons()->schema([
+                FormOrderControls::make('catalog_settings.sub_groups', fn (array $state, string $key): string => self::presetTitle($state, $key))->label(__('catalog.groups.tabs.presets'))->hiddenLabel()->extraAttributes(['class' => 'catalog-compact-repeater', 'data-tour' => 'groups.presets'])->hintAction(FormHints::make(__('catalog.groups.hints.named_presets_select_an_allowed_set_for')))->defaultItems(0)->reorderableWithButtons()->schema([
                     Hidden::make('id'),
-                    TextInput::make('label')->label(__('catalog.groups.labels.preset_label'))->required()->maxLength(255),
+                    TextInput::make('label')->label(__('catalog.groups.labels.preset_label'))->required()->maxLength(255)->live(onBlur: true),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live(),
                     Select::make('allowed_values')->label(__('catalog.groups.labels.allowed_source_values'))->multiple()->required()->minItems(1)->searchable()
                         ->options(fn (Get $get, ?Group $record): array => self::valueOptions($record, $get('property_key'), $get('id')))
@@ -195,6 +195,18 @@ class GroupForm
                     ->columnSpanFull(),
             ])->columnSpanFull(),
         ];
+    }
+
+    /** @param array<string, mixed> $state */
+    private static function presetTitle(array $state, string $key): string
+    {
+        if (is_string($state['label'] ?? null) && trim($state['label']) !== '') {
+            return $state['label'];
+        }
+
+        return isset($state['id'])
+            ? __('admin-ux.unnamed_preset', ['id' => $state['id']])
+            : __('admin-ux.new_preset', ['key' => substr($key, -8)]);
     }
 
     /** @return list<string> */

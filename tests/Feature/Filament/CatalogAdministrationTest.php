@@ -16,6 +16,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -214,4 +215,45 @@ test('group appearance saves through the editor and keeps its layout when labels
     $revision = (string) $group->fresh()->catalog_revision;
     $editor->call('save')->assertHasNoFormErrors();
     expect((string) $group->fresh()->catalog_revision)->toBe($revision);
+});
+
+test('preset headings and move remove names identify each draft row without persisting its order', function () {
+    $group = Group::factory()->create();
+    Product::factory()->for($group)->create(['profile_fields' => ['Working_Pressure' => '10']]);
+    $low = SubGroup::factory()->for($group)->create(['label' => 'Low pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10'], 'sort_order' => 0]);
+    $high = SubGroup::factory()->for($group)->create(['label' => 'High pressure', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10'], 'sort_order' => 1]);
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id]);
+    $field = collect($editor->instance()->form->getFlatFields(withHidden: true))->first(fn ($field): bool => $field->getStatePath() === 'data.catalog_settings.sub_groups');
+    $keys = array_keys($editor->get('data.catalog_settings.sub_groups'));
+    expect($field->getItemLabel($keys[0], 0))->toBe('Low pressure');
+    expect($field->getMoveUpAction()->arguments(['item' => $keys[0]])->getLabel())->toBe('Move Low pressure up');
+    expect($field->getMoveDownAction()->arguments(['item' => $keys[1]])->getLabel())->toBe('Move High pressure down');
+    expect($field->getDeleteAction()->arguments(['item' => $keys[1]])->getLabel())->toBe('Remove High pressure');
+    expect($field->isCollapsed())->toBeFalse()->and($field->isReorderableWithDragAndDrop())->toBeTrue();
+    $editor->callAction(TestAction::make('moveUp')->schemaComponent(Str::after($field->getKey(), 'form.'), schema: 'form')->arguments(['item' => $keys[1]]));
+    expect(array_column($editor->get('data.catalog_settings.sub_groups'), 'id'))->toBe([$high->id, $low->id]);
+    expect($group->subGroups()->orderBy('sort_order')->pluck('id')->all())->toBe([$low->id, $high->id]);
+    $editor->call('save')->assertHasNoFormErrors();
+    expect($group->subGroups()->orderBy('sort_order')->pluck('id')->all())->toBe([$high->id, $low->id]);
+});
+
+test('new and unnamed presets have distinct stable headings and removing a row stays in the draft', function () {
+    $group = Group::factory()->create();
+    $preset = SubGroup::factory()->for($group)->create(['label' => '', 'property_key' => 'Working_Pressure', 'allowed_values' => ['10']]);
+    $editor = Livewire::test(EditGroup::class, ['record' => $group->id]);
+    $field = collect($editor->instance()->form->getFlatFields(withHidden: true))->first(fn ($field): bool => $field->getStatePath() === 'data.catalog_settings.sub_groups');
+    $key = array_key_first($editor->get('data.catalog_settings.sub_groups'));
+    expect($field->getItemLabel($key, 0))->toBe('Unnamed preset #'.$preset->id);
+    $path = Str::after($field->getKey(), 'form.');
+    $editor->callAction(TestAction::make('add')->schemaComponent($path, schema: 'form'))
+        ->callAction(TestAction::make('add')->schemaComponent($path, schema: 'form'));
+    $field = collect($editor->instance()->form->getFlatFields(withHidden: true))->first(fn ($field): bool => $field->getStatePath() === 'data.catalog_settings.sub_groups');
+    $keys = array_keys($editor->get('data.catalog_settings.sub_groups'));
+    $newTitles = [$field->getItemLabel($keys[1], 1), $field->getItemLabel($keys[2], 2)];
+    expect($newTitles[0])->toStartWith('New preset')->not->toBe($newTitles[1]);
+    $editor->callAction(TestAction::make('delete')->schemaComponent($path, schema: 'form')->arguments(['item' => $key]));
+    expect(array_column($editor->get('data.catalog_settings.sub_groups'), 'id'))->not->toContain($preset->id);
+    expect($preset->fresh())->not->toBeNull();
+    $fresh = Livewire::test(EditGroup::class, ['record' => $group->id]);
+    expect(array_column($fresh->get('data.catalog_settings.sub_groups'), 'id'))->toBe([$preset->id]);
 });

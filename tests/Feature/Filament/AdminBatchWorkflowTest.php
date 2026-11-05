@@ -1,6 +1,10 @@
 <?php
 
+use App\Filament\Resources\BatchPreviewPresentation;
+use App\Filament\Resources\Groups\Pages\ListGroups;
 use App\Filament\Resources\Values\Pages\ListValues;
+use App\Models\Group;
+use App\Models\Option;
 use App\Models\User;
 use App\Models\Value;
 use Filament\Actions\Testing\TestAction;
@@ -55,4 +59,48 @@ test('changing selected records invalidates preview and never broadens Apply to 
     $component->set('selectedTableRecords', [(string) $first->id, (string) $second->id])->assertSet('batchPreviewStale', true);
     $component->callMountedAction()->assertHasErrors(['preview']);
     expect([$first->fresh()->label, $second->fresh()->label])->toBe(['First', 'Second']);
+});
+
+test('bulk preview puts the one changed Group field first and retains the original payload without writes', function () {
+    $group = Group::factory()->create(['description' => 'Saved description']);
+    $component = Livewire::test(ListGroups::class)->selectTableRecords([$group]);
+    $component->mountAction(TestAction::make('batchEdit')->table()->bulk())
+        ->fillForm(['operation' => 'edit', 'changes' => [['field' => 'cards_per_row', 'mode' => 'set', 'value' => 3]]])
+        ->callMountedAction(['preview' => true])->assertHasNoFormErrors();
+    $html = $component->instance()->getSchema($component->instance()->getMountedActionSchemaName())->toHtml();
+    expect($html)->toContain('Changed fields', 'Cards Per Row', 'Full original data');
+    $row = $component->get('batchPreview.rows.0');
+    $fields = BatchPreviewPresentation::differences($row, $component->get('batchPreview.form_state'));
+    expect(array_column($fields, 'field'))->toBe(['cards_per_row']);
+    expect($row['before']['description'])->toBe('Saved description');
+    expect($row['after']['cards_per_row'])->toBe(3);
+    expect($group->fresh()->description)->toBe('Saved description');
+    expect($group->fresh()->result_settings)->toBe($group->result_settings);
+});
+
+test('preview display preserves clear null empty text list ordering types and unchanged distinctions', function () {
+    $row = ['before' => ['description' => 'Text', 'hint' => null, 'tags' => ['B', 'A'], 'name' => 'Same', 'label' => 0],
+        'after' => ['description' => null, 'hint' => '', 'tags' => ['A', 'B'], 'name' => 'Same', 'label' => '0']];
+    $intent = ['operation' => 'edit', 'changes' => [['field' => 'description', 'mode' => 'clear'], ['field' => 'hint', 'mode' => 'set'], ['field' => 'name', 'mode' => 'unchanged']]];
+    $fields = BatchPreviewPresentation::differences($row, $intent);
+    expect(array_column($fields, 'field'))->toBe(['description', 'hint', 'tags', 'label']);
+    expect($fields[0]['mode'])->toBe(__('admin.batch.choices.clear'));
+    expect($fields[2]['before'])->toBe(['B', 'A'])->and($fields[2]['after'])->toBe(['A', 'B']);
+    $format = BatchPreviewPresentation::value(...);
+    expect([$format(null), $format(''), $format([]), $format(0), $format('0'), $format(false), $format('false')])->toHaveCount(7);
+    expect(count(array_unique([$format(null), $format(''), $format([]), $format(0), $format('0'), $format(false), $format('false')])))->toBe(7);
+    expect(BatchPreviewPresentation::differences(['before' => $row['before'], 'after' => $row['before']], $intent))->toBe([]);
+});
+
+test('removal previews keep blockers and identify removal separately from clearing a field', function () {
+    $value = Value::factory()->create(['label' => 'Retained master value']);
+    Option::factory()->for($value)->create();
+    $component = Livewire::test(ListValues::class)->selectTableRecords([$value])
+        ->mountAction(TestAction::make('batchRemove')->table()->bulk())
+        ->callMountedAction(['preview' => true])->assertHasNoFormErrors();
+    $html = $component->instance()->getSchema($component->instance()->getMountedActionSchemaName())->toHtml();
+    expect($html)->toContain('Remove this record', 'Full original data', '1 record is blocked');
+    expect($component->get('batchPreview.blocked_count'))->toBe(1);
+    expect($component->get('batchPreview.rows.0.after'))->toBe([]);
+    expect($value->fresh()->label)->toBe('Retained master value');
 });

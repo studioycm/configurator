@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'preset_move_up' => 'Move :name up',
+    'preset_move_down' => 'Move :name down',
+    'preset_remove' => 'Remove :name',
+    'unnamed_preset' => 'Unnamed preset #:id',
+    'new_preset' => 'New preset · :key',
     'regenerate_identifier' => 'Create from current :label',
     'related_list_fields' => 'Related list fields',
     'open_attributes_workspace' => 'Open Attributes workspace',
