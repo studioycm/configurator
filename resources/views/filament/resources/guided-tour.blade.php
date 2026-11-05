@@ -18,3 +18,5 @@
         </template>
     </div>
 @endif
+
+@include('filament.resources.tour-author-page')

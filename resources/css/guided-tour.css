@@ -13,3 +13,22 @@
 .dark .guided-tour-section:hover { background: #99f6e4; }
 .dark .guided-tour-section:focus-visible { outline-color: #5eead4; }
 .dark .ari-guided-tour .driver-popover-close-btn { color: #d1d5db; }
+
+.tour-authoring-panel { border: 1px solid #cbd5e1; border-radius: .75rem; padding: 1rem; display: grid; gap: .75rem; }
+.tour-authoring-panel h3 { font-weight: 600; }
+.tour-authoring-panel p { font-size: .875rem; color: #475569; }
+.tour-authoring-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: .75rem; }
+.tour-authoring-fields label, .tour-author-toolbar label { display: grid; gap: .25rem; font-size: .875rem; min-width: 0; }
+.tour-authoring-fields :is(input, select), .tour-author-toolbar select { width: 100%; min-width: 0; border: 1px solid #94a3b8; border-radius: .5rem; background: #fff; color: #0f172a; padding: .5rem; }
+.tour-authoring-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.tour-author-toolbar { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); width: min(960px, calc(100vw - 2rem)); max-height: 35vh; overflow: auto; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .75rem; border-radius: .75rem; border: 2px solid #0f766e; background: #fff; color: #0f172a; box-shadow: 0 3px 18px #0004; z-index: 1000000001; }
+.tour-author-toolbar label { flex: 1 1 180px; }
+.tour-author-toolbar strong, .tour-author-toolbar [role="status"] { flex-basis: 100%; font-size: .875rem; }
+.tour-author-toolbar button { padding: .4rem .6rem; border: 1px solid #64748b; border-radius: .5rem; font-size: .875rem; cursor: pointer; }
+.tour-author-toolbar button:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
+.tour-author-outline { position: fixed; pointer-events: none; border: 3px solid #0f766e; background: #14b8a622; z-index: 1000000000; }
+.dark .tour-authoring-panel { border-color: #475569; }
+.dark .tour-authoring-panel p { color: #cbd5e1; }
+.dark .tour-author-toolbar, .dark .tour-authoring-fields :is(input, select), .dark .tour-author-toolbar select { background: #1e293b; color: #f8fafc; }
+.dark .tour-author-outline { border-color: #5eead4; }
+@media (max-width: 640px) { .tour-authoring-fields { grid-template-columns: minmax(0, 1fr); } }

@@ -271,3 +271,24 @@ test('creating a Tour supplies its internal key without requiring advanced setti
     $tour = TourDefinition::sole();
     expect($tour->key)->toBeUuid()->and($tour->title)->toBe($input['title']);
 });
+
+test('registered targets have friendly discovery metadata and a reusable field or section anchor', function () {
+    $definition = GuidedTours::registerTarget('groups.example', 'Example setting', 'field');
+    config(['guided-tour-sections.groups-edit.targets' => $definition]);
+    expect(GuidedTours::anchor('groups.example'))->toBe(['data-tour' => 'groups.example']);
+    expect(GuidedTours::targetCatalog('groups-edit')['groups.example'])->toBe([
+        'label' => 'Example setting', 'kind' => 'field', 'selector' => '[data-tour="groups.example"]',
+    ]);
+    expect(GuidedTours::targetCatalog('images'))->not->toHaveKey('groups.example');
+    expect(GuidedTours::targetCatalog('unknown'))->toBe([]);
+});
+
+test('authoring is available to managers without published tours and never enables a saved tour', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    $this->actingAs($actor);
+    $this->get(route('filament.admin.pages.admin-appearance'))
+        ->assertOk()->assertSee('guidedTourAuthorPage', false);
+    Livewire::test(ManageTourDefinitions::class)->mountAction(CreateAction::class)
+        ->assertSee('Locate on page')->assertSee('Pick on page')->assertSee('Preview draft');
+    expect(TourDefinition::count())->toBe(0);
+});

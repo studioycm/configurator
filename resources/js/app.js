@@ -29,6 +29,7 @@ import { ruleWritingWorkspace } from './configurator-rule-writing';
 import { ruleWritingEntry } from './configurator-rule-writing-entry';
 import { driver } from 'driver.js';
 import { guidedTourWorkspace } from './guided-tour-workspace';
+import { tourAuthor, guidedTourAuthorPage } from './guided-tour-authoring';
 
 window.uiInterpolate = interpolate;
 window.workspaceColumnManager = workspaceColumnManager;
@@ -46,6 +47,8 @@ function registerComponents(Alpine) {
     if (!Alpine || registeredAlpine.has(Alpine)) return;
     Alpine.store('guidedTourHelp', { enabled: false, contexts: {}, userKey: null, get available() { return Object.keys(this.contexts).length > 0; } });
     Alpine.data('guidedTour', config => guidedTourWorkspace(config, { createDriver: driver }));
+    Alpine.data('tourAuthor', tourAuthor);
+    Alpine.data('guidedTourAuthorPage', config => guidedTourAuthorPage(config, { createDriver: driver }));
     Alpine.data('suggestedIdentifier', suggestedIdentifier);
     Alpine.data('masterValueBatch', masterValueBatch);
     Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));

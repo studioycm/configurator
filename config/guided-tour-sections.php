@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\GuidedTours;
+
 return [
     'images' => [
         'targets' => [
@@ -663,18 +665,9 @@ return [
     ],
     'groups-create' => [
         'targets' => [
-            'groups.name' => [
-                'label' => 'Name',
-                'selector' => '[data-tour="groups.name"]',
-            ],
-            'groups.parent' => [
-                'label' => 'Parent',
-                'selector' => '[data-tour="groups.parent"]',
-            ],
-            'groups.configurator' => [
-                'label' => 'Configurator',
-                'selector' => '[data-tour="groups.configurator"]',
-            ],
+            ...GuidedTours::registerTarget('groups.name', 'Name', 'field'),
+            ...GuidedTours::registerTarget('groups.parent', 'Parent', 'field'),
+            ...GuidedTours::registerTarget('groups.configurator', 'Configurator', 'field'),
             'groups.properties' => [
                 'label' => 'Properties',
                 'selector' => '[data-tour="groups.properties"]',
@@ -725,14 +718,8 @@ return [
     ],
     'groups-edit' => [
         'targets' => [
-            'groups.name' => [
-                'label' => 'Name',
-                'selector' => '[data-tour="groups.name"]',
-            ],
-            'groups.parent' => [
-                'label' => 'Parent',
-                'selector' => '[data-tour="groups.parent"]',
-            ],
+            ...GuidedTours::registerTarget('groups.name', 'Name', 'field'),
+            ...GuidedTours::registerTarget('groups.parent', 'Parent', 'field'),
             'groups.properties' => [
                 'label' => 'Properties',
                 'selector' => '[data-tour="groups.properties"]',

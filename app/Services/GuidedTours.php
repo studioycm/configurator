@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\TourDefinition;
 use App\Models\User;
+use Illuminate\Routing\Exceptions\UrlGenerationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -13,6 +14,65 @@ use Illuminate\Validation\Rule;
 
 class GuidedTours
 {
+    /** @return array<string, string> */
+    public static function anchor(string $key): array
+    {
+        if (! preg_match('/^[a-zA-Z0-9_.-]+$/D', $key)) {
+            throw new \InvalidArgumentException('A tour target needs a stable identifier.');
+        }
+
+        return ['data-tour' => $key];
+    }
+
+    /** @return array<string, array{label: string, kind: string, selector: string}> */
+    public static function registerTarget(string $key, string $label, string $kind = 'section'): array
+    {
+        self::anchor($key);
+
+        return [$key => ['label' => $label, 'kind' => $kind, 'selector' => '[data-tour="'.$key.'"]']];
+    }
+
+    /** @return array<string, array{label: string, kind: string, selector: string}> */
+    public static function targetCatalog(string $page): array
+    {
+        $labels = self::targets($page);
+        $result = [];
+        foreach (self::selectors($page) as $key => $selector) {
+            $result[$key] = ['label' => $labels[$key], 'kind' => (config('guided-tour-sections.'.$page.'.targets', [])[$key]['kind'] ?? 'section'), 'selector' => $selector];
+        }
+
+        return $result;
+    }
+
+    /** @return array<string, array<string, string>> */
+    public static function targetOptions(string $page): array
+    {
+        $options = [];
+        foreach (self::targetCatalog($page) as $key => $target) {
+            $options[$target['kind'] === 'field' ? __('tours.fields') : __('tours.sections')][$key] = $target['label'];
+        }
+
+        return $options;
+    }
+
+    /** @return array<string, string> */
+    public static function pageUrls(): array
+    {
+        $urls = ['catalog-families' => route('catalog.index')];
+        foreach (config('guided-tours.screens', []) as $page => $screen) {
+            if ($screen['scope'] === null) {
+                continue;
+            }
+            try {
+                $urls[$page] = $screen['scope']::getUrl(panel: 'admin');
+            } catch (UrlGenerationException) {
+                // Record workspaces need the operator's actual record address.
+            }
+        }
+
+        return $urls;
+    }
+
     /** @return array<string, string> */
     public static function pages(): array
     {

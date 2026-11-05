@@ -13,6 +13,7 @@ use App\Models\SubGroup;
 use App\Services\CatalogDiscovery;
 use App\Services\CatalogPolicy;
 use App\Services\GroupAttributes;
+use App\Services\GuidedTours;
 use App\Services\ProductFields;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -38,11 +39,11 @@ class GroupForm
     {
 
         $details = [
-            TextInput::make('name')->extraFieldWrapperAttributes(['data-tour' => 'groups.name'])->label(__('ui.fields.name'))->required()->maxLength(255)->helperText(__('catalog.groups.hints.imported_names_are_replaced_by_the_source')),
+            TextInput::make('name')->extraFieldWrapperAttributes(GuidedTours::anchor('groups.name'))->label(__('ui.fields.name'))->required()->maxLength(255)->helperText(__('catalog.groups.hints.imported_names_are_replaced_by_the_source')),
             TextInput::make('sort_order')->label(__('catalog.groups.fields.sort_order'))->integer()->default(0)->required(),
-            Select::make('parent_id')->extraFieldWrapperAttributes(['data-tour' => 'groups.parent'])->label(__('catalog.groups.fields.parent'))->searchable()->placeholder(__('catalog.groups.help.root_group'))
+            Select::make('parent_id')->extraFieldWrapperAttributes(GuidedTours::anchor('groups.parent'))->label(__('catalog.groups.fields.parent'))->searchable()->placeholder(__('catalog.groups.help.root_group'))
                 ->options(fn (?Group $record): array => self::parentOptions($record)),
-            Select::make('configurator_id')->extraFieldWrapperAttributes(['data-tour' => 'groups.configurator'])->label(__('configurator.resource.singular'))->searchable()->placeholder(__('ui.choices.unassigned'))
+            Select::make('configurator_id')->extraFieldWrapperAttributes(GuidedTours::anchor('groups.configurator'))->label(__('configurator.resource.singular'))->searchable()->placeholder(__('ui.choices.unassigned'))
                 ->getSearchResultsUsing(fn (string $search): array => Configurator::where('name', 'like', '%'.$search.'%')->orderBy('name')->limit(50)->pluck('name', 'id')->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => Configurator::find($value)?->name)
                 ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)

@@ -18,6 +18,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -99,13 +100,14 @@ class TourDefinitionResource extends Resource
                 ->collapsed(fn (?TourDefinition $record): bool => $record?->exists ?? false)
                 ->itemLabel(fn (array $state): string => $state['title'] ?? __('tours.new_step'))->columns(2)->schema([
                     TextInput::make('title')->label(__('tours.step_title'))->required()->maxLength(255)->columnSpanFull(),
-                    Select::make('target')->label(__('tours.target'))->options(fn (Get $get): array => GuidedTours::targets($get('../../stage') ?? 'images'))->required()->selectablePlaceholder(false),
+                    Select::make('target')->label(__('tours.target'))->options(fn (Get $get): array => GuidedTours::targetOptions($get('../../stage') ?? 'images'))->required()->searchable()->preload()->selectablePlaceholder(false),
                     Select::make('placement')->label(__('tours.placement'))->options(GuidedTours::placements())->default('bottom')->required()->selectablePlaceholder(false),
                     Textarea::make('description')->label(__('tours.description'))->required()->maxLength(2000)->rows(3)->columnSpanFull(),
                     Section::make(__('tours.advanced'))->key(fn (Section $component): string => 'tour-step-advanced::'.$component->getStatePath(), isInheritable: false)->collapsible()->collapsed()->columnSpanFull()->schema([
                         TextInput::make('key')->label(__('tours.step_key'))->default(fn (): string => (string) Str::uuid())->required()->alphaDash()->maxLength(100),
                     ]),
                 ]),
+            View::make('filament.resources.tour-authoring')->columnSpanFull(),
             Section::make(__('tours.advanced'))->key('tour-advanced', isInheritable: false)->columns(2)->collapsible()->collapsed()->schema([
                 TextInput::make('key')->label(__('tours.key'))->default(fn (): string => (string) Str::uuid())->required()->alphaDash()->maxLength(100),
                 TextInput::make('locale')->label(__('tours.locale'))->default(config('app.locale'))->required()->maxLength(10),
