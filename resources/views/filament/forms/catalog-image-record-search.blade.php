@@ -1,4 +1,4 @@
-<div class="catalog-images-search">
+<div class="catalog-images-search" data-tour="images.find">
     <h2 class="font-semibold">{{ __('catalog-images.find_records') }}</h2>
     <div class="catalog-images-filters">{{ $this->imageFilters }}</div>
     <div class="catalog-images-bar">

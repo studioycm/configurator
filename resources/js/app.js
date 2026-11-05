@@ -26,6 +26,8 @@ import { configuratorPreviewWorkspace } from './configurator-preview-workspace';
 import { configuratorPreviewDisplay } from './configurator-preview-display';
 import { ruleWritingWorkspace } from './configurator-rule-writing';
 import { ruleWritingEntry } from './configurator-rule-writing-entry';
+import { driver } from 'driver.js';
+import { guidedTour } from './guided-tour';
 
 window.uiInterpolate = interpolate;
 window.workspaceColumnManager = workspaceColumnManager;
@@ -41,6 +43,7 @@ const registeredAlpine = new WeakSet();
 
 function registerComponents(Alpine) {
     if (!Alpine || registeredAlpine.has(Alpine)) return;
+    Alpine.data('guidedTour', config => guidedTour(config, { createDriver: driver }));
     Alpine.data('suggestedIdentifier', suggestedIdentifier);
     Alpine.data('masterValueBatch', masterValueBatch);
     Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));

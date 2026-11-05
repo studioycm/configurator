@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    @include('filament.resources.guided-tour', ['tourPage' => 'images'])
     <div class="catalog-images-workspace" x-data="catalogImagesBrowser({ user: @js(auth()->id()) })" x-on:catalog-images-inspect="inspect($event.detail)" x-on:catalog-images-review="command('openImageReview', $event.detail.operation)" x-on:catalog-image-review-replaced="command('replaceImageReview', $event.detail.session, $event.detail.host, $event.detail.token)" x-on:catalog-image-review-closed="command('closeImageReview', $event.detail.session, $event.detail.host)">
         <div @if($imageReviewLaunch !== null) hidden @endif>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('catalog-images.intro') }}</p>
@@ -20,7 +21,7 @@
         <div class="catalog-images-layout catalog-workspace-split" x-data="workspaceSplit({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'owner' => 'catalog-images', 'tab' => 'records']) }})" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
             <section aria-label="{{ __('catalog-images.results') }}" x-ref="records" tabindex="-1" class="catalog-images-records">
                 @include('filament.forms.catalog-image-record-search')
-                <div data-catalog-images-native-table wire:key="image-table-{{ $imageTarget }}">{{ $this->table }}</div>
+                <div data-tour="images.records" data-catalog-images-native-table wire:key="image-table-{{ $imageTarget }}">{{ $this->table }}</div>
                 <div class="catalog-images-footer">
                     <div class="catalog-images-page-size" x-data="{ custom: false, size: '' }">
                         <label for="images-page-size" class="sr-only">{{ __('catalog-images.rows_per_page') }}</label>

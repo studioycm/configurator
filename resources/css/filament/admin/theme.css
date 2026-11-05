@@ -2,6 +2,12 @@
 @import '../../shell.css';
 @import './rule-writing.css';
 @import './catalog-images.css';
+@import '../../../../node_modules/driver.js/dist/driver.css';
+
+.ari-guided-tour { font-family: inherit; }
+.ari-guided-tour :is(.driver-popover-title, .driver-popover-description) { overflow-wrap: anywhere; }
+.dark .ari-guided-tour { background: #1f2937; color: #f9fafb; }
+.dark .ari-guided-tour .driver-popover-close-btn { color: #d1d5db; }
 
 @source '../../../../resources/views/components/catalog/**/*';
 @source '../../../../resources/views/livewire/catalog/**/*';

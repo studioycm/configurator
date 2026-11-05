@@ -1,5 +1,5 @@
 @php($inspector = $this->imageInspector())
-<aside class="catalog-images-inspector" aria-label="{{ __('catalog-images.main_image') }}">
+<aside class="catalog-images-inspector" data-tour="images.inspector" aria-label="{{ __('catalog-images.main_image') }}">
     @if ($inspector && ! $inspector['missing_record'])
         <div class="catalog-images-inspector-heading">
             <h2 data-catalog-images-inspector-heading tabindex="-1" class="font-semibold">{{ $inspector['title'] }}</h2>
