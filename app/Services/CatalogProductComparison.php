@@ -18,7 +18,7 @@ final class CatalogProductComparison
      */
     public function get(User $actor, int $groupId, array $productIds): array
     {
-        if (! array_is_list($productIds) || count($productIds) !== 2) {
+        if (! array_is_list($productIds) || count($productIds) < 2 || count($productIds) > 4) {
             $this->reject();
         }
         $ids = [];
@@ -29,7 +29,7 @@ final class CatalogProductComparison
             }
             $ids[] = (int) $id;
         }
-        if ($ids[0] === $ids[1]) {
+        if (count(array_unique($ids)) !== count($ids)) {
             $this->reject();
         }
 
@@ -45,7 +45,7 @@ final class CatalogProductComparison
             }
             $products = Product::query()->where('group_id', $groupId)->where('is_active', true)->whereIn('id', $ids)
                 ->get($columns)->keyBy('id');
-            abort_unless($products->count() === 2, 404);
+            abort_unless($products->count() === count($ids), 404);
             $images = $imagesEnabled ? $this->images->forIds($products->pluck('main_image_id')->filter()->values()->all()) : [];
             $pair = array_map(fn (int $id): Product => $products[$id], $ids);
             $pair[0]->setRelation('group', $group);
@@ -66,7 +66,7 @@ final class CatalogProductComparison
 
                     return is_string($value) && $value !== '' ? $value : null;
                 }, $profiles);
-                $bucket = $values[0] === $values[1] ? 'same' : 'differences';
+                $bucket = count(array_filter($values, fn (?string $value): bool => $value !== $values[0])) === 0 ? 'same' : 'differences';
                 $result[$bucket][] = ['key' => $key, 'label' => $labels[$key] ?? str_replace('_', ' ', $key), 'values' => $values];
             }
 

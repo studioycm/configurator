@@ -5,9 +5,9 @@
 <p class="rw-muted" x-show="!inspection">{{ __('configurator.writing.inspect_prompt') }}</p>
 <template x-if="inspection">
     <div class="rw-data-grid" :class="{'rw-code-no-wrap':!dataDisplay.value.wrap}">
-        <nav aria-label="{{ __('configurator.writing.data_views') }}" class="rw-data-tabs"><template x-for="view in ['records','json','yaml','debug']" :key="view"><button type="button" :aria-current="dataView === view ? 'page' : null" @click="dataView=view" x-text="t(view,view.toUpperCase())"></button></template></nav>
-        <div class="rw-data-content">
-            <div class="rw-data-state"><span x-text="t(inspection.debug.status.target, inspection.debug.status.target)"></span><span x-text="t(inspection.debug.status.capture, inspection.debug.status.capture)"></span><time x-text="inspection.debug.inspected_at"></time></div>
+        <nav data-tour="writing.data-tabs" aria-label="{{ __('configurator.writing.data_views') }}" class="rw-data-tabs"><template x-for="view in ['records','json','yaml','debug']" :key="view"><button type="button" :aria-current="dataView === view ? 'page' : null" @click="dataView=view" x-text="t(view,view.toUpperCase())"></button></template></nav>
+        <div data-tour="writing.data-content" class="rw-data-content">
+            <div data-tour="writing.data-freshness" class="rw-data-state"><span x-text="t(inspection.debug.status.target, inspection.debug.status.target)"></span><span x-text="t(inspection.debug.status.capture, inspection.debug.status.capture)"></span><time x-text="inspection.debug.inspected_at"></time></div>
             <details class="rw-data-identity"><summary>{{ __('configurator.writing.identity_freshness') }}</summary><dl><dt>{{ __('configurator.writing.shared_draft_record') }}</dt><dd x-text="inspectedId"></dd><dt>{{ __('configurator.writing.current_fingerprint') }}</dt><dd x-text="inspection.debug.current_fingerprint"></dd><dt>{{ __('configurator.writing.capture_fingerprint') }}</dt><dd x-text="inspection.debug.capture_fingerprint"></dd></dl></details>
             <div x-show="dataView === 'records'">
                 <h3>{{ __('configurator.writing.current_records') }}</h3>

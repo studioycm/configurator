@@ -1,8 +1,11 @@
 @import '../../node_modules/driver.js/dist/driver.css';
 
-.guided-tour-launch { display: inline-flex; align-items: center; border: 1px solid #d1d5db; border-radius: .5rem; padding: .35rem .65rem; font: inherit; font-size: .8rem; background: #fff; color: #374151; cursor: pointer; }
-.guided-tour-launch:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.guided-tour-controller { display: contents; }
+.guided-tour-launchers { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+.guided-tour-section { position: absolute; pointer-events: auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; border: 1px solid #64748b; background: #fff; color: #334155; box-shadow: 0 1px 4px #0002; cursor: pointer; }
+.guided-tour-section svg { width: 21px; height: 21px; }
+.guided-tour-section:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .ari-guided-tour { font-family: inherit; }
 .ari-guided-tour :is(.driver-popover-title, .driver-popover-description) { overflow-wrap: anywhere; }
-.dark .ari-guided-tour, .dark .guided-tour-launch { background: #1f2937; color: #f9fafb; }
+.dark .ari-guided-tour, .dark .guided-tour-section { background: #1f2937; color: #f9fafb; }
 .dark .ari-guided-tour .driver-popover-close-btn { color: #d1d5db; }

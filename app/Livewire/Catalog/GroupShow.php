@@ -87,7 +87,7 @@ class GroupShow extends Component
         abort_unless(auth()->check(), 401);
         try {
             Validator::make(compact('productIds', 'requestId'), [
-                'productIds' => ['required', 'array', 'list', 'size:2'],
+                'productIds' => ['required', 'array', 'list', 'min:2', 'max:4'],
                 'requestId' => ['required', 'string', 'max:100', 'regex:/\A[A-Za-z0-9:-]+\z/D'],
             ])->validate();
             $result = app(CatalogProductComparison::class)->get(auth()->user(), (int) $this->groupId, $productIds);

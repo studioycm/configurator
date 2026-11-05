@@ -61,7 +61,7 @@ test('comparison fallback uses Group filter order and labels rather than editor 
 test('comparison rejects malformed identity lists before reading saved facts', function (array $ids) {
     [$actor, $group] = savedProductComparisonFixture();
     expect(fn () => app(CatalogProductComparison::class)->get($actor, $group->id, $ids))->toThrow(ValidationException::class);
-})->with([[[]], [['1']], [['1', '1']], [['01', '2']], [[true, 2]], [[1.0, 2]], [['1e0', '2']], [[-1, 2]], [['99999999999999999999999999', '2']], [['1', '2', '3']], [['first' => 1, 'second' => 2]]]);
+})->with([[[]], [['1']], [['1', '1']], [['01', '2']], [[true, 2]], [[1.0, 2]], [['1e0', '2']], [[-1, 2]], [['99999999999999999999999999', '2']], [['1', '2', '3', '4', '5']], [['first' => 1, 'second' => 2]]]);
 
 test('comparison refuses unavailable owners and never returns foreign stale facts', function (string $change) {
     [$actor, $group, $a, $b] = savedProductComparisonFixture();
@@ -132,7 +132,7 @@ test('Group comparison controls stay outside the single Product link and dialog 
     @$document->loadHTML($html);
     $xpath = new DOMXPath($document);
     expect($xpath->query('//dialog[@data-comparison-dialog]')->length)->toBe(1)
-        ->and($xpath->query('//dialog//table//thead/tr/th[@scope="col"]')->length)->toBe(3)
+        ->and($xpath->query('//dialog//table//thead/tr/template[@x-for]')->length)->toBe(1)
         ->and($xpath->query('//*[@data-catalog-filters]')->length)->toBe(1);
     expect($html)->toContain(__('catalog.comparison.differences'), __('catalog.comparison.same'), 'catalogFilters', 'catalogProductComparison')
         ->not->toContain('wire:click="choose', 'catalog_attributes');
@@ -156,3 +156,15 @@ test('enabled comparison never projects image metadata for a foreign or inactive
     expect(array_filter(DB::getQueryLog(), fn (array $query): bool => str_contains($query['query'], 'catalog_assets')))->toBe([]);
     DB::disableQueryLog();
 })->with([true, false]);
+
+test('three and four Product comparisons preserve order and classify Same only across every Product', function (int $count) {
+    [$actor, $group, $a, $b] = savedProductComparisonFixture();
+    $extra = Product::factory()->count($count - 2)->for($group)->create(['profile_fields' => ['same' => 'different', 'zero' => '0']]);
+    $ids = [...$extra->modelKeys(), $b->id, $a->id];
+    $result = app(CatalogProductComparison::class)->get($actor, $group->id, $ids);
+    expect(array_column($result['products'], 'id'))->toBe(array_map(strval(...), $ids))
+        ->and(array_column($result['differences'], 'key'))->toContain('same')
+        ->and($result['differences'][0]['values'])->toHaveCount($count);
+    $extra->last()->update(['group_id' => Group::factory()->create()->id]);
+    expect(fn () => app(CatalogProductComparison::class)->get($actor, $group->id, $ids))->toThrow(HttpException::class);
+})->with([3, 4]);

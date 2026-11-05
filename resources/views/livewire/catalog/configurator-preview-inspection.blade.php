@@ -70,7 +70,7 @@
     @foreach ($report['diagnostics'] ?? [] as $index => $diagnostic)<p wire:key="preview-diagnostic-{{ $index }}">{{ $diagnostic['message'] ?? '' }}</p>@endforeach
     <ul class="space-y-3">@foreach ($relatedRules as $rule)<li wire:key="preview-rule-{{ $rule['id'] }}"><x-catalog.configurator-preview-cause :cause="$rule" :name="$rule['label']"><span class="font-medium">{{ $rule['label'] }}</span></x-catalog.configurator-preview-cause><p class="text-gray-500 dark:text-gray-400">{{ __('configurator.preview.rule_details', ['label' => $rule['label'], 'kind' => __($rule['kind'] === 'Mapping' ? 'admin.workspace.labels.mapping' : 'admin.workspace.labels.advanced'), 'status' => __($rule['disabled'] ? 'ui.status.disabled' : 'ui.status.enabled'), 'priority' => $rule['priority']]) }}</p><p>{{ __('configurator.preview.rule_outcomes.'.$rule['outcome']) }}@if ($rule['disabled']) · {{ __('ui.status.disabled') }}@endif @if ($rule['excluded']) · {{ __('configurator.preview.preview_excluded') }}@endif</p><p class="text-gray-500 dark:text-gray-400">{{ $rule['conditions'] }}</p></li>@endforeach</ul>
 </section>
-<section class="catalog-preview-inspection-section"><h3>{{ __('configurator.copy.engine_trace') }}</h3><ol class="list-inside list-decimal space-y-2">
+<section data-tour="preview.trace" class="catalog-preview-inspection-section"><h3>{{ __('configurator.copy.engine_trace') }}</h3><ol class="list-inside list-decimal space-y-2">
     @foreach ($report['trace'] ?? [] as $index => $entry)
         @if ($inspectedAttribute === null || in_array($index, $traceIndices, true))<li wire:key="preview-trace-{{ $index }}">{{ $entry['message'] ?? '' }}</li>@endif
     @endforeach

@@ -1,5 +1,5 @@
 @php($inspection = $this->inspector())
-<aside class="catalog-images-inspector" aria-label="Review inspector">
+<aside data-tour="images.review-inspector" class="catalog-images-inspector" aria-label="Review inspector">
     @if($inspection)
         <h3 class="font-semibold">{{ $inspection['title'] }}</h3>
         <p>{{ $inspection['position']['position'] ?? 'Outside filters' }} / {{ $inspection['position']['total'] ?? '—' }} · {{ $inspection['status'] }} · {{ $inspection['included'] ? 'Included' : 'Not included' }}</p>

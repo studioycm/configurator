@@ -15,7 +15,7 @@ class CatalogAssetMatchForm
     public static function configure(Schema $schema, AssetAssignment $page): Schema
     {
         return $schema->columns(1)->statePath('recipeData')->components([
-            Section::make('Image source')->columnSpanFull()->columns(2)->schema([
+            Section::make('Image source')->extraAttributes(['data-tour' => 'images.source'])->columnSpanFull()->columns(2)->schema([
                 Select::make('source_choice')->label('Folder or existing source')->searchable()->required()
                     ->options(fn (): array => $page->sourceOptions())
                     ->getSearchResultsUsing(fn (string $search): array => $page->sourceOptions($search))
@@ -23,7 +23,7 @@ class CatalogAssetMatchForm
                 ToggleButtons::make('mode')->label('Existing images')->options(['fill_missing' => 'Fill missing', 'replace_existing' => 'Replace existing'])->inline()->required()->live(),
                 Toggle::make('recursive_scan')->label('Scan subfolders')->live(),
             ]),
-            Section::make('Filename recipe')->visible(fn (): bool => $page->operation === 'folder_matches')->columnSpanFull()->columns(2)->schema([
+            Section::make('Filename recipe')->extraAttributes(['data-tour' => 'images.recipe'])->visible(fn (): bool => $page->operation === 'folder_matches')->columnSpanFull()->columns(2)->schema([
                 ToggleButtons::make('parameters.source_field')->label('Identifier from')->options(['profile_fields' => 'Product field', 'product_code' => 'Product code'])->inline()->required()->live(),
                 Select::make('parameters.field_key')->label('Exact field key')->searchable()->live()->required()
                     ->visible(fn (): bool => ($page->recipeData['parameters']['source_field'] ?? '') === 'profile_fields')

@@ -34,7 +34,7 @@ class CatalogDisplayForm
     /** @return list<Component> */
     public static function group(): array
     {
-        $fields = [Select::make('requested_group_id')->label(__('catalog.display.choose_group'))->searchable()->optionsLimit(50)
+        $fields = [Select::make('requested_group_id')->extraFieldWrapperAttributes(['data-tour' => 'display.group-choice'])->label(__('catalog.display.choose_group'))->searchable()->optionsLimit(50)
             ->getSearchResultsUsing(fn (string $search): array => self::groupOptions($search))
             ->getOptionLabelUsing(function (mixed $value): ?string {
                 Gate::authorize('manage-catalog');

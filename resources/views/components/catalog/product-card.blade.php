@@ -5,7 +5,7 @@
     $imagePresentation = $presentation ?? app(\App\Services\CatalogPresentation::class)->defaults();
     $sideImage = in_array($imagePresentation['product_image_placement'], ['left', 'right'], true);
 @endphp
-<article {{ $attributes->class(['catalog-product-card', 'flex flex-col gap-1' => $comparisonEnabled]) }}>
+<article {{ $attributes->class(['catalog-product-card', 'relative' => $comparisonEnabled]) }}>
     <a href="{{ route('catalog.products.show', $product->id) }}" class="catalog-product-card__link"
         data-catalog-product-url="{{ route('catalog.products.show', $product->id) }}" data-catalog-product-id="{{ $product->id }}" data-catalog-focus="product-{{ $product->id }}"
         :href="productHref($el.dataset.catalogProductUrl, $el.dataset.catalogProductId)"
@@ -15,7 +15,7 @@
         data-property-columns="{{ $appearance['card_property_columns'] }}"
         data-property-layout="{{ $appearance['card_property_layout'] }}"
         data-property-labels="{{ $appearance['card_show_labels'] ? 'shown' : 'hidden' }}"
-        style="--catalog-card-padding-block:{{ $appearance['card_padding_block'] }}px;--catalog-card-padding-inline:{{ $appearance['card_padding_inline'] }}px;@if ($comparisonEnabled)height:auto;flex:1;@endif">
+        style="--catalog-card-padding-block:{{ $appearance['card_padding_block'] }}px;--catalog-card-padding-inline:{{ $appearance['card_padding_inline'] }}px;">
         @if (! $sideImage)
             <x-catalog.main-image :image="$mainImage" class="catalog-product-card__image" />
         @endif
@@ -49,9 +49,10 @@
         </div>
     </a>
     @if ($comparisonEnabled)
-        <button type="button" data-comparison-product="{{ $product->id }}" :aria-pressed="comparisonIsSelected('{{ $product->id }}')" @click="chooseProductComparison({{ \Illuminate\Support\Js::from((string) $product->id) }}, {{ \Illuminate\Support\Js::from($product->product_code) }})"
-            class="shrink-0 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 aria-pressed:border-blue-600 aria-pressed:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:aria-pressed:text-blue-300"
-            :aria-label="(comparisonIsSelected('{{ $product->id }}') ? @js(__('catalog.comparison.remove')) : @js(__('catalog.comparison.add'))) + ' · ' + {{ \Illuminate\Support\Js::from($product->product_code) }}"
-            x-text="comparisonIsSelected('{{ $product->id }}') ? @js(__('catalog.comparison.remove')) : @js(__('catalog.comparison.add'))">{{ __('catalog.comparison.add') }}</button>
+        <button x-cloak x-show="comparisonEnabled" type="button" data-comparison-product="{{ $product->id }}" :aria-pressed="comparisonIsSelected('{{ $product->id }}')" @click="chooseProductComparison({{ \Illuminate\Support\Js::from((string) $product->id) }}, {{ \Illuminate\Support\Js::from($product->product_code) }})"
+            class="absolute -top-2 -right-2 z-10 flex size-7 items-center justify-center rounded-full border border-slate-400 bg-white text-slate-700 shadow-sm aria-pressed:border-blue-600 aria-pressed:bg-blue-700 aria-pressed:text-white focus-visible:outline-2 dark:bg-zinc-900 dark:text-zinc-200"
+            :aria-label="(comparisonIsSelected('{{ $product->id }}') ? @js(__('catalog.comparison.remove')) : @js(__('catalog.comparison.add'))) + ' · ' + {{ \Illuminate\Support\Js::from($product->product_code) }}">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="size-4"><path d="M4 4h6v16H4zM14 4h6v16h-6zM10 12h4" stroke-width="1.5" /></svg>
+        </button>
     @endif
 </article>

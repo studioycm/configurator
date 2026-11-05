@@ -17,6 +17,7 @@ use App\Filament\Resources\TourDefinitions\TourDefinitionResource;
 use App\Filament\Resources\Values\ValueResource;
 use App\Services\AdminAppearance;
 use App\Services\GuidedTours;
+use Filament\Actions\Action;
 use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -46,6 +47,11 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
+            ->userMenuItems([
+                Action::make('guidedTourHelp')->label(view('filament.resources.guided-tour-label'))->icon(Heroicon::OutlinedQuestionMarkCircle)
+                    ->alpineClickHandler("\$dispatch('guided-tour-help-toggle')")->sort(-1)
+                    ->extraAttributes(['x-show' => '$store.guidedTourHelp.available', ':aria-pressed' => '$store.guidedTourHelp.enabled', 'data-tour-help-toggle' => '']),
+            ])
             ->path('admin')
             ->favicon(asset('images/favicon-aquestia.png'))
             ->brandName('Aquestia')

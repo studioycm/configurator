@@ -25,7 +25,7 @@ function fixture(groupId = '1', queuedClose = false) {
     const component = catalogProductComparison({ groupId, componentId: 'component1', labels }, browser);
     component.$el = root;
     component.$wire = { $id: 'component1', loadComparison(ids, requestId) { return new Promise((resolve, reject) => calls.push({ ids, requestId, resolve, reject })); } };
-    component.init();
+    component.init(); component.toggleComparisonMode();
     return { component, browser, dialog, root, opener, fallback, focused, calls,
         async flushClose() { await new Promise(resolve => setImmediate(resolve)); closeTasks.splice(0).forEach(dispatch => dispatch()); },
         pair() { component.toggleComparisonProduct('1', 'Product 1', true); component.toggleComparisonProduct('2', 'Product 2', true); },
@@ -68,26 +68,37 @@ test('disposal before queued close completion removes its handler and never rest
     assert.deepEqual(f.focused, []); assert.equal(f.component.comparisonResult, null); assert.equal(f.dialog.open, false);
 });
 
-test('two-item tray toggles without a request; third requires explicit replacement or cancel', () => {
+test('four-item tray toggles without a request; fifth requires explicit replacement or cancel', () => {
     const f = fixture(); f.pair();
-    f.component.toggleComparisonProduct('3', 'Product 3', true);
-    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['1', '2']);
-    assert.equal(f.component.comparisonIsSelected('3'), false);
+    for (const id of ['3', '4']) f.component.toggleComparisonProduct(id, `Product ${id}`, true);
+    f.component.toggleComparisonProduct('5', 'Product 5', true);
+    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['1', '2', '3', '4']);
     f.component.cancelComparisonReplacement(); assert.equal(f.component.comparisonReplacement, null);
-    f.component.toggleComparisonProduct('3', 'Product 3', true); f.component.replaceComparisonProduct(0);
-    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['3', '2']);
-    f.component.toggleComparisonProduct('2', 'Product 2', true);
-    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['3']); assert.equal(f.calls.length, 0);
-    f.component.destroy();
+    f.component.toggleComparisonProduct('5', 'Product 5', true); f.component.replaceComparisonProduct(2);
+    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['1', '2', '5', '4']);
+    assert.equal(f.calls.length, 0); f.component.destroy();
+});
+
+test('clear and exit invalidates an outstanding four Product read and hides comparison controls', async () => {
+    const f = fixture(); f.pair();
+    for (const id of ['3', '4']) f.component.toggleComparisonProduct(id, id, true);
+    const request = f.component.openComparison();
+    assert.equal(f.calls[0].ids.length, 4);
+    f.component.clearComparison();
+    f.reply(0); await request;
+    assert.equal(f.component.comparisonEnabled, false);
+    assert.deepEqual(f.component.comparisonItems, []);
+    assert.equal(f.component.comparisonResult, null);
+    assert.equal(f.dialog.open, false); f.component.destroy();
 });
 
 test('invalid identities are not coerced and pending replacement cannot survive a changed pair', () => {
     const f = fixture(); f.pair();
     for (const id of ['01', '1e0', 3, false, '-1', '999999999999999999999999']) f.component.toggleComparisonProduct(id, 'Invalid', true);
     assert.equal(f.component.comparisonReplacement, null);
-    f.component.toggleComparisonProduct('3', 'Product 3', true); f.component.removeComparisonProduct('1');
+    f.component.toggleComparisonProduct('3', 'Product 3', true); f.component.toggleComparisonProduct('4', 'Product 4', true); f.component.toggleComparisonProduct('5', 'Product 5', true); f.component.removeComparisonProduct('1');
     f.component.replaceComparisonProduct(0);
-    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['2']); f.component.destroy();
+    assert.deepEqual(f.component.comparisonItems.map(i => i.id), ['2', '3', '4']); f.component.destroy();
 });
 
 test('filter membership labels only two selections and filter reset restores them without removing identities', () => {

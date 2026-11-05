@@ -8,10 +8,10 @@
     @if ($this->recovery)
         <p role="status" class="text-sm text-amber-700 dark:text-amber-400">{{ __('catalog.display.recovery') }}</p>
     @endif
-    <form wire:submit="save" class="space-y-4">
+    <form data-tour="display.shared" wire:submit="save" class="space-y-4">
         {{ $this->form }}
         @error('data') <p role="alert" class="text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p> @enderror
-        <div class="flex flex-wrap gap-2">
+        <div data-tour="display.shared-save" class="flex flex-wrap gap-2">
             <x-filament::button type="submit" wire:loading.attr="disabled">{{ __('catalog.display.save_shared') }}</x-filament::button>
             <x-filament::button color="gray" wire:click="resetDefaults">{{ __('catalog.display.reset_shared') }}</x-filament::button>
             <span role="status" aria-live="polite" data-draft-status="shared" data-dirty="{{ $this->draftStatuses()['shared'] ? 'true' : 'false' }}"
@@ -21,7 +21,7 @@
         </div>
     </form>
     <x-filament::section :heading="__('catalog.display.group')">
-        <form wire:submit="saveGroupPresentation" class="space-y-4">
+        <form data-tour="display.group" wire:submit="saveGroupPresentation" class="space-y-4">
             {{ $this->groupForm }}
             @error('groupData') <p role="alert" class="text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p> @enderror
             @if ($this->pendingGroupId)
@@ -35,7 +35,7 @@
                 </div>
             @endif
             @if ($this->selectedGroupId)
-                <div class="flex flex-wrap gap-2">
+                <div data-tour="display.group-save" class="flex flex-wrap gap-2">
                     <x-filament::button type="submit" wire:loading.attr="disabled">{{ __('catalog.display.save_group') }}</x-filament::button>
                     <x-filament::button color="gray" wire:click="resetGroupOverrides">{{ __('catalog.display.reset_group') }}</x-filament::button>
                     <span role="status" aria-live="polite" data-draft-status="group" data-dirty="{{ $this->draftStatuses()['group'] ? 'true' : 'false' }}"
@@ -50,7 +50,7 @@
     </x-filament::section>
     @if ($this->selectedGroupId)
         <x-filament::section :heading="__('catalog.display.group_tags')">
-            <form wire:submit="saveGroupTags" class="space-y-4">
+            <form data-tour="display.tags" wire:submit="saveGroupTags" class="space-y-4">
                 {{ $this->tagForm }}
                 <x-filament::button type="submit" wire:loading.attr="disabled">{{ __('catalog.display.save_tags') }}</x-filament::button>
                 <span role="status" aria-live="polite" data-draft-status="tags" data-dirty="{{ $this->draftStatuses()['tags'] ? 'true' : 'false' }}"
@@ -60,7 +60,7 @@
             </form>
         </x-filament::section>
     @endif
-    <x-filament::section :heading="__('catalog.display.vocabulary')" collapsible collapsed>
+    <x-filament::section data-tour="display.vocabulary" :heading="__('catalog.display.vocabulary')" collapsible collapsed>
         <div class="flex flex-wrap gap-2">
             {{ $this->categoryAction }}
             {{ $this->valueAction }}

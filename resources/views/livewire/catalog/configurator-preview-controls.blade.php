@@ -1,5 +1,5 @@
 <div class="catalog-preview-action-groups">
-    <section class="catalog-preview-action-group" aria-labelledby="preview-product-group-{{ $this->getId() }}">
+    <section data-tour="preview.product" class="catalog-preview-action-group" aria-labelledby="preview-product-group-{{ $this->getId() }}">
         <h2 id="preview-product-group-{{ $this->getId() }}" class="catalog-preview-group-heading"><x-filament::icon icon="heroicon-o-cube" />{{ __('configurator.preview.product_group') }}</h2>
         <div class="catalog-preview-product-row">
             @include('livewire.catalog.configurator-preview-product-search')
@@ -11,7 +11,7 @@
             @endif
         </div>
     </section>
-    <section class="catalog-preview-action-group" aria-labelledby="preview-testing-group-{{ $this->getId() }}">
+    <section data-tour="preview.testing" class="catalog-preview-action-group" aria-labelledby="preview-testing-group-{{ $this->getId() }}">
         <h2 id="preview-testing-group-{{ $this->getId() }}" class="catalog-preview-group-heading"><x-filament::icon icon="heroicon-o-beaker" />{{ __('configurator.preview.testing_group') }}</h2>
         <div class="flex flex-wrap items-center gap-1.5">
             <x-filament::button type="button" size="sm" :color="$previewSource === 'saved' ? 'primary' : 'gray'" aria-pressed="{{ $previewSource === 'saved' ? 'true' : 'false' }}" x-on:click="rebuild('saved')" x-bind:disabled="busy">{{ __('configurator.preview.test_saved') }}</x-filament::button>
@@ -20,7 +20,7 @@
         </div>
         <p class="catalog-preview-subline">{{ __($previewSource === 'saved' ? 'configurator.preview.saved_help' : 'configurator.preview.current_help') }}</p>
     </section>
-    <section class="catalog-preview-action-group" aria-labelledby="preview-changes-group-{{ $this->getId() }}">
+    <section data-tour="preview.changes" class="catalog-preview-action-group" aria-labelledby="preview-changes-group-{{ $this->getId() }}">
         <h2 id="preview-changes-group-{{ $this->getId() }}" class="catalog-preview-group-heading"><x-filament::icon icon="heroicon-o-pencil-square" />{{ __('configurator.preview.changes_group') }}</h2>
         <div class="flex flex-wrap items-center gap-1.5">
             <x-filament::button type="button" size="sm" color="gray" x-on:click="review()" x-bind:disabled="busy">{{ __('configurator.preview.review_changes') }}</x-filament::button>
@@ -38,11 +38,11 @@
 <div class="catalog-preview-bar" wire:key="preview-presentation-bar">
     <p class="min-w-0 text-xs"><span class="text-gray-500 dark:text-gray-400">{{ __('configurator.preview.previewing') }}</span> <strong>{{ __($previewSource === 'saved' ? 'configurator.preview.saved_source' : 'configurator.preview.unsaved_source') }}</strong></p>
     <div class="flex flex-wrap items-center gap-2">
-        <div class="catalog-preview-presentation" role="group" aria-label="{{ __('configurator.preview.presentation') }}">
+        <div data-tour="preview.presentation" class="catalog-preview-presentation" role="group" aria-label="{{ __('configurator.preview.presentation') }}">
             <button type="button" x-on:click="setPresentation('all')" x-bind:aria-pressed="settings.presentation === 'all'">{{ __('configurator.preview.all_states') }}</button>
             <button type="button" x-on:click="setPresentation('catalog')" x-bind:aria-pressed="settings.presentation === 'catalog'">{{ __('configurator.preview.catalog_result') }}</button>
         </div>
-        <x-filament::dropdown placement="bottom-end" :shift="true" :size="true" :size-padding="12" width="sm" max-height="min(70dvh, 34rem)" class="catalog-preview-display" wire:key="preview-display-menu">
+        <x-filament::dropdown placement="bottom-end" :shift="true" :size="true" :size-padding="12" width="sm" max-height="min(70dvh, 34rem)" data-tour="preview.display" class="catalog-preview-display" wire:key="preview-display-menu">
             <x-slot name="trigger"><x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-adjustments-horizontal" :wire:loading.attr="false">{{ __('configurator.preview.display') }}</x-filament::button></x-slot>
             <div class="catalog-preview-display-fields" x-on:click.stop>
                 <p class="catalog-preview-menu-heading">{{ __('configurator.preview.value_metadata') }}</p>

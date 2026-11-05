@@ -71,6 +71,7 @@ export function guidedTour(config, dependencies = {}) {
             });
             observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden', 'class', 'style', 'inert', 'aria-hidden'] });
         },
+        refresh() { driver?.refresh?.(); },
         move(direction) {
             if (!driver || !this.active) return;
             let next = this.index + direction;

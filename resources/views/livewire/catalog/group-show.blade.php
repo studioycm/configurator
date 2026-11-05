@@ -19,8 +19,9 @@
                 <a x-show="reloadRequired" href="{{ route('catalog.groups.show', $group) }}" class="underline">{{ __('catalog.frontend.copy.reload_page') }}</a>
                 <a href="{{ $catalogReturnUrl }}" class="ml-3 underline">{{ __('catalog.frontend.copy.return_to_catalog') }}</a>
             </div>
-            <section wire:ignore x-cloak x-show="available" aria-label="{{ __('catalog.frontend.copy.product_filters') }}" class="mt-3">
+            <section wire:ignore x-cloak x-show="available" data-tour="catalog.product-filters" aria-label="{{ __('catalog.frontend.copy.product_filters') }}" class="mt-3">
                 <div class="mb-3 flex items-stretch gap-2">
+                    <button type="button" data-tour="catalog.comparison-toggle" data-comparison-toggle @click="toggleComparisonMode()" :aria-pressed="comparisonEnabled" aria-label="{{ __('catalog.comparison.toggle') }}" title="{{ __('catalog.comparison.toggle') }}" class="self-center rounded-lg border border-slate-300 p-2 aria-pressed:bg-blue-700 aria-pressed:text-white focus-visible:outline-2 dark:border-zinc-600"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="size-5"><path d="M4 4h6v16H4zM14 4h6v16h-6zM10 12h4" stroke-width="1.5" /></svg></button>
                     <div class="catalog-result-count" role="status" aria-live="polite" aria-atomic="true">
                         <p class="catalog-result-count__amount" data-catalog-total x-text="total === null ? '—' : total"></p>
                         <p class="catalog-result-count__label" x-text="total === 1 ? @js(trans_choice('catalog.frontend.copy.profile_count_label', 1)) : @js(trans_choice('catalog.frontend.copy.profile_count_label', 2))">{{ trans_choice('catalog.frontend.copy.profile_count_label', 2) }}</p>
@@ -65,7 +66,7 @@
                 <button x-show="!reloadRequired" type="button" @click="refreshSnapshot()" :disabled="refreshing" class="ml-2 underline">{{ __('catalog.frontend.copy.retry_update') }}</button>
                 <a x-show="reloadRequired" href="{{ route('catalog.groups.show', $group) }}" class="ml-2 underline">{{ __('catalog.frontend.copy.reload_page') }}</a>
             </div>
-            <section wire:ignore x-cloak x-show="available" class="mt-4" aria-label="{{ __('catalog.resources.products.plural') }}" :aria-busy="cardStatus === 'loading'">
+            <section data-tour="catalog.product-results" wire:ignore x-cloak x-show="available" class="mt-4" aria-label="{{ __('catalog.resources.products.plural') }}" :aria-busy="cardStatus === 'loading'">
                 <p x-show="cardStatus === 'loading'" role="status" class="mb-2 text-sm">{{ __('catalog.frontend.copy.updating_products') }}</p>
                 <p x-show="cardStatus === 'empty'">{{ __('catalog.frontend.copy.there_are_no_products_matching_these_choices') }}</p>
                 <p x-show="cardStatus === 'above_threshold'" class="text-sm text-zinc-600 dark:text-zinc-400" x-text="maximum === 1 ? @js(__('catalog.frontend.threshold_one')) : @js(__('catalog.frontend.threshold_many')).replace(':maximum', maximum)"></p>

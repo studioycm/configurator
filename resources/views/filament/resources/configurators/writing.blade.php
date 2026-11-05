@@ -15,14 +15,14 @@
             <a x-show="failedRuleId" :href="ruleEditUrl(failedRuleId)">{{ __('configurator.writing.regular_edit') }}</a>
         </div>
         <section x-show="tab === 'writing'" class="rw-writing-grid" :data-rw-theme="writingDisplay.value.theme" :data-logic-style="writingDisplay.value.style" :style="paletteStyle('writing')">
-            <aside class="rw-draft-list" aria-label="{{ __('configurator.writing.shared_drafts') }}">
+            <aside data-tour="writing.drafts" class="rw-draft-list" aria-label="{{ __('configurator.writing.shared_drafts') }}">
                 <div class="rw-section-heading"><h2>{{ __('configurator.writing.shared_drafts') }}</h2><button type="button" @click="refreshList()" :disabled="busy">{{ __('configurator.writing.refresh') }}</button></div>
                 <div class="rw-actions">
                     <x-filament::button size="sm" color="gray" @click="createDraft('Mapping')" x-bind:disabled="busy || !!composing">+ {{ __('configurator.writing.mapping') }}</x-filament::button>
                     <x-filament::button size="sm" color="gray" @click="createDraft('Advanced')" x-bind:disabled="busy || !!composing">+ {{ __('configurator.writing.advanced') }}</x-filament::button>
                 </div>
                 <x-filament::button color="gray" size="sm" @click="rulePage=1; showRules()" x-bind:disabled="!!composing">{{ __('configurator.writing.use_existing') }}</x-filament::button>
-                <form @submit.prevent="page=1; refreshList()" class="rw-search"><label class="sr-only" for="writing-draft-search">{{ __('configurator.writing.search_drafts') }}</label><input id="writing-draft-search" type="search" x-model="search" placeholder="{{ __('configurator.writing.search_drafts') }}"><button type="submit">{{ __('configurator.writing.search') }}</button></form>
+                <form data-tour="writing.draft-search" @submit.prevent="page=1; refreshList()" class="rw-search"><label class="sr-only" for="writing-draft-search">{{ __('configurator.writing.search_drafts') }}</label><input id="writing-draft-search" type="search" x-model="search" placeholder="{{ __('configurator.writing.search_drafts') }}"><button type="submit">{{ __('configurator.writing.search') }}</button></form>
                 <ul class="rw-drafts">
                     <template x-for="row in drafts" :key="row.id">
                         <li :data-current="currentId === row.id">
@@ -33,7 +33,7 @@
                 </ul>
                 <p class="rw-muted" x-show="!drafts.length">{{ __('configurator.writing.no_drafts') }}</p>
                 <div class="rw-actions"><button type="button" :disabled="page <= 1 || busy" @click="page--; refreshList()">{{ __('configurator.writing.previous') }}</button><span x-text="page"></span><button type="button" :disabled="!hasMore || busy" @click="page++; refreshList()">{{ __('configurator.writing.next') }}</button></div>
-                <div class="rw-batch"><span x-text="selected.length"></span> {{ __('configurator.writing.selected') }}<x-filament::button @click="saveSelected()" x-bind:disabled="busy || !selected.length || !!composing">{{ __('configurator.writing.save_selected') }}</x-filament::button></div>
+                <div data-tour="writing.batch-save" class="rw-batch"><span x-text="selected.length"></span> {{ __('configurator.writing.selected') }}<x-filament::button @click="saveSelected()" x-bind:disabled="busy || !selected.length || !!composing">{{ __('configurator.writing.save_selected') }}</x-filament::button></div>
                 <template x-for="failure in offDraftFailures" :key="failure.draftId">
                     <div class="rw-error" role="alert">
                         <button type="button" @click="openDraft(failure.draftId)" :disabled="!!composing"><strong x-text="failure.label"></strong> · <span x-text="failure.operation === 'save-selected' ? t('save_selected', 'Save selected rules') : failure.operation"></span></button>
@@ -52,14 +52,14 @@
                         <section class="rw-editor-pane" aria-label="{{ __('configurator.writing.editor') }}">
                         @include('filament.resources.configurators.writing-tools', ['mode' => 'toolbar'])
                         <label class="sr-only" for="writing-source">{{ __('configurator.writing.source') }}</label>
-                        <div class="rw-source-shell" :class="{'rw-highlight':writingDisplay.value.editor.highlight,'rw-line-numbers':writingDisplay.value.editor.lineNumbers,'rw-no-wrap':!writingDisplay.value.editor.wrap}" :style="'--rw-editor-size:'+writingDisplay.value.editor.font+'px'">
+                        <div data-tour="writing.source" class="rw-source-shell" :class="{'rw-highlight':writingDisplay.value.editor.highlight,'rw-line-numbers':writingDisplay.value.editor.lineNumbers,'rw-no-wrap':!writingDisplay.value.editor.wrap}" :style="'--rw-editor-size:'+writingDisplay.value.editor.font+'px'">
                             <div class="rw-source-mirror" aria-hidden="true"><template x-for="line in highlightedLines" :key="line.number"><div class="rw-source-line"><span class="rw-line-number" x-show="writingDisplay.value.editor.lineNumbers" x-text="line.number"></span><span class="rw-source-line-text"><template x-for="(part,index) in line.parts" :key="index"><span :class="'rw-syntax-'+part.type" x-text="part.text"></span></template><span x-show="!line.parts.some(part=>part.text)"> </span></span></div></template></div>
                             <textarea id="writing-source" x-ref="source" class="rw-source" dir="ltr" spellcheck="false" rows="12" :disabled="current.refreshing" :wrap="writingDisplay.value.editor.wrap ? 'soft' : 'off'" :style="'resize:'+(writingDisplay.value.editor.autoHeight?'none':'vertical')" x-init="$nextTick(() => syncEditor())"
                                 @beforeinput="beforeInput($event)" @input="input($event)" @keydown="keydown($event)" @compositionstart="compositionStart($event)" @compositionend="compositionEnd($event)" @select="sourceSelection($event)" @click="sourceSelection($event)" @keyup="sourceSelection($event)" @scroll="sourceScroll($event)" @pointerup="saveEditorHeight($event)"></textarea>
                         </div>
-                        <div class="rw-source-status"><span x-text="t('line','Line')+' '+context.line"></span><span x-text="draftStatus()"></span></div>
+                        <div data-tour="writing.status" class="rw-source-status"><span x-text="t('line','Line')+' '+context.line"></span><span x-text="draftStatus()"></span></div>
                         <p class="rw-error" role="alert" x-show="current.error && !writingDisplay.value.visible.feedback" x-text="activeError"></p>
-                        <div class="rw-actions rw-save-actions">
+                        <div data-tour="writing.save" class="rw-actions rw-save-actions">
                             <x-filament::button @click="saveCurrent()" x-bind:disabled="busy || current.unknown || current.conflict || current.pendingText !== null || !!composing">{{ __('configurator.writing.save_rule') }}</x-filament::button>
                             <x-filament::button color="gray" @click="flush()" x-bind:disabled="busy || current.unknown || current.conflict || !!composing">{{ __('configurator.writing.save_draft') }}</x-filament::button>
                             <button type="button" x-show="current.origin_rule_id" @click="captureLatest()" :disabled="busy || current.unknown || current.conflict || !!composing">{{ __('configurator.writing.refresh_sections') }}</button>
@@ -86,7 +86,7 @@
                             </div><p class="rw-muted" x-show="!context.choices.length">{{ __('configurator.writing.no_choices') }}</p>
                         </section>
                         <template x-if="writingDisplay.value.visible.feedback && topPanes.length > 1"><div class="rw-divider" role="separator" tabindex="0" aria-orientation="vertical" :aria-valuenow="paneWeights[topPanes.length-2]" aria-valuemin="10" aria-valuemax="90" aria-label="{{ __('configurator.writing.resize_feedback') }}" @pointerdown="startResize($event,topPanes.length-2)" @keydown="resizeKey($event,topPanes.length-2)"></div></template>
-                        <section class="rw-feedback-pane" x-show="writingDisplay.value.visible.feedback" x-cloak aria-label="{{ __('configurator.writing.feedback') }}">
+                        <section data-tour="writing.feedback" class="rw-feedback-pane" x-show="writingDisplay.value.visible.feedback" x-cloak aria-label="{{ __('configurator.writing.feedback') }}">
                             <div class="rw-pane-heading"><span class="rw-muted" x-text="t('line','Line')+' '+context.line"></span><button type="button" @click="closePane('feedback')" aria-label="{{ __('configurator.writing.close_feedback') }}">×</button></div>
                             <h3>{{ __('configurator.writing.issues') }}</h3>
                             <div class="rw-feedback-issues" aria-live="polite"><template x-for="(issue,index) in feedbackIssues" :key="index"><div class="rw-issue"><span class="rw-issue-type" x-text="issue.severity"></span><button type="button" @click="issue.start !== undefined && goToDiagnostic(issue)" x-text="issue.message"></button><small x-show="issue.operation" x-text="issue.operation"></small></div></template><p class="rw-muted" x-show="!feedbackIssues.length">{{ __('configurator.writing.no_writing_issues') }}</p></div>
@@ -97,7 +97,7 @@
                         </div></div>
                         <div class="rw-lower-panes"><template x-for="pane in writingDisplay.value.lowerOrder" :key="pane"><section class="rw-lower-pane" x-show="writingDisplay.value.visible[pane]" :aria-label="t(pane,pane)">
                             <div class="rw-pane-heading"><button type="button" :aria-expanded="!writingDisplay.value.collapsed[pane]" @click="setDisplay('writing',{collapsed:{[pane]:!writingDisplay.value.collapsed[pane]}})" x-text="t(pane,pane)"></button><button type="button" @click="closePane(pane)" :aria-label="t('close','Close')+' '+t(pane,pane)">×</button></div>
-                            <div x-show="!writingDisplay.value.collapsed[pane]"><template x-if="pane==='logic'">@include('filament.resources.configurators.writing-logic')</template><template x-if="pane==='learning'"><div class="rw-learning"><h3 x-text="activeLearningAction?.label ?? context.learning.title"></h3><p x-text="activeLearningAction?.explanation ?? context.learning.text"></p><details><summary>{{ __('configurator.writing.more_detail') }}</summary><p>{{ __('configurator.writing.learning_detail') }}</p><pre dir="ltr" x-text="exampleSource"></pre></details></div></template></div>
+                            <div :data-tour="pane === 'learning' ? 'writing.learning' : null" x-show="!writingDisplay.value.collapsed[pane]"><template x-if="pane==='logic'">@include('filament.resources.configurators.writing-logic')</template><template x-if="pane==='learning'"><div class="rw-learning"><h3 x-text="activeLearningAction?.label ?? context.learning.title"></h3><p x-text="activeLearningAction?.explanation ?? context.learning.text"></p><details><summary>{{ __('configurator.writing.more_detail') }}</summary><p>{{ __('configurator.writing.learning_detail') }}</p><pre dir="ltr" x-text="exampleSource"></pre></details></div></template></div>
                         </section></template></div>
                     </div>
                 </template>

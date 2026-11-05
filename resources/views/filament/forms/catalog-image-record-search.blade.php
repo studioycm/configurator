@@ -52,14 +52,14 @@
             {{ __('catalog-images.'.$imageSearch['match']) }} · {{ __('catalog-images.'.($imageSearch['combine'] === 'any' ? 'any_fragments' : 'all')) }} · {{ __('catalog-images.'.($imageSearch['case_sensitive'] ? 'case_sensitive' : 'ignore_case')) }} · {{ __('catalog-images.'.($imageSearch['literal_separators'] ? 'literal' : 'ignore_separators')) }}
         @endif
     </details>
-    <div class="catalog-images-bar">
+    <div data-tour="images.selection" class="catalog-images-bar">
         <x-filament::button size="sm" color="gray" x-on:click="command('checkImagePage')">{{ __('catalog-images.check_page') }}</x-filament::button>
         <x-filament::button size="sm" color="gray" x-on:click="command('checkImageMatches')">{{ __('catalog-images.check_matches') }}</x-filament::button>
         <span class="text-xs text-gray-500 dark:text-gray-400"><strong>{{ __('catalog-images.selection') }}:</strong> <span x-text="$wire.selectedTableRecords.length">{{ count($selectedTableRecords) }}</span></span>
         <label class="catalog-images-bar text-xs"><x-filament::input.checkbox wire:model.live="imageSearch.checked_only" />{{ __('catalog-images.checked_only') }}</label>
         <x-filament::button color="gray" size="sm" x-cloak x-show="$wire.selectedTableRecords.length" x-on:click="command('clearImageChecks')">{{ __('catalog-images.clear_checks') }}</x-filament::button>
     </div>
-    <div class="catalog-images-selection-actions" role="group" aria-label="{{ __('catalog-images.selection_actions') }}">
+    <div data-tour="images.selection-actions" class="catalog-images-selection-actions" role="group" aria-label="{{ __('catalog-images.selection_actions') }}">
         <x-filament::button size="sm" x-bind:disabled="!$wire.selectedTableRecords.length" x-bind:aria-disabled="String(!$wire.selectedTableRecords.length)" x-bind:class="{ 'fi-disabled': !$wire.selectedTableRecords.length }" x-on:click="command('openImageReview', 'one_image')">{{ __('catalog-images.assign_one') }}</x-filament::button>
         @if ($imageTarget === 'product.main_image')
             <x-filament::button size="sm" color="gray" x-bind:disabled="!$wire.selectedTableRecords.length" x-bind:aria-disabled="String(!$wire.selectedTableRecords.length)" x-bind:class="{ 'fi-disabled': !$wire.selectedTableRecords.length }" x-on:click="command('openImageReview', 'folder_matches')">{{ __('catalog-images.match_folder') }}</x-filament::button>

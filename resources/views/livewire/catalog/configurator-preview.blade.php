@@ -2,7 +2,7 @@
     <div wire:key="preview-display-owner" x-data="configuratorPreviewDisplay({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'componentId' => $this->getId(), 'configuratorId' => $configuratorId]) }})" x-bind:style="displayStyle" x-bind:data-preview-compact="String(settings.compact)">
         @php($notices = $notices ?? $this->notices())
         @php($headline = $notices[0] ?? ['type' => 'neutral', 'title' => __('configurator.preview.ready'), 'message' => __('configurator.preview.tested_only_this_case')])
-        <div class="catalog-preview-notice" data-tone="{{ $headline['type'] }}" x-bind:data-tone="collectionFailed || navigationFailed || savePermissionDenied || phase === 'reconcile_failed' || phase === 'outcome_unknown' ? 'error' : '{{ $headline['type'] }}'" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" aria-live="polite" wire:key="preview-notice-slot">
+        <div data-tour="preview.feedback" class="catalog-preview-notice" data-tone="{{ $headline['type'] }}" x-bind:data-tone="collectionFailed || navigationFailed || savePermissionDenied || phase === 'reconcile_failed' || phase === 'outcome_unknown' ? 'error' : '{{ $headline['type'] }}'" role="region" aria-label="{{ __('configurator.preview.feedback_label') }}" aria-live="polite" wire:key="preview-notice-slot">
             <x-filament::icon icon="heroicon-o-information-circle" />
             <div class="min-w-0">
                 <div x-cloak x-show="collectionFailed || navigationFailed" role="alert"><h3>{{ __('configurator.preview.operation_failed') }}</h3><p x-text="collectionFailed ? {{ \Illuminate\Support\Js::from(__('configurator.preview.collection_failed')) }} : {{ \Illuminate\Support\Js::from(__('configurator.preview.source_unavailable')) }}"></p></div>
@@ -46,7 +46,7 @@
         @endif
         @include('livewire.catalog.configurator-preview-controls')
         <div class="catalog-preview-panels" wire:key="preview-primary-split" x-data="workspaceSplit({ preview: { read: () => splitRatio, write: value => setSplitRatio(value), sideCount: () => visibleSideCount, threshold: 1040, primaryMinimum: 440, sideMinimum: 240, track: 16, gap: 0, sideGap: 12 } })" x-effect="syncPreviewPanels(visibleSideCount, splitRatio)" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
-            <section id="preview-choices-{{ $this->getId() }}" class="catalog-preview-configuration" aria-labelledby="preview-configuration-heading-{{ $this->getId() }}">
+            <section data-tour="preview.choices" id="preview-choices-{{ $this->getId() }}" class="catalog-preview-configuration" aria-labelledby="preview-configuration-heading-{{ $this->getId() }}">
                 <div class="catalog-preview-code">
                     <h2 id="preview-configuration-heading-{{ $this->getId() }}">{{ __('configurator.copy.configuration_code') }}</h2>
                     @if (($previewView['is_complete'] ?? false) && $previewView['configuration_code'] !== null)
@@ -69,7 +69,7 @@
             </section>
             <x-catalog.workspace-splitter :preview="true" />
             <div class="catalog-preview-side-panels" x-show="visibleSideCount > 0" x-bind:data-side-count="visibleSideCount">
-                <section class="catalog-preview-panel catalog-preview-notes" x-show="settings.notes" aria-labelledby="preview-notes-heading-{{ $this->getId() }}" wire:key="preview-selection-notes">
+                <section data-tour="preview.notes" class="catalog-preview-panel catalog-preview-notes" x-show="settings.notes" aria-labelledby="preview-notes-heading-{{ $this->getId() }}" wire:key="preview-selection-notes">
                     <div class="catalog-preview-panel-heading"><h2 id="preview-notes-heading-{{ $this->getId() }}" tabindex="-1">{{ __('configurator.preview.rules_and_state_notes') }}</h2></div>
                     @if (($notes['warnings'] ?? []) !== [])
                         <ul class="space-y-2" aria-live="polite">@foreach ($notes['warnings'] as $index => $warning)<li wire:key="preview-warning-{{ $index }}">{{ $warning['message'] }} @if (isset($warning['attribute_id']))<button type="button" class="catalog-preview-text-action" x-on:click="rememberInspectionTrigger($el); inspect({{ \Illuminate\Support\Js::from($warning['attribute_id']) }})" x-bind:disabled="busy">{{ __('configurator.preview.explain_effect') }}</button>@endif</li>@endforeach</ul>
@@ -89,7 +89,7 @@
                         <details wire:key="preview-selected-value-ids" wire:ignore.self class="catalog-preview-selected-ids"><summary>{{ __('configurator.preview.selected_value_ids') }}</summary><dl>@foreach ($notes['selected_values'] as $index => $value)<div wire:key="preview-selected-value-{{ $index }}"><dt>{{ $value['attribute'] }}</dt><dd class="text-gray-500 dark:text-gray-400">{{ $value['value'] }}</dd></div>@endforeach</dl></details>
                     @endif
                 </section>
-                <aside id="preview-diagnostics-{{ $this->getId() }}" class="catalog-preview-panel catalog-preview-inspection" x-cloak x-show="settings.trace" aria-labelledby="preview-inspection-heading-{{ $this->getId() }}" wire:key="preview-inspection-panel">
+                <aside data-tour="preview.diagnostics" id="preview-diagnostics-{{ $this->getId() }}" class="catalog-preview-panel catalog-preview-inspection" x-cloak x-show="settings.trace" aria-labelledby="preview-inspection-heading-{{ $this->getId() }}" wire:key="preview-inspection-panel">
                     @include('livewire.catalog.configurator-preview-inspection')
                 </aside>
             </div>

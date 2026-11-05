@@ -36,6 +36,9 @@
             @auth
                 <div class="catalog-navigation-footer">
                     <p class="catalog-navigation-label truncate px-2 text-xs text-slate-400">{{ auth()->user()->name }}</p>
+                    <button type="button" x-cloak x-show="$store.guidedTourHelp.available" @click="$dispatch('guided-tour-help-toggle')" :aria-pressed="$store.guidedTourHelp.enabled" data-tour-help-toggle :aria-label="$store.guidedTourHelp.enabled ? @js(__('tours.hide')) : @js(__('tours.start'))" class="catalog-navigation-item">
+                        <flux:icon.question-mark-circle class="size-5 shrink-0" /><span class="catalog-navigation-label">@include('filament.resources.guided-tour-label')</span>
+                    </button>
                     <flux:tooltip :content="__('ui.navigation.account_settings')" position="right">
                         <a href="{{ route('profile.edit') }}" wire:navigate aria-label="{{ __('ui.navigation.account_settings') }}" @if (request()->routeIs('profile.edit', 'user-password.edit', 'appearance.edit', 'two-factor.show')) aria-current="page" @endif class="catalog-navigation-item">
                             <flux:icon.cog-6-tooth class="size-5 shrink-0" /><span class="catalog-navigation-label">{{ __('ui.navigation.account_settings') }}</span>

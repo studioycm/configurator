@@ -5,7 +5,7 @@
         {{ $this->backAction }}
     </div>
     @if ($errors->any())<div role="alert" class="catalog-images-notice">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
-    <details class="catalog-images-upload-options">
+    <details data-tour="images.upload" class="catalog-images-upload-options">
         <summary>Upload images or a folder</summary>
     <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
         <legend class="sr-only">Upload images</legend>
@@ -34,7 +34,7 @@
     <x-filament::button color="gray" :wire:loading.attr="false" x-show="upload || $wire.intakeProgress.declared_files" x-cloak x-on:click="refreshUpload()" x-bind:disabled="running || (!upload &amp;&amp; !$wire.intakeProgress.declared_files)">Refresh upload status</x-filament::button>
     <fieldset x-bind:disabled="running || unknown || !!$wire.applyProgress.accepted">
         {{ $this->matchForm }}
-        <div class="catalog-images-bar">
+        <div data-tour="images.source-actions" class="catalog-images-bar">
             {{ $this->openSourceAction }}
             {{ $this->scanAction }}
             {{ $this->previewAction }}
@@ -59,7 +59,7 @@
             @foreach($reviewProgress['counts'] as $status => $count)<span>{{ ucfirst($status) }}: {{ $count }}</span>@endforeach
             <span>Explicitly excluded: {{ $reviewProgress['explicitly_excluded'] ?? 0 }}</span><span>Deferred: {{ $reviewProgress['deferred'] ?? 0 }}</span>
         </div>
-        <section class="catalog-images-bar" aria-label="This Apply">
+        <section data-tour="images.apply" class="catalog-images-bar" aria-label="This Apply">
             <strong>{{ __('catalog-images.this_apply') }} <span x-text="$wire.selectedTableRecords.length"></span> / 50</strong>
             <span x-text="$wire.selectedTableRecords.filter(id => !{{ \Illuminate\Support\Js::from(array_map('strval', $this->getTableRecords()->modelKeys())) }}.includes(String(id))).length + ' checked outside this page'"></span>
             <x-filament::button color="gray" x-on:click="command('selectReadyImageApply', 'page')" x-bind:disabled="running || unknown || !!$wire.applyProgress.active_acceptance_id || !!$wire.applyProgress.pending_intent || {{ $this->readyPageApplyCount() > 50 ? 'true' : 'false' }}">Use ready page</x-filament::button>
@@ -79,7 +79,7 @@
             @endif
         </section>
         <div class="catalog-images-layout catalog-workspace-split" x-data="workspaceSplit({{ \Illuminate\Support\Js::from(['user' => auth()->id(), 'owner' => 'catalog-images', 'tab' => 'review']) }})" x-bind:data-split-stacked="String(stacked)" x-bind:style="{ '--workspace-columns': columns }">
-            <section class="catalog-images-records" aria-label="Image review">
+            <section data-tour="images.review-records" class="catalog-images-records" aria-label="Image review">
                 <label class="sr-only" for="image-review-search-{{ $launchSession }}">Search review</label>
                 <x-filament::input.wrapper><x-filament::input id="image-review-search-{{ $launchSession }}" wire:model.live.debounce.350ms="reviewSearch" placeholder="Search record, identifier or filename…" maxlength="500" /></x-filament::input.wrapper>
                 <div class="catalog-asset-review-native">{{ $this->table }}</div>

@@ -155,7 +155,7 @@ test('the starter tour installation is idempotent and preserves managed edits', 
     $tour = TourDefinition::query()->where('key', 'images-basics')->sole();
     $tour->update(['title' => 'My edited tour', 'enabled' => false]);
     $this->seed(TourDefinitionSeeder::class);
-    expect(TourDefinition::count())->toBe(count(GuidedTours::pages()));
+    expect(TourDefinition::count())->toBe(count(GuidedTours::starters()));
     expect($tour->fresh()->title)->toBe('My edited tour');
     expect($tour->fresh()->enabled)->toBeFalse();
 });
@@ -210,9 +210,42 @@ test('the shared page hook offers only the current workspace stage on render and
     config(['catalog-assets.enabled' => false]);
 
     $this->get(route('filament.admin.pages.admin-appearance'))->assertSee('Show me around')->assertSee('screen-appearance', false);
-    Livewire::test(AdminAppearance::class)->call('$refresh')->assertSee('Show me around')->assertSee('screen-appearance', false);
+    Livewire::test(AdminAppearance::class)->call('$refresh')->assertSee('data-tour-launchers', false)->assertSee('screen-appearance', false);
     expect(GuidedTours::pageForScopes([EditGroup::class]))->toBe('groups-edit');
     expect(GuidedTours::pageForScopes(['unregistered']))->toBeNull();
     expect(app(GuidedTours::class)->forPage($actor, 'images', 'en'))->toBe([]);
     expect(app(GuidedTours::class)->forPage($actor, 'appearance', 'en'))->toHaveCount(1);
 });
+
+test('each researched section tour stays within its registered page and edited content survives reseeding', function () {
+    $actor = User::factory()->create(['email' => 'ycm@data4.work']);
+    foreach (config('guided-tour-sections') as $page => $section) {
+        foreach ($section['tours'] as $starter) {
+            $tour = app(GuidedTours::class)->save($actor, null, $starter + ['stage' => $page]);
+            expect($tour->stage)->toBe($page);
+            foreach ($tour->steps as $step) {
+                expect(GuidedTours::selectors($page))->toHaveKey($step['target']);
+            }
+        }
+    }
+    $tour = TourDefinition::where('key', 'writing-source-editor')->firstOrFail();
+    $tour->update(['title' => 'Our own editor guide', 'enabled' => false]);
+    $this->seed(TourDefinitionSeeder::class);
+    expect($tour->fresh()->title)->toBe('Our own editor guide')->and($tour->fresh()->enabled)->toBeFalse();
+});
+
+test('only the untouched original Writing starter receives the corrected Save rule guidance', function (bool $edited) {
+    $starter = collect(GuidedTours::starters())->firstWhere('key', 'screen-writing');
+    $starter['steps'][1]['description'] = 'A draft is not an applied rule. Save keeps the draft; use the explicit review and Apply flow to change saved Rules. This tour never saves or applies a draft.';
+    $tour = TourDefinition::create($starter);
+    if ($edited) {
+        $tour->update(['title' => 'Our Writing guide']);
+    }
+    $before = $tour->fresh()->getAttributes();
+    $this->seed(TourDefinitionSeeder::class);
+    if ($edited) {
+        expect($tour->fresh()->getAttributes())->toBe($before);
+    } else {
+        expect($tour->fresh()->revision)->toBe(2)->and($tour->fresh()->steps[1]['description'])->toContain('Save rule')->not->toContain('Apply');
+    }
+})->with([false, true]);

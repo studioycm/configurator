@@ -38,11 +38,11 @@ class GroupForm
     {
 
         $details = [
-            TextInput::make('name')->label(__('ui.fields.name'))->required()->maxLength(255)->helperText(__('catalog.groups.hints.imported_names_are_replaced_by_the_source')),
+            TextInput::make('name')->extraFieldWrapperAttributes(['data-tour' => 'groups.name'])->label(__('ui.fields.name'))->required()->maxLength(255)->helperText(__('catalog.groups.hints.imported_names_are_replaced_by_the_source')),
             TextInput::make('sort_order')->label(__('catalog.groups.fields.sort_order'))->integer()->default(0)->required(),
-            Select::make('parent_id')->label(__('catalog.groups.fields.parent'))->searchable()->placeholder(__('catalog.groups.help.root_group'))
+            Select::make('parent_id')->extraFieldWrapperAttributes(['data-tour' => 'groups.parent'])->label(__('catalog.groups.fields.parent'))->searchable()->placeholder(__('catalog.groups.help.root_group'))
                 ->options(fn (?Group $record): array => self::parentOptions($record)),
-            Select::make('configurator_id')->label(__('configurator.resource.singular'))->searchable()->placeholder(__('ui.choices.unassigned'))
+            Select::make('configurator_id')->extraFieldWrapperAttributes(['data-tour' => 'groups.configurator'])->label(__('configurator.resource.singular'))->searchable()->placeholder(__('ui.choices.unassigned'))
                 ->getSearchResultsUsing(fn (string $search): array => Configurator::where('name', 'like', '%'.$search.'%')->orderBy('name')->limit(50)->pluck('name', 'id')->all())
                 ->getOptionLabelUsing(fn (mixed $value): ?string => Configurator::find($value)?->name)
                 ->disabled(fn (?Group $record): bool => $record?->children()->exists() ?? false)
@@ -91,7 +91,7 @@ class GroupForm
         }
         $fields[] = Text::make(__('catalog.group_attributes.entry_help'))->columnSpanFull()->visible($state['editable']);
 
-        return Section::make(__('catalog.group_attributes.title'))->description(__('catalog.group_attributes.help'))
+        return Section::make(__('catalog.group_attributes.title'))->extraAttributes(['data-tour' => 'groups.properties'])->description(__('catalog.group_attributes.help'))
             ->schema($fields)->columns(2)->columnSpanFull();
     }
 
@@ -101,7 +101,7 @@ class GroupForm
         $properties = ProductFields::options(groupId: $record?->id);
 
         return [
-            Section::make(__('catalog.groups.headings.product_cards'))->key(fn (Section $component): string => 'product-cards::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
+            Section::make(__('catalog.groups.headings.product_cards'))->extraAttributes(['data-tour' => 'groups.cards'])->key(fn (Section $component): string => 'product-cards::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 Select::make('catalog_settings.result_settings.card_properties')->label(__('catalog.groups.labels.properties_to_display'))->multiple()->searchable()
                     ->options($properties)->default([])->placeholder(__('catalog.groups.help.use_group_filter_properties'))
                     ->hintAction(FormHints::make(__('catalog.groups.hints.leave_empty_to_use_the_groups_filter')))
@@ -118,7 +118,7 @@ class GroupForm
                     ->default('all')->required()->selectablePlaceholder(false)
                     ->hintAction(FormHints::make(__('catalog.groups.hints.all_shows_cards_immediately_a_number_shows'))),
             ])->columns(2)->columnSpanFull(),
-            Section::make(__('catalog.groups.headings.card_appearance'))->key(fn (Section $component): string => 'card-appearance::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
+            Section::make(__('catalog.groups.headings.card_appearance'))->extraAttributes(['data-tour' => 'groups.card-appearance'])->key(fn (Section $component): string => 'card-appearance::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 Toggle::make('catalog_settings.result_settings.card_only_differences')->label(__('catalog.groups.labels.only_differing_properties'))->default(true)
                     ->hintAction(FormHints::make(__('catalog.groups.hints.compare_the_complete_matching_set_and_hide'))),
                 Toggle::make('catalog_settings.result_settings.card_show_labels')->label(__('catalog.groups.labels.show_property_labels'))->default(false)->live()
@@ -137,7 +137,7 @@ class GroupForm
                     ->integer()->minValue(0)->maxValue(20)->step(1)->suffix('px')->default(6)->required(),
             ])->columns(2)->columnSpanFull(),
             Section::make(__('catalog.groups.headings.catalog_filters'))->key(fn (Section $component): string => 'catalog-filters::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
-                Select::make('filter_properties_to_add')->label(__('catalog.groups.labels.add_filter_properties'))->multiple()->searchable()->options($properties)->dehydrated(false)->live()
+                Select::make('filter_properties_to_add')->extraFieldWrapperAttributes(['data-tour' => 'groups.filters'])->label(__('catalog.groups.labels.add_filter_properties'))->multiple()->searchable()->options($properties)->dehydrated(false)->live()
                     ->hintAction(FormHints::make(__('catalog.groups.hints.choose_several_properties_to_add_existing_filter')))
                     ->afterStateUpdated(function (Get $get, Set $set, ?Group $record, mixed $state) use ($properties): void {
                         $rows = $get('catalog_settings.filters') ?? [];
@@ -151,7 +151,7 @@ class GroupForm
                         $set('catalog_settings.filters', $rows);
                         $set('filter_properties_to_add', []);
                     })->columnSpanFull(),
-                FormOrderControls::make('catalog_settings.filters')->label(__('ui.tables.filters'))->hiddenLabel()->hintAction(FormHints::make(__('catalog.groups.hints.only_these_properties_appear_as_discovery_filters')))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->reorderableWithButtons()->columnSpanFull()->schema([
+                FormOrderControls::make('catalog_settings.filters')->extraAttributes(['data-tour' => 'groups.filter-order'])->label(__('ui.tables.filters'))->hiddenLabel()->hintAction(FormHints::make(__('catalog.groups.hints.only_these_properties_appear_as_discovery_filters')))->collapsible()->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)->defaultItems(0)->reorderableWithButtons()->columnSpanFull()->schema([
                     Hidden::make('id'),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live()
                         ->afterStateUpdated(function (Set $set, mixed $state, ?Group $record): void {
@@ -168,7 +168,7 @@ class GroupForm
                 ])->columns(2),
             ])->columnSpanFull(),
             Section::make(__('catalog.groups.headings.subgroups'))->key(fn (Section $component): string => 'subgroups::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
-                FormOrderControls::make('catalog_settings.sub_groups')->label(__('catalog.groups.tabs.presets'))->hiddenLabel()->extraAttributes(['class' => 'catalog-compact-repeater'])->hintAction(FormHints::make(__('catalog.groups.hints.named_presets_select_an_allowed_set_for')))->defaultItems(0)->reorderableWithButtons()->schema([
+                FormOrderControls::make('catalog_settings.sub_groups')->label(__('catalog.groups.tabs.presets'))->hiddenLabel()->extraAttributes(['class' => 'catalog-compact-repeater', 'data-tour' => 'groups.presets'])->hintAction(FormHints::make(__('catalog.groups.hints.named_presets_select_an_allowed_set_for')))->defaultItems(0)->reorderableWithButtons()->schema([
                     Hidden::make('id'),
                     TextInput::make('label')->label(__('catalog.groups.labels.preset_label'))->required()->maxLength(255),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live(),
@@ -187,7 +187,7 @@ class GroupForm
                     ->schema([TextInput::make('size')->label(__('catalog.groups.labels.products_per_page'))->integer()->required()->minValue(1)->maxValue(CatalogPolicy::MAX_PAGE_SIZE)])
                     ->default([['size' => 1], ['size' => 2], ['size' => 10]])->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
-            Section::make(__('catalog.groups.headings.product_editor'))->key(fn (Section $component): string => 'product-editor::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
+            Section::make(__('catalog.groups.headings.product_editor'))->extraAttributes(['data-tour' => 'groups.product-editor'])->key(fn (Section $component): string => 'product-editor::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->schema([
                 Select::make('catalog_settings.result_settings.editor_properties')->label(__('catalog.groups.labels.properties_tab_fields'))->multiple()->searchable()
                     ->options($properties)->default([])->placeholder(__('catalog.groups.help.use_group_filter_properties'))
                     ->hintAction(FormHints::make(__('catalog.groups.hints.choose_properties_tab_fields')))

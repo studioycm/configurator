@@ -38,6 +38,12 @@ class GuidedTours
     {
         $targets = ['images.find' => __('tours.targets.find'), 'images.records' => __('tours.targets.records'), 'images.inspector' => __('tours.targets.inspector'), 'screen.heading' => __('tours.targets.heading'), 'screen.workspace' => __('tours.targets.workspace')];
 
+        foreach (config('guided-tour-sections', []) as $section) {
+            foreach ($section['targets'] as $key => $target) {
+                $targets[$key] = $target['label'];
+            }
+        }
+
         return $page === null ? $targets : array_intersect_key($targets, self::selectors($page));
     }
 
@@ -47,13 +53,14 @@ class GuidedTours
         if (! array_key_exists($page, self::pages())) {
             return [];
         }
+        $sections = array_map(fn (array $target): string => $target['selector'], config('guided-tour-sections.'.$page.'.targets', []));
         if ($page === 'images') {
-            return ['images.find' => '[data-tour="images.find"]', 'images.records' => '[data-tour="images.records"]', 'images.inspector' => '[data-tour="images.inspector"]'];
+            return $sections + ['images.find' => '[data-tour="images.find"]', 'images.records' => '[data-tour="images.records"]', 'images.inspector' => '[data-tour="images.inspector"]'];
         }
 
-        return str_starts_with($page, 'catalog-') && config('guided-tours.screens.'.$page.'.scope') === null
+        return $sections + (str_starts_with($page, 'catalog-') && config('guided-tours.screens.'.$page.'.scope') === null
             ? ['screen.heading' => '.catalog-page-header', 'screen.workspace' => '#catalog-content > [data-tour="catalog.workspace"]']
-            : ['screen.heading' => '.fi-header', 'screen.workspace' => '.fi-page-content'];
+            : ['screen.heading' => '.fi-header', 'screen.workspace' => '.fi-page-content']);
     }
 
     /** @return array<string, string> */
@@ -145,6 +152,10 @@ class GuidedTours
                 ['key' => 'overview', 'page' => $page, 'target' => 'screen.heading', 'title' => $screen['title'], 'description' => $screen['intro'], 'placement' => 'bottom'],
                 ['key' => 'workspace', 'page' => $page, 'target' => 'screen.workspace', 'title' => 'Working here', 'description' => $screen['workspace'], 'placement' => 'top'],
             ]];
+        }
+
+        foreach (config('guided-tour-sections', []) as $section) {
+            array_push($starters, ...$section['tours']);
         }
 
         return $starters;

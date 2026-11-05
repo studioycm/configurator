@@ -1,8 +1,8 @@
 let previousGroup = null;
 const canonicalId = value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value)
     && (value.length < 19 || (value.length === 19 && value <= '9223372036854775807'));
-const validRows = rows => Array.isArray(rows) && rows.every(row => row && typeof row.key === 'string'
-    && typeof row.label === 'string' && Array.isArray(row.values) && row.values.length === 2
+const validRows = (rows, count) => Array.isArray(rows) && rows.every(row => row && typeof row.key === 'string'
+    && typeof row.label === 'string' && Array.isArray(row.values) && row.values.length === count
     && row.values.every(value => value === null || typeof value === 'string'));
 
 export function catalogProductComparison(config, browserWindow = window) {
@@ -13,7 +13,7 @@ export function catalogProductComparison(config, browserWindow = window) {
     const owns = () => alive && !suspended && root?.isConnected !== false && root?.dataset.catalogComparisonGroup === groupId;
 
     return {
-        comparisonItems: [], comparisonReplacement: null, comparisonResult: null,
+        comparisonEnabled: false, comparisonItems: [], comparisonReplacement: null, comparisonResult: null,
         comparisonBusy: false, comparisonOpen: false, comparisonAvailable: true,
         comparisonError: '', comparisonNotice: labels.group_scope,
 
@@ -36,13 +36,26 @@ export function catalogProductComparison(config, browserWindow = window) {
             listeners.splice(0).forEach(remove => remove());
         },
 
+        toggleComparisonMode() {
+            if (this.comparisonEnabled) this.clearComparison();
+            else this.comparisonEnabled = true;
+        },
+        clearComparison() {
+            this.closeComparison(false);
+            this.comparisonItems = []; this.comparisonReplacement = null;
+            this.comparisonError = ''; this.comparisonNotice = labels.group_scope;
+            this.comparisonEnabled = false;
+            previousGroup = { id: groupId, hadSelection: false };
+            root?.querySelector('[data-comparison-toggle]')?.focus();
+        },
+
         comparisonIsSelected(id) { return this.comparisonItems.some(item => item.id === id); },
 
         toggleComparisonProduct(id, label, inResults) {
-            if (!owns() || !this.comparisonAvailable || !canonicalId(id) || typeof label !== 'string') return;
+            if (!owns() || !this.comparisonEnabled || !this.comparisonAvailable || !canonicalId(id) || typeof label !== 'string') return;
             if (this.comparisonIsSelected(id)) { this.removeComparisonProduct(id); return; }
             const item = { id, label, inResults: inResults === true };
-            if (this.comparisonItems.length === 2) { this.comparisonReplacement = item; return; }
+            if (this.comparisonItems.length === 4) { this.comparisonReplacement = item; return; }
             this.changeComparisonPair([...this.comparisonItems, item]);
         },
 
@@ -56,7 +69,7 @@ export function catalogProductComparison(config, browserWindow = window) {
             this.changeComparisonPair(this.comparisonItems.filter(item => item.id !== id));
         },
         replaceComparisonProduct(slot) {
-            if (!owns() || ![0, 1].includes(slot) || this.comparisonItems.length !== 2 || !this.comparisonReplacement) return;
+            if (!owns() || !Number.isInteger(slot) || slot < 0 || slot >= 4 || this.comparisonItems.length !== 4 || !this.comparisonReplacement) return;
             this.changeComparisonPair(this.comparisonItems.map((item, index) => index === slot ? this.comparisonReplacement : item));
         },
         cancelComparisonReplacement() { this.comparisonReplacement = null; },
@@ -72,7 +85,7 @@ export function catalogProductComparison(config, browserWindow = window) {
         },
 
         async openComparison() {
-            if (!owns() || !this.comparisonAvailable || this.comparisonItems.length !== 2 || this.comparisonOpen || this.comparisonBusy) return;
+            if (!owns() || !this.comparisonAvailable || this.comparisonItems.length < 2 || this.comparisonItems.length > 4 || this.comparisonOpen || this.comparisonBusy) return;
             opener = browserWindow.document.activeElement; restoreFocus = true;
             this.comparisonResult = null; this.comparisonError = '';
             try { dialog.showModal(); this.comparisonOpen = true; }
@@ -83,7 +96,7 @@ export function catalogProductComparison(config, browserWindow = window) {
         retryComparison() { return this.readComparison(); },
 
         async readComparison(force = false) {
-            if (!owns() || !this.comparisonOpen || !this.comparisonAvailable || this.comparisonItems.length !== 2 || (this.comparisonBusy && !force)) return;
+            if (!owns() || !this.comparisonOpen || !this.comparisonAvailable || this.comparisonItems.length < 2 || this.comparisonItems.length > 4 || (this.comparisonBusy && !force)) return;
             const operation = ++generation;
             const pair = this.comparisonItems.map(item => item.id);
             const requestId = `${config.componentId}:comparison:${operation}`;
@@ -97,9 +110,9 @@ export function catalogProductComparison(config, browserWindow = window) {
                     || (this.$wire.$id && this.$wire.$id !== config.componentId)
                     || JSON.stringify(reply.pairIds) !== JSON.stringify(pair)
                     || typeof reply.groupRevision !== 'string' || !/^[1-9][0-9]*$/.test(reply.groupRevision)
-                    || !Array.isArray(reply.products) || reply.products.length !== 2
+                    || !Array.isArray(reply.products) || reply.products.length !== pair.length
                     || reply.products.some((product, index) => product.id !== pair[index] || typeof product.code !== 'string')
-                    || !validRows(reply.differences) || !validRows(reply.same)) throw new Error('Invalid comparison response');
+                    || !validRows(reply.differences, pair.length) || !validRows(reply.same, pair.length)) throw new Error('Invalid comparison response');
                 this.comparisonResult = { products: reply.products, differences: reply.differences, same: reply.same };
             } catch (error) {
                 if (!current()) return;

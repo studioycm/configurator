@@ -30,7 +30,7 @@
     </div>
 </x-filament::dropdown>
 @else
-<div class="rw-toolbar" role="toolbar" aria-label="{{ __('configurator.writing.writing_helpers') }}" @pointerdown="rememberEditor()">
+<div data-tour="writing.toolbar" class="rw-toolbar" role="toolbar" aria-label="{{ __('configurator.writing.writing_helpers') }}" @pointerdown="rememberEditor()">
     <div class="rw-toolbar-row">
         @foreach (['commands' => '/', 'attributes' => '@', 'values' => '#', 'products' => '$'] as $key => $symbol)
             <x-filament::button size="xs" color="gray" x-on:click="openChoices({{ \Illuminate\Support\Js::from($key) }})" x-bind:disabled="!!composing || current.pendingText !== null || !context.toolbar[{{ \Illuminate\Support\Js::from($key) }}]"><span class="rw-token">{{ $symbol }}</span> {{ __('configurator.writing.'.$key) }}</x-filament::button>

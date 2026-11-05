@@ -1,4 +1,4 @@
-<div class="rw-logic" x-show="logic">
+<div data-tour="writing.logic" class="rw-logic" x-show="logic">
     <section class="rw-logic-section" x-show="logic?.conditions.length">
         <h3>{{ __('configurator.writing.when') }}</h3>
         <template x-for="(node,index) in logic?.conditions ?? []" :key="node.start">
