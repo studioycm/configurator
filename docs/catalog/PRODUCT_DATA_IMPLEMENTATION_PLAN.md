@@ -1,5 +1,7 @@
 # Product Data Foundation Implementation Plan
 
+**Status correction — 6 November 2026:** This is a historical proposal, not a pending implementation instruction. Current Product storage uses `profile_fields` and separate `parts`; its former `properties` / `extra_data` storage assumptions were superseded by the delivered consolidation. See [Current project status](../CURRENT_PROJECT_STATUS.md) and the consolidation journal for the actual implementation and separately deferred follow-ons. The original readiness language below records the planning state at that time and must not trigger a replay, schema change or new approval loop.
+
 > **For agentic workers:** Use `superpowers:executing-plans` to implement reviewed tasks in this session. Use `superpowers:subagent-driven-development` only if the operator chooses that execution method. Steps use checkboxes for tracking. This document authorizes no implementation, database mutation, commit or push.
 
 **Goal:** Keep the current Product JSON storage while making Group filters/presets, card fields and Configurator rules consume the same exact non-Part facts, independently of the first legacy export layout.
