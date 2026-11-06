@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'unavailable_choice' => 'Unavailable choice: :value',
     'preset_move_up' => 'Move :name up',
     'preset_move_down' => 'Move :name down',
     'preset_remove' => 'Remove :name',

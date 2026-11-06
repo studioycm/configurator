@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Group as SchemaGroup;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -173,11 +174,7 @@ class GroupForm
                     Hidden::make('id'),
                     TextInput::make('label')->label(__('catalog.groups.labels.preset_label'))->required()->maxLength(255)->live(onBlur: true),
                     Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->required()->searchable()->live(),
-                    Select::make('allowed_values')->label(__('catalog.groups.labels.allowed_source_values'))->multiple()->required()->minItems(1)->searchable()
-                        ->options(fn (Get $get, ?Group $record): array => self::valueOptions($record, $get('property_key'), $get('id')))
-                        ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
-                        ->hintAction(FormHints::make(__('catalog.groups.hints.one_available_option_hides_this_propertys_filter')))
-                        ->columnSpanFull(),
+                    self::allowedValuesField()->columnSpanFull(),
                 ])->columns(2)->columnSpanFull(),
             ])->columnSpanFull(),
             Section::make(__('catalog.groups.headings.results'))->key(fn (Section $component): string => 'results::'.(filled($component->getStatePath()) ? $component->getStatePath().'::section' : 'section'), isInheritable: false)->hidden()->schema([
@@ -207,6 +204,29 @@ class GroupForm
         return isset($state['id'])
             ? __('admin-ux.unnamed_preset', ['id' => $state['id']])
             : __('admin-ux.new_preset', ['key' => substr($key, -8)]);
+    }
+
+    private static function allowedValuesField(): SchemaGroup
+    {
+        return SchemaGroup::make()->schema(function (Get $get, ?Group $record): array {
+            $options = self::valueOptions($record, $get('property_key'), $get('id'));
+            $selected = $get('allowed_values') ?? [];
+            $useButtons = $options !== [] && count($options) <= 6
+                && array_all($options, fn (string $label): bool => mb_strlen($label) <= 40)
+                && is_array($selected)
+                && array_all($selected, fn (mixed $value): bool => (is_string($value) || is_int($value)) && array_key_exists($value, $options));
+
+            $field = $useButtons
+                ? ToggleButtons::make('allowed_values')->multiple()->inline()
+                : Select::make('allowed_values')->multiple()->searchable()->in(array_keys($options))
+                    ->getOptionLabelsUsing(fn (array $values): array => collect($values)
+                        ->filter(fn (mixed $value): bool => is_string($value) || is_int($value))
+                        ->mapWithKeys(fn (mixed $value): array => [$value => $options[$value] ?? __('admin-ux.unavailable_choice', ['value' => $value])])->all());
+
+            return [$field->options($options)->label(__('catalog.groups.labels.allowed_source_values'))->required()->rules(['array', 'min:1'])
+                ->dehydrateStateUsing(fn (array $state): array => array_map('strval', $state))
+                ->hintAction(FormHints::make(__('catalog.groups.hints.one_available_option_hides_this_propertys_filter')))];
+        });
     }
 
     /** @return list<string> */
