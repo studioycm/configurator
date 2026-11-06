@@ -13,6 +13,7 @@ use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
@@ -32,7 +33,7 @@ class BatchEditActions
             Hidden::make('operation')->default('edit'),
             Repeater::make('changes')->label(__('admin.batch.labels.field_changes'))->minItems(1)->defaultItems(1)->reorderable(false)->columns(2)->schema([
                 Select::make('field')->label(__('ui.fields.field'))->options($labels)->required()->live(),
-                Select::make('mode')->label(__('admin.batch.labels.change'))->default('unchanged')->required()->live()->options(function (Get $get) use ($fields): array {
+                ToggleButtons::make('mode')->label(__('admin.batch.labels.change'))->default('unchanged')->required()->inline()->live()->options(function (Get $get) use ($fields): array {
                     $field = $fields[$get('field')] ?? [];
 
                     return ['unchanged' => __('admin.batch.choices.unchanged'), 'set' => __('admin.batch.choices.set')] + (($field['nullable'] ?? false) ? ['clear' => __('admin.batch.choices.clear')] : []) + (($field['type'] ?? '') === 'tags' ? ['add' => __('admin.batch.choices.add_tags'), 'remove' => __('admin.batch.choices.remove_tags')] : []);
@@ -47,11 +48,11 @@ class BatchEditActions
         ]), self::base('batchReplace', __('admin.batch.labels.find_and_replace'), $table)->schema([
             Hidden::make('operation')->default('replace'),
             Select::make('field')->label(__('ui.fields.field'))->options(array_intersect_key($labels, array_filter($fields, fn (array $field): bool => $field['type'] === 'text')))->required(),
-            Select::make('mode')->label(__('admin.batch.labels.match'))->options(['literal' => __('admin.batch.labels.literal_text'), 'regex' => __('admin.batch.labels.regular_expression')])->default('literal')->required(),
+            ToggleButtons::make('mode')->label(__('admin.batch.labels.match'))->options(['literal' => __('admin.batch.labels.literal_text'), 'regex' => __('admin.batch.labels.regular_expression')])->default('literal')->required()->inline(),
             Textarea::make('search')->label(__('admin.batch.labels.find_pattern'))->required()->rows(2),
             Textarea::make('replacement')->label(__('admin.batch.labels.replace_with'))->default('')->rows(2)->hintAction(FormHints::make(__('admin.batch.hints.regex_captures_1_or_1_empty_replacement'))),
             Toggle::make('case_sensitive')->label(__('catalog.fields.case_sensitive'))->default(true),
-            Select::make('occurrences')->label(__('catalog.fields.occurrences'))->options(['all' => __('admin.batch.labels.all_matches'), 'first' => __('admin.batch.labels.first_match')])->default('all')->required(),
+            ToggleButtons::make('occurrences')->label(__('catalog.fields.occurrences'))->options(['all' => __('admin.batch.labels.all_matches'), 'first' => __('admin.batch.labels.first_match')])->default('all')->required()->inline(),
             TextInput::make('flags')->label(__('admin.batch.labels.regex_flags'))->default('')->hintAction(FormHints::make(__('admin.batch.hints.optional_m_s_u_x_patterns_are'))),
             View::make('filament.resources.batch-preview'),
         ])];

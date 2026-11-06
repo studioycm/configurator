@@ -48,6 +48,50 @@ test('changed deferred intent invalidates the old preview before any Apply write
     expect($value->fresh()->label)->toBe('Changed after preview');
 });
 
+test('bulk Edit offers only the operations applicable to the chosen field and reveals its value input on Set', function (string $field, array $modes) {
+    $value = Value::factory()->create();
+    $component = Livewire::test(ListValues::class)->selectTableRecords([$value])
+        ->mountAction(TestAction::make('batchEdit')->table()->bulk())
+        ->fillForm(['changes' => [['field' => $field, 'mode' => 'unchanged']]]);
+    $instance = $component->instance();
+    $schema = $instance->getSchema($instance->getMountedActionSchemaName());
+
+    expect(array_keys($schema->getComponentByStatePath('changes.0.mode')->getOptions()))->toBe($modes);
+    expect($schema->getComponentByStatePath('changes.0.value'))->toBeNull();
+
+    $component->fillForm(['changes' => [['field' => $field, 'mode' => 'set']]]);
+    $instance = $component->instance();
+    $schema = $instance->getSchema($instance->getMountedActionSchemaName());
+    expect($schema->getComponentByStatePath('changes.0.value'))->not->toBeNull();
+})->with([
+    'required text' => ['label', ['unchanged', 'set']],
+    'nullable text' => ['description', ['unchanged', 'set', 'clear']],
+    'tags' => ['tags', ['unchanged', 'set', 'clear', 'add', 'remove']],
+]);
+
+test('Find and replace honors the selected match and occurrence modes after explicit preview', function (string $mode, string $search, string $occurrences, string $expected) {
+    $value = Value::factory()->create(['label' => 'AA-AA']);
+    $outside = Value::factory()->create(['label' => 'AA outside']);
+    $component = Livewire::test(ListValues::class)->selectTableRecords([$value])
+        ->mountAction(TestAction::make('batchReplace')->table()->bulk())
+        ->assertSet('mountedActions.0.data.mode', 'literal')
+        ->assertSet('mountedActions.0.data.occurrences', 'all')
+        ->fillForm(['field' => 'label', 'mode' => $mode, 'search' => $search, 'replacement' => 'X', 'occurrences' => $occurrences])
+        ->callMountedAction(['preview' => true])->assertHasNoFormErrors();
+
+    expect($component->get('batchPreview.rows.0.after.label'))->toBe($expected);
+    expect($value->fresh()->label)->toBe('AA-AA');
+    $component->callMountedAction()->assertHasNoFormErrors()->assertDispatched('catalog-batch-applied');
+
+    expect($value->fresh()->label)->toBe($expected);
+    expect($outside->fresh()->label)->toBe('AA outside');
+})->with([
+    'literal all' => ['literal', 'AA', 'all', 'X-X'],
+    'literal first' => ['literal', 'AA', 'first', 'X-AA'],
+    'regex all' => ['regex', 'A+', 'all', 'X-X'],
+    'regex first' => ['regex', 'A+', 'first', 'X-AA'],
+]);
+
 test('changing selected records invalidates preview and never broadens Apply to an unreviewed record', function () {
     $first = Value::factory()->create(['label' => 'First']);
     $second = Value::factory()->create(['label' => 'Second']);
