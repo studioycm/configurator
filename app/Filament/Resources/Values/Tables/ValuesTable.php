@@ -12,7 +12,6 @@ use App\Models\Value;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\View;
@@ -46,7 +45,7 @@ class ValuesTable
             ->schema([
                 Hidden::make('operation')->default('edit'),
                 Hidden::make('changes.0.field')->default('tags'),
-                Select::make('changes.0.mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])->default('add')->required(),
+                ToggleButtons::make('changes.0.mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])->default('add')->required()->inline(),
                 TagsInput::make('changes.0.value')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->suggestions(fn (): array => Value::tagVocabulary())->default([]),
                 View::make('filament.resources.batch-preview'),
             ]);

@@ -15,6 +15,7 @@ use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
@@ -160,8 +161,8 @@ class TagValues extends Component implements HasActions, HasSchemas, HasTable, H
     public function assignmentForm(Schema $schema): Schema
     {
         return $schema->statePath('assignmentData')->components([
-            Select::make('mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])
-                ->required()->rules([Rule::in(['add', 'remove', 'set'])])->live()->afterStateUpdated(fn () => $this->refreshAssignmentPreview()),
+            ToggleButtons::make('mode')->label(__('tags.mode'))->options(['add' => __('tags.add'), 'remove' => __('tags.remove_selected'), 'set' => __('tags.replace')])
+                ->required()->inline()->rules([Rule::in(['add', 'remove', 'set'])])->live()->afterStateUpdated(fn () => $this->refreshAssignmentPreview()),
             TagsInput::make('tags')->label(__('catalog.fields.tags'))->placeholder(__('tags.input_placeholder'))->trim()->default([])->suggestions(fn (): array => Value::tagVocabulary())
                 ->rules(['array', 'list', 'max:30'])->nestedRecursiveRules(['required', 'string', 'max:80', 'distinct:strict'])
                 ->live()->afterStateUpdated(fn () => $this->refreshAssignmentPreview()),

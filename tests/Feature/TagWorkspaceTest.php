@@ -138,6 +138,29 @@ test('bulk tag edits apply only to reviewed workspace Values', function (string 
     ['set', [], []],
 ]);
 
+test('Master Values Assign tags previews and applies the chosen operation only to selected Values', function (string $mode, array $tags, array $expected) {
+    $selected = Value::factory()->create(['tags' => ['metal', 'standard']]);
+    $outside = Value::factory()->create(['tags' => ['outside']]);
+
+    $page = Livewire::test(ListValues::class)->selectTableRecords([$selected])
+        ->mountAction(TestAction::make('assignTags')->table()->bulk())
+        ->assertSet('mountedActions.0.data.changes.0.mode', 'add')
+        ->fillForm(['changes' => [['field' => 'tags', 'mode' => $mode, 'value' => $tags]]])
+        ->callMountedAction(['preview' => true])->assertHasNoFormErrors();
+
+    expect($selected->fresh()->tags)->toBe(['metal', 'standard']);
+    expect($page->get('batchPreview.rows.0.after.tags'))->toBe($expected);
+    $page->callMountedAction()->assertHasNoFormErrors()->assertDispatched('catalog-batch-applied');
+
+    expect($selected->fresh()->tags)->toBe($expected);
+    expect($outside->fresh()->tags)->toBe(['outside']);
+})->with([
+    ['add', ['special'], ['metal', 'standard', 'special']],
+    ['remove', ['standard'], ['metal']],
+    ['set', ['special'], ['special']],
+    ['set', [], []],
+]);
+
 test('the embedded picker adds existing Values without leaving the tag workspace', function () {
     $tagged = Value::factory()->create(['tags' => ['metal']]);
     $other = Value::factory()->create(['tags' => ['standard']]);
