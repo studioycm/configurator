@@ -39,6 +39,9 @@ class ConfiguratorFormErrors
         $errors = [];
         foreach ($exception->errors() as $path => $messages) {
             $path = $removePrefix === null ? $path : preg_replace($removePrefix, '', $path);
+            if (array_key_exists('condition_blocks', $state)) {
+                $path = self::ruleConditionPath($path, $state);
+            }
             $cursor = $state;
             $segments = [];
             foreach (explode('.', $path) as $segment) {
@@ -48,8 +51,35 @@ class ConfiguratorFormErrors
                 $segments[] = $segment;
                 $cursor = is_array($cursor) ? ($cursor[$segment] ?? null) : null;
             }
-            $errors[$schema->getStatePath().'.'.implode('.', $segments)] = $messages;
+            $key = $schema->getStatePath().'.'.implode('.', $segments);
+            $errors[$key] = array_key_exists('condition_blocks', $state) ? [...($errors[$key] ?? []), ...$messages] : $messages;
         }
         throw ValidationException::withMessages($errors);
+    }
+
+    /** @param array<string, mixed> $state */
+    private static function ruleConditionPath(string $path, array $state): string
+    {
+        if ($path === 'conditions') {
+            return 'condition_blocks';
+        }
+        if (! preg_match('/^conditions\.(\d+)(?:\.(.*))?$/', $path, $match)) {
+            return $path;
+        }
+
+        $block = array_values($state['condition_blocks'])[(int) $match[1]] ?? [];
+        $prefix = 'condition_blocks.'.$match[1].'.data';
+        $suffix = $match[2] ?? '';
+        $predicate = $block['data'] ?? [];
+        if (preg_match('/^conditions\.(\d+)(?:\.(.*))?$/', $suffix, $nested)) {
+            $prefix .= '.conditions.'.$nested[1];
+            $predicate = array_values($predicate['conditions'] ?? [])[(int) $nested[1]] ?? [];
+            $suffix = $nested[2] ?? '';
+        }
+        if ($suffix === 'operand') {
+            $suffix = in_array($predicate['operator'] ?? null, ['In', 'NotIn'], true) ? 'operand_list' : 'operand_text';
+        }
+
+        return $prefix.($suffix === '' ? '' : '.'.$suffix);
     }
 }

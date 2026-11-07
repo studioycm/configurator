@@ -46,7 +46,9 @@ class ConfiguratorRuleForm
         $properties = ProductFields::options(configuratorId: $owner->id);
         $predicate = fn (): array => self::predicate($attributes, $options, $context, $properties);
         $schema = [
-            View::make('filament.forms.validation-summary'),
+            View::make('filament.forms.rule-validation-summary')->viewData(fn (View $component): array => [
+                'entries' => RuleValidationSummary::entries($component->getContainer(), $component->getLivewire()->getErrorBag()->messages()),
+            ]),
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
             Hidden::make('kind')->default($kind), Hidden::make('priority')->default(0),
             Grid::make(2)->schema([

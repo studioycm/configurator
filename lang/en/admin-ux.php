@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'rule_error_condition_blocks' => 'Condition :number',
+    'rule_error_nested_condition' => 'Nested condition :number',
+    'rule_error_effects' => 'Effect :number',
+    'rule_error_sets' => 'Value set :number',
     'unavailable_choice' => 'Unavailable choice: :value',
     'preset_move_up' => 'Move :name up',
     'preset_move_down' => 'Move :name down',

@@ -1,4 +1,5 @@
 import { attributeEditorDraft } from './attribute-editor-draft';
+import { ruleErrorNavigation } from './rule-error-navigation';
 import { nextIdentifierIntent, suggestedIdentifier } from './suggested-identifier';
 import { configuratorCreationGuard } from './configurator-creation';
 import { masterValueBatch, catalogDraftGuard, attributeDraftIsDirty } from './master-value-batch';
@@ -50,6 +51,7 @@ function registerComponents(Alpine) {
     Alpine.data('tourAuthor', tourAuthor);
     Alpine.data('guidedTourAuthorPage', config => guidedTourAuthorPage(config, { createDriver: driver }));
     Alpine.data('suggestedIdentifier', suggestedIdentifier);
+    Alpine.data('ruleErrorNavigation', ruleErrorNavigation);
     Alpine.data('masterValueBatch', masterValueBatch);
     Alpine.data('attributeCreationGuard', config => catalogDraftGuard(config, attributeDraftIsDirty));
     Alpine.data('configuratorCreationGuard', configuratorCreationGuard);

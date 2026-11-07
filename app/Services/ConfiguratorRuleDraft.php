@@ -48,7 +48,11 @@ class ConfiguratorRuleDraft
             } elseif ($block['type'] === 'group') {
                 $group = $block['data'];
                 $this->keys($group, ['id', 'operator', 'conditions'], $path.'.data');
-                $group['conditions'] = array_map(fn (array $condition): array => $this->predicateFromDraft($condition, $path.'.data.conditions'), $this->rows($group['conditions'], $path.'.data.conditions'));
+                $predicates = [];
+                foreach ($this->rows($group['conditions'], $path.'.data.conditions') as $index => $condition) {
+                    $predicates[] = $this->predicateFromDraft($condition, $path.'.data.conditions.'.$index);
+                }
+                $group['conditions'] = $predicates;
                 $conditions[] = $group;
             } else {
                 $this->invalid($path, __('configurator.validation.only_predicates_and_one_level_of_all_any_groups_are_supported'));
