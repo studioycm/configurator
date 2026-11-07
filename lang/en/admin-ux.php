@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'rule_row' => 'Rule row',
+    'rule_row_move' => 'Move :name',
+    'rule_row_remove' => 'Remove :name',
+    'rule_incomplete_condition' => 'Incomplete condition',
+    'rule_choose_effect' => 'Choose effect',
+    'rule_choose_attribute' => 'Choose Attribute',
+    'rule_choose_property' => 'Choose property',
+    'rule_choose_operator' => 'Choose operator',
+    'rule_choose_scope' => 'Choose scope',
+    'rule_unavailable_attribute' => 'Unavailable Attribute #:id',
     'rule_error_condition_blocks' => 'Condition :number',
     'rule_error_nested_condition' => 'Nested condition :number',
     'rule_error_effects' => 'Effect :number',

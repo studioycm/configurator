@@ -12,6 +12,8 @@ use App\RuleEffectKind;
 use App\RuleTargetScope;
 use App\Services\ConfiguratorDefinitionCompiler;
 use App\Services\ProductFields;
+use Closure;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Hidden;
@@ -27,6 +29,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
+use Illuminate\Support\Js;
 use Illuminate\Support\Str;
 
 class ConfiguratorRuleForm
@@ -35,16 +38,18 @@ class ConfiguratorRuleForm
     public static function components(Configurator $owner, string $kind): array
     {
         $attributes = [];
+        $rowAttributes = [];
         $options = [];
         foreach ($owner->attributes()->with(['attribute', 'options.option.value'])->orderBy('display_order')->get() as $attribute) {
             $attributes[$attribute->id] = ($attribute->label_override ?? $attribute->attribute->label).' · '.$attribute->attribute->key;
+            $rowAttributes[$attribute->id] = $attribute->label_override ?? $attribute->attribute->label;
             foreach ($attribute->options->sortBy('display_order') as $option) {
                 $options[$attribute->id][$option->id] = $option->option->displayName($option->label_override, $attribute->label_override ?? $attribute->attribute->label);
             }
         }
         $context = app(ConfiguratorDefinitionCompiler::class)->resolveContext($owner->context_schema ?? [], $owner->hidden_context_options ?? [], CatalogContextSettings::current()->choices);
         $properties = ProductFields::options(configuratorId: $owner->id);
-        $predicate = fn (): array => self::predicate($attributes, $options, $context, $properties);
+        $predicate = fn (bool $nested = false): array => self::predicate($attributes, $options, $context, $properties, $nested);
         $schema = [
             View::make('filament.forms.rule-validation-summary')->viewData(fn (View $component): array => [
                 'entries' => RuleValidationSummary::entries($component->getContainer(), $component->getLivewire()->getErrorBag()->messages()),
@@ -61,7 +66,8 @@ class ConfiguratorRuleForm
                     Block::make('group')->label(__('configurator.labels.all_any_group'))->schema([
                         Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
                         ToggleButtons::make('operator')->label(__('configurator.labels.match'))->options(['All' => __('ui.choices.all'), 'Any' => __('configurator.labels.any')])->required()->default('All')->grouped(),
-                        Repeater::make('conditions')->label(__('configurator.fields.conditions'))->schema($predicate())->minItems(1)->defaultItems(1)->columns(2)->columnSpanFull(),
+                        self::rowLabels(Repeater::make('conditions'), fn (array $state, int $number): string => self::conditionHeading($state, $number, $rowAttributes, $properties))
+                            ->label(__('configurator.fields.conditions'))->schema($predicate(true))->minItems(1)->defaultItems(1)->columns(2)->columnSpanFull(),
                     ]),
                 ])->default([])->columnSpanFull(),
         ];
@@ -79,28 +85,34 @@ class ConfiguratorRuleForm
             $schema[] = Hidden::make('driver_configurator_attribute_id')->default(null);
             $schema[] = Hidden::make('target_configurator_attribute_id')->default(null);
             $schema[] = Hidden::make('sets')->default([]);
-            $schema[] = Repeater::make('effects')->label(__('configurator.labels.effects'))->minItems(1)->defaultItems(1)->columnSpanFull()->columns(2)->schema([
-                Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
-                Select::make('kind')->label(__('configurator.rules.fields.effect'))->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => $kind->getLabel()])->all())->required()->live()->hintAction(FormHints::make(__('configurator.hints.exclusion_is_an_advanced_restriction_use_a'))),
-                Select::make('target_configurator_attribute_id')->label(__('configurator.rules.fields.target_attribute'))->options($attributes)->required()->searchable()->live(),
-                ToggleButtons::make('target_scope')->label(__('configurator.labels.applies_to'))->options(collect(RuleTargetScope::cases())->mapWithKeys(fn (RuleTargetScope $scope): array => [$scope->value => $scope->getLabel()])->all())->required()->default('Options')->live()->inline(),
-                Select::make('option_ids')->label(__('configurator.labels.target_values'))->options(fn (Get $get): array => self::withStale($options[$get('target_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))->multiple()->searchable()->default([])
-                    ->visible(fn (Get $get): bool => $get('target_scope') === 'Options' || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),
-                TextInput::make('display_value')->label(__('configurator.labels.presentation_text'))->maxLength(255)->default(null)
-                    ->visible(fn (Get $get): bool => in_array($get('kind'), ['SetLabel', 'SetDisplayValue', 'SetHint'], true) || filled($get('display_value')))->dehydratedWhenHidden(),
-            ]);
+            $schema[] = self::rowLabels(Repeater::make('effects'), fn (array $state, int $number): string => self::effectHeading($state, $number, $rowAttributes))
+                ->label(__('configurator.labels.effects'))->minItems(1)->defaultItems(1)->columnSpanFull()->columns(2)->schema([
+                    Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
+                    Select::make('kind')->label(__('configurator.rules.fields.effect'))->options(collect(RuleEffectKind::cases())->mapWithKeys(fn (RuleEffectKind $kind): array => [$kind->value => $kind->getLabel()])->all())->required()->live()->hintAction(FormHints::make(__('configurator.hints.exclusion_is_an_advanced_restriction_use_a'))),
+                    Select::make('target_configurator_attribute_id')->label(__('configurator.rules.fields.target_attribute'))->options($attributes)->required()->searchable()->live(),
+                    ToggleButtons::make('target_scope')->label(__('configurator.labels.applies_to'))->options(collect(RuleTargetScope::cases())->mapWithKeys(fn (RuleTargetScope $scope): array => [$scope->value => $scope->getLabel()])->all())->required()->default('Options')->live()->inline(),
+                    Select::make('option_ids')->label(__('configurator.labels.target_values'))->options(fn (Get $get): array => self::withStale($options[$get('target_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))->multiple()->searchable()->default([])
+                        ->visible(fn (Get $get): bool => $get('target_scope') === 'Options' || ($get('option_ids') ?? []) !== [])->dehydratedWhenHidden(),
+                    TextInput::make('display_value')->label(__('configurator.labels.presentation_text'))->maxLength(255)->default(null)
+                        ->visible(fn (Get $get): bool => in_array($get('kind'), ['SetLabel', 'SetDisplayValue', 'SetHint'], true) || filled($get('display_value')))->dehydratedWhenHidden(),
+                ]);
         }
 
         return array_values($schema);
     }
 
     /** @param array<int, string> $attributes @param array<int, array<int, string>> $options @param array<string, mixed> $context @return array<\Filament\Schemas\Components\Component> */
-    private static function predicate(array $attributes, array $options, array $context, array $properties): array
+    private static function predicate(array $attributes, array $options, array $context, array $properties, bool $liveProperty = false): array
     {
         $selection = fn (Get $get): bool => in_array($get('source_kind'), ['SelectionOption', 'SelectionCode'], true);
         $list = fn (Get $get): bool => in_array($get('operator'), ['In', 'NotIn'], true);
         $contextSource = fn (Get $get): bool => in_array($get('source_kind'), ['Territory', 'Application'], true);
         $contextChoices = fn (Get $get): array => array_column($context[$get('source_kind') === 'Territory' ? 'territory' : 'application'] ?? [], 'label', 'value');
+        $propertyField = Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->searchable()->default(null)
+            ->visible(fn (Get $get): bool => $get('source_kind') === 'ProductProperty' || filled($get('property_key')))->dehydratedWhenHidden();
+        if ($liveProperty) {
+            $propertyField->live();
+        }
 
         return [
             Hidden::make('id')->default(fn (): string => 'new:'.Str::uuid()),
@@ -115,8 +127,7 @@ class ConfiguratorRuleForm
             ToggleButtons::make('operator')->label(__('configurator.fields.operator'))->options(fn (Get $get): array => collect(ConditionOperator::cases())->filter(fn (ConditionOperator $operator): bool => $operator !== ConditionOperator::Contains || $get('source_kind') === 'ProductProperty')->mapWithKeys(fn (ConditionOperator $operator): array => [$operator->value => $operator->getLabel()])->all())->required()->default('Equals')->live()->inline(),
             Select::make('source_configurator_attribute_id')->label(__('configurator.rules.fields.source_attribute'))->options($attributes)->searchable()->live()->default(null)
                 ->visible(fn (Get $get): bool => $selection($get) || filled($get('source_configurator_attribute_id')))->dehydratedWhenHidden(),
-            Select::make('property_key')->label(__('catalog.fields.product_property'))->options($properties)->searchable()->default(null)
-                ->visible(fn (Get $get): bool => $get('source_kind') === 'ProductProperty' || filled($get('property_key')))->dehydratedWhenHidden(),
+            $propertyField,
             Hidden::make('context_dimension')->default(null),
             Select::make('option_ids')->key(fn (Get $get): string => 'condition-values-'.($list($get) ? 'list' : 'single'))->label(__('configurator.labels.included_values_exact_codes'))->multiple()->searchable()->default([])
                 ->options(fn (Get $get): array => self::withStale($options[$get('source_configurator_attribute_id')] ?? [], $get('option_ids') ?? []))
@@ -135,6 +146,78 @@ class ConfiguratorRuleForm
                 ->visible(fn (Get $get): bool => $contextSource($get) && ($list($get) || ($get('operand_list') ?? []) !== []))->dehydratedWhenHidden(false)
                 ->helperText(fn (Get $get): ?string => ! $list($get) ? __('configurator.hints.clear_the_previous_choices_before_saving_a') : null),
         ];
+    }
+
+    private static function rowLabels(Repeater $field, Closure $label): Repeater
+    {
+        return $field->itemLabel(fn (array $state, Repeater $component, string $key): string => $label($state, self::rowNumber($component, $key)))
+            ->reorderAction(fn (Action $action, Repeater $component): Action => self::rowAction($action, $component, 'move'))
+            ->deleteAction(fn (Action $action, Repeater $component): Action => self::rowAction($action, $component, 'remove'));
+    }
+
+    private static function rowNumber(Repeater $field, string $key): int
+    {
+        $position = array_search($key, array_map('strval', array_keys($field->getRawState() ?? [])), true);
+
+        return ($position === false ? 0 : $position) + 1;
+    }
+
+    private static function rowAction(Action $action, Repeater $field, string $operation): Action
+    {
+        if ($operation === 'move') {
+            return $action->label(__('admin-ux.rule_row_move', ['name' => __('admin-ux.rule_row')]))->tooltip(null)->extraAttributes([
+                'x-data' => 'ruleRowDragLabel('.Js::from(['template' => __('admin-ux.rule_row_move'), 'fallback' => __('admin-ux.rule_row')]).')',
+            ], merge: true);
+        }
+        $label = fn (array $arguments): string => __('admin-ux.rule_row_'.$operation, ['name' => isset($arguments['item'])
+            ? $field->getItemLabel((string) $arguments['item'], self::rowNumber($field, (string) $arguments['item']) - 1)
+            : __('admin-ux.rule_row')]);
+
+        return $action->label($label)->tooltip($label);
+    }
+
+    /** @param array<string, mixed> $state @param array<int, string> $attributes @param array<string, string> $properties */
+    private static function conditionHeading(array $state, int $number, array $attributes, array $properties): string
+    {
+        $prefix = __('admin-ux.rule_error_nested_condition', ['number' => $number]);
+        $source = ConditionSource::tryFrom(self::rowText($state['source_kind'] ?? null) ?? '');
+        if ($source === null) {
+            return $prefix.' · '.__('admin-ux.rule_incomplete_condition');
+        }
+        $parts = [$prefix, $source->getLabel()];
+        if (in_array($source, [ConditionSource::SelectionOption, ConditionSource::SelectionCode], true)) {
+            $parts[] = self::rowAttribute($state['source_configurator_attribute_id'] ?? null, $attributes);
+        } elseif ($source === ConditionSource::ProductProperty) {
+            $key = self::rowText($state['property_key'] ?? null);
+            $parts[] = filled($key) ? ($properties[$key] ?? $key) : __('admin-ux.rule_choose_property');
+        }
+        $parts[] = ConditionOperator::tryFrom(self::rowText($state['operator'] ?? null) ?? '')?->getLabel() ?? __('admin-ux.rule_choose_operator');
+
+        return implode(' · ', $parts);
+    }
+
+    /** @param array<string, mixed> $state @param array<int, string> $attributes */
+    private static function effectHeading(array $state, int $number, array $attributes): string
+    {
+        return implode(' · ', [
+            __('admin-ux.rule_error_effects', ['number' => $number]),
+            RuleEffectKind::tryFrom(self::rowText($state['kind'] ?? null) ?? '')?->getLabel() ?? __('admin-ux.rule_choose_effect'),
+            self::rowAttribute($state['target_configurator_attribute_id'] ?? null, $attributes),
+            RuleTargetScope::tryFrom(self::rowText($state['target_scope'] ?? null) ?? '')?->getLabel() ?? __('admin-ux.rule_choose_scope'),
+        ]);
+    }
+
+    /** @param array<int, string> $attributes */
+    private static function rowAttribute(mixed $value, array $attributes): string
+    {
+        $id = self::rowText($value);
+
+        return filled($id) ? ($attributes[$id] ?? __('admin-ux.rule_unavailable_attribute', ['id' => $id])) : __('admin-ux.rule_choose_attribute');
+    }
+
+    private static function rowText(mixed $value): ?string
+    {
+        return is_string($value) || is_int($value) ? (string) $value : null;
     }
 
     /** @param array<int|string, string> $choices @param list<int|string> $ids @return array<int|string, string> */
